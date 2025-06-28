@@ -1,0 +1,7 @@
+Copyright 2025 MPG JR. All rights reserved.
+
+This software is proprietary and confidential. Unauthorized copying, modification, distribution, or use of this software, in whole or in part, is strictly prohibited.
+
+Use of this software is governed by the terms outlined in this LICENSE file and any applicable End-User License Agreement (EULA).
+
+For further information or licensing inquiries, contact: [Your Contact Information]

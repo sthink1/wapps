@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Town Notification</title>
+</head>
+<body>
+    <h1>Verbal Town Notification<a class="buttons" href="home.html"><button>Home</button></a></h1>
+    <p>When you change towns, an audio notification will be triggered.</p>
+    <button onclick="startGeolocation()">Enable Location Alerts</button>
+    <p id="status">Status: Waiting for location access...</p>
+
+    <footer style="background-color: lightgray; height: 30px; padding-top: 5px; position: sticky; bottom: 0; width: 460px;">
+        <table style="width: 98%; margin: 5px auto;">
+            <tr>
+            <td>Copyright © 2025 M P Galvin Jr</td>
+            <td style="text-align: center;border:1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+    
+    <script>
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+        let currentTown = '';
+
+        // Function to update status message
+        function updateStatus(message) {
+            document.getElementById('status').textContent = `Status: ${message}`;
+        }
+
+        // Function to get the user's current town
+        function getTown(lat, lon) {
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
+                headers: {
+                    'User-Agent': 'TownNotificationApp/1.0 (your.email@example.com)' // Replace with your app name and contact
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const town = data.address.town || data.address.city || data.address.village || 'Unknown town';
+                    if (town !== currentTown) {
+                        currentTown = town;
+                        speak(`You have entered: ${town}`);
+                        updateStatus(`Entered ${town}`);
+                    } else {
+                        updateStatus(`Still in ${town}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching town info:', error);
+                    updateStatus('Failed to fetch town information');
+                });
+        }
+
+        // Function to speak the notification
+        function speak(message) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(message);
+                utterance.lang = 'en-US'; // Set language for better compatibility
+                speechSynthesis.speak(utterance);
+            } else {
+                console.warn('Text-to-speech not supported in this browser.');
+                updateStatus('Text-to-speech not supported');
+            }
+        }
+
+        // Function to start geolocation
+        function startGeolocation() {
+            if ('geolocation' in navigator) {
+                navigator.geolocation.watchPosition(
+                    function(position) {
+                        const latitude = position.coords.latitude;
+                        const longitude = position.coords.longitude;
+                        updateStatus('Fetching town information...');
+                        getTown(latitude, longitude);
+                    },
+                    function(error) {
+                        console.error('Error getting location:', error);
+                        updateStatus(`Location error: ${error.message}`);
+                    },
+                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+                );
+            } else {
+                console.warn('Geolocation is not supported by this browser.');
+                updateStatus('Geolocation not supported');
+            }
+        }
+    </script>
+</body>
+</html>
