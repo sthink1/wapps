@@ -7,7 +7,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const { sendEmail } = require('./send_email');
+const { sendEmail } = require('./send_email'); // Import sendEmail
 const morganMiddleware = require('./morgan');
 const logger = require('./logger');
 const weightsRoutes = require('./routes/weights');
@@ -35,22 +35,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(multer().none());
-
-// Serve static files with cache control
-app.use(express.static(path.join(__dirname, 'httpdocs'), {
-  maxAge: '1d', // Cache static files for 1 day
-  setHeaders: (res, path) => {
-    if (path.endsWith('manifest.json')) {
-      res.set('Content-Type', 'application/manifest+json');
-    } else if (path.endsWith('sw.js')) {
-      res.set('Content-Type', 'application/javascript');
-      res.set('Cache-Control', 'no-cache'); // Prevent caching service worker
-    }
-  }
-}));
+app.use(express.static(path.join(__dirname, 'httpdocs')));
 app.use(morganMiddleware);
 
-logger.info('Middleware setup complete: CORS, JSON parsing, URL-encoded parsing, multipart parsing, static file serving with cache control, Morgan logging');
+logger.info('Middleware setup complete: CORS, JSON parsing, URL-encoded parsing, multipart parsing, static file serving, Morgan logging');
 
 // Send Email Endpoint
 app.post('/send-email', async (req, res) => {
@@ -67,10 +55,10 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
-// Root route to serve home.html for PWA
+// Root route
 app.get('/', (req, res) => {
-  logger.info('Root endpoint hit, serving home.html');
-  res.sendFile(path.join(__dirname, 'httpdocs', 'home.html'));
+  logger.info('Root endpoint hit');
+  res.send('Welcome to WeightIn API!');
 });
 
 // API routes

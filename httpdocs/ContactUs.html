@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contact Us</title>
+<link rel="manifest" href="/manifest.json">
 <!--<link href="Style.css" rel="stylesheet" type="text/css" />-->
 <style>
     section {
@@ -69,6 +70,13 @@
     </footer>
 
     <script>
+        if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
         const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
     document.getElementById('myForm').addEventListener('submit', function(e) {
         e.preventDefault();

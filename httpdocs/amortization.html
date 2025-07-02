@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Loan Payment Calculator</title>
+  <link rel="manifest" href="/manifest.json">
   <style>
     /* Add some basic styling */
     body {
@@ -72,6 +73,13 @@
       </table>
   </footer>
   <script>
+    if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
     const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
     function formatNumber(number) {
       return number.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
