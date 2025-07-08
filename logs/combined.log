@@ -1,5 +1,0 @@
-2025-07-02 16:39:23 [INFO]: Middleware setup complete: CORS, JSON parsing, URL-encoded parsing, multipart parsing, static file serving with cache control, Morgan logging
-2025-07-02 16:39:23 [INFO]: Server running at http://localhost:8080
-2025-07-02 16:39:23 [INFO]: Connected to the MySQL database!
-2025-07-02 16:39:24 [INFO]: SMTP server is ready
-2025-07-02 16:40:29 [INFO]: Email sent successfully to wonderfulapps@sthink6386.x10.mx from sthink0@gmail.com
