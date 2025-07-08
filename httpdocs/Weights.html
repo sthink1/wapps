@@ -1,11 +1,11 @@
-<!--<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" ,(max-width: 400px), initial-scale=1.0">
     <title>Weights and Activities</title>
     <link rel="manifest" href="/manifest.json">
-    
+    <!-- Add canvas-confetti script -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="js/confetti.js"></script>
     <style>
@@ -382,7 +382,7 @@
         <div class="date-range-label" id="dateRangeLabel"></div>
         <div class="chart">
             <svg id="weightChart">
-                
+                <!-- Chart will dynamically render here -->
             </svg>
         </div>
         <table id="combinedTable">
@@ -396,12 +396,12 @@
                 </tr>
             </thead>
             <tbody>
-                
+                <!-- Rows will be dynamically inserted here -->
             </tbody>
         </table>
     </div>
 
-    
+    <!-- Date Range Modal -->
     <div id="dateRangeModal" class="modal">
         <div class="modal-content">
             <h2>Select Date Range</h2>
@@ -430,7 +430,7 @@
         </div>
     </div>
 
-    
+    <!-- Color Selection Modal -->
     <div id="colorModal" class="color-modal">
         <div class="modal-content">
             <h2>Customize Colors</h2>
@@ -455,7 +455,7 @@
         </div>
     </div>
 
-    
+    <!-- Add Weight Modal -->
     <div id="addWeightModal" class="modal">
         <div class="modal-content">
             <h2>Add Weight Entry</h2>
@@ -471,7 +471,7 @@
                     <span class="error-message" id="weightError"></span>
                 </label>
                 <div id="activityContainer">
-                    
+                    <!-- Activity dropdowns will be dynamically added here -->
                 </div>
                 <button type="button" id="addActivityBtn">Add Another Activity</button>
                 <div class="buttons">
@@ -482,7 +482,7 @@
         </div>
     </div>
 
-    
+    <!-- Add New Activity Sub-Modal -->
     <div id="addActivityModal" class="modal">
         <div class="modal-content">
             <h2>Add New Activity</h2>
@@ -500,7 +500,7 @@
         </div>
     </div>
 
-    
+    <!-- Modal for Editing Weight (Step 1: Enter UserWeightID) -->
     <div id="editModal" class="modal">
         <div class="modal-content">
             <span class="close">×</span>
@@ -514,7 +514,7 @@
         </div>
     </div>
 
-    
+    <!-- Modal for Editing Weight (Step 2: Display and Edit Weight Entry) -->
     <div id="editWeightModal" class="modal">
         <div class="modal-content">
             <span class="close">×</span>
@@ -535,7 +535,7 @@
                     </tr>
                 </thead>
                 <tbody id="editWeightTableBody">
-                    
+                    <!-- Rows will be dynamically inserted here -->
                 </tbody>
             </table>
             <button id="addActivityEditBtn" style="padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">ADD ANOTHER ACTIVITY</button>
@@ -570,7 +570,7 @@
         </div>
     </div>
 
-    
+    <!-- Search Modal -->
     <div id="searchModal" class="modal">
     <div class="modal-content">
         <span class="close">×</span>
@@ -593,7 +593,7 @@
                     Activity:
                     <select id="searchActivity" disabled>
                         <option value="">Select Activity</option>
-                        
+                        <!-- Activities will be dynamically populated -->
                     </select>
                     <span class="error-message" id="activitySearchError"></span>
                 </label>
@@ -614,7 +614,7 @@
                         </tr>
                     </thead>
                     <tbody id="searchResultsBody">
-                        
+                        <!-- Results will be dynamically inserted here -->
                     </tbody>
                 </table>
             </div>
@@ -1978,4 +1978,4 @@ printResultsBtn.onclick = () => {
 };
     </script>
 </body>
-</html>-->
+</html>
