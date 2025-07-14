@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weights and Activities</title>
+    <link rel="manifest" href="/manifest.json">
+    <!-- Add canvas-confetti script -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="js/confetti.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8e8d9;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .buttons button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .buttons button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            text-align: center;
+            padding: 10px;
+        }
+        table th {
+            background-color: #f2f2f2;
+        }
+        table th button {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        table th button:hover {
+            color: #0056b3;
+        }
+        table td.decrease {
+            background-color: #f3fa92;
+        }
+        table td.increase {
+            background-color: #cdf9d6;
+        }
+        table td.noChange {
+            background-color: #abc4f9;
+        }
+        .chart {
+            margin: 20px 0;
+            height: 300px; 
+            border: 1px solid #ccc;
+            position: relative;
+            background: #f8f8f8;
+        }
+        .date-range-label {
+            margin: 10px 0;
+            font-size: 14px;
+            background-color: red;
+            color: white;
+            font-weight: bold;
+            padding: 5px 10px;
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+        .axis {
+            stroke: #ddd;
+        }
+        .line {
+            fill: none;
+            stroke: #ff6347;
+            stroke-width: 2;
+        }
+        .expandable-row {
+            display: none;
+        }
+        .m-button {
+            padding: 5px 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .m-button:hover {
+            background-color: #0056b3;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            width: 400px;
+            max-width: 90%;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+        }
+        .modal-content label {
+            display: block;
+            margin: 10px 0;
+        }
+        .modal-content input[type="date"], .modal-content input[type="number"] {
+            margin-left: 10px;
+        }
+        .modal-content select {
+            margin-left: 10px;
+        }
+        .modal-content .buttons {
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .color-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .color-modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            width: 300px;
+            max-width: 90%;
+        }
+        .color-modal-content label {
+            display: block;
+            margin: 10px 0;
+        }
+        /* Error message styling */
+        .error-message {
+            color: red;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        /* Styles copied from Activities.html for consistency */
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal form {
+            display: flex;
+            flex-direction: column;
+        }
+        .modal form input {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .modal form button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .modal form button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            margin-top: 5px;
+        }
+        /* New styles for editWeightModal */
+        .edit-weight-table {
+            margin-top: 20px;
+        }
+        .edit-weight-table th, .edit-weight-table td {
+            padding: 8px;
+            white-space: nowrap;
+        }
+        /* Set specific column widths */
+        .edit-weight-table th:nth-child(1), .edit-weight-table td:nth-child(1) {
+            width: 15%; /* ITEM */
+        }
+        .edit-weight-table th:nth-child(2), .edit-weight-table td:nth-child(2) {
+            width: 25%; /* Current */
+        }
+        .edit-weight-table th:nth-child(3), .edit-weight-table td:nth-child(3) {
+            width: 10%; /* Checkboxes */
+        }
+        .edit-weight-table th:nth-child(4), .edit-weight-table td:nth-child(4) {
+            width: 25%; /* Change To */
+        }
+        .edit-weight-table th:nth-child(5), .edit-weight-table td:nth-child(5) {
+            width: 25%; /* Revised */
+        }
+        .checkbox-label {
+            color: red;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        /* Custom checkbox styling to match buttons */
+        input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 20px;
+            height: 20px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            vertical-align: middle;
+        }
+        input[type="checkbox"]:hover {
+            background-color: #0056b3;
+        }
+        input[type="checkbox"]:checked::after {
+            content: '✔';
+            color: white;
+            font-size: 14px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        input[type="checkbox"]:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        /* Style for inputs in column 4 */
+        .edit-weight-table input[type="date"],
+        .edit-weight-table input[type="number"],
+        .edit-weight-table select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        /* Existing styles unchanged, adding new modal styles */
+        .delete-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .delete-modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            width: 400px;
+            max-width: 90%;
+        }
+        .delete-modal-content h2 {
+            margin-top: 0;
+        }
+        .delete-modal-content label {
+            display: block;
+            margin: 10px 0;
+        }
+        .delete-modal-content input[type="date"] {
+            margin-left: 10px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .delete-modal-content .buttons {
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .delete-error {
+            color: red;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        /* Specific styles for the search results section */
+        #searchResults {
+            max-height: 400px; /* Adjust as needed */
+            overflow-y: auto; /* Enable scrolling for the search results */
+            margin-top: 20px;
+        }
+
+        /* Ensure the table headers are fixed and visible */
+        .search-results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .search-results-table thead {
+            position: sticky;
+            top: 0;
+            background-color: #f2f2f2; /* Match main table header background */
+            z-index: 1; /* Ensure headers stay above scrolling content */
+        }
+
+        .search-results-table th,
+        .search-results-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        /* Style for buttons in the search modal */
+        #searchModal .buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Weights and Activities<a class="buttons" href="home.html"><button>Home</button></a></h1>
+        <div class="buttons">
+            <button id="btnDateRange">DATE RANGE</button>
+            <button id="btnSearch">SEARCH</button>
+            <button id="btnAdd">ADD</button>
+            <button id="btnEdit">EDIT</button>
+            <button id="btnDelete">DELETE</button>
+        </div>
+        <div class="date-range-label" id="dateRangeLabel"></div>
+        <div class="chart">
+            <svg id="weightChart">
+                <!-- Chart will dynamically render here -->
+            </svg>
+        </div>
+        <table id="combinedTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Weight</th>
+                    <th><button id="incrDecrBtn">Incr/Decr</button></th>
+                    <th>Activity(max=5)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be dynamically inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Date Range Modal -->
+    <div id="dateRangeModal" class="modal">
+        <div class="modal-content">
+            <h2>Select Date Range</h2>
+            <form id="dateRangeForm">
+                <label>
+                    <input type="radio" name="dateRange" value="all" checked> All Dates
+                </label>
+                <label>
+                    <input type="radio" name="dateRange" value="range"> Custom Range
+                    <div id="customRangeInputs" style="display: none;">
+                        <input type="date" id="startDate" name="startDate">
+                        <input type="date" id="endDate" name="endDate">
+                    </div>
+                </label>
+                <label>
+                    <input type="radio" name="dateRange" value="year"> Last Year
+                </label>
+                <label>
+                    <input type="radio" name="dateRange" value="month"> Last Month
+                </label>
+                <div class="buttons">
+                    <button type="button" id="cancelDateRange">Cancel</button>
+                    <button type="submit">Generate Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Color Selection Modal -->
+    <div id="colorModal" class="color-modal">
+        <div class="modal-content">
+            <h2>Customize Colors</h2>
+            <form id="colorForm">
+                <label>
+                    Decrease:
+                    <input type="color" id="decreaseColor" name="decreaseColor" value="#f3fa92">
+                </label>
+                <label>
+                    Increase:
+                    <input type="color" id="increaseColor" name="increaseColor" value="#cdf9d6">
+                </label>
+                <label>
+                    No Change:
+                    <input type="color" id="noChangeColor" name="noChangeColor" value="#abc4f9">
+                </label>
+                <div class="buttons">
+                    <button type="button" id="cancelColor">Cancel</button>
+                    <button type="submit">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Weight Modal -->
+    <div id="addWeightModal" class="modal">
+        <div class="modal-content">
+            <h2>Add Weight Entry</h2>
+            <form id="addWeightForm">
+                <label>
+                    Date:
+                    <input type="date" name="dateWeight">
+                    <span class="error-message" id="dateError"></span>
+                </label>
+                <label>
+                    Weight:
+                    <input type="number" name="weight" step="0.1" min="1" max="1000">
+                    <span class="error-message" id="weightError"></span>
+                </label>
+                <div id="activityContainer">
+                    <!-- Activity dropdowns will be dynamically added here -->
+                </div>
+                <button type="button" id="addActivityBtn">Add Another Activity</button>
+                <div class="buttons">
+                    <button type="button" id="cancelAddWeight">Cancel</button>
+                    <button type="submit">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add New Activity Sub-Modal -->
+    <div id="addActivityModal" class="modal">
+        <div class="modal-content">
+            <h2>Add New Activity</h2>
+            <form id="addActivityForm">
+                <label>
+                    Activity Name:
+                    <input type="text" name="activityName" maxlength="50">
+                    <span class="error-message" id="activityNameError"></span>
+                </label>
+                <div class="buttons">
+                    <button type="button" id="cancelAddActivity">Cancel</button>
+                    <button type="submit">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Editing Weight (Step 1: Enter UserWeightID) -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Edit Weight</h2>
+            <div id="editStep1">
+                <label for="editId">Please enter User Weight ID:</label>
+                <input type="number" id="editId" name="editId" required>
+                <button id="fetchEditWeight">FETCH</button>
+                <div id="editError" class="error"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Editing Weight (Step 2: Display and Edit Weight Entry) -->
+    <div id="editWeightModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Edit Weight Entry</h2>
+            <p id="editWeightDetails">Edit Weight User Weight ID: <span id="displayEditWeightId"></span></p>
+            <label>
+                <input type="checkbox" id="changeIndicator" checked disabled>
+                <span class="checkbox-label">CHECK BOX OF ITEM TO BE CHANGED</span>
+            </label>
+            <table class="edit-weight-table">
+                <thead>
+                    <tr>
+                        <th>ITEM</th>
+                        <th>Current</th>
+                        <th></th>
+                        <th>Change To</th>
+                        <th>Revised</th>
+                    </tr>
+                </thead>
+                <tbody id="editWeightTableBody">
+                    <!-- Rows will be dynamically inserted here -->
+                </tbody>
+            </table>
+            <button id="addActivityEditBtn" style="padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">ADD ANOTHER ACTIVITY</button>
+            <div class="buttons" style="justify-content: center; margin-top: 20px;">
+                <button id="submitEditWeight">REVIEWED MAKE CHANGE!</button>
+            </div>
+            <div class="buttons" style="justify-content: center; margin-top: 10px;">
+                <button id="cancelEditWeight">CANCEL</button>
+            </div>
+            <div id="editWeightError" class="error"></div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="delete-modal">
+        <div class="delete-modal-content">
+            <h2>Delete Weights by Date Range</h2>
+            <form id="deleteForm">
+                <label>
+                    Start Date:
+                    <input type="date" id="deleteStartDate" name="startDate" required>
+                </label>
+                <label>
+                    End Date:
+                    <input type="date" id="deleteEndDate" name="endDate" required>
+                </label>
+                <div class="delete-error" id="deleteError"></div>
+                <div class="buttons">
+                    <button type="button" id="cancelDelete">Cancel</button>
+                    <button type="submit">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search Modal -->
+    <div id="searchModal" class="modal">
+    <div class="modal-content">
+        <span class="close">×</span>
+        <h2>Search Entries</h2>
+        <div class="buttons" style="justify-content: flex-end; gap: 10px; margin-bottom: 20px;">
+            <button type="button" id="cancelSearch">Cancel</button>
+            <button type="submit" form="searchForm">Search</button>
+            <button type="button" id="printResults">Print</button>
+        </div>
+        <form id="searchForm">
+            <div class="search-options">
+                <label>
+                    <input type="checkbox" id="searchWeightCheckbox" class="search-checkbox">
+                    Weight:
+                    <input type="number" id="searchWeight" step="0.1" min="1" max="1000" disabled>
+                    <span class="error-message" id="weightSearchError"></span>
+                </label>
+                <label>
+                    <input type="checkbox" id="searchActivityCheckbox" class="search-checkbox">
+                    Activity:
+                    <select id="searchActivity" disabled>
+                        <option value="">Select Activity</option>
+                        <!-- Activities will be dynamically populated -->
+                    </select>
+                    <span class="error-message" id="activitySearchError"></span>
+                </label>
+                <label>
+                    <input type="checkbox" id="searchDateCheckbox" class="search-checkbox">
+                    Date:
+                    <input type="date" id="searchDate" disabled>
+                    <span class="error-message" id="dateSearchError"></span>
+                </label>
+            </div>
+            <div id="searchResults" style="display: none; margin-top: 20px;">
+                <table class="search-results-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Weight</th>
+                        </tr>
+                    </thead>
+                    <tbody id="searchResultsBody">
+                        <!-- Results will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+</div>
+
+    <footer style="background-color: lightgray; height: 30px; padding-top: 5px; position: sticky; bottom: 0;">
+        <table style="width: 98%; margin: 5px auto;">
+            <tr>
+            <td>Copyright © 2025 M P Galvin Jr</td>
+            <td style="text-align: center;border:1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+        const token = localStorage.getItem('token');
+        let dateRangeSelection = localStorage.getItem('dateRangeSelection') || 'all';
+        let startDate = localStorage.getItem('startDate');
+        let endDate = localStorage.getItem('endDate');
+        let earliestDate = null;
+        let latestDate = null;
+
+        // Load custom colors from localStorage or use defaults
+        const customColors = {
+            decrease: localStorage.getItem('decreaseColor') || '#f3fa92',
+            increase: localStorage.getItem('increaseColor') || '#cdf9d6',
+            noChange: localStorage.getItem('noChangeColor') || '#abc4f9'
+        };
+
+        // Apply custom colors to CSS
+        const styleSheet = document.styleSheets[0];
+        styleSheet.insertRule(`table td.decrease { background-color: ${customColors.decrease}; }`, styleSheet.cssRules.length);
+        styleSheet.insertRule(`table td.increase { background-color: ${customColors.increase}; }`, styleSheet.cssRules.length);
+        styleSheet.insertRule(`table td.noChange { background-color: ${customColors.noChange}; }`, styleSheet.cssRules.length);
+
+        // Store activities fetched from server
+        let activities = [];
+
+        // Function to make authenticated requests
+        function makeAuthenticatedRequest(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('Please log in to perform this action');
+            }
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+            return fetch(url, options)
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            localStorage.removeItem('token');
+                            throw new Error('Unauthorized - please log in again');
+                        }
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.error || 'Request failed');
+                        });
+                    }
+                    if (response.status === 204) {
+                        return { success: true };
+                    }
+                    return response.json();
+                });
+        }
+
+        // Function to fetch and render data
+        async function fetchAndRenderData() {
+    let url = `${BASE_URL}/weights`;
+    if (dateRangeSelection !== 'all') {
+        const params = new URLSearchParams();
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        url += `?${params.toString()}`;
+    }
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+
+        const [weightActivities, activitiesResponse] = await Promise.all([
+            fetch(`${BASE_URL}/weightActivities`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            }).then(res => res.json()),
+            fetch(`${BASE_URL}/activities`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            }).then(res => res.json())
+        ]);
+
+        const tableBody = document.querySelector('#combinedTable tbody');
+        const chart = document.getElementById('weightChart');
+        tableBody.innerHTML = '';
+        let weightPoints = [];
+        let minWeight = Infinity;
+        let maxWeight = -Infinity;
+
+        const weightActivityMap = {};
+        weightActivities.forEach(wa => {
+            if (!weightActivityMap[wa.WeightID]) weightActivityMap[wa.WeightID] = [];
+            weightActivityMap[wa.WeightID].push(wa);
+        });
+
+        const activityMap = {};
+        activitiesResponse.forEach(activity => {
+            activityMap[activity.ActivityID] = {
+                Activity: activity.Activity
+            };
+        });
+
+        // Sort data by DateWeight in ascending order
+        data.sort((a, b) => a.DateWeight.localeCompare(b.DateWeight));
+
+        // Determine earliest and latest dates
+        if (data.length > 0) {
+            earliestDate = data[0].DateWeight; // e.g., "2025-04-01"
+            latestDate = data[data.length - 1].DateWeight; // e.g., "2025-10-01"
+            const formatOptions = { year: 'numeric', month: 'numeric', day: 'numeric' };
+            // Format dates for display
+            const startFormatted = new Date(earliestDate + 'T00:00:00').toLocaleDateString('en-US', formatOptions);
+            const endFormatted = new Date(latestDate + 'T00:00:00').toLocaleDateString('en-US', formatOptions);
+            document.getElementById('dateRangeLabel').textContent = `Showing data from ${startFormatted} to ${endFormatted}`;
+        } else {
+            document.getElementById('dateRangeLabel').textContent = 'No data available. Check that Date Range is set to All Dates.';
+            earliestDate = null;
+            latestDate = null;
+        }
+
+        let previousWeight = null;
+        data.forEach(weight => {
+            // Format date from YYYY-MM-DD string
+            const formattedDate = weight.DateWeight
+                ? new Date(weight.DateWeight + 'T00:00:00').toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                  })
+                : 'N/A';
+            let change = null;
+            let changeType = 'noChange';
+            if (previousWeight !== null) {
+                change = (parseFloat(weight.Weight) - previousWeight).toFixed(1);
+                if (change > 0) changeType = 'increase';
+                if (change < 0) changeType = 'decrease';
+            }
+            previousWeight = parseFloat(weight.Weight);
+
+            const mainRow = document.createElement('tr');
+            mainRow.innerHTML = `
+                <td>${weight.UserWeightID}</td>
+                <td>${formattedDate}</td>
+                <td>${parseFloat(weight.Weight).toFixed(1)}</td>
+                <td class="${changeType}">${change !== null ? change : 'N/A'}</td>
+                <td>
+                    ${weightActivityMap[weight.WeightID] && weightActivityMap[weight.WeightID].length > 1
+                        ? '<button class="m-button" onclick="toggleExpandRow(this.parentElement.parentElement)" aria-label="Show/Hide multiple activities" aria-expanded="false">Multiple</button>'
+                        : (weightActivityMap[weight.WeightID] ? activityMap[weightActivityMap[weight.WeightID][0].ActivityID]?.Activity || 'Unknown' : '')
+                    }
+                </td>
+            `;
+            tableBody.appendChild(mainRow);
+
+            if (weightActivityMap[weight.WeightID] && weightActivityMap[weight.WeightID].length > 1) {
+                weightActivityMap[weight.WeightID].forEach(wa => {
+                    const expandableRow = document.createElement('tr');
+                    expandableRow.classList.add('expandable-row');
+                    expandableRow.innerHTML = `
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>${activityMap[wa.ActivityID]?.Activity || 'Unknown'}</td>
+                    `;
+                    tableBody.appendChild(expandableRow);
+                });
+            }
+
+            if (weight.DateWeight) {
+                const date = new Date(weight.DateWeight + 'T00:00:00').getTime();
+                const numericWeight = parseFloat(weight.Weight);
+                weightPoints.push({ date, weight: numericWeight });
+                if (numericWeight < minWeight) minWeight = numericWeight;
+                if (numericWeight > maxWeight) maxWeight = numericWeight;
+            }
+        });
+
+        weightPoints.sort((a, b) => a.date - b.date);
+        const chartWidth = chart.clientWidth;
+        const chartHeight = chart.clientHeight;
+        const xMin = weightPoints[0]?.date || 0;
+        const xMax = weightPoints[weightPoints.length - 1]?.date || 1;
+        const yRange = maxWeight - minWeight || 1;
+        const xScale = chartWidth / (xMax - xMin);
+        const yScale = chartHeight / yRange;
+        let pathData = '';
+        weightPoints.forEach((point, index) => {
+            const x = (point.date - xMin) * xScale;
+            const y = chartHeight - (point.weight - minWeight) * yScale;
+            pathData += `${index === 0 ? 'M' : 'L'}${x},${y} `;
+        });
+
+        const formatDate = (timestamp) => {
+            return new Date(timestamp).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+            });
+        };
+
+        chart.innerHTML = `
+            <text x="10" y="20" fill="#333">Lowest: ${minWeight.toFixed(1)}</text>
+            <text x="10" y="40" fill="#333">Highest: ${maxWeight.toFixed(1)}</text>
+            <text x="10" y="${chartHeight - 10}" fill="#333">${xMin ? formatDate(xMin) : 'N/A'}</text>
+            <text x="${chartWidth - 100}" y="${chartHeight - 10}" fill="#333">${xMax ? formatDate(xMax) : 'N/A'}</text>
+            <line x1="0" y1="${chartHeight}" x2="${chartWidth}" y2="${chartHeight}" class="axis"></line>
+            <line x1="0" y1="0" x2="0" y2="${chartHeight}" class="axis"></line>
+            <path d="${pathData}" class="line"></path>
+        `;
+    } catch (error) {
+        console.error('Error fetching data:', error);
+    }
+}
+        // Initial data load
+        fetchAndRenderData();
+
+        // Date Range Button and Modal Logic
+        const dateRangeBtn = document.getElementById('btnDateRange');
+        const dateRangeModal = document.getElementById('dateRangeModal');
+        const dateRangeForm = document.getElementById('dateRangeForm');
+        const customRangeInputs = document.getElementById('customRangeInputs');
+        const cancelDateRangeBtn = document.getElementById('cancelDateRange');
+
+        dateRangeBtn.onclick = () => {
+            dateRangeModal.style.display = 'flex';
+            // Set initial radio button state
+            document.querySelector(`input[name="dateRange"][value="${dateRangeSelection}"]`).checked = true;
+            if (dateRangeSelection === 'range') {
+                customRangeInputs.style.display = 'block';
+                document.getElementById('startDate').value = startDate || '';
+                document.getElementById('endDate').value = endDate || '';
+            }
+        };
+
+        document.querySelectorAll('input[name="dateRange"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                customRangeInputs.style.display = radio.value === 'range' ? 'block' : 'none';
+            });
+        });
+
+        cancelDateRangeBtn.onclick = () => {
+            dateRangeModal.style.display = 'none';
+        };
+
+        dateRangeForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const selectedOption = document.querySelector('input[name="dateRange"]:checked').value;
+            dateRangeSelection = selectedOption;
+            startDate = null;
+            endDate = null;
+
+            if (selectedOption === 'range') {
+                startDate = document.getElementById('startDate').value;
+                endDate = document.getElementById('endDate').value || new Date().toISOString().split('T')[0];
+
+                if (!startDate) {
+                    alert('Please select a start date.');
+                    return;
+                }
+
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const earliest = earliestDate ? new Date(earliestDate) : null;
+                const latest = latestDate ? new Date(latestDate) : null;
+
+                if (start > end) {
+                    alert('Start date cannot be after end date.');
+                    return;
+                }
+
+                if (earliest && latest) {
+                    if (start < earliest || end > latest) {
+                        alert('Selected dates are outside the available data range.');
+                        return;
+                    }
+                }
+            } else if (selectedOption === 'year' || selectedOption === 'month') {
+                const latest = latestDate ? new Date(latestDate) : new Date();
+                endDate = latest.toISOString().split('T')[0];
+                const start = new Date(latest);
+                if (selectedOption === 'year') {
+                    start.setFullYear(start.getFullYear() - 1);
+                } else {
+                    start.setMonth(start.getMonth() - 1);
+                }
+                startDate = start.toISOString().split('T')[0];
+            }
+
+            // Store selections in localStorage
+            localStorage.setItem('dateRangeSelection', dateRangeSelection);
+            localStorage.setItem('startDate', startDate || '');
+            localStorage.setItem('endDate', endDate || '');
+
+            dateRangeModal.style.display = 'none';
+            await fetchAndRenderData();
+        };
+
+        // Color Selection Modal Logic
+        const incrDecrBtn = document.getElementById('incrDecrBtn');
+        const colorModal = document.getElementById('colorModal');
+        const colorForm = document.getElementById('colorForm');
+        const cancelColorBtn = document.getElementById('cancelColor');
+
+        incrDecrBtn.onclick = () => {
+            colorModal.style.display = 'flex';
+            document.getElementById('decreaseColor').value = customColors.decrease;
+            document.getElementById('increaseColor').value = customColors.increase;
+            document.getElementById('noChangeColor').value = customColors.noChange;
+        };
+
+        cancelColorBtn.onclick = () => {
+            colorModal.style.display = 'none';
+        };
+
+        colorForm.onsubmit = (e) => {
+            e.preventDefault();
+            customColors.decrease = document.getElementById('decreaseColor').value;
+            customColors.increase = document.getElementById('increaseColor').value;
+            customColors.noChange = document.getElementById('noChangeColor').value;
+
+            // Update localStorage
+            localStorage.setItem('decreaseColor', customColors.decrease);
+            localStorage.setItem('increaseColor', customColors.increase);
+            localStorage.setItem('noChangeColor', customColors.noChange);
+
+            // Update CSS rules
+            styleSheet.cssRules[styleSheet.cssRules.length - 3].style.backgroundColor = customColors.decrease;
+            styleSheet.cssRules[styleSheet.cssRules.length - 2].style.backgroundColor = customColors.increase;
+            styleSheet.cssRules[styleSheet.cssRules.length - 1].style.backgroundColor = customColors.noChange;
+
+            colorModal.style.display = 'none';
+            fetchAndRenderData(); // Refresh table to apply new colors
+        };
+
+        // Add Weight Modal Logic
+        const addWeightBtn = document.getElementById('btnAdd');
+        const addWeightModal = document.getElementById('addWeightModal');
+        const addWeightForm = document.getElementById('addWeightForm');
+        const addActivityBtn = document.getElementById('addActivityBtn');
+        const cancelAddWeightBtn = document.getElementById('cancelAddWeight');
+
+        // Add Activity Sub-Modal Logic
+        const addActivityModal = document.getElementById('addActivityModal');
+        const addActivityForm = document.getElementById('addActivityForm');
+        const cancelAddActivityBtn = document.getElementById('cancelAddActivity');
+
+        // Edit Weight Modals
+        const editModal = document.getElementById('editModal');
+        const editWeightModal = document.getElementById('editWeightModal');
+        const btnEdit = document.getElementById('btnEdit');
+        const spanCloseEdit = editModal.querySelector('.close');
+        const spanCloseEditWeight = editWeightModal.querySelector('.close');
+
+        let activityCount = 0;
+        let allActivities = []; // Store all activities for dropdowns in edit modal
+        let currentWeight = null; // Store the current weight entry being edited
+
+        // Function to close all modals
+        function closeAllModals() {
+            [dateRangeModal, colorModal, addWeightModal, addActivityModal, editModal, editWeightModal, deleteModal].forEach(modal => {
+                modal.style.display = "none";
+            });
+        }
+
+        // Fetch all activities for dropdowns
+        async function fetchAllActivities() {
+            try {
+                const response = await fetch(`${BASE_URL}/activities?choice=all`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (!response.ok) throw new Error('Failed to fetch activities');
+                allActivities = await response.json();
+                // Sort activities alphabetically
+                allActivities.sort((a, b) => a.Activity.localeCompare(b.Activity));
+            } catch (error) {
+                console.error('Error fetching activities:', error);
+                allActivities = [];
+            }
+        }
+
+        // Edit Button Logic
+        btnEdit.onclick = async function() {
+            closeAllModals();
+            editModal.style.display = "flex";
+            document.getElementById('editStep1').style.display = 'block';
+            document.getElementById('editId').value = '';
+            document.getElementById('editError').textContent = '';
+            await fetchAllActivities(); // Fetch activities for dropdowns
+        };
+
+        spanCloseEdit.onclick = spanCloseEditWeight.onclick = function() {
+            closeAllModals();
+        };
+
+        document.getElementById('fetchEditWeight').addEventListener('click', async function() {
+            const userWeightId = document.getElementById('editId').value.trim();
+            const editError = document.getElementById('editError');
+
+            editError.textContent = '';
+            if (userWeightId === '') {
+                editError.textContent = 'User Weight ID cannot be blank or just whitespace.';
+                return;
+            }
+
+            try {
+                // Fetch the weight entry using the UserWeightID endpoint
+                const weight = await makeAuthenticatedRequest(`${BASE_URL}/weights/${userWeightId}`);
+                currentWeight = weight; // Store the current weight for later use
+
+                // Fetch associated activities for this WeightID
+                const weightActivities = await makeAuthenticatedRequest(`${BASE_URL}/weightActivities`);
+                const activitiesResponse = await makeAuthenticatedRequest(`${BASE_URL}/activities`);
+
+                // Map ActivityID to Activity name
+                const activityMap = {};
+                activitiesResponse.forEach(activity => {
+                    activityMap[activity.ActivityID] = activity.Activity;
+                });
+
+                // Filter weightActivities for the specific WeightID
+                const associatedActivities = weightActivities
+                    .filter(wa => wa.WeightID === weight.WeightID)
+                    .map(wa => ({
+                        WeightActivityID: wa.WeightActivityID,
+                        ActivityID: wa.ActivityID,
+                        ActivityName: activityMap[wa.ActivityID] || 'Unknown'
+                    }));
+
+                // Display the second modal with the UserWeightID
+                closeAllModals();
+                editWeightModal.style.display = "flex";
+                document.getElementById('displayEditWeightId').textContent = weight.UserWeightID;
+
+                // Populate the table in editWeightModal
+                const tableBody = document.getElementById('editWeightTableBody');
+                tableBody.innerHTML = '';
+
+                // Row 1: Date
+                const dateRow = document.createElement('tr');
+                const currentDate = weight.DateWeight.split('T')[0];
+                dateRow.innerHTML = `
+                    <td>Date</td>
+                    <td>${currentDate}</td>
+                    <td><input type="checkbox" class="change-checkbox" data-type="date"></td>
+                    <td><input type="date" class="change-input" style="display: none;"></td>
+                    <td class="revised-cell">${currentDate}</td>
+                `;
+                tableBody.appendChild(dateRow);
+
+                // Row 2: Weight
+                const weightRow = document.createElement('tr');
+                const currentWeightValue = parseFloat(weight.Weight).toFixed(1);
+                weightRow.innerHTML = `
+                    <td>Weight</td>
+                    <td>${currentWeightValue}</td>
+                    <td><input type="checkbox" class="change-checkbox" data-type="weight"></td>
+                    <td><input type="number" class="change-input" step="0.1" min="1" max="1000" style="display: none;"></td>
+                    <td class="revised-cell">${currentWeightValue}</td>
+                `;
+                tableBody.appendChild(weightRow);
+
+                // Rows 3+: Activities (0 to 5)
+                let activityRowCount = associatedActivities.length; // Track number of activity rows
+                associatedActivities.forEach((activity, index) => {
+                    if (index < 5) { // Limit to 5 activities
+                        const activityRow = document.createElement('tr');
+                        activityRow.innerHTML = `
+                            <td>Activity ${index + 1}</td>
+                            <td>${activity.ActivityName}</td>
+                            <td><input type="checkbox" class="change-checkbox" data-type="activity" data-index="${index}"></td>
+                            <td>
+                                <select class="change-input" style="display: none;">
+                                    <option value="">Select Activity</option>
+                                    ${allActivities.map(a => `<option value="${a.Activity}">${a.Activity}</option>`).join('')}
+                                </select>
+                            </td>
+                            <td class="revised-cell">${activity.ActivityName}</td>
+                        `;
+                        tableBody.appendChild(activityRow);
+                    }
+                });
+
+                // Initialize "ADD ANOTHER ACTIVITY" button
+                const addActivityEditBtn = document.getElementById('addActivityEditBtn');
+                const updateButtonVisibility = () => {
+                    addActivityEditBtn.style.display = activityRowCount >= 5 ? 'none' : 'block';
+                };
+                updateButtonVisibility();
+
+                addActivityEditBtn.onclick = () => {
+                    if (activityRowCount < 5) {
+                        const newIndex = activityRowCount + 1; // Label as Activity 1, 2, etc.
+                        const newRow = document.createElement('tr');
+                        newRow.innerHTML = `
+                            <td>Activity ${newIndex}</td>
+                            <td>N/A</td>
+                            <td><input type="checkbox" class="change-checkbox" data-type="activity" data-index="${activityRowCount}"></td>
+                            <td>
+                                <select class="change-input" style="display: none;">
+                                    <option value="">Select Activity</option>
+                                    ${allActivities.map(a => `<option value="${a.Activity}">${a.Activity}</option>`).join('')}
+                                </select>
+                            </td>
+                            <td class="revised-cell">N/A</td>
+                        `;
+                        tableBody.appendChild(newRow);
+
+                        // Attach event listeners to new row
+                        const checkbox = newRow.querySelector('.change-checkbox');
+                        const changeInput = newRow.querySelector('.change-input');
+                        const revisedCell = newRow.querySelector('.revised-cell');
+
+                        checkbox.addEventListener('change', function() {
+                            changeInput.style.display = this.checked ? 'block' : 'none';
+                            revisedCell.textContent = this.checked ? '' : 'N/A';
+                        });
+
+                        changeInput.addEventListener('input', function() {
+                            revisedCell.textContent = this.value || '';
+                        });
+
+                        activityRowCount++; // Increment the count
+                        updateButtonVisibility();
+                    }
+                };
+
+                // Add event listeners for checkboxes
+                document.querySelectorAll('.change-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        const row = this.closest('tr');
+                        const changeInput = row.querySelector('.change-input');
+                        const revisedCell = row.querySelector('.revised-cell');
+                        if (this.checked) {
+                            changeInput.style.display = 'block';
+                            revisedCell.textContent = ''; // Clear revised cell
+                        } else {
+                            changeInput.style.display = 'none';
+                            // Reset revised cell to current value
+                            const currentValue = row.querySelector('td:nth-child(2)').textContent;
+                            revisedCell.textContent = currentValue;
+                            changeInput.value = ''; // Clear the input
+                        }
+                    });
+                });
+
+                // Add event listeners for change inputs
+                document.querySelectorAll('.change-input').forEach(input => {
+                    input.addEventListener('input', function() {
+                        const row = this.closest('tr');
+                        const revisedCell = row.querySelector('.revised-cell');
+                        revisedCell.textContent = this.value || ''; // Update revised cell with input value
+                    });
+                });
+
+                // Clear any previous error messages
+                document.getElementById('editWeightError').textContent = '';
+            } catch (error) {
+                editError.textContent = error.message;
+            }
+        });
+
+        // Handle the "REVIEWED MAKE CHANGE!" button
+        document.getElementById('submitEditWeight').addEventListener('click', async function() {
+            const userWeightId = document.getElementById('displayEditWeightId').textContent;
+            const editWeightError = document.getElementById('editWeightError');
+            editWeightError.textContent = '';
+
+            // Check if any checkboxes are checked
+            const checkedCheckboxes = document.querySelectorAll('.change-checkbox:checked');
+            if (checkedCheckboxes.length === 0) {
+                alert('No Changes Requested. Check box(es) to edit current entry, or Click CANCEL to exit.');
+                return;
+            }
+
+            // Collect changes
+            const rows = document.querySelectorAll('#editWeightTableBody tr');
+            let newDateWeight = null;
+            let newWeight = null;
+            const newActivities = [];
+
+            rows.forEach((row, index) => {
+                const checkbox = row.querySelector('.change-checkbox');
+                const currentValue = row.querySelector('td:nth-child(2)').textContent;
+                if (checkbox) { // Ensure row has a checkbox
+                    if (checkbox.checked) {
+                        const changeInput = row.querySelector('.change-input');
+                        const type = checkbox.dataset.type;
+                        if (type === 'date') {
+                            newDateWeight = changeInput.value;
+                            if (!newDateWeight) {
+                                editWeightError.textContent = 'Date cannot be empty if selected for change.';
+                                return;
+                            }
+                        } else if (type === 'weight') {
+                            newWeight = parseFloat(changeInput.value);
+                            if (isNaN(newWeight) || newWeight < 1 || newWeight > 1000) {
+                                editWeightError.textContent = 'Weight must be between 1 and 1000.';
+                                return;
+                            }
+                        } else if (type === 'activity') {
+                            const activityName = changeInput.value;
+                            if (activityName) {
+                                newActivities.push({ ActivityName: activityName });
+                            }
+                        }
+                    } else if (checkbox.dataset.type === 'activity' && currentValue !== 'N/A') {
+                        // Include unchanged activities (except new "N/A" rows)
+                        newActivities.push({ ActivityName: currentValue });
+                    }
+                }
+            });
+
+            if (editWeightError.textContent) return; // Stop if there are validation errors
+
+            // Check for duplicate activities
+            const activityNames = newActivities.map(a => a.ActivityName);
+            const uniqueActivities = new Set(activityNames);
+            if (uniqueActivities.size !== activityNames.length) {
+                editWeightError.textContent = 'Activities must be unique.';
+                return;
+            }
+
+            // Prepare the update payload
+            const updateData = {};
+            if (newDateWeight) updateData.DateWeight = newDateWeight;
+            if (newWeight !== null) updateData.Weight = newWeight;
+            updateData.Activities = newActivities;
+
+            try {
+                const response = await makeAuthenticatedRequest(
+                    `${BASE_URL}/weights/${userWeightId}/full`,
+                    {
+                        method: 'PUT',
+                        body: JSON.stringify(updateData)
+                    }
+                );
+                if (response.success) {
+                    alert('Weight entry updated successfully!');
+                    closeAllModals();
+                    fetchAndRenderData(); // Refresh the main table
+                }
+            } catch (error) {
+                editWeightError.textContent = error.message;
+            }
+        });
+
+        // Handle the "CANCEL" button
+        document.getElementById('cancelEditWeight').addEventListener('click', function() {
+            closeAllModals();
+        });
+
+        // Fetch activities for dropdowns in add modal
+        async function fetchActivities() {
+            try {
+                const response = await fetch(`${BASE_URL}/activities?choice=all`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (!response.ok) throw new Error('Failed to fetch activities');
+                activities = await response.json();
+                // Sort activities alphabetically
+                activities.sort((a, b) => a.Activity.localeCompare(b.Activity));
+            } catch (error) {
+                console.error('Error fetching activities:', error);
+                activities = [];
+            }
+        }
+
+        // Create an activity dropdown with uniqueness enforcement
+        function createActivityDropdown(index) {
+            const div = document.createElement('div');
+            div.className = 'activity-pair';
+            div.innerHTML = `
+                <label>
+                    Activity ${index + 1}:
+                    <select name="activity-${index}" class="activity-select">
+                        <option value="">Select Activity</option>
+                        ${activities.map(a => `<option value="${a.Activity}">${a.Activity}</option>`).join('')}
+                        <option value="add-new">Add new Activity</option>
+                    </select>
+                    <span class="error-message" id="activityError-${index}"></span>
+                </label>
+            `;
+            const activitySelect = div.querySelector(`select[name="activity-${index}"]`);
+            activitySelect.addEventListener('change', (e) => {
+                if (e.target.value === 'add-new') {
+                    addActivityModal.style.display = 'flex';
+                    addActivityForm.dataset.activityIndex = index;
+                }
+                updateActivityDropdowns();
+            });
+            return div;
+        }
+
+        // Update dropdown options to enforce uniqueness
+        function updateActivityDropdowns() {
+            const container = document.getElementById('activityContainer');
+            const selects = container.querySelectorAll('.activity-select');
+            const selectedActivities = [];
+
+            // Collect currently selected activities
+            selects.forEach(select => {
+                const value = select.value;
+                if (value && value !== 'add-new' && !selectedActivities.includes(value)) {
+                    selectedActivities.push(value);
+                }
+            });
+
+            // Update each dropdown's options
+            selects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = `
+                    <option value="">Select Activity</option>
+                    ${activities
+                        .filter(a => !selectedActivities.includes(a.Activity) || a.Activity === currentValue)
+                        .map(a => `<option value="${a.Activity}" ${a.Activity === currentValue ? 'selected' : ''}>${a.Activity}</option>`).join('')}
+                    <option value="add-new">Add new Activity</option>
+                `;
+            });
+        }
+
+        // Validate unique activities
+        function validateUniqueActivities(form, count) {
+            const selectedActivities = [];
+            let hasError = false;
+
+            for (let i = 0; i < count; i++) {
+                const select = form[`activity-${i}`];
+                const value = select.value;
+                const errorSpan = document.getElementById(`activityError-${i}`);
+                errorSpan.textContent = '';
+
+                if (value && value !== 'add-new') {
+                    if (selectedActivities.includes(value)) {
+                        errorSpan.textContent = 'Activities must be unique';
+                        hasError = true;
+                    } else {
+                        selectedActivities.push(value);
+                    }
+                }
+            }
+
+            return !hasError;
+        }
+
+        // Initialize the form with one activity dropdown
+        async function initializeAddForm() {
+            await fetchActivities();
+            activityCount = 0;
+            const activityContainer = document.getElementById('activityContainer');
+            activityContainer.innerHTML = '';
+            const initialPair = createActivityDropdown(activityCount);
+            activityContainer.appendChild(initialPair);
+            activityCount++;
+            addActivityBtn.style.display = 'block';
+        }
+
+        addWeightBtn.onclick = () => {
+            addWeightModal.style.display = 'flex';
+            initializeAddForm();
+            document.getElementById('dateError').textContent = '';
+            document.getElementById('weightError').textContent = '';
+        };
+
+        cancelAddWeightBtn.onclick = () => {
+            addWeightModal.style.display = 'none';
+        };
+
+        addActivityBtn.onclick = () => {
+            if (activityCount < 5) {
+                const newPair = createActivityDropdown(activityCount);
+                document.getElementById('activityContainer').appendChild(newPair);
+                activityCount++;
+                if (activityCount === 5) {
+                    addActivityBtn.style.display = 'none';
+                }
+                updateActivityDropdowns();
+            }
+        };
+
+        cancelAddActivityBtn.onclick = () => {
+            addActivityModal.style.display = 'none';
+            addActivityForm.reset();
+            document.getElementById('activityNameError').textContent = '';
+        };
+
+        addActivityForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const activityName = addActivityForm.activityName.value.trim();
+            const index = parseInt(addActivityForm.dataset.activityIndex);
+
+            // Client-side validation
+            let hasError = false;
+            document.getElementById('activityNameError').textContent = '';
+
+            if (!activityName) {
+                document.getElementById('activityNameError').textContent = 'Activity name cannot be empty';
+                hasError = true;
+            }
+            if (hasError) return;
+
+            try {
+                const response = await fetch(`${BASE_URL}/activities`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        activity: activityName
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    document.getElementById('activityNameError').textContent = result.error || 'Failed to add activity';
+                    return;
+                }
+
+                // Add the new activity to the list and update the dropdown
+                activities.push({ Activity: activityName });
+                // Re-sort activities after adding a new one
+                activities.sort((a, b) => a.Activity.localeCompare(b.Activity));
+                const activitySelect = document.querySelector(`select[name="activity-${index}"]`);
+                const newOption = document.createElement('option');
+                newOption.value = activityName;
+                newOption.textContent = activityName;
+                activitySelect.insertBefore(newOption, activitySelect.querySelector('option[value="add-new"]'));
+                activitySelect.value = activityName;
+
+                // Close sub-modal and clear fields
+                addActivityModal.style.display = 'none';
+                addActivityForm.reset();
+                document.getElementById('activityNameError').textContent = '';
+                updateActivityDropdowns();
+            } catch (error) {
+                document.getElementById('activityNameError').textContent = 'Error adding activity';
+                console.error('Error adding activity:', error);
+            }
+        };
+
+        addWeightForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const dateWeight = addWeightForm.dateWeight.value;
+            const weight = addWeightForm.weight.value;
+
+            // Client-side validation
+            let hasError = false;
+            document.getElementById('dateError').textContent = '';
+            document.getElementById('weightError').textContent = '';
+            for (let i = 0; i < activityCount; i++) {
+                document.getElementById(`activityError-${i}`).textContent = '';
+            }
+
+            if (!dateWeight) {
+                document.getElementById('dateError').textContent = 'Date cannot be empty';
+                hasError = true;
+            }
+            if (!weight) {
+                document.getElementById('weightError').textContent = 'Weight cannot be empty';
+                hasError = true;
+            } else if (weight < 1 || weight > 1000) {
+                document.getElementById('weightError').textContent = 'Weight must be between 1 and 1000';
+                hasError = true;
+            }
+
+            // Validate unique activities
+            if (!validateUniqueActivities(addWeightForm, activityCount)) {
+                hasError = true;
+            }
+
+            const activityData = [];
+            for (let i = 0; i < activityCount; i++) {
+                const activityName = addWeightForm[`activity-${i}`].value;
+                if (activityName && activityName !== 'add-new') {
+                    activityData.push({ ActivityName: activityName });
+                }
+            }
+
+            if (hasError) return;
+
+            try {
+                const response = await fetch(`${BASE_URL}/weights`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        DateWeight: dateWeight,
+                        Weight: parseFloat(weight),
+                        Activities: activityData.length > 0 ? activityData : [] // Allow empty array
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    if (result.error.includes('Date/Activity is not unique')) {
+                        document.getElementById('dateError').textContent = result.error;
+                    } else if (result.error.includes('Activities must be unique')) {
+                        document.getElementById('weightError').textContent = result.error;
+                    } else {
+                        document.getElementById('weightError').textContent = result.error || 'Failed to add weight';
+                    }
+                    return;
+                }
+
+                // Show confetti and alert on success
+                triggerConfetti();
+                alert('Weight Saved!');
+                addWeightModal.style.display = 'none';
+                fetchAndRenderData();
+            } catch (error) {
+                document.getElementById('weightError').textContent = 'Error adding weight';
+                console.error('Error adding weight:', error);
+            }
+        };
+
+        function toggleExpandRow(mainRow) {
+            const button = mainRow.querySelector('.m-button');
+            const isExpanded = button.getAttribute('aria-expanded') === 'true';
+            button.setAttribute('aria-expanded', !isExpanded);
+            const nextRows = Array.from(mainRow.nextSibling ? mainRow.parentNode.childNodes : []);
+            nextRows.forEach(row => {
+                if (row.classList.contains("expandable-row")) {
+                    row.style.display = isExpanded ? "none" : "table-row";
+                }
+            });
+        }
+
+        // Existing tracking logic
+        document.addEventListener('DOMContentLoaded', (event) => {
+            if (!token) {
+                return;
+            }
+            const page = window.location.pathname;
+            fetch(`${BASE_URL}/track/log/page`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ page })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Page view tracked:', data.message || 'Success');
+            })
+            .catch(error => {
+                console.error('Error tracking page view:', error.message);
+            });
+
+            let startTime = Date.now();
+            window.addEventListener('beforeunload', () => {
+                const duration = Math.floor((Date.now() - startTime) / 1000);
+                if (duration > 0) {
+                    fetch(`${BASE_URL}/track/log/time-spent`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            page: window.location.pathname,
+                            duration: duration,
+                            token: token
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => console.log('Time spent response:', data))
+                    .catch(error => console.error('Error sending time spent:', error.message));
+                }
+            });
+        });
+
+        // Delete Button and Modal Logic
+        const deleteBtn = document.getElementById('btnDelete');
+        const deleteModal = document.getElementById('deleteModal');
+        const deleteForm = document.getElementById('deleteForm');
+        const cancelDeleteBtn = document.getElementById('cancelDelete');
+        const deleteError = document.getElementById('deleteError');
+
+        deleteForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const startDate = document.getElementById('deleteStartDate').value; // e.g., "2025-05-01"
+    const endDate = document.getElementById('deleteEndDate').value; // e.g., "2025-06-01"
+    deleteError.textContent = '';
+
+    // Client-side validation
+    if (!startDate || !endDate) {
+        deleteError.textContent = 'Both start and end dates are required.';
+        return;
+    }
+    if (startDate > endDate) { // String comparison works for YYYY-MM-DD
+        deleteError.textContent = 'Start date cannot be after end date.';
+        return;
+    }
+    if (earliestDate && latestDate) {
+        if (startDate < earliestDate || endDate > latestDate) {
+            deleteError.textContent = 'Selected dates are outside the available data range.';
+            return;
+        }
+    }
+
+    try {
+        const response = await makeAuthenticatedRequest(`${BASE_URL}/weights/range`, {
+            method: 'DELETE',
+            body: JSON.stringify({ startDate, endDate })
+        });
+        if (response.success) {
+            alert(response.message || 'Weights deleted successfully!');
+            deleteModal.style.display = 'none';
+            await fetchAndRenderData();
+        }
+    } catch (error) {
+        deleteError.textContent = error.message;
+    }
+};
+
+        deleteBtn.onclick = () => {
+            closeAllModals();
+            deleteModal.style.display = 'flex';
+            deleteForm.reset();
+            deleteError.textContent = '';
+            // Set default dates based on available data
+            document.getElementById('deleteStartDate').value = earliestDate ? earliestDate.toISOString().split('T')[0] : '';
+            document.getElementById('deleteEndDate').value = latestDate ? latestDate.toISOString().split('T')[0] : '';
+        };
+
+        cancelDeleteBtn.onclick = () => {
+            deleteModal.style.display = 'none';
+        };
+
+        deleteForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const startDate = document.getElementById('deleteStartDate').value;
+            const endDate = document.getElementById('deleteEndDate').value;
+            deleteError.textContent = '';
+
+            // Client-side validation
+            if (!startDate || !endDate) {
+                deleteError.textContent = 'Both start and end dates are required.';
+                return;
+            }
+            if (new Date(startDate) > new Date(endDate)) {
+                deleteError.textContent = 'Start date cannot be after end date.';
+                return;
+            }
+            if (earliestDate && latestDate) {
+                if (new Date(startDate) < earliestDate || new Date(endDate) > latestDate) {
+                    deleteError.textContent = 'Selected dates are outside the available data range.';
+                    return;
+                }
+            }
+
+            try {
+                const response = await makeAuthenticatedRequest(`${BASE_URL}/weights/range`, {
+                    method: 'DELETE',
+                    body: JSON.stringify({ startDate, endDate })
+                });
+                if (response.success) {
+                    alert(response.message || 'Weights deleted successfully!');
+                    deleteModal.style.display = 'none';
+                    await fetchAndRenderData();
+                }
+            } catch (error) {
+                deleteError.textContent = error.message;
+            }
+        };
+        
+// Search Button and Modal Logic
+        // Search Button and Modal Logic
+const searchBtn = document.getElementById('btnSearch');
+const searchModal = document.getElementById('searchModal');
+const searchForm = document.getElementById('searchForm');
+const cancelSearchBtn = document.getElementById('cancelSearch');
+const closeSearchBtn = searchModal.querySelector('.close');
+const printResultsBtn = document.getElementById('printResults');
+const weightCheckbox = document.getElementById('searchWeightCheckbox');
+const activityCheckbox = document.getElementById('searchActivityCheckbox');
+const dateCheckbox = document.getElementById('searchDateCheckbox');
+const weightInput = document.getElementById('searchWeight');
+const activitySelect = document.getElementById('searchActivity');
+const dateInput = document.getElementById('searchDate');
+const weightError = document.getElementById('weightSearchError');
+const activityError = document.getElementById('activitySearchError');
+const dateError = document.getElementById('dateSearchError');
+const searchResults = document.getElementById('searchResults');
+const searchResultsBody = document.getElementById('searchResultsBody');
+
+// Ensure only one checkbox is selected at a time
+function enforceSingleCheckbox() {
+    const checkboxes = [weightCheckbox, activityCheckbox, dateCheckbox];
+    checkboxes.forEach((cb, index) => {
+        cb.addEventListener('change', () => {
+            if (cb.checked) {
+                // Uncheck others
+                checkboxes.forEach((otherCb, otherIndex) => {
+                    if (otherIndex !== index) {
+                        otherCb.checked = false;
+                        // Disable corresponding input
+                        if (otherIndex === 0) weightInput.disabled = true;
+                        if (otherIndex === 1) activitySelect.disabled = true;
+                        if (otherIndex === 2) dateInput.disabled = true;
+                    }
+                });
+                // Enable corresponding input
+                if (index === 0) weightInput.disabled = false;
+                if (index === 1) activitySelect.disabled = false;
+                if (index === 2) dateInput.disabled = false;
+            } else {
+                // Disable corresponding input if unchecked
+                if (index === 0) weightInput.disabled = true;
+                if (index === 1) activitySelect.disabled = true;
+                if (index === 2) dateInput.disabled = true;
+            }
+        });
+    });
+}
+
+// Populate activity dropdown
+async function populateActivityDropdown() {
+    try {
+        const response = await fetch(`${BASE_URL}/activities?choice=all`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) throw new Error('Failed to fetch activities');
+        const activities = await response.json();
+        // Sort activities alphabetically
+        activities.sort((a, b) => a.Activity.localeCompare(b.Activity));
+        activitySelect.innerHTML = '<option value="">Select Activity</option>';
+        activities.forEach(activity => {
+            const option = document.createElement('option');
+            option.value = activity.Activity;
+            option.textContent = activity.Activity;
+            activitySelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error fetching activities:', error);
+        activityError.textContent = 'Error loading activities';
+    }
+}
+
+// Reset search form
+function resetSearchForm() {
+    searchForm.reset();
+    weightInput.disabled = true;
+    activitySelect.disabled = true;
+    dateInput.disabled = true;
+    weightError.textContent = '';
+    activityError.textContent = '';
+    dateError.textContent = '';
+    searchResults.style.display = 'none';
+    searchResultsBody.innerHTML = '';
+}
+
+// Open search modal
+searchBtn.onclick = () => {
+    closeAllModals();
+    searchModal.style.display = 'flex';
+    resetSearchForm();
+    populateActivityDropdown();
+    enforceSingleCheckbox();
+};
+
+// Close search modal
+cancelSearchBtn.onclick = closeSearchBtn.onclick = () => {
+    searchModal.style.display = 'none';
+};
+
+// Handle search form submission
+searchForm.onsubmit = async (e) => {
+    e.preventDefault();
+    weightError.textContent = '';
+    activityError.textContent = '';
+    dateError.textContent = '';
+    searchResults.style.display = 'none';
+    searchResultsBody.innerHTML = '';
+
+    // Validate exactly one criterion is selected
+    const checkedCount = [weightCheckbox, activityCheckbox, dateCheckbox].filter(cb => cb.checked).length;
+    if (checkedCount !== 1) {
+        alert('Please select exactly one search criterion.');
+        return;
+    }
+
+    const searchParams = new URLSearchParams();
+    let hasError = false;
+
+    if (weightCheckbox.checked) {
+        const weight = parseFloat(weightInput.value);
+        if (isNaN(weight) || weight < 1 || weight > 1000) {
+            weightError.textContent = 'Weight must be between 1 and 1000';
+            hasError = true;
+        } else {
+            searchParams.append('weight', weight);
+        }
+    } else if (activityCheckbox.checked) {
+        const activity = activitySelect.value;
+        if (!activity) {
+            activityError.textContent = 'Please select an activity';
+            hasError = true;
+        } else {
+            searchParams.append('activity', activity);
+        }
+    } else if (dateCheckbox.checked) {
+        const date = dateInput.value;
+        if (!date) {
+            dateError.textContent = 'Please select a date';
+            hasError = true;
+        } else {
+            searchParams.append('date', date);
+        }
+    }
+
+    if (hasError) return;
+
+    try {
+        const url = `${BASE_URL}/weights/search?${searchParams.toString()}`;
+        const response = await makeAuthenticatedRequest(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.length === 0) {
+            alert('No matching entries found.');
+            return;
+        }
+
+        // Display results
+        searchResults.style.display = 'block';
+        response.forEach(entry => {
+            const row = document.createElement('tr');
+            const formattedDate = entry.DateWeight
+                ? new Date(entry.DateWeight + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                : 'N/A';
+            row.innerHTML = `
+                <td>${entry.UserWeightID}</td>
+                <td>${formattedDate}</td>
+                <td>${parseFloat(entry.Weight).toFixed(1)}</td>
+            `;
+            searchResultsBody.appendChild(row);
+        });
+    } catch (error) {
+        alert(`Search failed: ${error.message}`);
+    }
+};
+
+// Print results
+printResultsBtn.onclick = () => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Search Results</title>
+                <style>
+                    table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+                    th { background-color: #f2f2f2; }
+                </style>
+            </head>
+            <body>
+                <h2>Search Results</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Weight</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${searchResultsBody.innerHTML}
+                    </tbody>
+                </table>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+};
+
+
+// Close results
+closeResultsBtn.onclick = () => {
+    searchModal.style.display = 'none';
+};
+
+// Print results
+printResultsBtn.onclick = () => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Search Results</title>
+                <style>
+                    table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+                    th { background-color: #f2f2f2; }
+                </style>
+            </head>
+            <body>
+                <h2>Search Results</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Weight</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${searchResultsBody.innerHTML}
+                    </tbody>
+                </table>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+};
+    </script>
+</body>
+</html>

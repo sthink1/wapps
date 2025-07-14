@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wonderful Apps</title>
+    <link rel="manifest" href="/manifest.json">
+    <!-- Add canvas-confetti script -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="js/confetti.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        .form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .display-password {
+            margin-left: 10px;
+            width: auto;
+        }
+        .error-message {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Login to Wonderful Apps</h2>
+        <form id="loginForm">
+            <label for="username">User Name:</label>
+            <input type="text" id="username" name="username" required>
+            
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            <button type="button" class="display-password">Show</button>
+            
+            <button type="submit">Login</button>
+        </form>
+        <div id="errorMessage" class="error-message"></div>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const errorMessage = document.getElementById('errorMessage');
+        
+        errorMessage.textContent = ''; // Clear previous error messages
+
+        if (username === '' || password === '') {
+            errorMessage.textContent = 'Please fill in both username and password.';
+            return;
+        }
+
+        fetch(`${BASE_URL}/users/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.error);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.message === 'Login successful') {
+                // Store token in localStorage
+                localStorage.setItem('token', data.token);
+                // Show confetti and alert on success
+                triggerConfetti();
+                alert('Login successful! Redirecting...');
+                // Delay redirect to allow confetti animation to complete
+                setTimeout(() => {
+                    window.location.href = 'home.html'; // Redirect on successful login
+                }, 1500); // 1.5-second delay
+            } else {
+                throw new Error('Unexpected response from server');
+            }
+        })
+        .catch(error => {
+            errorMessage.textContent = error.message;
+        });
+    });
+
+    // Functionality for the "Show" button
+    document.querySelector('.display-password').addEventListener('click', function() {
+        const passwordInput = document.getElementById('password');
+        if (passwordInput.type === "password") {
+            passwordInput.type = "text";
+        } else {
+            passwordInput.type = "password";
+        }
+    });
+    </script>
+</body>
+</html>

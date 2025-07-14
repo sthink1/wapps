@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Information</title>
+    <link rel="manifest" href="/manifest.json">
+    <!-- Add canvas-confetti script -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="js/confetti.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.10/purify.min.js"></script>
+    <style>
+        /* Set a uniform width for labels */
+        label {
+          display: inline-block;
+          width: 125px;
+        }
+        /* Set a uniform width for input fields */
+        input[type="text"] {
+          width: 250px;
+        }
+        button {
+          margin-left: 10px;
+          margin-top: 10px;
+          background-color: black;
+          color: white;
+          cursor: pointer;
+          box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5)
+        }
+        .link:hover {
+          background-color: lightskyblue;
+        }
+        #instructions-modal, #fema-tornado-modal {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background-color: #fff;
+          padding: 20px;
+          border: 1px solid #ddd;
+          border-radius: 10px;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+          width: 80%;
+          max-height: 90%;
+          overflow-y: auto;
+        }
+        #instructions-modal h2, #fema-tornado-modal h2 {
+          margin-top: 0;
+        }
+        #close-button,
+        #open-noaa-button,
+        #close-fema-button,
+        #open-fema-button {
+          margin-top: 20px;
+          padding: 10px 20px;
+          border: none;
+          border-radius: 5px;
+          background-color: #4CAF50;
+          color: #fff;
+          cursor: pointer;
+        }
+        #close-button:hover,
+        #open-noaa-button:hover,
+        #close-fema-button:hover,
+        #open-fema-button:hover {
+          background-color: #3e8e41;
+        }
+        #zillow-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 60%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+        #paste-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 60%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <span style="font-size: 1.5em; font-weight: bold;display: block;">ENTER PROPERTY LOCATION<a class="buttons" href="home.html"><button>Home</button></a></span>
+        <label for="paste-button" style="width: 210px;">Fill In Form <span><b><u>OR</u></b></span> Paste Location:</label>
+        <button type="button" id="paste-button" aria-label="Paste">Paste Instructions</button>
+        <div id="paste-modal" style="display: none;">
+            <h3>PASTING INSTRUCTIONS</h3>
+            <ul>
+                <li>Copy an address of interest.</li>
+                <li>Paste it in the first line, Street Address</li>
+                <li>Click Save</li>
+                <li>Find it in the Saved Locations</li>
+                <li>Click Load</li>
+            </ul>
+            <hr>
+            <button id="close-paste-button" aria-label="Close">CLOSE</button>
+        </div>
+        <form style="background-color: cyan; width: 450px; padding-left: 10px;">
+            <hr>
+            <label for="street-address">Street Address:</label>
+            <input type="text" id="street-address" name="street-address"><br>
+            <label for="apartment">Apartment:</label>
+            <input type="text" id="apartment" name="apartment"><br>
+            <label for="town-city">Town/City:</label>
+            <input type="text" id="town-city" name="town-city"><br>
+            <label for="state">State:</label>
+            <input type="text" id="state" name="state"><br>
+            <label for="zip-code">Zip Code:<button type="button" id="copy-zip-button" tabindex="-1" style="background-color: rgb(122, 233, 122); color: black; margin-left: 10px;" aria-label="Copy">Copy</button></label>
+            <input type="text" id="zip-code" name="zip-code"><br>
+            <label for="county">County</label>
+            <input type="text" id="county" name="county"><br>
+            <label for="country">Country:</label>
+            <input type="text" id="country" name="country"><br>
+            <label for="complete-address" style="width: 200px;">Complete Address:<button type="button" id="copy-complete-address-button" style="background-color: rgb(122, 233, 122); color: black; margin-left: 10px;" tabindex="-1" aria-label="Copy">Copy</button> </label>
+            <input style="width: 400px; background-color: lightgray;" tabindex="-1" type="text" id="complete-address" name="complete-address" readonly>
+            <div style="text-align: center;">
+                <button type="button" id="save-button" aria-label="Save">Save</button>
+                <button type="button" id="clear-button" aria-label="Clear">Clear</button>
+            </div>
+            <br>
+        </form>
+        <h2>LINKS TO PROPERTY INFO</h2>
+        <div style="border: 5px solid black ; width: 450px; padding-left: 10px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5)">
+            <br>
+            <div class="link">MAPS AND DIRECTIONS: <a href="#" id="google-maps-link">Google Maps</a><hr></div>
+            <div class="link">REAL ESTATE LISTING with 5 CLIMATE RISKS: <a href="#" id="zillow-link">Zillow</a><hr></div>
+            <div id="zillow-modal" style="display: none;">
+                <h3>Important Information About Zillow</h3>
+                <p>For properties which are currently for sale, Zillow has a feature called CLIMATE RISKS in which it rates the risk for: <ul> <li>flood,</li> <li>fire,</li> <li>wind,</li> <li>air quality,</li><li>heat.</li></ul> After opening Zillow, scroll down the page to see this CLIMATE RISKS section, then click SHOW MORE.</p>
+                <hr>
+                <button id="close-zillow-button" aria-label="Close">CLOSE</button>
+                <button id="open-zillow-button" aria-label="Open Zillow">OPEN ZILLOW</button>
+            </div>
+            <div class="link">FLOOD & HURRICANE ZONE MAP: <a href="#" id="flood-link">NOAA Flood Exposure</a><hr></div>
+            <div id="instructions-modal" style="display:none;">
+                <h3>Important Instructions</h3>
+                <p>PLEASE NOTE: When you click OPEN NOAA SITE the NOAA website will open. You have to click GET STARTED and then paste the address of the property.</p>
+                <hr>
+                <h2>PLEASE READ THE FOLLOWING IF YOU ARE NOT FAMILIAR WITH NOAA’S WEB SITE:</h2>
+                Watch this NOAA video: <a href="https://coast.noaa.gov/data/digitalcoast/video/cfem.mp4" target="_blank">https://coast.noaa.gov/data/digitalcoast/video/cfem.mp4</a><br><br>
+                When the NOAA website opens:
+                <ul>
+                    <li>You have to click GET STARTED and then paste the address of the property.</li>
+                    <ul>
+                        <li>The address has been copied to the clipboard. You can just paste it to the address field.</li>
+                    </ul>
+                    <li>After pasting the address, choose the address from the drop-down list that pops up.</li>
+                    <li>Click onto the circular hamburger menu in the bottom left corner.</li>
+                    <li>Turn the slider for Coastal Flood Hazard Composite off.</li>
+                    <li>Choose from the five items that follow: High Tide Flooding, etc.</li>
+                </ul>
+                <button id="close-button" aria-label="Close">CLOSE</button>
+                <button id="open-noaa-button" aria-label="Open NOAA SITE">OPEN NOAA SITE</button>
+            </div>
+            <div class="link">TORNADO DANGER MAP: <a href="#" id="fema-tornado-link">FEMA Tornado Tracker</a><hr></div>
+            <div id="fema-tornado-modal" style="display:none;">
+                <h3>Important Instructions</h3>
+                <p>PLEASE NOTE: When you click OPEN FEMA SITE the FEMA website will open. Please follow the following instructions.</p>
+                <hr>
+                <h2>PLEASE READ THE FOLLOWING IF YOU ARE NOT FAMILIAR WITH FEMA’S WEB SITE:</h2>
+                When the FEMA website opens:
+                <ul>
+                    <li>Click Search button top right corner (under Sign In, not beside Sign In)</li>
+                    <li>Paste the address in search box</li>
+                    <ul>
+                        <li>The address has been copied to the clipboard. You can just paste it to the address field.</li>
+                    </ul>
+                    <li>After pasting the address, choose the address from the drop-down list that pops up.</li>
+                    <li>Click the Zoom Out button ( - ) until BLUE LINES appears on map</li>
+                </ul>
+                The BLUE LINES:
+                <ul>
+                    <li>represent tornados since 1950</li>
+                    <li>You can click on the line to get a popup window with details of the tornado: damage, fatalities, injuries, wind speed, miles covered, width.</li>
+                </ul>
+                <button id="close-fema-button" aria-label="Close">CLOSE</button>
+                <button id="open-fema-button" aria-label="Open FEMA SITE">OPEN FEMA SITE</button>
+            </div>
+            <div class="link">CRIME statistics: <a href="#" id="crimegrade-link">CrimeGrade</a><br><span style="color: red;"><b>>>> COPY Zip Code BEFORE CLICKING LINK! <<<</b></span><hr></div>
+            <div class="link">CLIMATE information: <a href="#" id="google-climate-link">Google</a><br><hr></div>
+            <div class="link">DEMOGRAPHIC information: <a href="#" id="city-data-link">City-Data</a><br><hr></div>
+            <br>
+        </div>
+        <h2>SAVED LOCATIONS <button onclick="printTable()" aria-label="Print">Print</button></h2>
+        <table id="printTable" style="background-color: chartreuse; width: 450px; padding-left: 10px;">
+            <tr> 
+                <th> Location </th>
+                <th> Delete </th>
+                <th> Load </th>
+            </tr>
+        </table>
+        <textarea id="temp-address" style="display: none;"></textarea>
+    </main>
+    <footer style="background-color: lightgray; height: 30px; padding-top: 5px; position: sticky; bottom: 0; width: 460px;">
+        <table style="width: 98%; margin: 5px auto;">
+            <tr>
+            <td>Copyright © 2025 M P Galvin Jr</td>
+            <td style="text-align: center;border:1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+    <script>
+        if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+        function sanitizeInput(input) {
+            return DOMPurify.sanitize(input);
+        }
+        const copyZipButton = document.getElementById('copy-zip-button');
+        const zipCodeInput = document.getElementById('zip-code');
+        copyZipButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(zipCodeInput.value);
+            alert('Zip code copied to clipboard!');
+        });
+        const copyCompleteAddressButton = document.getElementById('copy-complete-address-button');
+        const completeAddressInput = document.getElementById('complete-address');
+        copyCompleteAddressButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(completeAddressInput.value);
+            alert('Complete address copied to clipboard!');
+        });
+        const formFields = document.querySelectorAll('input[type="text"]');
+        formFields.forEach(field => {
+            field.addEventListener('input', updateCompleteAddress);
+        });
+        function updateCompleteAddress() {
+            const completeAddress = document.getElementById('complete-address');
+            const streetAddress = document.getElementById('street-address').value;
+            const apartment = document.getElementById('apartment').value;
+            const townCity = document.getElementById('town-city').value;
+            const state = document.getElementById('state').value;
+            const zipCode = document.getElementById('zip-code').value;
+            const country = document.getElementById('country').value;
+            const completeAddressValue = `${streetAddress} ${apartment}, ${townCity}, ${state} ${zipCode}, ${country}`;
+            completeAddress.value = completeAddressValue;
+        }
+        const form = document.querySelector('form');
+        document.getElementById('clear-button').addEventListener('click', function() {
+            form.reset();
+        });
+        const completeAddressField = document.getElementById('complete-address');
+        const table = document.querySelector('table');
+        document.getElementById('save-button').addEventListener('click', function() {
+            const completeAddress = completeAddressField.value.trim();
+            if (completeAddress) {
+                const row = table.insertRow();
+                const locationCell = row.insertCell(0);
+                const deleteCell = row.insertCell(1);
+                const loadCell = row.insertCell(2);
+                locationCell.textContent = completeAddress;
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', function() {
+                    row.remove();
+                });
+                deleteCell.appendChild(deleteButton);
+                const loadButton = document.createElement('button');
+                loadButton.textContent = 'Load';
+                loadButton.addEventListener('click', function() {
+                    loadAddressToForm(completeAddress);
+                });
+                loadCell.appendChild(loadButton);
+                // Show confetti and alert on success
+                triggerConfetti();
+                alert("Successfully saved to the SAVED LOCATIONS below!");
+            } else {
+                alert('Complete Address is empty. Please fill out the form.');
+            }
+        });
+        function loadAddressToForm(address) {
+            const addressParts = address.split(',').map(part => part.trim());
+            const streetAddressRegex = /^(\d+\s[^\d]+)\s*(.*)$/;
+            const streetMatch = addressParts[0].match(streetAddressRegex);
+            if (streetMatch) {
+                document.getElementById('street-address').value = streetMatch[1].trim();
+                document.getElementById('apartment').value = streetMatch[2].trim();
+            } else {
+                document.getElementById('street-address').value = addressParts[0];
+                document.getElementById('apartment').value = '';
+            }
+            const townCity = addressParts[1] || '';
+            const stateZipParts = (addressParts[2] || '').split(' ').map(part => part.trim());
+            const state = stateZipParts[0] || '';
+            const zipCode = stateZipParts[1] || '';
+            const country = addressParts[3] || '';
+            document.getElementById('town-city').value = townCity;
+            document.getElementById('state').value = state;
+            document.getElementById('zip-code').value = zipCode;
+            document.getElementById('country').value = country;
+            updateCompleteAddress();
+        }
+        function updateCompleteAddress() {
+            const streetAddress = document.getElementById('street-address').value;
+            const apartment = document.getElementById('apartment').value;
+            const townCity = document.getElementById('town-city').value;
+            const state = document.getElementById('state').value;
+            const zipCode = document.getElementById('zip-code').value;
+            const country = document.getElementById('country').value;
+            const completeAddressValue = `${streetAddress} ${apartment}, ${townCity}, ${state} ${zipCode}, ${country}`;
+            completeAddressField.value = completeAddressValue;
+        }
+        document.getElementById('open-zillow-button').addEventListener('click', function() {
+            var streetAddress = sanitizeInput(document.getElementById('street-address').value);
+            var apartment = sanitizeInput(document.getElementById('apartment').value);
+            var townCity = sanitizeInput(document.getElementById('town-city').value);
+            var state = sanitizeInput(document.getElementById('state').value);
+            var zipCode = sanitizeInput(document.getElementById('zip-code').value);
+            var county = sanitizeInput(document.getElementById('county').value);
+            var country = sanitizeInput(document.getElementById('country').value);
+            var address = `${streetAddress} ${apartment}, ${townCity}, ${state} ${zipCode} ${country}`;
+            address = encodeURIComponent(address);
+            window.open(`https://www.zillow.com/homes/${address}_rb/`, '_blank', 'noopener,noreferrer');
+            document.getElementById('zillow-modal').style.display = 'none';
+        });
+        document.getElementById('zillow-link').addEventListener('click', function(event) {
+            event.preventDefault();
+            document.getElementById('zillow-modal').style.display = 'block';
+            document.getElementById('close-zillow-button').addEventListener('click', function() {
+                document.getElementById('zillow-modal').style.display = 'none';
+            });
+        });
+        document.getElementById('flood-link').addEventListener('click', function(event) {
+            event.preventDefault();
+            var streetAddress = sanitizeInput(document.getElementById('street-address').value);
+            var apartment = sanitizeInput(document.getElementById('apartment').value);
+            var townCity = sanitizeInput(document.getElementById('town-city').value);
+            var state = sanitizeInput(document.getElementById('state').value);
+            var zipCode = sanitizeInput(document.getElementById('zip-code').value);
+            var county = sanitizeInput(document.getElementById('county').value);
+            var country = sanitizeInput(document.getElementById('country').value);
+            var address = `${streetAddress} ${apartment}, ${townCity}, ${state} ${zipCode}, ${county}, ${country}`;
+            address = sanitizeInput(address);
+            navigator.clipboard.writeText(address);
+            document.getElementById('temp-address').value = address;
+            document.getElementById('instructions-modal').style.display = 'block';
+            document.getElementById('close-button').addEventListener('click', function() {
+                document.getElementById('instructions-modal').style.display = 'none';
+            });
+            document.getElementById('open-noaa-button').addEventListener('click', function() {
+                document.getElementById('instructions-modal').style.display = 'none';
+                window.open(`https://coast.noaa.gov/floodexposure/`, '_blank', 'noopener,noreferrer');
+            });
+        });
+        document.getElementById('fema-tornado-link').addEventListener('click', function(event) {
+            event.preventDefault();
+            var streetAddress = sanitizeInput(document.getElementById('street-address').value);
+            var apartment = sanitizeInput(document.getElementById('apartment').value);
+            var townCity = sanitizeInput(document.getElementById('town-city').value);
+            var state = sanitizeInput(document.getElementById('state').value);
+            var zipCode = sanitizeInput(document.getElementById('zip-code').value);
+            var county = sanitizeInput(document.getElementById('county').value);
+            var country = sanitizeInput(document.getElementById('country').value);
+            var address = `${streetAddress} ${apartment}, ${townCity}, ${state} ${zipCode}, ${county}, ${country}`;
+            address = sanitizeInput(address);
+            navigator.clipboard.writeText(address);
+            document.getElementById('temp-address').value = address;
+            document.getElementById('fema-tornado-modal').style.display = 'block';
+            document.getElementById('close-fema-button').addEventListener('click', function() {
+                document.getElementById('fema-tornado-modal').style.display = 'none';
+            });
+            document.getElementById('open-fema-button').addEventListener('click', function() {
+                document.getElementById('fema-tornado-modal').style.display = 'none';
+                window.open(`https://resilience-fema.hub.arcgis.com/datasets/fedmaps::tornado-tracks-1/`, '_blank', 'noopener,noreferrer');
+            });
+        });
+        document.getElementById('crimegrade-link').addEventListener('click', function(event) {
+            event.preventDefault();
+            var zipCode = sanitizeInput(document.getElementById('zip-code').value);
+            if (confirm("PLEASE NOTE: When you click OK the CRIMEGRADE website will open. You have to enter the Zip Code of the property and click EXPLORE.")) {
+                window.open(`https://crimegrade.org/`, '_blank', 'noopener,noreferrer');
+            }
+        });
+        document.getElementById('google-maps-link').addEventListener('click', function(event) {
+            event.preventDefault();
+            var streetAddress = sanitizeInput(document.getElementById('street-address').value);
+            var apartment = sanitizeInput(document.getElementById('apartment').value);
+            var townCity = sanitizeInput(document.getElementById('town-city').value);
+            var state = sanitizeInput(document.getElementById('state').value);
+            var zipCode = sanitizeInput(document.getElementById('zip-code').value);
+            var county = sanitizeInput(document.getElementById('county').value);
+            var country = sanitizeInput(document.getElementById('country').value);
+            var address = `${streetAddress} ${apartment}, ${townCity}, ${state} ${zipCode}, ${county}, ${country}`;
+            address = encodeURIComponent(address);
+            window.open(`https://www.google.com/maps/search/${address}`, '_blank', 'noopener,noreferrer');
+        });
+        document.getElementById('google-climate-link').addEventListener('click', function(event) {
+            event.preventDefault();
+            var zipCode = sanitizeInput(document.getElementById('zip-code').value);
+            if (zipCode) {
+                var searchQuery = `Climate for ${zipCode}`;
+                var encodedQuery = encodeURIComponent(searchQuery);
+                window.open(`https://www.google.com/search?q=${encodedQuery}`, '_blank', 'noopener,noreferrer');
+            } else {
+                alert('Please enter a Zip Code to search for climate information.');
+            }
+        });
+        document.getElementById('city-data-link').addEventListener('click', function(event) {
+            event.preventDefault();
+            var zipCode = sanitizeInput(document.getElementById('zip-code').value);
+            if (zipCode) {
+                var encodedQuery = encodeURIComponent(zipCode);
+                window.open(`https://www.city-data.com/zips/${encodedQuery}.html`, '_blank', 'noopener,noreferrer');
+            } else {
+                alert('Please enter a Zip Code to search for city data information.');
+            }
+        });
+        function printTable() {
+            var table = document.getElementById('printTable');
+            var printContent = '';
+            for (var i = 0; i < table.rows.length; i++) {
+                var cellText = table.rows[i].cells[0].textContent;
+                printContent += cellText + '\n';
+            }
+            var win = window.open('', '', 'height=500,width=700');
+            win.document.write('<pre>' + printContent + '</pre>');
+            win.document.close();
+            win.print();
+            win.close();
+        }
+        document.getElementById('paste-button').addEventListener('click', function(event) {
+            event.preventDefault();
+            document.getElementById('paste-modal').style.display = 'block';
+            document.getElementById('close-paste-button').addEventListener('click', function() {
+                document.getElementById('paste-modal').style.display = 'none';
+            });
+        });
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                return;
+            }
+            const page = window.location.pathname;
+            fetch(`${BASE_URL}/track/log/page`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ page })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Page view tracked:', data.message || 'Success');
+            })
+            .catch(error => {
+                console.error('Error tracking page view:', error.message);
+            });
+            let startTime = Date.now();
+            window.addEventListener('beforeunload', () => {
+                const duration = Math.floor((Date.now() - startTime) / 1000);
+                console.log('Beforeunload duration:', duration);
+                if (duration > 0) {
+                    const timeSpentData = {
+                        page: window.location.pathname,
+                        duration: duration,
+                        token: token
+                    };
+                    console.log('Sending time spent data:', timeSpentData);
+                    fetch(`${BASE_URL}/track/log/time-spent`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(timeSpentData)
+                    })
+                    .then(response => {
+                        console.log('Time spent response status:', response.status);
+                        return response.json();
+                    })
+                    .then(data => console.log('Time spent response:', data))
+                    .catch(error => console.error('Error sending time spent:', error.message));
+                }
+            });
+        });
+    </script>
+</body>
+</html>

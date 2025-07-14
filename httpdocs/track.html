@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Tracking Dashboard</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1, h2 {
+            margin-bottom: 10px;
+        }
+        .stat-block {
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Activity Tracking Dashboard<a class="buttons" href="home.html"><button>Home</button></a></h1>
+    <div class="stat-block" id="totalViews"></div>
+    <div class="stat-block" id="mostVisited"></div>
+    <div class="stat-block" id="avgTimeSpent"></div>
+    <div class="stat-block" id="totalTimeSpent"></div>
+    <div class="stat-block" id="activityOverTime"></div>
+    <div class="stat-block" id="lastActive"></div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('You must be logged in to view this page.');
+                window.location.href = 'login.html';
+                return;
+            }
+            const page = window.location.pathname.split('/').pop(); // Normalize to filename
+            fetch(`${BASE_URL}/track/log/page`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ page })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Page view tracked:', data.message || 'Success');
+            })
+            .catch(error => {
+                console.error('Error tracking page view:', error.message);
+            });
+
+            fetch(`${BASE_URL}/track/stats`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                console.log('Stats response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Stats data received:', data);
+                ['totalViews', 'mostVisited', 'avgTimeSpent', 'totalTimeSpent', 'activityOverTime', 'lastActive'].forEach(key => {
+                    const div = document.getElementById(key);
+                    const title = key.replace(/([A-Z])/g, ' $1').trim();
+                    if (data[key] && Array.isArray(data[key]) && data[key].length > 0) {
+                        let tableHTML = `<h2>${title}</h2><table><tr>`;
+                        Object.keys(data[key][0]).forEach(header => tableHTML += `<th>${header}</th>`);
+                        tableHTML += '</tr>';
+                        data[key].forEach(row => {
+                            tableHTML += '<tr>';
+                            Object.values(row).forEach(val => {
+                                const formattedVal = typeof val === 'string' && val.includes('T') 
+                                    ? new Date(val).toISOString().replace('T', ' ').split('.')[0] 
+                                    : (val !== null ? val : 'N/A');
+                                tableHTML += `<td>${formattedVal}</td>`;
+                            });
+                            tableHTML += '</tr>';
+                        });
+                        tableHTML += '</table>';
+                        div.innerHTML = tableHTML;
+                    } else {
+                        div.innerHTML = `<h2>${title}</h2><p>No data available.</p>`;
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching stats:', error.message);
+                alert('An error occurred while fetching stats.');
+            });
+
+            let startTime = Date.now();
+            window.addEventListener('beforeunload', () => {
+                const duration = Math.floor((Date.now() - startTime) / 1000);
+                console.log('Beforeunload duration:', duration);
+                if (duration > 0) {
+                    const timeSpentData = {
+                        page: window.location.pathname.split('/').pop(), // Normalize to filename
+                        duration: duration
+                    };
+                    console.log('Sending time spent data:', timeSpentData);
+                    fetch(`${BASE_URL}/track/log/time-spent`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(timeSpentData)
+                    })
+                    .then(response => {
+                        console.log('Time spent response status:', response.status);
+                        return response.json();
+                    })
+                    .then(data => console.log('Time spent response:', data))
+                    .catch(error => console.error('Error sending time spent:', error.message));
+                }
+            });
+        });
+    </script>
+</body>
+</html>

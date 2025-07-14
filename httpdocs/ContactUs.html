@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact Us</title>
+<link rel="manifest" href="/manifest.json">
+<!--<link href="Style.css" rel="stylesheet" type="text/css" />-->
+<style>
+    section {
+        width: 90%; /* Changed from 50% to be more flexible */
+        max-width: 600px; /* Limits maximum width to prevent overflow */
+        margin: 0 auto;
+    }
+    #txtSubmit:hover { cursor: pointer; }
+    /* Ensure form inputs don't exceed container */
+    input, textarea {
+        box-sizing: border-box; /* Includes padding/border in width */
+        max-width: 100%; /* Prevents inputs from overflowing */
+    }
+</style>
+</head>
+<body>
+    <header style="text-align: center; position: sticky; top: 0; background-color: #fff; z-index: 999;">
+        <img src="images/logoWA.jpg" alt="Wonderful Apps Company Logo" width="180" height="90"><br>
+        <nav style="background-color: rgb(248, 245, 245); height: 40px; padding-top: 10px;">
+            <a href="home.html" title="HOME" style="margin-right: 10px;"> HOME</a>
+        </nav>
+    </header><br>
+
+    <section>
+        <form method="post" id="myForm" action="/send-email">
+            <table>
+            <tr>
+                <td>Name *</td>
+                <td><input style="width: 250px;" type="text" name="name" id="txtName" placeholder="Full name here" required></td>
+            </tr>
+            <tr>
+                <td>Email *</td>
+                <td><input style="width: 250px;" type="email" name="email" id="txtEmail" placeholder="_ _ _ @ _ _ _ . _ _ _" required></td>
+            </tr>
+            <tr>
+                <td>Phone</td>
+                <td><input style="width: 250px;" type="text" name="phone" id="txtPhone" placeholder="012345678910" pattern="[0-9]+" title="Please enter only numbers"></td>
+            </tr>
+            <tr>
+                <td>Subject *</td>
+                <td><input style="width: 250px;" type="text" name="subject" id="txtSubject" required></td>
+            </tr>
+            <tr>
+                <td>Message *</td>
+                <td><textarea style="width: 250px; height: 250px;" name="message" id="txtMessage" required></textarea></td>
+            </tr>
+            <tr>
+                <td colspan="2" style="text-align: center;">
+                    <input type="submit" value="Submit" id="txtSubmit" style="background-color: rgb(144, 186, 242);">
+                </td>
+            </tr>
+            </table>
+        </form>
+        <p>* = Required</p>
+    </section><br>
+    <footer style="background-color: rgb(248, 245, 245); height: 50px; padding-top: 5px; position: sticky; bottom: 0; width: 100%;">
+        <table style="width: 98%; margin: 5px auto;">
+            <tr>
+            <td style="font-size: .8em;">Copyright © 2025 Wonderful Apps Company - All Rights Reserved</td>
+            <td style="text-align: center;border:1px solid black; font-size: .8em;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+    document.getElementById('myForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            alert(result.message);
+            if (result.status === 'success') {
+                form.reset();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while sending your message.');
+        });
+    });
+    </script>
+</body>
+</html>
