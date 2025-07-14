@@ -28,7 +28,7 @@ if (!fs.existsSync(logDirectory)) {
 
 // Middleware Configuration
 app.use(cors({
-  origin: ['http://localhost', 'http://localhost:8080', 'https://wapps.helioho.st', 'https://wapps.onrender.com'],
+  origin: ['http://localhost', 'http://localhost:8080', 'https://wapps.helioho.st', 'https://wapps-ypez.onrender.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
