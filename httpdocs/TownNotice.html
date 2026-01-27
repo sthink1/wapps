@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Town Notification</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+</head>
+
+<body>
+<h1>
+    Verbal Town Notification
+    <a href="home.html"><button>Home</button></a>
+</h1>
+
+<p>When you change towns, an audio notification will be triggered.</p>
+<button onclick="startGeolocation()">Enable Location Alerts</button>
+
+<p id="status">Status: Waiting for location access...</p>
+
+<footer style="background-color: lightgray; height:30px; padding-top:5px; position:sticky; bottom:0; width:460px;">
+<table style="width:98%; margin:5px auto;">
+<tr>
+    <td>© 2025 M P Galvin Jr</td>
+    <td style="text-align:center;border:1px solid black;">Designed by MPG Jr</td>
+</tr>
+</table>
+</footer>
+
+<script>
+/* =====================================================
+   ENVIRONMENT
+===================================================== */
+const isCordova = typeof window.cordova !== 'undefined';
+const BASE_URL = window.location.origin;
+
+/* =====================================================
+   SERVICE WORKER (SAFE)
+===================================================== */
+if (!isCordova && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+/* =====================================================
+   STATE
+===================================================== */
+let currentTown = localStorage.getItem('currentTown') || '';
+let lastLat = null;
+let lastLon = null;
+
+const DISTANCE_THRESHOLD_METERS = 500;
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+/* =====================================================
+   UTILITIES
+===================================================== */
+function updateStatus(msg) {
+    document.getElementById('status').textContent = `Status: ${msg}`;
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) ** 2;
+
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/* =====================================================
+   CACHE
+===================================================== */
+function getCachedTown(lat, lon) {
+    const cache = JSON.parse(localStorage.getItem('townCache') || '{}');
+    const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+
+    if (cache[key] && Date.now() - cache[key].time < CACHE_TTL) {
+        return cache[key].town;
+    }
+    return null;
+}
+
+function setCachedTown(lat, lon, town) {
+    const cache = JSON.parse(localStorage.getItem('townCache') || '{}');
+    const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+
+    cache[key] = { town, time: Date.now() };
+    localStorage.setItem('townCache', JSON.stringify(cache));
+}
+
+/* =====================================================
+   SPEECH
+===================================================== */
+function speak(msg) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.speak(new SpeechSynthesisUtterance(msg));
+}
+
+/* =====================================================
+   TOWN LOOKUP (BACKEND PROXY)
+===================================================== */
+function fetchTown(lat, lon) {
+    if (!navigator.onLine) {
+        updateStatus('Offline – using last known town');
+        return;
+    }
+
+    const cached = getCachedTown(lat, lon);
+    if (cached) {
+        handleTown(cached);
+        return;
+    }
+
+    fetch(`${BASE_URL}/api/geocode/reverse?lat=${lat}&lon=${lon}`)
+        .then(r => r.json())
+        .then(data => {
+            const town =
+                data.address?.town ||
+                data.address?.city ||
+                data.address?.village ||
+                'Unknown town';
+
+            setCachedTown(lat, lon, town);
+            handleTown(town);
+        })
+        .catch(() => updateStatus('Town lookup failed'));
+}
+
+function handleTown(town) {
+    if (town !== currentTown) {
+        currentTown = town;
+        localStorage.setItem('currentTown', town);
+        speak(`You have entered ${town}`);
+        updateStatus(`Entered ${town}`);
+    } else {
+        updateStatus(`Still in ${town}`);
+    }
+}
+
+/* =====================================================
+   GEOLOCATION
+===================================================== */
+function startGeolocation() {
+    if (!navigator.geolocation) {
+        updateStatus('Geolocation not supported');
+        return;
+    }
+
+    navigator.geolocation.watchPosition(
+        pos => {
+            const { latitude, longitude } = pos.coords;
+
+            if (lastLat !== null) {
+                const moved = haversine(lastLat, lastLon, latitude, longitude);
+                if (moved < DISTANCE_THRESHOLD_METERS) return;
+            }
+
+            lastLat = latitude;
+            lastLon = longitude;
+
+            updateStatus('Checking town...');
+            fetchTown(latitude, longitude);
+        },
+        err => updateStatus(err.message),
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+    );
+}
+</script>
+</body>
+</html>

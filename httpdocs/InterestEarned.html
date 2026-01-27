@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interest Earned Verification</title>
+    <link rel="manifest" href="/manifest.json">
+    <!-- Add canvas-confetti script -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="js/confetti.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8e8d9;
+            margin: 0;
+            padding: 0;
+        }
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin: 10px 0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .section-top .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .section-top button, .section-statement button, .section-verification button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .section-top button:hover, .section-statement button:hover, .section-verification button:hover {
+            background-color: #0056b3;
+        }
+        .section-contract {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .section-statement {
+            background-color: #e6f0fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .section-verification {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .section-verification .toggles {
+            background-color: #e6f7e6;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .section-verification .toggles label {
+            margin-right: 15px;
+            padding: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .section-verification .toggles label.changed {
+            background-color: #ffebcc;
+        }
+        .section-verification .toggles select {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            text-align: center;
+            padding: 10px;
+        }
+        table th {
+            background-color: #f2f2f2;
+        }
+        .section-statement input[type="date"],
+        .section-statement input[type="text"] {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 120px;
+        }
+        .section-statement .action-btn {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .section-statement .action-btn:hover {
+            background-color: #0056b3;
+        }
+        .section-statement .error {
+            color: red;
+            margin-top: 5px;
+            text-align: center;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+        }
+        .modal form {
+            display: flex;
+            flex-direction: column;
+        }
+        .modal form label {
+            margin: 10px 0;
+        }
+        .modal form input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .modal form button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .modal form button:hover {
+            background-color: #0056b3;
+        }
+        .modal .error {
+            color: red;
+            margin-top: 5px;
+        }
+        .modal-table-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Section 1: Top -->
+        <div class="section-top">
+            <h1>Interest Earned Verification</h1>
+            <div class="buttons">
+                <a href="home.html"><button>Home</button></a>
+                <button id="btnAddContract">ADD CONTRACT</button>
+                <button onclick="location.reload()">RESET</button>
+            </div>
+        </div>
+
+        <!-- Section 2: Contract Info -->
+        <div class="section-contract">
+            <h2>Select Contract</h2>
+            <select id="contractDropdown">
+                <option value="">Select a Contract</option>
+            </select>
+            <table id="contractTable">
+                <tbody>
+                    <tr><td colspan="2">This data is required to do the interest verification.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section 3: Statement Information -->
+        <div class="section-statement">
+            <h2>Statement Information</h2>
+            <table id="statementTable">
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-type="valueBeginning">
+                        <td>Value Beginning</td>
+                        <td><input type="date" required></td>
+                        <td><input type="text" required data-numeric></td>
+                        <td></td>
+                    </tr>
+                    <tr data-type="additions">
+                        <td>Additions</td>
+                        <td><input type="date"></td>
+                        <td><input type="text" value="0" data-numeric></td>
+                        <td><button class="action-btn" onclick="addStatementRow('additions')">ADD LINE</button></td>
+                    </tr>
+                    <tr data-type="withdrawals">
+                        <td>Withdrawals</td>
+                        <td><input type="date"></td>
+                        <td><input type="text" value="0" data-numeric></td>
+                        <td><button class="action-btn" onclick="addStatementRow('withdrawals')">ADD LINE</button></td>
+                    </tr>
+                    <tr data-type="interest">
+                        <td>Interest</td>
+                        <td></td>
+                        <td><input type="text" required data-numeric></td>
+                        <td></td>
+                    </tr>
+                    <tr data-type="valueEnding">
+                        <td>Value Ending</td>
+                        <td><input type="date" required></td>
+                        <td><input type="text" required data-numeric></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div style="text-align: center; margin-top: 10px;">
+                <p>Please click when finished inputting statement information.</p>
+                <button onclick="validateStatement()">DONE</button>
+                <div id="statementError" class="error"></div>
+                <div id="verifyButtonContainer" style="display: none; margin-top: 10px;">
+                    <p>Click to calculate and verify statement’s calculation of interest.</p>
+                    <button onclick="verifyInterestCalculation()">VERIFY INTEREST CALCULATION</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Interest Calculation and Comparison -->
+        <div class="section-verification" id="verificationSection">
+            <h2>Interest Verification Results</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th colspan="3">Interest Verification</th>
+                    </tr>
+                    <tr>
+                        <th>Statement</th>
+                        <th>Calculated</th>
+                        <th>Difference</th>
+                    </tr>
+                </thead>
+                <tbody id="comparisonTable">
+                    <tr>
+                        <td id="statementInterest">0.00</td>
+                        <td id="calculatedInterest">0.00</td>
+                        <td id="differenceInterest">0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Toggles -->
+            <div class="toggles">
+                <h2>Toggles</h2>
+                <label id="interestTypeLabel">Type of Interest:
+                    <select id="interestType">
+                        <option value="compound">Compound (default)</option>
+                        <option value="straight">Straight Line</option>
+                    </select>
+                </label>
+                <label id="compoundPeriodLabel">Compound Period:
+                    <select id="compoundPeriod">
+                        <option value="annually">Annually (default)</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="semi-annually">Semi-Annually</option>
+                    </select>
+                </label>
+                <label id="dayCountMethodLabel">Method:
+                    <select id="dayCountMethod">
+                        <option value="actual/365">actual/365 (default)</option>
+                        <option value="actual/360">actual/360</option>
+                        <option value="30/360">30/360</option>
+                    </select>
+                </label>
+                <label id="dayCountConventionLabel">Day Count Convention:
+                    <select id="dayCountConvention">
+                        <option value="includeFirstExcludeLast">Include First Day, Exclude Last Day (default)</option>
+                        <option value="excludeFirstIncludeLast">Exclude First Day, Include Last Day</option>
+                    </select>
+                </label>
+                <button onclick="resetToggles()">Reset Toggles</button>
+                <button onclick="verifyInterestCalculation()">Recalculate</button>
+            </div>
+
+            <!-- Interest Calculation Schedule -->
+            <h2>Interest Calculation Schedule</h2>
+            <table id="calculationTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Days</th>
+                        <th>Interest</th>
+                        <th>Additions</th>
+                        <th>Withdrawals</th>
+                        <th>Balance</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Modal for Adding New Contract Record -->
+        <div id="addModal" class="modal">
+            <div class="modal-content">
+                <span class="close">×</span>
+                <h2>ADD NEW CONTRACT RECORD</h2>
+                <form id="addInterestForm">
+                    <label>
+                        Company Name:
+                        <input type="text" id="addCompanyName" maxlength="50" required>
+                    </label>
+                    <label>
+                        Contract Number:
+                        <input type="text" id="addContractNumber" maxlength="20" required>
+                    </label>
+                    <label>
+                        Date Opened:
+                        <input type="date" id="addDateOpened" required>
+                    </label>
+                    <label>
+                        Rate (%):
+                        <input type="number" id="addRate" step="0.01" min="0" max="100" required>
+                    </label>
+                    <button type="submit">Save</button>
+                    <div id="addError" class="error"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal for Principal Input -->
+        <div id="principalModal" class="modal">
+            <div class="modal-content">
+                <span class="close">×</span>
+                <h2>Simple Interest Principal Input</h2>
+                <p>In order to calculate simple interest please provide the following information:</p>
+                <div class="modal-table-container">
+                    <table id="principalTable">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Statement</th>
+                                <th>Principal Portion</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button id="principalOk">OK</button>
+                    <button id="principalClear">CLEAR</button>
+                    <div id="principalError" class="error"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer style="background-color: lightgray; height: 30px; padding-top: 5px; position: sticky; bottom: 0;">
+        <table style="width: 98%; margin: 5px auto;">
+            <tr>
+            <td>Copyright © 2025 M P Galvin Jr</td>
+            <td style="text-align: center;border:1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+        // Global variables
+        let simpleInterestPrincipals = {
+            beginning: null,
+            additions: [],
+            withdrawals: []
+        };
+        let previousStatementDates = { beginning: null, ending: null };
+        let justSubmittedPrincipal = false;
+
+        // Utility function to format numbers with commas and 2 decimals
+        function formatNumber(num) {
+            return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Parse formatted number string to raw float
+        function parseFormattedNumber(str) {
+            return parseFloat(str.replace(/,/g, '')) || 0;
+        }
+
+        // Make authenticated requests
+        function makeAuthenticatedRequest(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error('Please log in to perform this action');
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+            return fetch(url, options)
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            localStorage.removeItem('token');
+                            throw new Error('Unauthorized - please log in again');
+                        }
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.error || 'Request failed');
+                        });
+                    }
+                    if (response.status === 204) return { success: true };
+                    return response.json();
+                });
+        }
+
+        // Log actions
+        function logAction(action) {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            const page = `InterestEarned.html - ${action}`;
+            makeAuthenticatedRequest(`${BASE_URL}/track/log/page`, {
+                method: 'POST',
+                body: JSON.stringify({ page })
+            })
+            .catch(error => console.error(`Error logging action ${action}:`, error.message));
+        }
+
+        // Populate contract dropdown
+        function populateContractDropdown() {
+            const dropdown = document.getElementById('contractDropdown');
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned`)
+                .then(records => {
+                    dropdown.innerHTML = '<option value="">Select a Contract</option>';
+                    records.sort((a, b) => (`${a.CompanyName} - ${a.ContractNumber}`).localeCompare(`${b.CompanyName} - ${b.ContractNumber}`));
+                    records.forEach(record => {
+                        const option = document.createElement('option');
+                        option.value = record.UserIntErndID;
+                        option.textContent = `${record.CompanyName} - ${record.ContractNumber}`;
+                        dropdown.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    dropdown.innerHTML = '<option value="">Error loading contracts</option>';
+                });
+        }
+
+        // Display selected contract details
+        function displayContractDetails() {
+            const dropdown = document.getElementById('contractDropdown');
+            const tableBody = document.querySelector('#contractTable tbody');
+            const userIntErndId = dropdown.value;
+
+            if (!userIntErndId) {
+                tableBody.innerHTML = '<tr><td colspan="2">This data is required to do the interest verification.</td></tr>';
+                return;
+            }
+
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${userIntErndId}`)
+                .then(record => {
+                    tableBody.innerHTML = `
+                        <tr><td>Company Name</td><td>${record.CompanyName}</td></tr>
+                        <tr><td>Contract Number</td><td>${record.ContractNumber}</td></tr>
+                        <tr><td>Date Opened</td><td>${record.DateOpened.split('T')[0]}</td></tr>
+                        <tr><td>Rate (%)</td><td>${formatNumber(record.Rate)}</td></tr>
+                        <tr><td>Notes</td><td>${record.Notes || 'N/A'}</td></tr>
+                    `;
+                })
+                .catch(error => {
+                    tableBody.innerHTML = `<tr><td colspan="2">${error.message}</td></tr>`;
+                });
+        }
+
+        // Add a new statement row
+        function addStatementRow(type) {
+            const tableBody = document.querySelector('#statementTable tbody');
+            const referenceRow = document.querySelector(`#statementTable tr[data-type="${type}"]`);
+            const newRow = document.createElement('tr');
+            newRow.setAttribute('data-type', `${type}-additional`);
+            newRow.innerHTML = `
+                <td>${type.charAt(0).toUpperCase() + type.slice(1)}</td>
+                <td><input type="date"></td>
+                <td><input type="text" value="0" data-numeric></td>
+                <td><button class="action-btn" onclick="removeStatementRow(this)">Remove</button></td>
+            `;
+            referenceRow.parentNode.insertBefore(newRow, referenceRow.nextSibling);
+            attachAmountFormatting(newRow.querySelector('input[data-numeric]'));
+        }
+
+        // Remove a statement row
+        function removeStatementRow(button) {
+            button.parentNode.parentNode.remove();
+        }
+
+        // Format amount inputs
+        function attachAmountFormatting(input) {
+            input.value = formatNumber(parseFormattedNumber(input.value));
+            input.addEventListener('focus', function() {
+                const rawValue = parseFormattedNumber(this.value);
+                this.value = rawValue.toString();
+            });
+            input.addEventListener('blur', function() {
+                const rawValue = parseFormattedNumber(this.value);
+                if (!isNaN(rawValue)) {
+                    this.value = formatNumber(rawValue);
+                } else {
+                    this.value = formatNumber(0);
+                }
+            });
+            input.addEventListener('keypress', function(e) {
+                const char = String.fromCharCode(e.keyCode || e.which);
+                if (!/[0-9.]/.test(char) || (char === '.' && this.value.includes('.'))) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // Validate statement information (modified for date range validation)
+        function validateStatement() {
+            const errorDiv = document.getElementById('statementError');
+            const verifyButtonContainer = document.getElementById('verifyButtonContainer');
+            errorDiv.textContent = '';
+
+            // Check required dates
+            const requiredDateRows = document.querySelectorAll('#statementTable tr[data-type="valueBeginning"], #statementTable tr[data-type="valueEnding"]');
+            for (let row of requiredDateRows) {
+                const dateInput = row.querySelector('input[type="date"]');
+                if (!dateInput || !dateInput.value) {
+                    errorDiv.textContent = 'Dates for Value Beginning and Value Ending are required.';
+                    verifyButtonContainer.style.display = 'none';
+                    return;
+                }
+            }
+
+            // Get Value Beginning and Value Ending dates
+            const valueBeginningDate = new Date(document.querySelector('#statementTable tr[data-type="valueBeginning"] input[type="date"]').value);
+            const valueEndingDate = new Date(document.querySelector('#statementTable tr[data-type="valueEnding"] input[type="date"]').value);
+
+            // Validate Value Ending >= Value Beginning
+            if (valueEndingDate < valueBeginningDate) {
+                errorDiv.textContent = 'Value Ending date must be on or after Value Beginning date.';
+                verifyButtonContainer.style.display = 'none';
+                return;
+            }
+
+            // Validate transaction dates
+            const transactionRows = document.querySelectorAll('#statementTable tr[data-type="additions"], #statementTable tr[data-type="withdrawals"], #statementTable tr[data-type^="additions-additional"], #statementTable tr[data-type^="withdrawals-additional"]');
+            for (let row of transactionRows) {
+                const dateInput = row.querySelector('input[type="date"]');
+                const amountInput = row.querySelector('input[data-numeric]');
+                const amount = parseFormattedNumber(amountInput.value);
+                if (amount !== 0) {
+                    if (!dateInput || !dateInput.value) {
+                        errorDiv.textContent = 'Dates are required for Additions and Withdrawals when the amount is non-zero.';
+                        verifyButtonContainer.style.display = 'none';
+                        return;
+                    }
+                    const txDate = new Date(dateInput.value);
+                    if (txDate < valueBeginningDate || txDate > valueEndingDate) {
+                        errorDiv.textContent = 'Additions and Withdrawals dates must be between Value Beginning and Value Ending dates.';
+                        verifyButtonContainer.style.display = 'none';
+                        return;
+                    }
+                }
+            }
+
+            // Validate amounts
+            const amountInputs = document.querySelectorAll('#statementTable input[data-numeric]');
+            for (let input of amountInputs) {
+                const amount = parseFormattedNumber(input.value);
+                if (isNaN(amount) || amount < 0) {
+                    errorDiv.textContent = 'All amounts must be provided and non-negative.';
+                    verifyButtonContainer.style.display = 'none';
+                    return;
+                }
+            }
+
+            let valueBeginning = 0;
+            let totalAdditions = 0;
+            let totalWithdrawals = 0;
+            let interest = 0;
+            let valueEnding = 0;
+
+            document.querySelectorAll('#statementTable tr').forEach(row => {
+                const type = row.getAttribute('data-type');
+                const amountInput = row.querySelector('input[data-numeric]');
+                if (!amountInput) return;
+                const amount = parseFormattedNumber(amountInput.value);
+                if (type === 'valueBeginning') valueBeginning = amount;
+                else if (type === 'additions' || type.startsWith('additions-additional')) totalAdditions += amount;
+                else if (type === 'withdrawals' || type.startsWith('withdrawals-additional')) totalWithdrawals += amount;
+                else if (type === 'interest') interest = amount;
+                else if (type === 'valueEnding') valueEnding = amount;
+            });
+
+            const calculatedEnding = Number((valueBeginning + totalAdditions - totalWithdrawals + interest).toFixed(2));
+            const tolerance = 0.01;
+            if (Math.abs(calculatedEnding - valueEnding) > tolerance) {
+                errorDiv.textContent = 'Input is not adding correctly: Value Beginning + Additions – Withdrawals + Interest = Value Ending. Please correct.';
+                verifyButtonContainer.style.display = 'none';
+            } else {
+                errorDiv.textContent = '';
+                verifyButtonContainer.style.display = 'block';
+                logAction('Validate Statement');
+                const beginningDate = document.querySelector('#statementTable tr[data-type="valueBeginning"] input[type="date"]').value;
+                const endingDate = document.querySelector('#statementTable tr[data-type="valueEnding"] input[type="date"]').value;
+                if (beginningDate !== previousStatementDates.beginning || endingDate !== previousStatementDates.ending) {
+                    simpleInterestPrincipals = { beginning: null, additions: [], withdrawals: [] };
+                    previousStatementDates = { beginning: beginningDate, ending: endingDate };
+                }
+            }
+        }
+
+        // Calculate days between dates
+        function calculateDays(fromDate, toDate, method, convention) {
+            const from = new Date(fromDate);
+            const to = new Date(toDate);
+            let includeFirst = convention === 'includeFirstExcludeLast';
+            let days;
+
+            if (method === 'actual/360' || method === 'actual/365') {
+                const yearDays = method === 'actual/360' ? 360 : 365;
+                let adjustedFrom = new Date(from);
+                let adjustedTo = new Date(to);
+                if (!includeFirst) adjustedFrom.setDate(adjustedFrom.getDate() + 1);
+                if (includeFirst) adjustedTo.setDate(adjustedTo.getDate() - 1);
+                days = Math.round((adjustedTo - adjustedFrom) / (1000 * 60 * 60 * 24));
+                if (includeFirst) days += 1;
+            } else {
+                let fromDay = Math.min(from.getDate(), 30);
+                let toDay = Math.min(to.getDate(), 30);
+                if (fromDay === 31) fromDay = 30;
+                if (toDay === 31 && fromDay === 30) toDay = 30;
+                let years = to.getFullYear() - from.getFullYear();
+                let months = to.getMonth() - from.getMonth();
+                let daysDiff = toDay - fromDay;
+
+                if (daysDiff < 0) {
+                    months -= 1;
+                    daysDiff += 30;
+                }
+                if (months < 0) {
+                    years -= 1;
+                    months += 12;
+                }
+                days = years * 360 + months * 30 + daysDiff;
+                if (!includeFirst) days -= 1;
+            }
+            return Math.max(0, days);
+        }
+
+        // Calculate interest for a period
+        function calculatePeriodInterest(principal, rate, days, yearDays, interestType, compoundPeriod) {
+            const annualRate = rate / 100;
+            let interest = 0;
+            if (interestType === 'straight') {
+                interest = principal * annualRate * (days / yearDays);
+            } else {
+                let n;
+                switch (compoundPeriod) {
+                    case 'daily': n = 365; break;
+                    case 'weekly': n = 52; break;
+                    case 'monthly': n = 12; break;
+                    case 'quarterly': n = 4; break;
+                    case 'semi-annually': n = 2; break;
+                    case 'annually': n = 1; break;
+                    default: n = 1;
+                }
+                const t = days / yearDays;
+                interest = principal * (Math.pow(1 + annualRate / n, n * t) - 1);
+            }
+            return interest;
+        }
+
+        // Reset toggles to defaults and recalculate
+        function resetToggles() {
+            document.getElementById('interestType').value = 'compound';
+            document.getElementById('compoundPeriod').value = 'annually';
+            document.getElementById('dayCountMethod').value = 'actual/365';
+            document.getElementById('dayCountConvention').value = 'includeFirstExcludeLast';
+            updateToggleLabels();
+            justSubmittedPrincipal = false;
+            verifyInterestCalculation();
+        }
+
+        // Update toggle label background colors
+        function updateToggleLabels() {
+            const defaults = {
+                interestType: 'compound',
+                compoundPeriod: 'annually',
+                dayCountMethod: 'actual/365',
+                dayCountConvention: 'includeFirstExcludeLast'
+            };
+            ['interestType', 'compoundPeriod', 'dayCountMethod', 'dayCountConvention'].forEach(id => {
+                const select = document.getElementById(id);
+                const label = document.getElementById(`${id}Label`);
+                if (select.value === defaults[id]) {
+                    label.classList.remove('changed');
+                } else {
+                    label.classList.add('changed');
+                }
+            });
+        }
+
+        // Show principal modal
+        function showPrincipalModal(transactions) {
+            const modal = document.getElementById('principalModal');
+            const tableBody = document.querySelector('#principalTable tbody');
+            const errorDiv = document.getElementById('principalError');
+            tableBody.innerHTML = '';
+            errorDiv.textContent = '';
+
+            transactions.forEach((tx, index) => {
+                if (tx.type === 'valueBeginning' || tx.type === 'addition' || tx.type === 'withdrawal') {
+                    const row = document.createElement('tr');
+                    const label = tx.type === 'valueBeginning' ? 'Beginning Balance' : 
+                                  tx.type === 'addition' ? 'Addition' : 'Withdrawal';
+                    row.innerHTML = `
+                        <td>${label} (${tx.date})</td>
+                        <td>${formatNumber(tx.amount)}</td>
+                        <td><input type="text" data-numeric data-index="${index}" value=""></td>
+                    `;
+                    tableBody.appendChild(row);
+                    attachAmountFormatting(row.querySelector('input[data-numeric]'));
+                }
+            });
+
+            modal.style.display = 'block';
+        }
+
+        // Verify interest calculation
+        function verifyInterestCalculation() {
+            const verificationSection = document.getElementById('verificationSection');
+            verificationSection.style.display = 'block';
+
+            const dropdown = document.getElementById('contractDropdown');
+            const userIntErndId = dropdown.value;
+            if (!userIntErndId) {
+                alert('Please select a contract to proceed with verification.');
+                return;
+            }
+
+            const interestType = document.getElementById('interestType').value;
+
+            if (interestType === 'straight' && !justSubmittedPrincipal) {
+                if (confirm('Straight Line requires fresh principal input. Resetting toggles—proceed?')) {
+                    resetToggles();
+                    document.getElementById('interestType').value = 'compound';
+                } else {
+                    return;
+                }
+            }
+
+            justSubmittedPrincipal = false;
+
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${userIntErndId}`)
+                .then(record => {
+                    const interestType = document.getElementById('interestType').value;
+                    const compoundPeriod = document.getElementById('compoundPeriod').value;
+                    const dayCountMethod = document.getElementById('dayCountMethod').value;
+                    const dayCountConvention = document.getElementById('dayCountConvention').value;
+
+                    const transactions = [];
+                    document.querySelectorAll('#statementTable tr').forEach(row => {
+                        const type = row.getAttribute('data-type');
+                        const dateInput = row.querySelector('input[type="date"]');
+                        const amountInput = row.querySelector('input[data-numeric]');
+                        if (!amountInput) return;
+                        const date = dateInput ? dateInput.value : null;
+                        const amount = parseFormattedNumber(amountInput.value);
+
+                        if (type === 'valueBeginning') {
+                            transactions.push({ type: 'valueBeginning', date, amount });
+                        } else if (type === 'additions' || type.startsWith('additions-additional')) {
+                            if (amount !== 0) transactions.push({ type: 'addition', date, amount });
+                        } else if (type === 'withdrawals' || type.startsWith('withdrawals-additional')) {
+                            if (amount !== 0) transactions.push({ type: 'withdrawal', date, amount });
+                        } else if (type === 'interest') {
+                            document.getElementById('statementInterest').textContent = formatNumber(amount);
+                        } else if (type === 'valueEnding') {
+                            transactions.push({ type: 'valueEnding', date, amount });
+                        }
+                    });
+
+                    transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    if (interestType === 'straight' && !simpleInterestPrincipals.beginning) {
+                        showPrincipalModal(transactions);
+                        return;
+                    }
+
+                    const tableBody = document.querySelector('#calculationTable tbody');
+                    tableBody.innerHTML = '';
+
+                    let currentBalance = transactions[0].amount;
+                    let currentPrincipal = interestType === 'straight' ? simpleInterestPrincipals.beginning : currentBalance;
+                    let totalDays = 0;
+                    let totalInterest = 0;
+                    let totalAdditions = 0;
+                    let totalWithdrawals = 0;
+                    const yearDays = dayCountMethod === 'actual/360' ? 360 : 365;
+
+                    const firstRow = document.createElement('tr');
+                    firstRow.innerHTML = `
+                        <td>${transactions[0].date}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>${formatNumber(currentBalance)}</td>
+                    `;
+                    tableBody.appendChild(firstRow);
+
+                    const statementStartDate = transactions[0].date;
+                    const statementEndDate = transactions[transactions.length - 1].date;
+                    const groupedTransactions = [];
+                    let currentGroup = { date: null, additions: 0, withdrawals: 0 };
+
+                    transactions.forEach((tx, index) => {
+                        if (tx.type === 'valueBeginning' || tx.type === 'valueEnding') return;
+                        if (!currentGroup.date || tx.date === currentGroup.date) {
+                            currentGroup.date = tx.date;
+                            if (tx.type === 'addition') currentGroup.additions += tx.amount;
+                            if (tx.type === 'withdrawal') currentGroup.withdrawals += tx.amount;
+                        } else {
+                            groupedTransactions.push({ ...currentGroup });
+                            currentGroup = { date: tx.date, additions: 0, withdrawals: 0 };
+                            if (tx.type === 'addition') currentGroup.additions += tx.amount;
+                            if (tx.type === 'withdrawal') currentGroup.withdrawals += tx.amount;
+                        }
+                    });
+                    if (currentGroup.date) groupedTransactions.push({ ...currentGroup });
+
+                    let currentDate = new Date(transactions[0].date);
+
+                    if (groupedTransactions.length === 0) {
+                        const days = calculateDays(statementStartDate, statementEndDate, dayCountMethod, dayCountConvention);
+                        const interest = calculatePeriodInterest(currentPrincipal, record.Rate, days, yearDays, interestType, compoundPeriod);
+
+                        totalDays += days;
+                        totalInterest += interest;
+
+                        const txRow = document.createElement('tr');
+                        txRow.innerHTML = `
+                            <td>${statementEndDate}</td>
+                            <td>${statementStartDate}</td>
+                            <td>${statementEndDate}</td>
+                            <td>${days}</td>
+                            <td>${formatNumber(interest)}</td>
+                            <td></td>
+                            <td></td>
+                            <td>${formatNumber(currentBalance + interest)}</td>
+                        `;
+                        tableBody.appendChild(txRow);
+
+                        currentBalance += interest;
+                        if (interestType !== 'straight') currentPrincipal = currentBalance;
+                    } else {
+                        for (let i = 0; i < groupedTransactions.length; i++) {
+                            const tx = groupedTransactions[i];
+                            const nextDate = tx.date;
+
+                            const days = calculateDays(currentDate, nextDate, dayCountMethod, dayCountConvention);
+                            const interest = calculatePeriodInterest(currentPrincipal, record.Rate, days, yearDays, interestType, compoundPeriod);
+
+                            totalDays += days;
+                            totalInterest += interest;
+                            totalAdditions += tx.additions;
+                            totalWithdrawals += tx.withdrawals;
+
+                            const balanceAfterInterest = currentBalance + interest;
+                            const newBalance = balanceAfterInterest + tx.additions - tx.withdrawals;
+
+                            if (interestType === 'straight') {
+                                simpleInterestPrincipals.additions
+                                    .filter(add => add.date === nextDate)
+                                    .forEach(add => currentPrincipal += add.amount);
+                                simpleInterestPrincipals.withdrawals
+                                    .filter(wd => wd.date === nextDate)
+                                    .forEach(wd => currentPrincipal -= wd.amount);
+                                if (currentPrincipal < 0) {
+                                    tableBody.innerHTML = '';
+                                    showPrincipalModal(transactions);
+                                    document.getElementById('principalError').textContent = 'Principal cannot be negative. Please adjust principal portions.';
+                                    return;
+                                }
+                            } else {
+                                currentPrincipal = newBalance;
+                            }
+
+                            const txRow = document.createElement('tr');
+                            txRow.innerHTML = `
+                                <td>${tx.date}</td>
+                                <td>${currentDate.toISOString().split('T')[0]}</td>
+                                <td>${nextDate}</td>
+                                <td>${days}</td>
+                                <td>${formatNumber(interest)}</td>
+                                <td>${tx.additions > 0 ? formatNumber(tx.additions) : ''}</td>
+                                <td>${tx.withdrawals > 0 ? formatNumber(tx.withdrawals) : ''}</td>
+                                <td>${formatNumber(newBalance)}</td>
+                            `;
+                            tableBody.appendChild(txRow);
+
+                            currentBalance = newBalance;
+                            currentDate = new Date(nextDate);
+                        }
+
+                        const daysToEnd = calculateDays(currentDate, statementEndDate, dayCountMethod, dayCountConvention);
+                        if (daysToEnd > 0) {
+                            const finalInterest = calculatePeriodInterest(currentPrincipal, record.Rate, daysToEnd, yearDays, interestType, compoundPeriod);
+                            totalDays += daysToEnd;
+                            totalInterest += finalInterest;
+
+                            const finalBalance = currentBalance + finalInterest;
+
+                            const finalRow = document.createElement('tr');
+                            finalRow.innerHTML = `
+                                <td>${statementEndDate}</td>
+                                <td>${currentDate.toISOString().split('T')[0]}</td>
+                                <td>${statementEndDate}</td>
+                                <td>${daysToEnd}</td>
+                                <td>${formatNumber(finalInterest)}</td>
+                                <td></td>
+                                <td></td>
+                                <td>${formatNumber(finalBalance)}</td>
+                            `;
+                            tableBody.appendChild(finalRow);
+
+                            currentBalance = finalBalance;
+                            if (interestType !== 'straight') currentPrincipal = currentBalance;
+                        }
+                    }
+
+                    const totalsRow = document.createElement('tr');
+                    totalsRow.innerHTML = `
+                        <td><strong>TOTAL</strong></td>
+                        <td>${statementStartDate}</td>
+                        <td>${statementEndDate}</td>
+                        <td>${totalDays}</td>
+                        <td>${formatNumber(totalInterest)}</td>
+                        <td>${formatNumber(totalAdditions)}</td>
+                        <td>${formatNumber(totalWithdrawals)}</td>
+                        <td></td>
+                    `;
+                    tableBody.appendChild(totalsRow);
+
+                    const statementInterest = parseFloat(document.getElementById('statementInterest').textContent.replace(/,/g, ''));
+                    document.getElementById('calculatedInterest').textContent = formatNumber(totalInterest);
+                    document.getElementById('differenceInterest').textContent = formatNumber(statementInterest - totalInterest);
+
+                    logAction('Verify Interest');
+                })
+                .catch(error => {
+                    alert(`Error calculating interest: ${error.message}`);
+                });
+        }
+
+        // Modal handling for addModal
+        const addModal = document.getElementById('addModal');
+        const btnAddContract = document.getElementById('btnAddContract');
+        const spanCloseAdd = addModal.querySelector('.close');
+
+        btnAddContract.onclick = function() {
+            addModal.style.display = 'block';
+            document.getElementById('addInterestForm').reset();
+            document.getElementById('addError').textContent = '';
+        };
+
+        spanCloseAdd.onclick = function() {
+            addModal.style.display = 'none';
+        };
+
+        // Principal modal handling (modified for new validation)
+        const principalModal = document.getElementById('principalModal');
+        const spanClosePrincipal = principalModal.querySelector('.close');
+        const btnPrincipalOk = document.getElementById('principalOk');
+        const btnPrincipalClear = document.getElementById('principalClear');
+
+        spanClosePrincipal.onclick = function() {
+            principalModal.style.display = 'none';
+        };
+
+        btnPrincipalClear.onclick = function() {
+            simpleInterestPrincipals = { beginning: null, additions: [], withdrawals: [] };
+            document.getElementById('interestType').value = 'compound';
+            updateToggleLabels();
+            principalModal.style.display = 'none';
+        };
+
+        btnPrincipalOk.onclick = function() {
+            const errorDiv = document.getElementById('principalError');
+            errorDiv.textContent = '';
+            const inputs = document.querySelectorAll('#principalTable input[data-numeric]');
+            const transactions = Array.from(document.querySelectorAll('#statementTable tr'))
+                .map(row => {
+                    const type = row.getAttribute('data-type');
+                    const dateInput = row.querySelector('input[type="date"]');
+                    const amountInput = row.querySelector('input[data-numeric]');
+                    if (!amountInput) return null;
+                    return {
+                        type: type === 'valueBeginning' ? 'valueBeginning' : 
+                              (type === 'additions' || type.startsWith('additions-additional')) ? 'addition' : 
+                              (type === 'withdrawals' || type.startsWith('withdrawals-additional')) ? 'withdrawal' : null,
+                        date: dateInput ? dateInput.value : null,
+                        amount: parseFormattedNumber(amountInput.value)
+                    };
+                })
+                .filter(tx => tx && (tx.type === 'valueBeginning' || tx.type === 'addition' || tx.type === 'withdrawal') && tx.amount !== 0);
+
+            simpleInterestPrincipals = { beginning: null, additions: [], withdrawals: [] };
+            let valid = true;
+            let hasPositivePrincipal = false;
+
+            inputs.forEach((input, idx) => {
+                const amount = parseFormattedNumber(input.value);
+                const tx = transactions[idx];
+                if (isNaN(amount) || amount < 0) {
+                    errorDiv.textContent = 'All principal portions must be non-negative.';
+                    valid = false;
+                } else if (amount > tx.amount) {
+                    errorDiv.textContent = 'Principal portions cannot exceed statement amounts.';
+                    valid = false;
+                } else {
+                    if (amount > 0) hasPositivePrincipal = true;
+                    if (tx.type === 'valueBeginning') {
+                        simpleInterestPrincipals.beginning = amount;
+                    } else if (tx.type === 'addition') {
+                        simpleInterestPrincipals.additions.push({ date: tx.date, amount });
+                    } else if (tx.type === 'withdrawal') {
+                        simpleInterestPrincipals.withdrawals.push({ date: tx.date, amount });
+                    }
+                }
+            });
+
+            if (valid && !hasPositivePrincipal) {
+                errorDiv.textContent = 'At least one Principal Portion must be greater than 0.';
+                valid = false;
+            }
+
+            if (valid) {
+                principalModal.style.display = 'none';
+                document.getElementById('interestType').value = 'straight';
+                document.getElementById('compoundPeriod').value = 'annually';
+                document.getElementById('dayCountMethod').value = 'actual/365';
+                updateToggleLabels();
+                justSubmittedPrincipal = true;
+                verifyInterestCalculation();
+            }
+        };
+
+        // Event listeners
+        document.getElementById('contractDropdown').addEventListener('change', () => {
+            displayContractDetails();
+            simpleInterestPrincipals = { beginning: null, additions: [], withdrawals: [] };
+        });
+        document.getElementById('interestType').addEventListener('change', (e) => {
+            updateToggleLabels();
+            if (e.target.value === 'straight') {
+                const transactions = Array.from(document.querySelectorAll('#statementTable tr'))
+                    .map(row => {
+                        const type = row.getAttribute('data-type');
+                        const dateInput = row.querySelector('input[type="date"]');
+                        const amountInput = row.querySelector('input[data-numeric]');
+                        if (!amountInput) return null;
+                        return {
+                            type: type === 'valueBeginning' ? 'valueBeginning' : 
+                                  (type === 'additions' || type.startsWith('additions-additional')) ? 'addition' : 
+                                  (type === 'withdrawals' || type.startsWith('withdrawals-additional')) ? 'withdrawal' : null,
+                            date: dateInput ? dateInput.value : null,
+                            amount: parseFormattedNumber(amountInput.value)
+                        };
+                    })
+                    .filter(tx => tx && (tx.type === 'valueBeginning' || tx.type === 'addition' || tx.type === 'withdrawal') && tx.amount !== 0);
+                if (transactions.length > 0) showPrincipalModal(transactions);
+            }
+        });
+        document.getElementById('compoundPeriod').addEventListener('change', updateToggleLabels);
+        document.getElementById('dayCountMethod').addEventListener('change', updateToggleLabels);
+        document.getElementById('dayCountConvention').addEventListener('change', updateToggleLabels);
+
+        document.getElementById('addInterestForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const companyName = document.getElementById('addCompanyName').value.trim();
+            const contractNumber = document.getElementById('addContractNumber').value.trim();
+            const dateOpened = document.getElementById('addDateOpened').value;
+            const rate = document.getElementById('addRate').value;
+            const errorMessage = document.getElementById('addError');
+
+            errorMessage.textContent = '';
+
+            if (!companyName) {
+                errorMessage.textContent = 'Company name cannot be empty.';
+                return;
+            }
+            if (!contractNumber) {
+                errorMessage.textContent = 'Contract number cannot be empty.';
+                return;
+            }
+            if (!dateOpened) {
+                errorMessage.textContent = 'Date opened cannot be empty.';
+                return;
+            }
+            if (!rate || rate < 0 || rate > 100) {
+                errorMessage.textContent = 'Rate must be between 0 and 100.';
+                return;
+            }
+
+            const data = {
+                CompanyName: companyName,
+                ContractNumber: contractNumber,
+                DateOpened: dateOpened,
+                Rate: parseFloat(rate)
+            };
+
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                // Show confetti and alert on success
+                triggerConfetti();
+                alert('Contract added successfully');
+                addModal.style.display = 'none';
+                populateContractDropdown();
+                logAction('Add Contract');
+            })
+            .catch(error => {
+                errorMessage.textContent = error.message;
+            });
+        });
+
+        // Page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            populateContractDropdown();
+            updateToggleLabels();
+
+            document.querySelectorAll('#statementTable input[data-numeric]').forEach(input => {
+                attachAmountFormatting(input);
+            });
+
+            const page = window.location.pathname;
+            let startTime = Date.now();
+
+            makeAuthenticatedRequest(`${BASE_URL}/track/log/page`, {
+                method: 'POST',
+                body: JSON.stringify({ page })
+            })
+            .catch(error => console.error('Error tracking page view:', error.message));
+
+            window.addEventListener('beforeunload', () => {
+                const duration = Math.floor((Date.now() - startTime) / 1000);
+                if (duration > 0) {
+                    const timeSpentData = { page, duration, token };
+                    fetch('http:///track/log/time-spent', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(timeSpentData)
+                    })
+                    .catch(error => console.error('Error sending time spent:', error.message));
+                }
+            });
+        });
+    </script>
+</body>
+</html>

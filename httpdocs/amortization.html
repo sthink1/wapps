@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loan Payment Calculator</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    /* Add some basic styling */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input[type="text"], input[type="date"] {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <main>
+  <h2>Loan Payment Calculator<a class="buttons" href="home.html"><button>Home</button></a></h2>
+  <label for="principal">Principal Amount:</label>
+  <input type="text" id="principal" placeholder="Enter Principal Amount">
+  <label for="paymentDate">Date of First Payment:<br><span style="color: red; font-weight: 900;">DO NOT USE DAYS 29, 30 or 31</span></label>
+  <input type="date" id="paymentDate" onchange="validateDate()">
+  <label for="interestRate">Interest Rate (%):</label>
+  <input type="text" id="interestRate" placeholder="Enter Interest Rate">
+  <label for="term">Term (in months):</label>
+  <input type="text" id="term" placeholder="Enter Term in Months">
+  <button onclick="calculate()">Calculate</button>
+  <div id="output"></div>
+</main>
+  <footer style="background-color: lightgray; height: 30px; padding-top: 5px; position: sticky; bottom: 0;">
+      <table style="width: 98%; margin: 5px auto;">
+          <tr>
+          <td>Copyright © 2025 M P Galvin Jr</td>
+          <td style="text-align: center;border:1px solid black;">Designed by MPG Jr</td>
+          </tr>
+      </table>
+  </footer>
+  <script>
+    if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+    const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+    function formatNumber(number) {
+      return number.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    }
+    function validateDate() {
+      const paymentDate = document.getElementById('paymentDate').value;
+      const day = paymentDate.slice(8, 10);
+      if (day === "29" || day === "30" || day === "31") {
+        alert("Please choose a date other than the 29th, 30th, or 31st.");
+        document.getElementById('paymentDate').value = "";
+      }
+    }
+    function calculate() {
+      const principal = parseFloat(document.getElementById('principal').value);
+      const interestRate = parseFloat(document.getElementById('interestRate').value) / 100;
+      const term = parseInt(document.getElementById('term').value);
+      const paymentDate = document.getElementById('paymentDate').value;
+      if (!paymentDate) {
+        alert("Please enter a valid date for the first payment.");
+        return;
+      }
+      const monthlyInterestRate = interestRate / 12;
+      const monthlyPayment = (principal * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -term));
+      const totalPayment = monthlyPayment * term;
+      let table = '<table>';
+      table += '<tr><th>Payment Number</th><th>Payment Date</th><th>Payment Amount</th><th>Interest Paid</th><th>Principal Paid</th><th>Total Interest Paid</th><th>Remaining Balance</th></tr>';
+      let remainingBalance = principal;
+      let totalInterestPaid = 0;
+      let year = parseInt(paymentDate.slice(0, 4));
+      let month = parseInt(paymentDate.slice(5, 7));
+      const day = paymentDate.slice(8, 10);
+      for (let i = 1; i <= term; i++) {
+        const interestPaid = remainingBalance * monthlyInterestRate;
+        const principalPaid = monthlyPayment - interestPaid;
+        totalInterestPaid += interestPaid;
+        remainingBalance -= principalPaid;
+        if (remainingBalance < 0) remainingBalance = 0;
+        const paymentDateString = `${String(month).padStart(2, '0')}/${day}/${year}`;
+        table += '<tr>';
+        table += '<td>' + i + '</td>';
+        table += '<td>' + paymentDateString + '</td>';
+        table += '<td>$' + formatNumber(monthlyPayment) + '</td>';
+        table += '<td>$' + formatNumber(interestPaid) + '</td>';
+        table += '<td>$' + formatNumber(principalPaid) + '</td>';
+        table += '<td>$' + formatNumber(totalInterestPaid) + '</td>';
+        table += '<td>$' + formatNumber(remainingBalance) + '</td>';
+        table += '</tr>';
+        month += 1;
+        if (month > 12) {
+          month = 1;
+          year += 1;
+        }
+      }
+      table += '</table>';
+      document.getElementById('output').innerHTML = table;
+    }
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            return;
+        }
+        const page = window.location.pathname;
+        fetch(`${BASE_URL}/track/log/page`, { // Updated endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ page })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Page view tracked:', data.message || 'Success');
+        })
+        .catch(error => {
+            console.error('Error tracking page view:', error.message);
+        });
+        let startTime = Date.now();
+        window.addEventListener('beforeunload', () => {
+            const duration = Math.floor((Date.now() - startTime) / 1000);
+            console.log('Beforeunload duration:', duration);
+            if (duration > 0) {
+                const timeSpentData = {
+                    page: window.location.pathname,
+                    duration: duration,
+                    token: token
+                };
+                console.log('Sending time spent data:', timeSpentData);
+                fetch(`${BASE_URL}/track/log/time-spent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(timeSpentData)
+                })
+                .then(response => {
+                    console.log('Time spent response status:', response.status);
+                    return response.json();
+                })
+                .then(data => console.log('Time spent response:', data))
+                .catch(error => console.error('Error sending time spent:', error.message));
+            }
+        });
+    });
+  </script>
+</body>
+</html>

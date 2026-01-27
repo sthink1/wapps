@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activities</title>
+    <link rel="manifest" href="/manifest.json">
+    <!-- Add canvas-confetti script -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="js/confetti.js"></script>
+    <style>
+        /* Existing styles unchanged */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8e8d9;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .buttons button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .buttons button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            text-align: center;
+            padding: 10px;
+        }
+        table th {
+            background-color: #f2f2f2;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal form {
+            display: flex;
+            flex-direction: column;
+        }
+        .modal form input, .modal form select {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .modal form button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .modal form button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            margin-top: 5px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Activities<a class="buttons" href="home.html"><button>Home</button></a></h1>
+        <div class="buttons">
+            <button id="btnDisplay">DISPLAY</button>
+            <button id="btnAdd">ADD</button>
+            <button id="btnEdit">EDIT</button>
+            <button id="btnDelete">DELETE</button>
+        </div>
+        <table id="activitiesTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Activity</th>
+                    <th class="hidden" id="countHeader">Occurs</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be dynamically inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal for Adding New Activity -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Add New Activity</h2>
+            <form id="addActivityForm">
+                <input type="text" id="activityName" name="activity" placeholder="Enter Activity Name (max 50 characters)" required maxlength="50" autocomplete="off">
+                <button type="submit">Submit</button>
+                <div id="errorMessage" class="error"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Display Options -->
+    <div id="displayModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('displayModal').style.display='none';">×</span>
+            <h2>Display Options</h2>
+            <form id="displayOptionsForm">
+                <div class="radio-group">
+                    <label><input type="radio" name="choice" value="all" checked> List of activities (default)</label><br>
+                    <label><input type="radio" name="choice" value="notInUse"> List of activities not in use in Weights table</label><br>
+                    <label><input type="radio" name="choice" value="inUse"> List of activities in use in Weights table</label>
+                </div>
+                <button type="submit">Display</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Delete Activity -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Delete Activity</h2>
+            <form id="deleteActivityForm">
+                <label for="deleteId">Please enter User Activity ID:</label>
+                <input type="number" id="deleteId" name="deleteId" required>
+                <button type="submit">DELETE</button>
+                <div id="deleteError" class="error"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Confirm Deletion -->
+    <div id="confirmDeleteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Confirm Deletion</h2>
+            <p id="activityDetails"></p>
+            <button id="confirmDelete">CONFIRMED</button>
+            <div id="confirmDeleteError" class="error"></div>
+        </div>
+    </div>
+
+    <!-- Modal for Caution when Activity is in Use -->
+    <div id="cautionModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Caution</h2>
+            <p>
+                CAUTION – THE ACTIVITY IS ASSOCIATED WITH A WEIGHT. IF YOU DO NOT WANT IT DELETED, PLEASE CLICK CANCEL
+            </p>
+            <button id="cancelDelete">CANCEL</button>
+            <label for="confirmId">Confirm User Activity ID:</label>
+            <input type="number" id="confirmId" name="confirmId" required>
+            <button id="confirmDeleteInUse">DELETE</button>
+            <div id="confirmError" class="error"></div>
+            <table id="inUseTable">
+                <thead>
+                    <tr>
+                        <th>User Activity ID</th>
+                        <th>Activity</th>
+                        <th>Occurs</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal for Editing Activity -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Edit Activity</h2>
+            <div id="editStep1">
+                <label for="editId">Please enter User Activity ID:</label>
+                <input type="number" id="editId" name="editId" required>
+                <button id="fetchEditActivity">FETCH</button>
+                <div id="editError" class="error"></div>
+            </div>
+            <form id="editActivityForm" style="display: none;">
+                <p>User Activity ID: <span id="displayEditId"></span></p>
+                <label for="editActivityName">Activity Name:</label>
+                <input type="text" id="editActivityName" name="activity" required maxlength="50">
+                <button type="submit">SAVE CHANGE</button>
+                <div id="editFormError" class="error"></div>
+            </form>
+        </div>
+    </div>
+
+    <footer style="background-color: lightgray; height: 30px; padding-top: 5px; position: sticky; bottom: 0;">
+        <table style="width: 98%; margin: 5px auto;">
+            <tr>
+            <td>Copyright © 2025 M P Galvin Jr</td>
+            <td style="text-align: center;border:1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+        function makeAuthenticatedRequest(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('Please log in to perform this action');
+            }
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+            return fetch(url, options)
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            localStorage.removeItem('token');
+                            throw new Error('Unauthorized - please log in again');
+                        }
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.error || 'Request failed');
+                        });
+                    }
+                    if (response.status === 204) {
+                        return { success: true };
+                    }
+                    return response.json();
+                });
+        }
+
+        function fetchAndDisplayActivities(choice = 'all') {
+            let url = `${BASE_URL}/activities?choice=` + choice;
+            let showCount = choice === 'inUse';
+            const tableBody = document.querySelector('#activitiesTable tbody');
+            tableBody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+
+            makeAuthenticatedRequest(url)
+                .then(data => {
+                    const countHeader = document.getElementById('countHeader');
+                    countHeader.style.display = showCount ? 'table-cell' : 'none';
+
+                    tableBody.innerHTML = '';
+                    if (!Array.isArray(data)) {
+                        throw new Error('Unexpected response format - expected an array of activities');
+                    }
+                    if (data.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="3">No activities found.</td></tr>';
+                        return;
+                    }
+
+                    data.sort((a, b) => a.Activity.localeCompare(b.Activity));
+                    data.forEach(activity => {
+                        let rowHtml = `
+                            <td>${activity.UserActivityID}</td>
+                            <td>${activity.Activity}</td>
+                        `;
+                        if (showCount) {
+                            let count = Number(activity.countInWeights) || 0;
+                            rowHtml += `<td>${count}</td>`;
+                        }
+                        const row = document.createElement('tr');
+                        row.innerHTML = rowHtml;
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching activities:', error);
+                    tableBody.innerHTML = `<tr><td colspan="3">${error.message}</td></tr>`;
+                });
+        }
+
+        fetchAndDisplayActivities();
+
+        const addModal = document.getElementById('addModal');
+        const displayModal = document.getElementById('displayModal');
+        const deleteModal = document.getElementById('deleteModal');
+        const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+        const cautionModal = document.getElementById('cautionModal');
+        const editModal = document.getElementById('editModal');
+
+        const btnAdd = document.getElementById('btnAdd');
+        const btnDisplay = document.getElementById('btnDisplay');
+        const btnDelete = document.getElementById('btnDelete');
+        const btnEdit = document.getElementById('btnEdit');
+
+        const spanCloseAdd = addModal.querySelector('.close');
+        const spanCloseDisplay = displayModal.querySelector('.close');
+        const spanCloseDelete = deleteModal.querySelector('.close');
+        const spanCloseConfirm = confirmDeleteModal.querySelector('.close');
+        const spanCloseCaution = cautionModal.querySelector('.close');
+        const spanCloseEdit = editModal.querySelector('.close');
+
+        function closeAllModals() {
+            [addModal, displayModal, deleteModal, confirmDeleteModal, cautionModal, editModal].forEach(modal => {
+                modal.style.display = "none";
+            });
+        }
+
+        btnAdd.onclick = function() {
+            closeAllModals();
+            addModal.style.display = "block";
+            clearModal();
+        }
+        btnDisplay.onclick = function() {
+            closeAllModals();
+            displayModal.style.display = "block";
+        }
+        btnDelete.onclick = function() {
+            closeAllModals();
+            deleteModal.style.display = "block";
+        }
+        btnEdit.onclick = function() {
+            closeAllModals();
+            editModal.style.display = "block";
+            document.getElementById('editStep1').style.display = 'block';
+            document.getElementById('editActivityForm').style.display = 'none';
+            document.getElementById('editId').value = '';
+            document.getElementById('editError').textContent = '';
+            document.getElementById('editFormError').textContent = '';
+        }
+
+        spanCloseAdd.onclick = spanCloseDisplay.onclick = spanCloseDelete.onclick = spanCloseConfirm.onclick = spanCloseCaution.onclick = spanCloseEdit.onclick = function() {
+            closeAllModals();
+        }
+
+        document.getElementById('displayOptionsForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const choice = document.querySelector('input[name="choice"]:checked').value;
+            document.querySelector('input[name="choice"][value="all"]').checked = true;
+            displayModal.style.display = "none";
+            fetchAndDisplayActivities(choice);
+        });
+
+        function clearModal() {
+            document.getElementById('addActivityForm').reset();
+            document.getElementById('errorMessage').textContent = '';
+        }
+
+        document.getElementById('addActivityForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const activityName = document.getElementById('activityName').value.trim();
+            const errorMessage = document.getElementById('errorMessage');
+
+            errorMessage.textContent = '';
+            if (activityName === '') {
+                errorMessage.textContent = 'Activity name cannot be blank or just whitespace.';
+                return;
+            }
+
+            makeAuthenticatedRequest(`${BASE_URL}/activities`, {
+                method: 'POST',
+                body: JSON.stringify({ activity: activityName })
+            })
+            .then(data => {
+                // Show confetti and alert on success
+                triggerConfetti();
+                alert('Activity added successfully');
+                addModal.style.display = "none";
+                clearModal();
+                fetchAndDisplayActivities();
+            })
+            .catch(error => {
+                errorMessage.textContent = error.message;
+            });
+        });
+
+        document.getElementById('activityName').addEventListener('input', function() {
+            if (this.value.length > this.maxLength) {
+                this.value = this.value.slice(0, this.maxLength);
+            }
+        });
+
+        document.getElementById('deleteActivityForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const userActivityId = document.getElementById('deleteId').value.trim();
+            const deleteError = document.getElementById('deleteError');
+
+            deleteError.textContent = '';
+            if (userActivityId === '' || userActivityId.trim() === '') {
+                deleteError.textContent = 'User Activity ID cannot be blank or just whitespace.';
+                return;
+            }
+
+            makeAuthenticatedRequest(`${BASE_URL}/activities/${userActivityId}/check`)
+                .then(data => {
+                    if (data.inUse) {
+                        closeAllModals();
+                        cautionModal.style.display = "block";
+                        displayInUseActivities(data.id);
+                        document.getElementById('confirmId').value = userActivityId;
+                    } else {
+                        closeAllModals();
+                        confirmDeleteModal.style.display = "block";
+                        document.getElementById('activityDetails').textContent = `Are you sure you want to delete User Activity ID: ${data.id}, Activity: ${data.activity}?`;
+                    }
+                })
+                .catch(error => {
+                    deleteError.textContent = error.message;
+                });
+        });
+
+        document.getElementById('confirmDelete').addEventListener('click', function() {
+            const idMatch = document.getElementById('activityDetails').textContent.match(/ID: (\d+)/);
+            const confirmDeleteError = document.getElementById('confirmDeleteError');
+
+            if (!idMatch) {
+                confirmDeleteError.textContent = 'Invalid user activity ID.';
+                return;
+            }
+
+            const userActivityId = idMatch[1];
+            makeAuthenticatedRequest(`${BASE_URL}/activities/${userActivityId}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (response.success) {
+                    alert('Activity deleted successfully');
+                    closeAllModals();
+                    fetchAndDisplayActivities();
+                } else {
+                    throw new Error('Unexpected response from server');
+                }
+            })
+            .catch(error => {
+                confirmDeleteError.textContent = error.message;
+            });
+        });
+
+        document.getElementById('confirmDeleteInUse').addEventListener('click', function() {
+            const userActivityId = document.getElementById('confirmId').value.trim();
+            const confirmError = document.getElementById('confirmError');
+
+            confirmError.textContent = '';
+            if (userActivityId === '' || userActivityId.trim() === '') {
+                confirmError.textContent = 'User Activity ID cannot be blank or just whitespace.';
+                return;
+            }
+
+            makeAuthenticatedRequest(`${BASE_URL}/activities/${userActivityId}/check`)
+                .then(data => {
+                    if (data.inUse) {
+                        makeAuthenticatedRequest(`${BASE_URL}/activities/${userActivityId}`, {
+                            method: 'DELETE'
+                        })
+                        .then(response => {
+                            if (response.success) {
+                                alert('Activity deleted successfully');
+                                closeAllModals();
+                                fetchAndDisplayActivities();
+                            } else {
+                                throw new Error('Unexpected response from server');
+                            }
+                        })
+                        .catch(error => {
+                            confirmError.textContent = error.message;
+                        });
+                    } else {
+                        throw new Error('The User Activity ID does not match an activity in use');
+                    }
+                })
+                .catch(error => {
+                    confirmError.textContent = error.message;
+                });
+        });
+
+        document.getElementById('cancelDelete').addEventListener('click', function() {
+            closeAllModals();
+        });
+
+        function displayInUseActivities(userActivityId) {
+            const inUseTableBody = document.querySelector('#inUseTable tbody');
+            inUseTableBody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+
+            makeAuthenticatedRequest(`${BASE_URL}/activities?choice=inUse`)
+                .then(data => {
+                    if (!Array.isArray(data)) {
+                        throw new Error('Unexpected response format - expected an array of activities');
+                    }
+
+                    inUseTableBody.innerHTML = '';
+                    const matchingActivities = data.filter(activity => activity.UserActivityID == userActivityId);
+                    if (matchingActivities.length === 0) {
+                        inUseTableBody.innerHTML = '<tr><td colspan="3">No matching activities in use.</td></tr>';
+                        return;
+                    }
+
+                    matchingActivities.sort((a, b) => a.Activity.localeCompare(b.Activity));
+                    matchingActivities.forEach(activity => {
+                        const row = `<tr>
+                            <td>${activity.UserActivityID}</td>
+                            <td>${activity.Activity}</td>
+                            <td>${activity.countInWeights || 0}</td>
+                        </tr>`;
+                        inUseTableBody.innerHTML += row;
+                    });
+                })
+                .catch(error => {
+                    inUseTableBody.innerHTML = `<tr><td colspan="3">${error.message}</td></tr>`;
+                });
+        }
+
+        document.getElementById('fetchEditActivity').addEventListener('click', function() {
+            const userActivityId = document.getElementById('editId').value.trim();
+            const editError = document.getElementById('editError');
+
+            editError.textContent = '';
+            if (userActivityId === '') {
+                editError.textContent = 'User Activity ID cannot be blank or just whitespace.';
+                return;
+            }
+
+            makeAuthenticatedRequest(`${BASE_URL}/activities/${userActivityId}`)
+                .then(activity => {
+                    document.getElementById('displayEditId').textContent = activity.UserActivityID;
+                    document.getElementById('editActivityName').value = activity.Activity;
+                    document.getElementById('editStep1').style.display = 'none';
+                    document.getElementById('editActivityForm').style.display = 'block';
+                })
+                .catch(error => {
+                    editError.textContent = error.message;
+                });
+        });
+
+        document.getElementById('editActivityForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const userActivityId = document.getElementById('editId').value.trim();
+            const activityName = document.getElementById('editActivityName').value.trim();
+            const editFormError = document.getElementById('editFormError');
+
+            editFormError.textContent = '';
+            if (activityName === '') {
+                editFormError.textContent = 'Activity name cannot be blank.';
+                return;
+            }
+
+            const updateData = { activity: activityName };
+            makeAuthenticatedRequest(`${BASE_URL}/activities/${userActivityId}`, {
+                method: 'PUT',
+                body: JSON.stringify(updateData)
+            })
+            .then(response => {
+                if (response.success) {
+                    alert('Activity updated successfully');
+                    closeAllModals();
+                    fetchAndDisplayActivities();
+                } else {
+                    throw new Error('Unexpected response from server');
+                }
+            })
+            .catch(error => {
+                editFormError.textContent = error.message;
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const page = window.location.pathname;
+            let startTime = Date.now();
+
+            makeAuthenticatedRequest(`${BASE_URL}/track/log/page`, {
+                method: 'POST',
+                body: JSON.stringify({ page })
+            })
+            .then(data => {
+                console.log('Page view tracked:', data.message);
+            })
+            .catch(error => {
+                console.error('Error tracking page view:', error.message);
+            });
+
+            window.addEventListener('beforeunload', () => {
+                const duration = Math.floor((Date.now() - startTime) / 1000);
+                if (duration > 0) {
+                    const timeSpentData = {
+                        page: window.location.pathname,
+                        duration: duration,
+                        token: token
+                    };
+                    fetch(`${BASE_URL}/track/log/time-spent`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(timeSpentData)
+                    })
+                    .then(response => {
+                        console.log('Time spent response status:', response.status);
+                        return response.json();
+                    })
+                    .then(data => console.log('Time spent response:', data))
+                    .catch(error => console.error('Error sending time spent:', error.message));
+                }
+            });
+        });
+    </script>
+</body>
+</html>
