@@ -9,6 +9,7 @@
 <body>
     <h1>Verbal Town Notification<a class="buttons" href="home.html"><button>Home</button></a></h1>
     <p>When you change towns, an audio notification will be triggered.</p>
+    <h3 style="background-color: yellow;">Click "Enable Location Alerts" to start!</h3>
     <button onclick="startGeolocation()">Enable Location Alerts</button>
     <p id="status">Status: Waiting for location access...</p>
 
@@ -41,7 +42,7 @@
         function getTown(lat, lon) {
             fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
                 headers: {
-                    'User-Agent': 'TownNotificationApp/1.0 (your.email@example.com)' // Replace with your app name and contact
+                    'User-Agent': 'TownNotificationApp/1.0 (sthink6386@gmail.com)' // NOTE:MUST CHANGE EMAIL ADDRESS IF NEW EMAIL USED
                 }
             })
                 .then(response => response.json())
