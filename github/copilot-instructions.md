@@ -1,0 +1,1 @@
+Always refer to CLAUDE.md for project standards.
