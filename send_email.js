@@ -22,7 +22,7 @@ Message: ${message}
 
   // Create HTML version
   const htmlBody = `
-<h2Contact Form Submission</h2>
+<h2>Contact Form Submission</h2>
 <p><strong>Name:</strong> ${name}</p>
 <p><strong>Email:</strong> ${email}</p>
 <p><strong>Phone:</strong> ${phone || 'N/A'}</p>
