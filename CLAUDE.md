@@ -36,7 +36,7 @@
 
 ### Development & Email
 - **Environment Variables**: dotenv ^16.3.1
-- **Email Service**: Custom `send_email.js` (nodemailer-based)
+- **Email Service**: Custom `send_email.js` (Resend HTTP-based)
 - **Reverse Geocoding**: Nominatim (OSM API proxy via `/routes/geocode.js`)
 
 ---
@@ -225,9 +225,11 @@ DB_PORT=3306
 # Authentication
 JWT_SECRET=<random-long-string>
 
-# Email (if using)
-EMAIL_USER=<sender-email>
-EMAIL_PASSWORD=<app-password>
+# Email (Resend)
+RESEND_API_KEY=<your-api-key>
+MAIL_FROM_ADDRESS=<sender-email>
+MAIL_FROM_NAME=<sender-name>
+MAIL_TO_ADDRESS=<recipient-email>
 
 # Server
 PORT=8080

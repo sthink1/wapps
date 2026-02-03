@@ -178,14 +178,16 @@ GET /track/stats:
 |---------|---------|-----|-----------|
 | `canvas-confetti` | @1.9.3 (CDN) | Celebration animation | httpdocs/js/confetti.js |
 | `dompurify` | 2.3.10 (CDN) | Input sanitization | httpdocs/propertyInfo.html |
+| `resend` | ^3.x | Email via HTTP API (replaced nodemailer; Render blocked SMTP Sep 2025) | send_email.js, contact forms |
 
 ### External APIs
-| Service | Purpose | Used Where |
-|---------|---------|-----------|
-| Nominatim (OSM) | Reverse geocoding | TownNotice.html, geocode.js |
-| NOAA Flood Maps | Property research | propertyInfo.html |
-| Zillow | Property info | propertyInfo.html |
-| CrimeGrade | Crime statistics | propertyInfo.html |
+| Service | Purpose | Used Where | Notes |
+|---------|---------|-----------|-------|
+| Nominatim (OSM) | Reverse geocoding | TownNotice.html, geocode.js | — |
+| NOAA Flood Maps | Property research | propertyInfo.html | — |
+| Zillow | Property info | propertyInfo.html | — |
+| CrimeGrade | Crime statistics | propertyInfo.html | — |
+| Resend | Transactional & contact emails | ContactUs.html, send_email.js | API-based (HTTPS); no SMTP ports required; uses `RESEND_API_KEY` in .env |
 
 ---
 
