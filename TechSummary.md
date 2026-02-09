@@ -988,6 +988,95 @@ const [weight] = await pool.query(
 
 ---
 
+## 10. Schema Evolution & Extensibility
+
+### Adding New Tables with Foreign Keys
+
+**Best Practice: Always include FK constraints with CASCADE**
+
+```sql
+CREATE TABLE NewFeatureT (
+  FeatureID INT AUTO_INCREMENT PRIMARY KEY,
+  UserID INT NOT NULL,
+  ParentFeatureID INT,
+  Data VARCHAR(1000),
+  CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Always add indexes for foreign keys
+  INDEX idx_user (UserID),
+  INDEX idx_parent (ParentFeatureID),
+  
+  -- Add FK constraints with CASCADE
+  CONSTRAINT NewFeatureT_ibfk_1 
+    FOREIGN KEY (UserID) REFERENCES UsersT (UserID) 
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  
+  CONSTRAINT NewFeatureT_ibfk_2 
+    FOREIGN KEY (ParentFeatureID) REFERENCES NewFeatureT (FeatureID) 
+    ON DELETE CASCADE ON UPDATE CASCADE
+);
+```
+
+**Why CASCADE?**
+- Automatic cleanup: Deleting a user removes all related feature records
+- No orphaned data: Child records can't reference missing parents
+- Consistent with existing schema: All current tables use CASCADE
+- Less code: No need to manually handle cascades in transactions
+
+### Testing FK Behavior (Especially on MySQL 5.5)
+
+```javascript
+// Test deletion cascade
+test('DELETE user should cascade to new table', async () => {
+  const userId = 123;
+  
+  // Insert test data
+  await pool.query('INSERT INTO NewFeatureT (FeatureID, UserID, Data) VALUES (?, ?, ?)', 
+    [1, userId, 'test']);
+  
+  // DELETE user
+  await pool.query('DELETE FROM UsersT WHERE UserID = ?', [userId]);
+  
+  // Verify CASCADE deleted child records
+  const [remaining] = await pool.query('SELECT * FROM NewFeatureT WHERE UserID = ?', [userId]);
+  expect(remaining.length).toBe(0);
+});
+```
+
+### Altering Existing Tables (Advanced)
+
+**Never disable foreign key checks in production.** Test changes locally & on remote MySQL 5.5 before deploying.
+
+```javascript
+// Safe way to add a new FK constraint
+await withTransaction(async (connection) => {
+  // First, verify no orphaned data exists
+  const [orphans] = await connection.query(
+    `SELECT * FROM WeightsT WHERE ActivityID NOT IN (SELECT ActivityID FROM ActivitiesT)`
+  );
+  if (orphans.length > 0) {
+    throw new Error('Orphaned data detected; cannot add FK constraint');
+  }
+  
+  // If safe, add constraint
+  await connection.query(
+    'ALTER TABLE WeightsT ADD CONSTRAINT...' 
+  );
+});
+```
+
+### Common Schema Pitfalls
+
+| Pitfall | Problem | Solution |
+|---------|---------|----------|
+| Omitting FK constraints | Orphaned data possible | Always include CASCADE constraints |
+| Circular dependencies | Deadlocks on deletion | Design hierarchically (avoid cycles) |
+| Testing only on MySQL 8.0 | Fails on MySQL 5.5 | Test on both local & remote |
+| Manual cascade logic | Code duplication & bugs | Use database FK CASCADE |
+| Not using transactions | Partial deletes if error occurs | Wrap in withTransaction |
+
+---
+
 ## Support & Debugging
 
 ### Common Issues & Fixes
@@ -998,7 +1087,7 @@ const [weight] = await pool.query(
 | MySQL 5.5 date error | DATE parsing fails | Ensure YYYY-MM-DD format in code |
 | Duplicate entry | 400 error with "(be)" | Check unique constraints; may need to delete old entry |
 | Activity limit (5) | Weight save fails | Remove extra activities before saving |
-| FK violation | 1451 error | Don't add FK constraints; handle in code |
+| FK violation | 1451 error | Check FK definitions; ensure ON DELETE CASCADE is applied; use transactions for complex deletes |
 | Pool exhausted | Request timeout | Increase connectionLimit in dbConnection.js |
 
 ### Logging for Debugging

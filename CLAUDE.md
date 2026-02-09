@@ -254,7 +254,7 @@ NODE_ENV=development
 ## Important Notes for Contributors
 
 1. **Always use `withTransaction()`** for multi-step operations (INSERT + UPDATE)
-2. **Never add FK constraints**; handle cascade logic in application code
+2. **Always add FK constraints** with `ON DELETE CASCADE ON UPDATE CASCADE` for new tables; use transactions for additional control and validation
 3. **Date handling**: Accept YYYY-MM-DD from frontend; store as DATE; return as YYYY-MM-DD string
 4. **User-Specific IDs**: Always use `getNextUserSpecificID()`, never auto-increment
 5. **Validation**: Always validate input with express-validator before DB queries
