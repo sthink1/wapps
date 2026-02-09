@@ -82,9 +82,10 @@ PORT=3000 NODE_ENV=production npm start
 ## Database Rules & Architecture
 
 ### Critical Constraints
-1. **No Formal Foreign Keys**: Tables reference each other by ID, but no FK constraints exist in the schema.
-   - Reason: MySQL 5.5 compatibility and manual transaction control via `utils.js::withTransaction()`
-   - Implication: Cascading deletes are handled in application code, not database.
+1. **Foreign Key Constraints**: The live database schema includes foreign key constraints with `ON DELETE CASCADE ON UPDATE CASCADE` on all child tables:
+   - Applied to: `ActivitiesT`, `InterestEarnedT`, `TrackUsageT`, `WeightsT`, `WeightActivitiesT`, `UserSequenceT`
+   - Impact: Cascading deletes are enforced at the database level when users are deleted
+   - Note: Application code (`utils.js::withTransaction()`) still provides additional transaction control for complex operations
 
 2. **MySQL 5.5 Compatibility**:
    - No `JSON` data type (avoid storing JSON columns)
@@ -94,7 +95,8 @@ PORT=3000 NODE_ENV=production npm start
 
 3. **User-Specific Sequences**: `UserSequenceT` table
    - Replaces auto-increment for user-specific ID generation
-   - No FK to `UsersT`; synchronized via application logic in `dbConnection.js::getNextUserSpecificID()`
+   - Has FK to `UsersT` with `ON DELETE CASCADE` (no manual intervention needed)
+   - Synchronized via `dbConnection.js::getNextUserSpecificID()`
    - Used for: `UserWeightID`, `UserActivityID`, `UserIntErndID`, etc.
 
 ### Key Tables & Relationships

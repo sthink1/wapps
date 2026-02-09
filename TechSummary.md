@@ -46,7 +46,7 @@ The app tracks weight/activities, calculates loan amortization, verifies interes
 ┌────────────────────▼────────────────────────┐
 │   Database (MySQL 5.5–8.0)                  │
 │  - 8 core tables (Users, Weights, etc.)     │
-│  - No FK constraints (app-managed)          │
+│  - FK constraints with CASCADE rules        │
 │  - UserSequenceT for ID generation          │
 └─────────────────────────────────────────────┘
 ```
@@ -586,7 +586,7 @@ DATABASE TRANSACTION (withTransaction)
     ├─ BEGIN TRANSACTION
     ├─ Execute queries on 'connection' object
     ├─ Generate user-specific IDs (getNextUserSpecificID)
-    ├─ Handle relationships (no FK constraints)
+    ├─ Handle relationships (FK constraints enforced)
     │
     ├─ ON SUCCESS: COMMIT
     │  └─ Return response { success: true, data }
@@ -643,41 +643,45 @@ USER SEES RESULT
 
 ## 8. Constraints to Respect
 
-### ⚠️ CRITICAL: No Foreign Key Constraints
+### ✅ Foreign Key Constraints with CASCADE Rules
 
-**Why?** MySQL 5.5 compatibility + application-level control
+**Configuration:** All child tables include `ON DELETE CASCADE ON UPDATE CASCADE` constraints:
+- `ActivitiesT` → `UsersT`
+- `InterestEarnedT` → `UsersT`
+- `TrackUsageT` → `UsersT`
+- `WeightsT` → `UsersT`
+- `WeightActivitiesT` → `WeightsT`, `ActivitiesT`, `UsersT`
+- `UserSequenceT` → `UsersT`
 
 **Impact:**
-- Deleting a user does NOT cascade-delete their weights
-- Deleting an activity does NOT remove weight-activity links
-- **You must handle cascades in application code**
+- Deleting a user automatically deletes all related weights, activities, interest records, and tracking data
+- Deleting an activity automatically removes all weight-activity links
+- The database enforces referential integrity at the constraint level
 
-**Example: Delete Weight with Activities**
+**Best Practice: Transactions**
+Even with CASCADE constraints, use transactions in your code for data consistency:
 ```javascript
-// ✅ CORRECT (what the code does)
-DELETE FROM WeightActivitiesT WHERE WeightID = ? AND UserID = ?;
-DELETE FROM WeightsT WHERE WeightID = ? AND UserID = ?;
-
-// ❌ WRONG (would fail without FK)
-// Trying to delete weight before removing activity links
-DELETE FROM WeightsT WHERE WeightID = ?;
-// ERROR: FK constraint violated
-
-// ❌ WRONG (missing logic)
-// Just deleting weight and leaving orphaned activity links
+// ✅ CORRECT (with transaction wrapper)
+await withTransaction(async (connection) => {
+  // Application-level validation and coordination
+  const result = await connection.query('DELETE FROM WeightsT WHERE WeightID = ? AND UserID = ?', [weightId, userId]);
+  // FK CASCADE automatically handles WeightActivitiesT cleanup
+});
 ```
 
 **When Adding New Tables:**
 ```sql
--- ✅ DO THIS (no FK constraint)
+-- ✅ DO THIS (with FK constraint)
 CREATE TABLE MyTable (
   MyID INT AUTO_INCREMENT PRIMARY KEY,
-  UserID INT NOT NULL,      -- References UsersT but NO CONSTRAINT
-  ActivityID INT,           -- References ActivitiesT but NO CONSTRAINT
-  INDEX idx_user (UserID)   -- Add index for query performance
+  UserID INT NOT NULL,
+  ActivityID INT,
+  INDEX idx_user (UserID),
+  CONSTRAINT MyTable_ibfk_1 FOREIGN KEY (UserID) REFERENCES UsersT (UserID) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT MyTable_ibfk_2 FOREIGN KEY (ActivityID) REFERENCES ActivitiesT (ActivityID) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- ❌ DON'T DO THIS
+-- ❌ DON'T DO THIS (omitting FK constraints)
 ALTER TABLE MyTable 
 ADD CONSTRAINT fk_user FOREIGN KEY (UserID) REFERENCES UsersT(UserID);
 ```
@@ -1013,7 +1017,7 @@ logger.info(`Weight data: ${JSON.stringify(req.body)}`);
 ```
 ☐ Set NODE_ENV=production in remote server
 ☐ Verify .env is loaded (DB_HOST, JWT_SECRET, etc.)
-☐ Test on remote MySQL 5.5 (date handling, no FK, etc.)
+☐ Test on remote MySQL 5.5 (date handling, FK CASCADE, etc.)
 ☐ Disable SSL in connection if remote is MySQL 5.5
 ☐ Run full test suite (login, weight CRUD, activities, etc.)
 ☐ Verify CORS origins are set correctly for production domain
