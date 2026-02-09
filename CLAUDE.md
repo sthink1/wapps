@@ -316,7 +316,7 @@ root/
 ## Version History
 
 - **Current**: Node 18+, Express 4.18.2, MySQL 5.5–8.0 compatible
-- **Last Updated**: [Current Date]
+- **Last Updated**: February 09, 2026
 - **Maintainers**: MPG Jr and team
 
 ---
