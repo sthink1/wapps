@@ -1,13 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ETF Tracking</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETF</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #f4f4f4;
+    padding-bottom: 40px;
+}
+.container {
+    text-align: center;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    width: 460px;
+}
+button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    margin: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+button:hover {
+    background-color: #45a049;
+}
+footer {
+    background-color: lightgray;
+    height: 30px;
+    padding-top: 5px;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    text-align: center;
+}
+</style>
 </head>
+
 <body>
-    <h1>ETF Tracking</h1>
-        <p>This is a test page for the ETF Tracking module.</p>
-        <button onclick="window.location.href='home.html'">Back to Home</button>
+<div class="container">
+    <h2>ETF</h2>
+
+    <button onclick="goSymbols()">Symbols</button>
+    <button onclick="goCompare()">Compare</button>
+    <button onclick="goActivity()">Activity</button>
+
+    <button onclick="goHome()">Back</button>
+</div>
+
+<footer>
+ETF Project
+</footer>
+
+<script>
+function goSymbols(){ window.location.href="etfSymbol.html"; }
+function goCompare(){ window.location.href="etfCompare.html"; }
+function goActivity(){ window.location.href="etfActivity.html"; }
+function goHome(){ window.location.href="home.html"; }
+</script>
+
 </body>
 </html>
