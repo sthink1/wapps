@@ -36,6 +36,45 @@ CREATE TABLE `ActivitiesT` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `etfCategoryT`
+--
+
+DROP TABLE IF EXISTS `etfCategoryT`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `etfCategoryT` (
+  `etfCategoryID` int(11) NOT NULL AUTO_INCREMENT,
+  `category` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `TimeStamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`etfCategoryID`),
+  UNIQUE KEY `unique_category_user` (`category`, `UserID`),
+  CONSTRAINT `fk_etfCategory_user` FOREIGN KEY (`UserID`) REFERENCES `UsersT` (`UserID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `etfSymbolT`
+--
+
+DROP TABLE IF EXISTS `etfSymbolT`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `etfSymbolT` (
+  `etfSymbolID` int(11) NOT NULL AUTO_INCREMENT,
+  `symbol` varchar(15) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `etfCategoryID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `TimeStamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`etfSymbolID`),
+  UNIQUE KEY `unique_symbol_user` (`symbol`, `UserID`),
+  CONSTRAINT `fk_etfSymbol_category` FOREIGN KEY (`etfCategoryID`) REFERENCES `etfCategoryT` (`etfCategoryID`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_etfSymbol_user` FOREIGN KEY (`UserID`) REFERENCES `UsersT` (`UserID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `InterestEarnedT`
 --
 

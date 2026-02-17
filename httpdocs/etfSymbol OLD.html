@@ -104,6 +104,7 @@ footer {
                     <th>Category</th>
                     <th>Symbol</th>
                     <th>Name</th>
+                    <th>Valid</th>
                     <th>Revise</th>
                     <th>Delete</th>
                 </tr>
@@ -203,35 +204,25 @@ async function saveSymbol(){
         return;
     }
 
-    document.getElementById('inputMessage').innerText = "Validating...";
+    const response = await fetch('/etf/symbol', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ symbol, etfCategoryID })
+    });
 
-    try {
+    const data = await response.json();
 
-        const response = await fetch('/etf/symbol', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ symbol, etfCategoryID })
-        });
-
-        const data = await response.json();
-
-        if(response.ok){
-            document.getElementById('inputMessage').innerText =
-                `✔ ${data.data.name}`;
-            clearForm();
-        } else {
-            document.getElementById('inputMessage').innerText = data.message;
-        }
-
-    } catch(err){
+    if(response.ok){
         document.getElementById('inputMessage').innerText =
-            "Symbol validation service unavailable";
+            `Saved (${data.data.valid ? "✔ Valid" : "✖ Invalid"})`;
+        clearForm();
+    } else {
+        document.getElementById('inputMessage').innerText = data.message;
     }
 }
-
 
 /* =========================
    LOAD SYMBOLS
@@ -268,6 +259,7 @@ function renderTable(symbols){
             </td>
             <td>${sym.symbol}</td>
             <td>${sym.name || ""}</td>
+            <td>${sym.valid ? "✔" : "X"}</td>
             <td><input type="checkbox" id="rev-${sym.etfSymbolID}"></td>
             <td><input type="checkbox" id="del-${sym.etfSymbolID}"></td>
         `;
@@ -286,7 +278,6 @@ function renderTable(symbols){
         });
     });
 }
-
 
 /* =========================
    FILTER

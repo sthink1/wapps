@@ -7,7 +7,6 @@ const logger = require('../logger');
 const pool = require('../dbConnection');
 const { withTransaction } = require('../utils');
 const auth = require('../middleware/auth');
-const FMP_API_KEY = process.env.FMP_API_KEY;
 
 /* =====================================================
    POST /etf/category
@@ -236,52 +235,45 @@ router.post(
                     throw new Error("Symbol already exists (be)");
                 }
 
-               /* ---- Validate via FMP ---- */
-let name = null;
+                /* ---- Verify via Yahoo ---- */
+                let valid = 0;
+                let name = null;
 
-try {
+                try {
+                    const url =
+                        `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${upperSymbol}`;
 
-    const url = `https://financialmodelingprep.com/api/v3/quote/${upperSymbol}?apikey=${FMP_API_KEY}`;
+                    const response = await axios.get(url, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                    });
 
-    const response = await axios.get(url);
+                    if (
+                        response.data?.quoteResponse?.result?.length > 0
+                    ) {
+                        valid = 1;
+                        const quote = response.data.quoteResponse.result[0];
+                        name = quote.longName || quote.shortName || null;
+                    }
 
-    if (!Array.isArray(response.data) || response.data.length === 0) {
-        throw new Error("Symbol not found (be)");
-    }
-
-    name = response.data[0].name;
-
-    if (!name) {
-        throw new Error("Symbol not found (be)");
-    }
-
-} catch (err) {
-
-    // If FMP explicitly says symbol not found
-    if (err.message.endsWith("(be)")) {
-        throw err;
-    }
-
-    // Otherwise assume FMP is unavailable
-    logger.error(`FMP validation failed for ${upperSymbol}: ${err.message}`);
-    throw new Error("FMP service unavailable. Try again later.(be)");
-}
-
+                } catch (err) {
+                    logger.warn(`POST /etf/symbol: Yahoo Finance validation failed for ${upperSymbol}: ${err.message}`);
+                    valid = 0;
+                }
 
                 /* ---- Insert ---- */
                 await connection.query(
-    `INSERT INTO etfSymbolT
-     (symbol, name, etfCategoryID, UserID)
-     VALUES (?, ?, ?, ?)`,
-    [upperSymbol, name, etfCategoryID, userId]
-);
-
+                    `INSERT INTO etfSymbolT
+                     (symbol, name, valid, etfCategoryID, UserID)
+                     VALUES (?, ?, ?, ?, ?)`,
+                    [upperSymbol, name, valid, etfCategoryID, userId]
+                );
 
                 res.json({
-    message: "Symbol saved",
-    data: { symbol: upperSymbol, name }
-});
-
+                    message: "Symbol saved",
+                    data: { symbol: upperSymbol, name, valid }
+                });
 
             });
 
@@ -314,6 +306,7 @@ router.get('/symbol', auth, async (req, res) => {
                 `SELECT s.etfSymbolID,
                         s.symbol,
                         s.name,
+                        s.valid,
                         c.category,
                         s.etfCategoryID
                  FROM etfSymbolT s
