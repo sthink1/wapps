@@ -236,7 +236,7 @@ router.post(
                     throw new Error("Symbol already exists (be)");
                 }
 
-/* ---- Validate via Polygon ---- */
+        /* ---- Validate via Polygon ---- */
 let name = null;
 
 try {
@@ -250,24 +250,27 @@ try {
         !response.data.results ||
         response.data.results.active !== true
     ) {
-        throw new Error("Symbol not found.(be)");
+        throw new Error("Symbol not found. Please check symbol entered.(be)");
     }
 
     name = response.data.results.name;
 
     if (!name) {
-        throw new Error("Symbol not found.(be)");
+        throw new Error("Symbol not found. Please check symbol entered.(be)");
     }
 
 } catch (err) {
 
-    if (err.message.endsWith("(be)")) {
-        throw err;
+    // If Polygon returned 404 (invalid symbol)
+    if (err.response && err.response.status === 404) {
+        throw new Error("Symbol not found. Please check symbol entered.(be)");
     }
 
-    logger.error(`Polygon validation failed for ${upperSymbol}: ${err.message}`);
-    throw new Error("Reference data service unavailable.(be)");
+    // For everything else, treat it the same way
+    logger.error(`Polygon validation error for ${upperSymbol}: ${err.message}`);
+    throw new Error("Symbol not found. Please check symbol entered.(be)");
 }
+
         /* ---- Insert ---- */
                 await connection.query(
     `INSERT INTO etfSymbolT

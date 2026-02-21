@@ -66,6 +66,7 @@ CREATE TABLE `etfSymbolT` (
   `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `etfCategoryID` int(11) NOT NULL,
   `UserID` int(11) NOT NULL,
+  `listDate` date DEFAULT NULL,
   `TimeStamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`etfSymbolID`),
   UNIQUE KEY `unique_symbol_user` (`symbol`, `UserID`),

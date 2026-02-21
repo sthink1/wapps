@@ -104,7 +104,6 @@ footer {
                     <th>Category</th>
                     <th>Symbol</th>
                     <th>Name</th>
-                    <th>List Date</th>
                     <th>Revise</th>
                     <th>Delete</th>
                 </tr>
@@ -269,7 +268,6 @@ function renderTable(symbols){
             </td>
             <td>${sym.symbol}</td>
             <td>${sym.name || ""}</td>
-            <td>${sym.listDate ? sym.listDate.substring(0,10) : ""}</td>
             <td><input type="checkbox" id="rev-${sym.etfSymbolID}"></td>
             <td><input type="checkbox" id="del-${sym.etfSymbolID}"></td>
         `;
