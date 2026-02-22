@@ -96,7 +96,6 @@ router.get('/category', auth, async (req, res) => {
 /* =====================================================
    PUT /etf/category
 ===================================================== */
-
 router.put(
     '/category/:id',
     auth,
@@ -145,7 +144,6 @@ router.put(
 /* =====================================================
    DELETE /etf/category
 ===================================================== */
-
 router.delete('/category/:id', auth, async (req, res) => {
 
     const userId = req.user.userId;
@@ -155,7 +153,8 @@ router.delete('/category/:id', auth, async (req, res) => {
 
         await withTransaction(async (connection) => {
 
-            /* ---- Check for existing symbols ---- */
+         
+         /* ---- Check for existing symbols ---- */
             const [symbols] = await connection.query(
                 `SELECT COUNT(*) AS count
                  FROM etfSymbolT
@@ -200,7 +199,6 @@ router.delete('/category/:id', auth, async (req, res) => {
 /* =====================================================
    POST /etf/symbol
 ===================================================== */
-
 router.post(
     '/symbol',
     auth,
@@ -224,6 +222,7 @@ router.post(
 
                 const upperSymbol = symbol.toUpperCase();
 
+                
                 /* ---- Duplicate Check ---- */
                 const [existing] = await connection.query(
                     `SELECT 1 FROM etfSymbolT
@@ -236,55 +235,58 @@ router.post(
                     throw new Error("Symbol already exists (be)");
                 }
 
-        /* ---- Validate via Polygon ---- */
-let name = null;
+                /* ---- Validate via Polygon ---- */
+                let name = null;
+                let listDate = null;
 
-try {
+                try {
 
-    const url = `https://api.polygon.io/v3/reference/tickers/${upperSymbol}?apiKey=${POLYGON_API_KEY}`;
+                    const url = `https://api.polygon.io/v3/reference/tickers/${upperSymbol}?apiKey=${POLYGON_API_KEY}`;
 
-    const response = await axios.get(url);
+                    const response = await axios.get(url);
 
-    if (
-        response.data.status !== "OK" ||
-        !response.data.results ||
-        response.data.results.active !== true
-    ) {
-        throw new Error("Symbol not found. Please check symbol entered.(be)");
-    }
+                    if (
+                        response.data.status !== "OK" ||
+                        !response.data.results ||
+                        response.data.results.active !== true
+                    ) {
+                        throw new Error("Symbol not found. Please check symbol entered.(be)");
+                    }
 
-    name = response.data.results.name;
+                    name = response.data.results.name;
+                    listDate = response.data.results.list_date || null;
 
-    if (!name) {
-        throw new Error("Symbol not found. Please check symbol entered.(be)");
-    }
+                    if (!name) {
+                        throw new Error("Symbol not found. Please check symbol entered.(be)");
+                    }
 
-} catch (err) {
+                } catch (err) {
 
-    // If Polygon returned 404 (invalid symbol)
-    if (err.response && err.response.status === 404) {
-        throw new Error("Symbol not found. Please check symbol entered.(be)");
-    }
+                   
+                   // If Polygon returned 404 (invalid symbol)
+                    if (err.response && err.response.status === 404) {
+                        throw new Error("Symbol not found. Please check symbol entered.(be)");
+                    }
 
-    // For everything else, treat it the same way
-    logger.error(`Polygon validation error for ${upperSymbol}: ${err.message}`);
-    throw new Error("Symbol not found. Please check symbol entered.(be)");
-}
+                    
+                    // For everything else, treat it the same way
+                    logger.error(`Polygon validation error for ${upperSymbol}: ${err.message}`);
+                    throw new Error("Symbol not found. Please check symbol entered.(be)");
+                }
 
-        /* ---- Insert ---- */
+                
+                /* ---- Insert ---- */
                 await connection.query(
-    `INSERT INTO etfSymbolT
-     (symbol, name, etfCategoryID, UserID)
-     VALUES (?, ?, ?, ?)`,
-    [upperSymbol, name, etfCategoryID, userId]
-);
-
+                    `INSERT INTO etfSymbolT
+                     (symbol, name, listDate, etfCategoryID, UserID)
+                     VALUES (?, ?, ?, ?, ?)`,
+                    [upperSymbol, name, listDate, etfCategoryID, userId]
+                );
 
                 res.json({
-    message: "Symbol saved",
-    data: { symbol: upperSymbol, name }
-});
-
+                    message: "Symbol saved",
+                    data: { symbol: upperSymbol, name, listDate }
+                });
 
             });
 
@@ -304,7 +306,6 @@ try {
 /* =====================================================
    GET /etf/symbol
 ===================================================== */
-
 router.get('/symbol', auth, async (req, res) => {
 
     const userId = req.user.userId;
@@ -317,6 +318,7 @@ router.get('/symbol', auth, async (req, res) => {
                 `SELECT s.etfSymbolID,
                         s.symbol,
                         s.name,
+                        s.listDate,
                         c.category,
                         s.etfCategoryID
                  FROM etfSymbolT s
@@ -341,8 +343,7 @@ router.get('/symbol', auth, async (req, res) => {
 /* =====================================================
    PUT /etf/symbol/:id
    Update category only
-===================================================== */
-
+   ===================================================== */
 router.put(
     '/symbol/:id',
     auth,
@@ -391,9 +392,9 @@ router.put(
 
 /* =====================================================
    DELETE /etf/symbol/:id
-   7-Year Rule Placeholder
-===================================================== */
 
+7-Year Rule Placeholder
+===================================================== */
 router.delete('/symbol/:id', auth, async (req, res) => {
 
     const userId = req.user.userId;
@@ -402,6 +403,7 @@ router.delete('/symbol/:id', auth, async (req, res) => {
     try {
 
         await withTransaction(async (connection) => {
+
 
             /* ---- Future 7-Year Rule ---- */
             /*
@@ -420,7 +422,6 @@ router.delete('/symbol/:id', auth, async (req, res) => {
                 );
             }
             */
-
             const [result] = await connection.query(
                 `DELETE FROM etfSymbolT
                  WHERE etfSymbolID = ?
