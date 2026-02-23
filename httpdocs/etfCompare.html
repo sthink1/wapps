@@ -49,8 +49,7 @@
 
   <label>Rows:
     <select id="rows">
-      <option value="ToDisplay">To Display</option>
-      <option value="5">5</option>
+      <option value="5" selected>5</option>          <!-- changed default to 5 -->
       <option value="10">10</option>
       <option value="25">25</option>
       <option value="50">50</option>
@@ -95,12 +94,12 @@
           <th>AUM</th>
           <th>Volume</th>
           <th>Price</th>
-          <th class="perf">YTD</th>
-          <th class="perf">1W</th>
-          <th class="perf">1M</th>
-          <th class="perf">1Y</th>
-          <th class="perf">3Y</th>
-          <th class="perf">5Y</th>
+          <th class="perf">YTD %</th>          <!-- added % -->
+          <th class="perf">1W %</th>           <!-- added % -->
+          <th class="perf">1M %</th>           <!-- added % -->
+          <th class="perf">1Y %</th>           <!-- added % -->
+          <th class="perf">3Y %</th>           <!-- added % -->
+          <th class="perf">5Y %</th>           <!-- added % -->
         </tr>
       </thead>
       <tbody></tbody>
@@ -115,12 +114,12 @@
         <tr>
           <th>Symbol</th>
           <th>Price</th>
-          <th class="perf">YTD</th>
-          <th class="perf">1W</th>
-          <th class="perf">1M</th>
-          <th class="perf">1Y</th>
-          <th class="perf">3Y</th>
-          <th class="perf">5Y</th>
+          <th class="perf">YTD %</th>           <!-- added % -->
+          <th class="perf">1W %</th>            <!-- added % -->
+          <th class="perf">1M %</th>            <!-- added % -->
+          <th class="perf">1Y %</th>            <!-- added % -->
+          <th class="perf">3Y %</th>            <!-- added % -->
+          <th class="perf">5Y %</th>            <!-- added % -->
         </tr>
       </thead>
       <tbody></tbody>
@@ -137,6 +136,7 @@
       <input type="number" id="investAmount" placeholder="5000" min="1">
     </label>
     <button onclick="calculateAllocation()">Calculate</button>
+    <button onclick="printModal()">Print</button>           <!-- Added: Print button -->
     <button onclick="closeInvestModal()">Cancel</button>
 
     <table id="allocTable">
@@ -195,6 +195,15 @@ window.onload = () => {
   }
 };
 
+// Helper: Format numbers with commas (xxx,xxx.xx)
+function formatNumber(num) {
+  if (num === 'N/A' || num == null || isNaN(num)) return 'N/A';
+  return Number(num).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
 async function loadTables() {
   const cat    = document.getElementById('category').value;
   if (!cat) return alert('Please select a category');
@@ -212,7 +221,7 @@ async function loadTables() {
     category: cat,
     currentDate: currDate,
     pastDate: pastDate,
-    rows: rowsVal === 'ToDisplay' ? '10' : rowsVal, // fallback default
+    rows: rowsVal === 'ToDisplay' ? '5' : rowsVal, // fallback now 5
     sortBy: sort,
     order: ord,
     mock: 'true' // ← change to 'false' when ready for real data
@@ -255,18 +264,26 @@ function renderTable(tableId, data, isCurrent) {
       chkCell.appendChild(chk);
 
       const movCell = row.insertCell();
-      movCell.textContent = item.movement;
-      if (item.movement.startsWith('↑')) movCell.className = 'up';
-      if (item.movement.startsWith('↓')) movCell.className = 'down';
+      movCell.textContent = item.movement || '–';  // show dash if no movement
+      if (item.movement?.startsWith('↑')) movCell.className = 'up';
+      if (item.movement?.startsWith('↓')) movCell.className = 'down';
 
       addCell(row, item.aum,    item.isMock);
       addCell(row, item.volume, item.isMock);
       addCell(row, item.price,  item.isMock);
-      ['YTD','1W','1M','1Y','3Y','5Y'].forEach(p => addCell(row, item.returns[p], item.isMock));
+      ['YTD','1W','1M','1Y','3Y','5Y'].forEach(p => {
+        const val = item.returns[p];
+        const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';  // add % sign
+        addCell(row, display, item.isMock);
+      });
     } else {
       row.insertCell().textContent = item.symbol;
       addCell(row, item.price, item.isMock);
-      ['YTD','1W','1M','1Y','3Y','5Y'].forEach(p => addCell(row, item.returns[p], item.isMock));
+      ['YTD','1W','1M','1Y','3Y','5Y'].forEach(p => {
+        const val = item.returns[p];
+        const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';  // add % sign
+        addCell(row, display, item.isMock);
+      });
     }
   });
 }
@@ -341,13 +358,32 @@ function calculateAllocation() {
     const row = tbody.insertRow();
     row.insertCell().textContent = s.symbol;
     row.insertCell().textContent = s.name;
-    row.insertCell().textContent = s.price.toFixed(2);
+    row.insertCell().textContent = formatNumber(s.price);           // formatted
     row.insertCell().textContent = shares[i];
-    row.insertCell().textContent = cost.toFixed(2);
+    row.insertCell().textContent = formatNumber(cost);              // formatted
   });
 
-  document.getElementById('totalCost').textContent = totalCost.toFixed(2);
-  document.getElementById('remainder').textContent = (amount - totalCost).toFixed(2);
+  document.getElementById('totalCost').textContent = formatNumber(totalCost);    // formatted
+  document.getElementById('remainder').textContent = formatNumber(amount - totalCost);  // formatted
+}
+
+// Added: Print function for the modal results
+function printModal() {
+  const modalContent = document.querySelector('.modal-content').cloneNode(true);
+  // Remove buttons and close X from print version to keep it clean
+  modalContent.querySelectorAll('button, .close').forEach(el => el.remove());
+
+  const printWindow = window.open('', '', 'height=700,width=900');
+  printWindow.document.write('<html><head><title>Investment Allocation</title>');
+  printWindow.document.write('<style>body{font-family:Arial,sans-serif;margin:20px;} table{border-collapse:collapse;width:100%;} th,td{border:1px solid #000;padding:8px;text-align:left;} th{background:#f2f2f2;}</style>');
+  printWindow.document.write('</head><body>');
+  printWindow.document.write('<h2>Investment Allocation - ' + new Date().toLocaleDateString() + '</h2>');
+  printWindow.document.write(modalContent.innerHTML);
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  // Optional: printWindow.close();  // auto-close after printing (uncomment if desired)
 }
 </script>
 </body>
