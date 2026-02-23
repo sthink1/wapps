@@ -451,6 +451,7 @@ router.get('/compare', auth, async (req, res) => {
             data.returns[period] = ret;
           }
 
+          await new Promise(resolve => setTimeout(resolve, 12000));  // 12 seconds
           results.push(data);
         }
         return results;
