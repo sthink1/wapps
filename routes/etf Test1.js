@@ -508,22 +508,4 @@ router.get('/config', auth, (req, res) => {
   });
 });
 
-// ────────────────────────────────────────────────
-// GET /etf/tiingo-proxy  — server-side proxy for Tiingo (CORS workaround)
-router.get('/tiingo-proxy', auth, async (req, res) => {
-  const { symbol, date } = req.query;
-  if (!symbol || !date) {
-    return res.status(400).json({ message: 'symbol and date required' });
-  }
-  try {
-    const response = await axios.get(
-      `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${date}&endDate=${date}&token=${process.env.TIINGO_API_KEY}`
-    );
-    res.json(response.data);
-  } catch (err) {
-    logger.error(`GET /etf/tiingo-proxy: ${err.message}`);
-    res.status(500).json({ message: 'Tiingo proxy error' });
-  }
-});
-
 module.exports = router;

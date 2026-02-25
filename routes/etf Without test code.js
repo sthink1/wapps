@@ -361,7 +361,7 @@ router.get('/compare', auth, async (req, res) => {
         if (useMock) return parseFloat(getMockData(symbol, 'price'));
         try {
           const tiingoResp = await axios.get(
-            `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${targetDate}&endDate=${targetDate}&token=${process.env.TINGO_API_KEY}`
+            `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${targetDate}&endDate=${targetDate}&token=${process.env.TIINGO_API_KEY}`
           );
           return tiingoResp.data[0]?.adjClose || 0;
         } catch (e) {
@@ -451,6 +451,7 @@ router.get('/compare', auth, async (req, res) => {
             data.returns[period] = ret;
           }
 
+          await new Promise(resolve => setTimeout(resolve, 12000));  // 12 seconds
           results.push(data);
         }
         return results;
@@ -461,11 +462,19 @@ router.get('/compare', auth, async (req, res) => {
 
       // Sort both tables
       const sortKey = sortBy;
-      const sortFunc = (a, b) => {
-        const valA = parseFloat(a.returns[sortKey] || -Infinity);
-        const valB = parseFloat(b.returns[sortKey] || -Infinity);
-        return order === 'desc' ? valB - valA : valA - valB;
-      };
+
+      // Sort both by sortBy/order (treat N/A as -Infinity for descending = bottom)
+const sortFunc = (a, b) => {
+  let valA = a.returns[sortBy];
+  let valB = b.returns[sortBy];
+
+  // Convert to number, treat N/A or invalid as -Infinity
+  valA = (valA === 'N/A' || valA == null || isNaN(parseFloat(valA))) ? -Infinity : parseFloat(valA);
+  valB = (valB === 'N/A' || valB == null || isNaN(parseFloat(valB))) ? -Infinity : parseFloat(valB);
+
+  return order === 'desc' ? valB - valA : valA - valB;
+};
+
       currentData.sort(sortFunc);
       pastData.sort(sortFunc);
 

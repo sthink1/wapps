@@ -338,6 +338,7 @@
   <span class="badge badge-finnhub">Finnhub</span>
   <span class="badge badge-polygon">Polygon</span>
   <span class="badge badge-tiingo">Tiingo</span>
+  <button onclick="goBack()">Back</button>
 </header>
 
 <div class="controls">
@@ -542,6 +543,10 @@
 <footer>Wonderful Apps · ETF Project · API Test Page</footer>
 
 <script>
+
+  function goBack(){
+    window.location.href = "etf.html";
+}
 
 // ─────────────────────────────────────────────
 // CONFIG
@@ -754,13 +759,10 @@ async function fetchPolygon(symbol, dateStr, keys) {
 }
 
 async function fetchTiingo(symbol, dateStr, keys) {
-  // Tiingo blocks direct browser requests (CORS). Route through backend proxy.
-  const token = localStorage.getItem('token');
   const resp = await fetch(
-    `${BASE_URL}/etf/tiingo-proxy?symbol=${encodeURIComponent(symbol)}&date=${encodeURIComponent(dateStr)}`,
-    { headers: { 'Authorization': 'Bearer ' + token } }
+    `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${dateStr}&endDate=${dateStr}&token=${keys.TIINGO_API_KEY}`
   );
-  if (!resp.ok) throw new Error('Tiingo proxy error');
+  if (!resp.ok) throw new Error('Tiingo error');
   const data = await resp.json();
   if (!data || data.length === 0) throw new Error('Tiingo: no data');
   return parseFloat(data[0].adjClose);
