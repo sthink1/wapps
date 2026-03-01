@@ -770,17 +770,33 @@ async function fetchPolygon(symbol, dateStr, keys) {
 
   // Route through backend proxy — returns { adjClose, rawClose } in one call
   const token = localStorage.getItem('token');
-  const resp = await fetch(
+  let resp = await fetch(
     `${BASE_URL}/etf/polygon-proxy?symbol=${encodeURIComponent(symbol)}&date=${encodeURIComponent(dateStr)}`,
     { headers: { 'Authorization': 'Bearer ' + token } }
   );
+
+  // If Polygon rate-limited us (429), wait 70s for the rolling rate-limit window to fully clear and retry once
+  if (resp.status === 429) {
+    const RETRY_WAIT_MS = 70000;
+    showRateToast(`Polygon 429 — waiting ${RETRY_WAIT_MS/1000}s for rate limit to reset…`);
+    await sleep(RETRY_WAIT_MS);
+    hideRateToast();
+    lastPolygonCallTime = Date.now(); // reset timer so next call doesn't double-wait
+    resp = await fetch(
+      `${BASE_URL}/etf/polygon-proxy?symbol=${encodeURIComponent(symbol)}&date=${encodeURIComponent(dateStr)}`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+  }
+
   if (!resp.ok) throw new Error('Polygon proxy error');
   const data = await resp.json();
   if (data.adjClose === null) throw new Error('Polygon: no data');
   const adjClose = parseFloat(data.adjClose);
   const rawClose = data.rawClose !== null ? parseFloat(data.rawClose) : adjClose;
-  const splitDetected = Math.abs(rawClose - adjClose) > 0.01;
-  return { price: rawClose, adjPrice: splitDetected ? adjClose : null };
+  // Always return adjClose so the Adj Price row is always populated, confirming both
+  // values were retrieved. If no split: adjClose === rawClose, cell shows same value
+  // in amber. If split detected: adjClose differs and Return % uses adjusted value.
+  return { price: rawClose, adjPrice: adjClose };
 }
 
 async function fetchTiingo(symbol, dateStr, keys) {
@@ -795,10 +811,8 @@ async function fetchTiingo(symbol, dateStr, keys) {
   if (!data || data.length === 0) throw new Error('Tiingo: no data');
   const rawClose = parseFloat(data[0].close);
   const adjClose = parseFloat(data[0].adjClose);
-  // Always show adjClose in Adj Price row so split-adjustment is always visible
-  // adjPrice null only if they are identical (no split factor applied)
-  const splitDetected = Math.abs(rawClose - adjClose) > 0.001;
-  return { price: rawClose, adjPrice: adjClose }; // always return adjClose for test page
+  // Always return adjClose so the Adj Price row is always populated
+  return { price: rawClose, adjPrice: adjClose };
 }
 
 async function fetchPrice(symbol, openDateStr, todayStr, apiName, keys) {
@@ -817,7 +831,7 @@ const TOTAL_CALLS = 14; // 7 per table — proxy handles adj+raw server-side
 function updateProgress(label) {
   progressCount++;
   document.getElementById('progressLabel').textContent =
-    `Fetching data… ${progressCount} / ${TOTAL_CALLS} calls  (${label})  — Polygon queued server-side`;
+    `Fetching data… ${progressCount} / ${TOTAL_CALLS} calls  (${label})  — Polygon rate-limited client-side`;
   document.getElementById('progressFill').style.width =
     `${Math.round((progressCount / TOTAL_CALLS) * 100)}%`;
 }
@@ -1050,6 +1064,10 @@ async function calculate() {
   document.getElementById('symbolInfoBox').style.display = 'none';
   clearTables();
   document.getElementById('calcBtn').disabled = true;
+  // Reset Polygon rate-limit timer so the first call in this run waits the full 13s gap.
+  // Without this, if lastPolygonCallTime is 0 (page load) or stale (prior run),
+  // the first call fires immediately and may hit a still-active rate-limit window.
+  lastPolygonCallTime = Date.now();
 
   try {
     // 1. Lookup symbol

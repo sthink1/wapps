@@ -552,6 +552,11 @@ router.get('/polygon-proxy', auth, async (req, res) => {
 
     res.json({ adjClose, rawClose });
   } catch (err) {
+    // Pass 429 through explicitly so the browser can detect it and retry
+    if (err.response && err.response.status === 429) {
+      logger.error(`GET /etf/polygon-proxy: Polygon rate limit (429)`);
+      return res.status(429).json({ message: 'Polygon rate limit (be)' });
+    }
     logger.error(`GET /etf/polygon-proxy: ${err.message}`);
     res.status(500).json({ message: 'Polygon proxy error' });
   }
