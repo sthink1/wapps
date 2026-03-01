@@ -527,34 +527,51 @@ router.get('/tiingo-proxy', auth, async (req, res) => {
 });
 
 // ────────────────────────────────────────────────
-// GET /etf/polygon-proxy  — server-side proxy for Polygon (CORS passthrough + adj/raw in one call)
-// Returns { adjClose, rawClose }
-//
-// Rate limiting is handled client-side in etfAPItest.html (13s gap between calls).
-// This proxy exists solely to keep the Polygon API key off the browser and to
-// fetch both adjusted and unadjusted closes in one round trip.
+// GET /etf/polygon-proxy  — server-side proxy for Polygon (rate limit control + adj/raw in one call)
+// Returns { price (raw close), adjPrice (split-adjusted close) }
+const polygonQueue = [];
+let polygonBusy = false;
+
+function drainPolygonQueue() {
+  if (polygonBusy || polygonQueue.length === 0) return;
+  polygonBusy = true;
+  const { fn, resolve, reject } = polygonQueue.shift();
+  fn().then(resolve).catch(reject).finally(() => {
+    polygonBusy = false;
+    if (polygonQueue.length > 0) {
+      setTimeout(drainPolygonQueue, 12000); // 5 calls/min = 12s between calls
+    }
+  });
+}
+
 router.get('/polygon-proxy', auth, async (req, res) => {
   const { symbol, date } = req.query;
   if (!symbol || !date) {
     return res.status(400).json({ message: 'symbol and date required' });
   }
-  try {
-    // Fetch adjusted close first, then unadjusted sequentially
-    const adjResp = await axios.get(
-      `https://api.polygon.io/v2/aggs/ticker/${symbol.toUpperCase()}/range/1/day/${date}/${date}?adjusted=true&sort=asc&apiKey=${process.env.POLYGON_API_KEY}`
-    );
-    const adjClose = adjResp.data.results?.[0]?.c ?? null;
 
-    const rawResp = await axios.get(
-      `https://api.polygon.io/v2/aggs/ticker/${symbol.toUpperCase()}/range/1/day/${date}/${date}?adjusted=false&sort=asc&apiKey=${process.env.POLYGON_API_KEY}`
-    );
-    const rawClose = rawResp.data.results?.[0]?.c ?? null;
-
-    res.json({ adjClose, rawClose });
-  } catch (err) {
+  new Promise((resolve, reject) => {
+    polygonQueue.push({
+      fn: async () => {
+        // Fetch adjusted and unadjusted in parallel (both count toward rate limit)
+        const [adjResp, rawResp] = await Promise.all([
+          axios.get(`https://api.polygon.io/v2/aggs/ticker/${symbol.toUpperCase()}/range/1/day/${date}/${date}?adjusted=true&sort=asc&apiKey=${process.env.POLYGON_API_KEY}`),
+          axios.get(`https://api.polygon.io/v2/aggs/ticker/${symbol.toUpperCase()}/range/1/day/${date}/${date}?adjusted=false&sort=asc&apiKey=${process.env.POLYGON_API_KEY}`)
+        ]);
+        const adjClose = adjResp.data.results?.[0]?.c ?? null;
+        const rawClose = rawResp.data.results?.[0]?.c ?? null;
+        return { adjClose, rawClose };
+      },
+      resolve,
+      reject
+    });
+    drainPolygonQueue();
+  })
+  .then(result => res.json(result))
+  .catch(err => {
     logger.error(`GET /etf/polygon-proxy: ${err.message}`);
     res.status(500).json({ message: 'Polygon proxy error' });
-  }
+  });
 });
 
 module.exports = router;

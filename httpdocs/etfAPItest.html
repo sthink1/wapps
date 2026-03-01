@@ -278,6 +278,16 @@
     font-size: 0.7rem;
   }
 
+  .adj-price-val {
+    font-weight: 600;
+    color: var(--warn);
+  }
+  .adj-price-same {
+    color: var(--muted);
+    font-style: italic;
+    font-size: 0.7rem;
+  }
+
   /* Legend */
   .legend {
     display: flex;
@@ -431,6 +441,16 @@
             <td id="t1-price-5y">—</td>
           </tr>
           <tr>
+            <td class="row-label">Adj Price</td>
+            <td id="t1-adj-today">—</td>
+            <td id="t1-adj-1w">—</td>
+            <td id="t1-adj-1m">—</td>
+            <td id="t1-adj-ytd">—</td>
+            <td id="t1-adj-1y">—</td>
+            <td id="t1-adj-3y">—</td>
+            <td id="t1-adj-5y">—</td>
+          </tr>
+          <tr>
             <td class="row-label">Return %</td>
             <td id="t1-ret-today">—</td>
             <td id="t1-ret-1w">—</td>
@@ -514,6 +534,16 @@
             <td id="t2-price-5y">—</td>
           </tr>
           <tr>
+            <td class="row-label">Adj Price</td>
+            <td id="t2-adj-anchor">—</td>
+            <td id="t2-adj-1w">—</td>
+            <td id="t2-adj-1m">—</td>
+            <td id="t2-adj-ytd">—</td>
+            <td id="t2-adj-1y">—</td>
+            <td id="t2-adj-3y">—</td>
+            <td id="t2-adj-5y">—</td>
+          </tr>
+          <tr>
             <td class="row-label">Return %</td>
             <td id="t2-ret-anchor">—</td>
             <td id="t2-ret-1w">—</td>
@@ -535,6 +565,7 @@
   <div class="legend-item"><div class="legend-dot" style="background:var(--polygon)"></div>Polygon — historical &lt; 2 yrs</div>
   <div class="legend-item"><div class="legend-dot" style="background:var(--tiingo)"></div>Tiingo — historical &gt; 2 yrs</div>
   <div class="legend-item"><div class="legend-dot" style="background:var(--na)"></div>N/A — before listDate</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Adj Price — split-adjusted (used for Return %)</div>
 </div>
 
 <div id="rateToast"></div>
@@ -703,32 +734,8 @@ async function lookupSymbol(symbolInput) {
 // PRICE FETCH (API calls)
 // ─────────────────────────────────────────────
 
-// Rate limit queue for Polygon (5/min = 12s between calls)
-const polygonQueue = [];
-let polygonBusy = false;
-
-function queuePolygon(fn) {
-  return new Promise((resolve, reject) => {
-    polygonQueue.push({ fn, resolve, reject });
-    if (!polygonBusy) drainPolygon();
-  });
-}
-
-async function drainPolygon() {
-  polygonBusy = true;
-  while (polygonQueue.length > 0) {
-    const { fn, resolve, reject } = polygonQueue.shift();
-    try { resolve(await fn()); } catch(e) { reject(e); }
-    if (polygonQueue.length > 0) {
-      showRateToast(`Polygon rate limit: waiting 12s… (${polygonQueue.length} remaining)`);
-      await sleep(12000);
-    }
-  }
-  hideRateToast();
-  polygonBusy = false;
-}
-
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+// Note: Polygon rate limiting is now handled server-side via /etf/polygon-proxy
 
 async function fetchFinnhub(symbol, keys) {
   const resp = await fetch(
@@ -738,19 +745,42 @@ async function fetchFinnhub(symbol, keys) {
   const data = await resp.json();
   // c = current price (or previous close if market is closed)
   if (!data.c) throw new Error('Finnhub: no price');
-  return parseFloat(data.c);
+  // Finnhub current price — no split-adjusted variant available
+  return { price: parseFloat(data.c), adjPrice: null };
 }
 
+// Timestamp of last Polygon call — used to enforce rate limiting client-side.
+// Polygon free tier = 5 calls/min. Each proxy call makes 2 Polygon sub-calls,
+// so we enforce 13s minimum between proxy calls in the browser. This guarantees
+// spacing regardless of server-side queue behavior.
+let lastPolygonCallTime = 0;
+
 async function fetchPolygon(symbol, dateStr, keys) {
-  return queuePolygon(async () => {
-    const resp = await fetch(
-      `https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/${dateStr}/${dateStr}?adjusted=true&sort=asc&apiKey=${keys.POLYGON_API_KEY}`
-    );
-    if (!resp.ok) throw new Error('Polygon error');
-    const data = await resp.json();
-    if (!data.results || data.results.length === 0) throw new Error('Polygon: no data');
-    return parseFloat(data.results[0].c);
-  });
+  // Enforce 13s gap between Polygon proxy calls (client-side rate limiting)
+  const now = Date.now();
+  const elapsed = now - lastPolygonCallTime;
+  const POLYGON_INTERVAL_MS = 13000;
+  if (lastPolygonCallTime > 0 && elapsed < POLYGON_INTERVAL_MS) {
+    const wait = POLYGON_INTERVAL_MS - elapsed;
+    showRateToast(`Polygon rate limit: waiting ${Math.ceil(wait/1000)}s…`);
+    await sleep(wait);
+    hideRateToast();
+  }
+  lastPolygonCallTime = Date.now();
+
+  // Route through backend proxy — returns { adjClose, rawClose } in one call
+  const token = localStorage.getItem('token');
+  const resp = await fetch(
+    `${BASE_URL}/etf/polygon-proxy?symbol=${encodeURIComponent(symbol)}&date=${encodeURIComponent(dateStr)}`,
+    { headers: { 'Authorization': 'Bearer ' + token } }
+  );
+  if (!resp.ok) throw new Error('Polygon proxy error');
+  const data = await resp.json();
+  if (data.adjClose === null) throw new Error('Polygon: no data');
+  const adjClose = parseFloat(data.adjClose);
+  const rawClose = data.rawClose !== null ? parseFloat(data.rawClose) : adjClose;
+  const splitDetected = Math.abs(rawClose - adjClose) > 0.01;
+  return { price: rawClose, adjPrice: splitDetected ? adjClose : null };
 }
 
 async function fetchTiingo(symbol, dateStr, keys) {
@@ -763,7 +793,12 @@ async function fetchTiingo(symbol, dateStr, keys) {
   if (!resp.ok) throw new Error('Tiingo proxy error');
   const data = await resp.json();
   if (!data || data.length === 0) throw new Error('Tiingo: no data');
-  return parseFloat(data[0].adjClose);
+  const rawClose = parseFloat(data[0].close);
+  const adjClose = parseFloat(data[0].adjClose);
+  // Always show adjClose in Adj Price row so split-adjustment is always visible
+  // adjPrice null only if they are identical (no split factor applied)
+  const splitDetected = Math.abs(rawClose - adjClose) > 0.001;
+  return { price: rawClose, adjPrice: adjClose }; // always return adjClose for test page
 }
 
 async function fetchPrice(symbol, openDateStr, todayStr, apiName, keys) {
@@ -777,12 +812,12 @@ async function fetchPrice(symbol, openDateStr, todayStr, apiName, keys) {
 // PROGRESS
 // ─────────────────────────────────────────────
 let progressCount = 0;
-const TOTAL_CALLS = 14; // 7 per table
+const TOTAL_CALLS = 14; // 7 per table — proxy handles adj+raw server-side
 
 function updateProgress(label) {
   progressCount++;
   document.getElementById('progressLabel').textContent =
-    `Fetching data… ${progressCount} / ${TOTAL_CALLS} calls  (${label})`;
+    `Fetching data… ${progressCount} / ${TOTAL_CALLS} calls  (${label})  — Polygon queued server-side`;
   document.getElementById('progressFill').style.width =
     `${Math.round((progressCount / TOTAL_CALLS) * 100)}%`;
 }
@@ -840,6 +875,11 @@ function priceHtml(val) {
   return `<span class="price-val">$${val.toFixed(2)}</span>`;
 }
 
+function adjPriceHtml(adjPrice) {
+  if (adjPrice === null) return `<span class="adj-price-same">—</span>`;
+  return `<span class="adj-price-val">$${adjPrice.toFixed(2)}</span>`;
+}
+
 function returnHtml(val) {
   if (val === null) return `<span class="return-na">N/A</span>`;
   const cls = val >= 0 ? 'return-pos' : 'return-neg';
@@ -863,7 +903,7 @@ function loadingCell() {
 // ─────────────────────────────────────────────
 const T1_PERIODS = ['today','1w','1m','ytd','1y','3y','5y'];
 const T2_PERIODS = ['anchor','1w','1m','ytd','1y','3y','5y'];
-const ROWS = ['cal','ald','open','api','price','ret'];
+const ROWS = ['cal','ald','open','api','price','adj','ret'];
 
 function clearTables() {
   [...T1_PERIODS.map(p=>`t1-${p}`), ...T2_PERIODS.map(p=>`t2-${p}`)].forEach(prefix => {
@@ -898,13 +938,15 @@ function renderSkeleton(tablePrefix, periods, baseDateStr, listDateStr) {
       const todayStr = toDateStr(today());
       const api = chooseApi(openDate, todayStr);
       setCell(`${tablePrefix}-api-${period}`, apiTag(api));
-      // Price & return: loading
+      // Price, adj price & return: loading
       setCell(`${tablePrefix}-price-${period}`, loadingCell());
+      setCell(`${tablePrefix}-adj-${period}`, loadingCell());
       setCell(`${tablePrefix}-ret-${period}`, loadingCell());
     } else {
       setCell(`${tablePrefix}-open-${period}`, `<span class="price-na">N/A</span>`);
       setCell(`${tablePrefix}-api-${period}`, `<span class="price-na">N/A</span>`);
       setCell(`${tablePrefix}-price-${period}`, `<span class="price-na">N/A</span>`);
+      setCell(`${tablePrefix}-adj-${period}`, `<span class="price-na">N/A</span>`);
       setCell(`${tablePrefix}-ret-${period}`, `<span class="price-na">N/A</span>`);
     }
   });
@@ -915,14 +957,16 @@ function renderSkeleton(tablePrefix, periods, baseDateStr, listDateStr) {
 // ─────────────────────────────────────────────
 async function fetchTablePrices(tablePrefix, periods, baseDateStr, listDateStr, symbol, keys) {
   const todayStr = toDateStr(today());
-  const prices = {};
+  const prices    = {};  // raw close prices
+  const adjPrices = {};  // split-adjusted prices (null if no split)
 
   for (const period of periods) {
     const calDate = getCalendarDate(baseDateStr, period);
     const afterLD = isAfterListDate(calDate, listDateStr);
 
     if (!afterLD) {
-      prices[period] = null;
+      prices[period]    = null;
+      adjPrices[period] = null;
       continue;
     }
 
@@ -930,33 +974,64 @@ async function fetchTablePrices(tablePrefix, periods, baseDateStr, listDateStr, 
     const apiName  = chooseApi(openDate, todayStr);
 
     try {
-      const price = await fetchPrice(symbol, openDate, todayStr, apiName, keys);
-      prices[period] = price;
-      setCell(`${tablePrefix}-price-${period}`, priceHtml(price));
+      const result = await fetchPrice(symbol, openDate, todayStr, apiName, keys);
+      prices[period]    = result.price;
+      adjPrices[period] = result.adjPrice; // null if no split detected
+      setCell(`${tablePrefix}-price-${period}`, priceHtml(result.price));
+      setCell(`${tablePrefix}-adj-${period}`,   adjPriceHtml(result.adjPrice));
     } catch(err) {
-      prices[period] = null;
+      prices[period]    = null;
+      adjPrices[period] = null;
       setCell(`${tablePrefix}-price-${period}`, `<span class="price-na" title="${err.message}">Error</span>`);
+      setCell(`${tablePrefix}-adj-${period}`,   `<span class="price-na">—</span>`);
     }
 
     updateProgress(`${symbol} · ${period.toUpperCase()} · ${apiName}`);
   }
 
-  // Now compute Return % — compare each period price to anchor (today or 1yr-prior)
-  const anchorKey = periods[0]; // 'today' for T1, 'anchor' for T2
-  const anchorPrice = prices[anchorKey];
+  // Effective price for Return % = adjPrice if split detected, otherwise raw price
+  const effectivePrice = (period) => adjPrices[period] !== null ? adjPrices[period] : prices[period];
+
+  // Number of years for each period (used for CAGR calculation)
+  // Periods < 1 year use simple return; periods >= 1 year use CAGR
+  const PERIOD_YEARS = { 'today': 0, 'anchor': 0, '1w': 1/52, '1m': 1/12, 'ytd': null, '1y': 1, '3y': 3, '5y': 5 };
+
+  // Now compute Return % — compare each period to anchor (today or 1yr-prior)
+  // Short periods (1w, 1m, ytd): simple return = ((anchor - period) / period) * 100
+  // Long periods (1y, 3y, 5y):   CAGR = ((anchor / period) ^ (1/n) - 1) * 100
+  const anchorKey   = periods[0]; // 'today' for T1, 'anchor' for T2
+  const anchorEff   = effectivePrice(anchorKey);
+  const anchorDateStr = getCalendarDate(baseDateStr, anchorKey);
 
   periods.forEach(period => {
     if (period === anchorKey) {
       setCell(`${tablePrefix}-ret-${period}`, '—');
       return;
     }
-    const pPrice = prices[period];
-    if (pPrice === null || anchorPrice === null || pPrice === 0) {
+    const pEff = effectivePrice(period);
+    if (pEff === null || anchorEff === null || pEff === 0) {
       setCell(`${tablePrefix}-ret-${period}`, returnHtml(null));
       return;
     }
-    // Return% = ((anchorPrice - pPrice) / pPrice) * 100
-    const ret = ((anchorPrice - pPrice) / pPrice) * 100;
+
+    let years = PERIOD_YEARS[period];
+
+    // For YTD: calculate actual fraction of year from period date to anchor date
+    if (years === null) {
+      const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
+      const periodDateStr = getCalendarDate(baseDateStr, period);
+      years = (parseDate(anchorDateStr) - parseDate(periodDateStr)) / msPerYear;
+    }
+
+    let ret;
+    if (years < 1) {
+      // Simple return for short periods (1w, 1m, ytd)
+      ret = ((anchorEff - pEff) / pEff) * 100;
+    } else {
+      // CAGR for multi-year periods (1y, 3y, 5y)
+      // Formula: ((Ending Value / Beginning Value) ^ (1/n) - 1) * 100
+      ret = (Math.pow(anchorEff / pEff, 1 / years) - 1) * 100;
+    }
     setCell(`${tablePrefix}-ret-${period}`, returnHtml(ret));
   });
 }
@@ -1007,14 +1082,14 @@ async function calculate() {
     document.getElementById('t1-head-today').textContent = `Today · ${fmtDisplay(t1BaseStr)}`;
     document.getElementById('t2-head-anchor').textContent = `1 Yr Prior · ${fmtDisplay(t2BaseStr)}`;
 
-    // 6. Fetch prices (tables run in parallel where possible)
+    // 6. Fetch prices — T1 then T2 sequentially to respect Polygon's 5 calls/min rate limit.
+    // Running in parallel caused all Polygon calls to flood the server queue simultaneously,
+    // resulting in 429 errors. Sequential execution ensures T1 completes (with 12s spacing
+    // per call server-side) before T2 begins.
     showProgress();
 
-    // Fetch both tables — T1 and T2 share the Polygon queue, so they interleave nicely
-    await Promise.all([
-      fetchTablePrices('t1', T1_PERIODS, t1BaseStr, listDateStr, sym.symbol, keys),
-      fetchTablePrices('t2', T2_PERIODS, t2BaseStr, listDateStr, sym.symbol, keys),
-    ]);
+    await fetchTablePrices('t1', T1_PERIODS, t1BaseStr, listDateStr, sym.symbol, keys);
+    await fetchTablePrices('t2', T2_PERIODS, t2BaseStr, listDateStr, sym.symbol, keys);
 
     hideProgress();
     showStatus(`Done. Prices loaded for ${sym.symbol}.`, 'info');
