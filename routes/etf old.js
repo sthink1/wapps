@@ -510,28 +510,14 @@ router.get('/config', auth, (req, res) => {
 
 // ────────────────────────────────────────────────
 // GET /etf/tiingo-proxy  — server-side proxy for Tiingo (CORS workaround)
-//
-// Supports two calling modes:
-//   Single date:  ?symbol=X&date=YYYY-MM-DD
-//                 Returns array with one element for that exact date.
-//   Date range:   ?symbol=X&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-//                 Returns array of all trading days in the range.
-//                 Used by fetchTiingoRange() in etfAPItest.html to cover all
-//                 Tiingo dates for a symbol in one call instead of one per period.
 router.get('/tiingo-proxy', auth, async (req, res) => {
-  const { symbol, date, startDate, endDate } = req.query;
-  if (!symbol) {
-    return res.status(400).json({ message: 'symbol required' });
-  }
-  // Determine date range: single-date mode uses date for both start and end
-  const start = startDate || date;
-  const end   = endDate   || date;
-  if (!start || !end) {
-    return res.status(400).json({ message: 'date or startDate+endDate required' });
+  const { symbol, date } = req.query;
+  if (!symbol || !date) {
+    return res.status(400).json({ message: 'symbol and date required' });
   }
   try {
     const response = await axios.get(
-      `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${start}&endDate=${end}&token=${process.env.TIINGO_API_KEY}`
+      `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${date}&endDate=${date}&token=${process.env.TIINGO_API_KEY}`
     );
     res.json(response.data);
   } catch (err) {

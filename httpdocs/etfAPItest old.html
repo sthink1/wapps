@@ -815,32 +815,6 @@ async function fetchTiingo(symbol, dateStr, keys) {
   return { price: rawClose, adjPrice: adjClose };
 }
 
-// Fetch Tiingo prices for a range of dates in a single proxy call.
-// Returns a Map keyed by 'YYYY-MM-DD' → { price: rawClose, adjPrice: adjClose }.
-// The range response contains every trading day between startDate and endDate.
-// Callers look up specific dates from the returned Map using the date string.
-async function fetchTiingoRange(symbol, startDateStr, endDateStr, keys) {
-  const token = localStorage.getItem('token');
-  const resp = await fetch(
-    `${BASE_URL}/etf/tiingo-proxy?symbol=${encodeURIComponent(symbol)}&startDate=${encodeURIComponent(startDateStr)}&endDate=${encodeURIComponent(endDateStr)}`,
-    { headers: { 'Authorization': 'Bearer ' + token } }
-  );
-  if (!resp.ok) throw new Error('Tiingo range proxy error');
-  const data = await resp.json();
-  if (!data || data.length === 0) throw new Error('Tiingo range: no data');
-  // Build a lookup Map: 'YYYY-MM-DD' -> { price, adjPrice }
-  // Tiingo date strings are ISO format: '2023-03-01T00:00:00.000Z' — slice to 10 chars
-  const map = new Map();
-  data.forEach(row => {
-    const dateKey = row.date.substring(0, 10);
-    const rawClose = parseFloat(row.close);
-    const adjClose = parseFloat(row.adjClose);
-    // Always store adjClose so the Adj Price row is always populated
-    map.set(dateKey, { price: rawClose, adjPrice: adjClose });
-  });
-  return map;
-}
-
 async function fetchPrice(symbol, openDateStr, todayStr, apiName, keys) {
   if (apiName === 'Finnhub') return fetchFinnhub(symbol, keys);
   if (apiName === 'Polygon')  return fetchPolygon(symbol, openDateStr, keys);
@@ -852,9 +826,7 @@ async function fetchPrice(symbol, openDateStr, todayStr, apiName, keys) {
 // PROGRESS
 // ─────────────────────────────────────────────
 let progressCount = 0;
-// Total progress ticks: per table = Finnhub(1) + Polygon(up to 4) + Tiingo range(1) = up to 6
-// Two tables = up to 12. Tiingo range counts as 1 tick regardless of how many periods use it.
-const TOTAL_CALLS = 12; // up to 12: Finnhub(1) + Polygon(up to 4) + Tiingo range(1), x2 tables
+const TOTAL_CALLS = 14; // 7 per table — proxy handles adj+raw server-side
 
 function updateProgress(label) {
   progressCount++;
@@ -868,7 +840,7 @@ function showProgress() {
   progressCount = 0;
   document.getElementById('progressWrap').style.display = 'block';
   document.getElementById('progressFill').style.width = '0%';
-  document.getElementById('progressLabel').textContent = 'Fetching data… 0 / 12 calls';
+  document.getElementById('progressLabel').textContent = 'Fetching data… 0 / 14 calls';
 }
 function hideProgress() {
   document.getElementById('progressWrap').style.display = 'none';
@@ -1002,30 +974,6 @@ async function fetchTablePrices(tablePrefix, periods, baseDateStr, listDateStr, 
   const prices    = {};  // raw close prices
   const adjPrices = {};  // split-adjusted prices (null if no split)
 
-  // Pre-fetch all Tiingo dates for this table in one range call.
-  // Identify the earliest and latest open dates that will use Tiingo, then
-  // fetch the full range at once. Individual period lookups use the cached map.
-  // This reduces Tiingo calls from up to 2 per table to 1 per table.
-  const tiingoOpenDates = [];
-  periods.forEach(period => {
-    const calDate = getCalendarDate(baseDateStr, period);
-    if (!isAfterListDate(calDate, listDateStr)) return;
-    const openDate = getMostRecentOpenDay(calDate);
-    if (chooseApi(openDate, todayStr) === 'Tiingo') tiingoOpenDates.push(openDate);
-  });
-  let tiingoCache = null; // Map: 'YYYY-MM-DD' -> { price, adjPrice }, or null if no Tiingo periods
-  if (tiingoOpenDates.length > 0) {
-    const tiingoStart = tiingoOpenDates.reduce((a, b) => a < b ? a : b);
-    const tiingoEnd   = tiingoOpenDates.reduce((a, b) => a > b ? a : b);
-    try {
-      tiingoCache = await fetchTiingoRange(symbol, tiingoStart, tiingoEnd, keys);
-      updateProgress(`${symbol} · Tiingo range ${tiingoStart} → ${tiingoEnd}`);
-    } catch(err) {
-      // Range call failed — tiingoCache stays null; individual periods will show Error
-      tiingoCache = null;
-    }
-  }
-
   for (const period of periods) {
     const calDate = getCalendarDate(baseDateStr, period);
     const afterLD = isAfterListDate(calDate, listDateStr);
@@ -1040,16 +988,7 @@ async function fetchTablePrices(tablePrefix, periods, baseDateStr, listDateStr, 
     const apiName  = chooseApi(openDate, todayStr);
 
     try {
-      let result;
-      if (apiName === 'Tiingo' && tiingoCache !== null) {
-        // Use cached range result — look up this period's open date in the map
-        const cached = tiingoCache.get(openDate);
-        if (!cached) throw new Error(`Tiingo: no data for ${openDate}`);
-        result = cached;
-      } else {
-        // Finnhub, Polygon, or Tiingo fallback (range call failed)
-        result = await fetchPrice(symbol, openDate, todayStr, apiName, keys);
-      }
+      const result = await fetchPrice(symbol, openDate, todayStr, apiName, keys);
       prices[period]    = result.price;
       adjPrices[period] = result.adjPrice; // null if no split detected
       setCell(`${tablePrefix}-price-${period}`, priceHtml(result.price));
@@ -1061,8 +1000,7 @@ async function fetchTablePrices(tablePrefix, periods, baseDateStr, listDateStr, 
       setCell(`${tablePrefix}-adj-${period}`,   `<span class="price-na">—</span>`);
     }
 
-    // Only log progress for non-Tiingo periods (Tiingo range already logged above)
-    if (apiName !== 'Tiingo') updateProgress(`${symbol} · ${period.toUpperCase()} · ${apiName}`);
+    updateProgress(`${symbol} · ${period.toUpperCase()} · ${apiName}`);
   }
 
   // Effective price for Return % = adjPrice if split detected, otherwise raw price
@@ -1164,8 +1102,8 @@ async function calculate() {
 
     // 6. Fetch prices — T1 then T2 sequentially to respect Polygon's 5 calls/min rate limit.
     // Running in parallel caused all Polygon calls to flood the server queue simultaneously,
-    // resulting in 429 errors. Sequential execution ensures T1 completes (with client-side
-    // 13s spacing per Polygon call) before T2 begins. Tiingo is one range call per table.
+    // resulting in 429 errors. Sequential execution ensures T1 completes (with 12s spacing
+    // per call server-side) before T2 begins.
     showProgress();
 
     await fetchTablePrices('t1', T1_PERIODS, t1BaseStr, listDateStr, sym.symbol, keys);
