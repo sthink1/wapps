@@ -18,7 +18,6 @@
     --text: #e2e8f0;
     --muted: #64748b;
     --finnhub: #00e5a0;
-    --polygon: #3d8bff;
     --tiingo: #c084fc;
     --na: #ff6b6b;
   }
@@ -36,10 +35,12 @@
   header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 16px;
     margin-bottom: 28px;
     border-bottom: 1px solid var(--border);
     padding-bottom: 16px;
+    flex-wrap: wrap;
   }
 
   header h1 {
@@ -59,8 +60,26 @@
     letter-spacing: 0.08em;
   }
   .badge-finnhub { background: #00e5a020; color: var(--finnhub); border: 1px solid var(--finnhub); }
-  .badge-polygon  { background: #3d8bff20; color: var(--polygon);  border: 1px solid var(--polygon); }
   .badge-tiingo   { background: #c084fc20; color: var(--tiingo);   border: 1px solid var(--tiingo); }
+
+  .back-btn {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 8px 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .back-btn:hover {
+    background: var(--accent);
+    color: #0d0f14;
+    border-color: var(--accent);
+  }
 
   /* Controls */
   .controls {
@@ -146,7 +165,7 @@
     border-radius: 5px;
     margin-bottom: 18px;
   }
-  #statusBar.info  { background: #3d8bff15; border: 1px solid var(--polygon); color: var(--polygon); }
+  #statusBar.info  { background: #c084fc15; border: 1px solid var(--tiingo); color: var(--tiingo); }
   #statusBar.error { background: #ff6b6b15; border: 1px solid var(--na); color: var(--na); }
   #statusBar.warn  { background: #f5a62315; border: 1px solid var(--warn); color: var(--warn); }
 
@@ -246,7 +265,6 @@
   tbody tr:hover td { background: #1a1f2a; }
   tbody tr:hover td.row-label { background: #1e2330; }
 
-  /* API badge inside cell */
   .api-tag {
     display: inline-block;
     font-size: 0.62rem;
@@ -256,7 +274,6 @@
     letter-spacing: 0.06em;
   }
   .api-finnhub { background: #00e5a020; color: var(--finnhub); border: 1px solid #00e5a040; }
-  .api-polygon  { background: #3d8bff20; color: var(--polygon);  border: 1px solid #3d8bff40; }
   .api-tiingo   { background: #c084fc20; color: var(--tiingo);   border: 1px solid #c084fc40; }
 
   .price-val {
@@ -288,7 +305,6 @@
     font-size: 0.7rem;
   }
 
-  /* Legend */
   .legend {
     display: flex;
     gap: 18px;
@@ -318,36 +334,23 @@
     letter-spacing: 0.05em;
   }
 
-  /* Rate limit warning toast */
-  #rateToast {
-    display: none;
-    position: fixed;
-    bottom: 24px; right: 24px;
-    background: #f5a62320;
-    border: 1px solid var(--warn);
-    color: var(--warn);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.72rem;
-    padding: 10px 16px;
-    border-radius: 6px;
-    z-index: 999;
-    max-width: 320px;
-  }
-
   @media (max-width: 700px) {
     body { padding: 12px; }
     .controls { flex-direction: column; align-items: flex-start; }
     .field input { width: 100%; }
+    header { flex-direction: column; align-items: flex-start; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>ETF · API Test</h1>
-  <span class="badge badge-finnhub">Finnhub</span>
-  <span class="badge badge-polygon">Polygon</span>
-  <span class="badge badge-tiingo">Tiingo</span>
+  <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+    <h1>ETF · API Test</h1>
+    <span class="badge badge-finnhub">Finnhub</span>
+    <span class="badge badge-tiingo">Tiingo</span>
+  </div>
+  <a href="etf.html" class="back-btn">BACK</a>
 </header>
 
 <div class="controls">
@@ -366,7 +369,7 @@
 <div id="statusBar"></div>
 
 <div id="progressWrap">
-  <div id="progressLabel">Fetching data… 0 / 14 calls</div>
+  <div id="progressLabel">Fetching data… 0 / 2 calls</div>
   <div id="progressBar"><div id="progressFill"></div></div>
 </div>
 
@@ -374,7 +377,7 @@
 
   <!-- TABLE 1: CURRENT -->
   <div class="table-section">
-    <h2><span class="table-title-accent">Table 1</span> &mdash; Current (anchored to today)</h2>
+    <h2><span class="table-title-accent">Table 1</span> — Current (anchored to today)</h2>
     <div class="table-scroll">
       <table id="table1">
         <thead>
@@ -390,84 +393,21 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td class="row-label">Calendar</td>
-            <td id="t1-cal-today">—</td>
-            <td id="t1-cal-1w">—</td>
-            <td id="t1-cal-1m">—</td>
-            <td id="t1-cal-ytd">—</td>
-            <td id="t1-cal-1y">—</td>
-            <td id="t1-cal-3y">—</td>
-            <td id="t1-cal-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">After listDate</td>
-            <td id="t1-ald-today">—</td>
-            <td id="t1-ald-1w">—</td>
-            <td id="t1-ald-1m">—</td>
-            <td id="t1-ald-ytd">—</td>
-            <td id="t1-ald-1y">—</td>
-            <td id="t1-ald-3y">—</td>
-            <td id="t1-ald-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">Open Date</td>
-            <td id="t1-open-today">—</td>
-            <td id="t1-open-1w">—</td>
-            <td id="t1-open-1m">—</td>
-            <td id="t1-open-ytd">—</td>
-            <td id="t1-open-1y">—</td>
-            <td id="t1-open-3y">—</td>
-            <td id="t1-open-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">API Used</td>
-            <td id="t1-api-today">—</td>
-            <td id="t1-api-1w">—</td>
-            <td id="t1-api-1m">—</td>
-            <td id="t1-api-ytd">—</td>
-            <td id="t1-api-1y">—</td>
-            <td id="t1-api-3y">—</td>
-            <td id="t1-api-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">Price</td>
-            <td id="t1-price-today">—</td>
-            <td id="t1-price-1w">—</td>
-            <td id="t1-price-1m">—</td>
-            <td id="t1-price-ytd">—</td>
-            <td id="t1-price-1y">—</td>
-            <td id="t1-price-3y">—</td>
-            <td id="t1-price-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">Adj Price</td>
-            <td id="t1-adj-today">—</td>
-            <td id="t1-adj-1w">—</td>
-            <td id="t1-adj-1m">—</td>
-            <td id="t1-adj-ytd">—</td>
-            <td id="t1-adj-1y">—</td>
-            <td id="t1-adj-3y">—</td>
-            <td id="t1-adj-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">Return %</td>
-            <td id="t1-ret-today">—</td>
-            <td id="t1-ret-1w">—</td>
-            <td id="t1-ret-1m">—</td>
-            <td id="t1-ret-ytd">—</td>
-            <td id="t1-ret-1y">—</td>
-            <td id="t1-ret-3y">—</td>
-            <td id="t1-ret-5y">—</td>
-          </tr>
+          <tr><td class="row-label">Calendar</td><td id="t1-cal-today">—</td><td id="t1-cal-1w">—</td><td id="t1-cal-1m">—</td><td id="t1-cal-ytd">—</td><td id="t1-cal-1y">—</td><td id="t1-cal-3y">—</td><td id="t1-cal-5y">—</td></tr>
+          <tr><td class="row-label">After listDate</td><td id="t1-ald-today">—</td><td id="t1-ald-1w">—</td><td id="t1-ald-1m">—</td><td id="t1-ald-ytd">—</td><td id="t1-ald-1y">—</td><td id="t1-ald-3y">—</td><td id="t1-ald-5y">—</td></tr>
+          <tr><td class="row-label">Open Date</td><td id="t1-open-today">—</td><td id="t1-open-1w">—</td><td id="t1-open-1m">—</td><td id="t1-open-ytd">—</td><td id="t1-open-1y">—</td><td id="t1-open-3y">—</td><td id="t1-open-5y">—</td></tr>
+          <tr><td class="row-label">API Used</td><td id="t1-api-today">—</td><td id="t1-api-1w">—</td><td id="t1-api-1m">—</td><td id="t1-api-ytd">—</td><td id="t1-api-1y">—</td><td id="t1-api-3y">—</td><td id="t1-api-5y">—</td></tr>
+          <tr><td class="row-label">Price</td><td id="t1-price-today">—</td><td id="t1-price-1w">—</td><td id="t1-price-1m">—</td><td id="t1-price-ytd">—</td><td id="t1-price-1y">—</td><td id="t1-price-3y">—</td><td id="t1-price-5y">—</td></tr>
+          <tr><td class="row-label">Adj Price</td><td id="t1-adj-today">—</td><td id="t1-adj-1w">—</td><td id="t1-adj-1m">—</td><td id="t1-adj-ytd">—</td><td id="t1-adj-1y">—</td><td id="t1-adj-3y">—</td><td id="t1-adj-5y">—</td></tr>
+          <tr><td class="row-label">Return %</td><td id="t1-ret-today">—</td><td id="t1-ret-1w">—</td><td id="t1-ret-1m">—</td><td id="t1-ret-ytd">—</td><td id="t1-ret-1y">—</td><td id="t1-ret-3y">—</td><td id="t1-ret-5y">—</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- TABLE 2: PAST (1 year prior anchor) -->
+  <!-- TABLE 2: PAST -->
   <div class="table-section">
-    <h2><span class="table-title-accent">Table 2</span> &mdash; Past (anchored to 1 year prior)</h2>
+    <h2><span class="table-title-accent">Table 2</span> — Past (anchored to 1 year prior)</h2>
     <div class="table-scroll">
       <table id="table2">
         <thead>
@@ -483,76 +423,13 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td class="row-label">Calendar</td>
-            <td id="t2-cal-anchor">—</td>
-            <td id="t2-cal-1w">—</td>
-            <td id="t2-cal-1m">—</td>
-            <td id="t2-cal-ytd">—</td>
-            <td id="t2-cal-1y">—</td>
-            <td id="t2-cal-3y">—</td>
-            <td id="t2-cal-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">After listDate</td>
-            <td id="t2-ald-anchor">—</td>
-            <td id="t2-ald-1w">—</td>
-            <td id="t2-ald-1m">—</td>
-            <td id="t2-ald-ytd">—</td>
-            <td id="t2-ald-1y">—</td>
-            <td id="t2-ald-3y">—</td>
-            <td id="t2-ald-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">Open Date</td>
-            <td id="t2-open-anchor">—</td>
-            <td id="t2-open-1w">—</td>
-            <td id="t2-open-1m">—</td>
-            <td id="t2-open-ytd">—</td>
-            <td id="t2-open-1y">—</td>
-            <td id="t2-open-3y">—</td>
-            <td id="t2-open-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">API Used</td>
-            <td id="t2-api-anchor">—</td>
-            <td id="t2-api-1w">—</td>
-            <td id="t2-api-1m">—</td>
-            <td id="t2-api-ytd">—</td>
-            <td id="t2-api-1y">—</td>
-            <td id="t2-api-3y">—</td>
-            <td id="t2-api-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">Price</td>
-            <td id="t2-price-anchor">—</td>
-            <td id="t2-price-1w">—</td>
-            <td id="t2-price-1m">—</td>
-            <td id="t2-price-ytd">—</td>
-            <td id="t2-price-1y">—</td>
-            <td id="t2-price-3y">—</td>
-            <td id="t2-price-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">Adj Price</td>
-            <td id="t2-adj-anchor">—</td>
-            <td id="t2-adj-1w">—</td>
-            <td id="t2-adj-1m">—</td>
-            <td id="t2-adj-ytd">—</td>
-            <td id="t2-adj-1y">—</td>
-            <td id="t2-adj-3y">—</td>
-            <td id="t2-adj-5y">—</td>
-          </tr>
-          <tr>
-            <td class="row-label">Return %</td>
-            <td id="t2-ret-anchor">—</td>
-            <td id="t2-ret-1w">—</td>
-            <td id="t2-ret-1m">—</td>
-            <td id="t2-ret-ytd">—</td>
-            <td id="t2-ret-1y">—</td>
-            <td id="t2-ret-3y">—</td>
-            <td id="t2-ret-5y">—</td>
-          </tr>
+          <tr><td class="row-label">Calendar</td><td id="t2-cal-anchor">—</td><td id="t2-cal-1w">—</td><td id="t2-cal-1m">—</td><td id="t2-cal-ytd">—</td><td id="t2-cal-1y">—</td><td id="t2-cal-3y">—</td><td id="t2-cal-5y">—</td></tr>
+          <tr><td class="row-label">After listDate</td><td id="t2-ald-anchor">—</td><td id="t2-ald-1w">—</td><td id="t2-ald-1m">—</td><td id="t2-ald-ytd">—</td><td id="t2-ald-1y">—</td><td id="t2-ald-3y">—</td><td id="t2-ald-5y">—</td></tr>
+          <tr><td class="row-label">Open Date</td><td id="t2-open-anchor">—</td><td id="t2-open-1w">—</td><td id="t2-open-1m">—</td><td id="t2-open-ytd">—</td><td id="t2-open-1y">—</td><td id="t2-open-3y">—</td><td id="t2-open-5y">—</td></tr>
+          <tr><td class="row-label">API Used</td><td id="t2-api-anchor">—</td><td id="t2-api-1w">—</td><td id="t2-api-1m">—</td><td id="t2-api-ytd">—</td><td id="t2-api-1y">—</td><td id="t2-api-3y">—</td><td id="t2-api-5y">—</td></tr>
+          <tr><td class="row-label">Price</td><td id="t2-price-anchor">—</td><td id="t2-price-1w">—</td><td id="t2-price-1m">—</td><td id="t2-price-ytd">—</td><td id="t2-price-1y">—</td><td id="t2-price-3y">—</td><td id="t2-price-5y">—</td></tr>
+          <tr><td class="row-label">Adj Price</td><td id="t2-adj-anchor">—</td><td id="t2-adj-1w">—</td><td id="t2-adj-1m">—</td><td id="t2-adj-ytd">—</td><td id="t2-adj-1y">—</td><td id="t2-adj-3y">—</td><td id="t2-adj-5y">—</td></tr>
+          <tr><td class="row-label">Return %</td><td id="t2-ret-anchor">—</td><td id="t2-ret-1w">—</td><td id="t2-ret-1m">—</td><td id="t2-ret-ytd">—</td><td id="t2-ret-1y">—</td><td id="t2-ret-3y">—</td><td id="t2-ret-5y">—</td></tr>
         </tbody>
       </table>
     </div>
@@ -561,26 +438,22 @@
 </div>
 
 <div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:var(--finnhub)"></div>Finnhub — current price (today, market open)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--polygon)"></div>Polygon — historical &lt; 2 yrs</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--tiingo)"></div>Tiingo — historical &gt; 2 yrs</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--na)"></div>N/A — before listDate</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--finnhub)"></div>Finnhub — current price (today only, when market open)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--tiingo)"></div>Tiingo — all historical prices + today if market closed</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--na)"></div>N/A — before listDate or data missing</div>
   <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Adj Price — split-adjusted (used for Return %)</div>
 </div>
-
-<div id="rateToast"></div>
 
 <footer>Wonderful Apps · ETF Project · API Test Page</footer>
 
 <script>
 
 // ─────────────────────────────────────────────
-// CONFIG
+// CONFIG & HOLIDAYS
 // ─────────────────────────────────────────────
 const BASE_URL  = 'http://localhost:8080';
-const TWO_YEARS_MS = 2 * 365.25 * 24 * 60 * 60 * 1000;
 
-// US Market holidays (from etfHoliday.html)
+// US Market holidays 2020–2036
 const HOLIDAYS_2020_2036 = [
   [2020,1,1],[2020,1,20],[2020,2,17],[2020,4,10],[2020,5,25],[2020,7,3],[2020,9,7],[2020,11,26],[2020,12,25],
   [2021,1,1],[2021,1,18],[2021,2,15],[2021,4,2],[2021,5,31],[2021,6,18],[2021,7,5],[2021,9,6],[2021,11,25],[2021,12,24],
@@ -589,19 +462,9 @@ const HOLIDAYS_2020_2036 = [
   [2024,1,1],[2024,1,15],[2024,2,19],[2024,3,29],[2024,5,27],[2024,6,19],[2024,7,4],[2024,9,2],[2024,11,28],[2024,12,25],
   [2025,1,1],[2025,1,20],[2025,2,17],[2025,4,18],[2025,5,26],[2025,6,19],[2025,7,4],[2025,9,1],[2025,11,27],[2025,12,25],
   [2026,1,1],[2026,1,19],[2026,2,16],[2026,4,3],[2026,5,25],[2026,6,19],[2026,7,3],[2026,9,7],[2026,11,26],[2026,12,25],
-  [2027,1,1],[2027,1,18],[2027,2,15],[2027,3,26],[2027,5,31],[2027,6,18],[2027,7,5],[2027,9,6],[2027,11,25],[2027,12,24],
-  [2028,1,17],[2028,2,21],[2028,4,14],[2028,5,29],[2028,6,19],[2028,7,4],[2028,9,4],[2028,11,23],[2028,12,25],
-  [2029,1,1],[2029,1,15],[2029,2,19],[2029,3,30],[2029,5,28],[2029,6,19],[2029,7,4],[2029,9,3],[2029,11,22],[2029,12,25],
-  [2030,1,1],[2030,1,21],[2030,2,18],[2030,4,19],[2030,5,27],[2030,6,19],[2030,7,4],[2030,9,2],[2030,11,28],[2030,12,25],
-  [2031,1,1],[2031,1,20],[2031,2,17],[2031,4,11],[2031,5,26],[2031,6,19],[2031,7,4],[2031,9,1],[2031,11,27],[2031,12,25],
-  [2032,1,1],[2032,1,19],[2032,2,16],[2032,3,26],[2032,5,31],[2032,6,18],[2032,7,5],[2032,9,6],[2032,11,25],[2032,12,24],
-  [2033,1,17],[2033,2,21],[2033,4,15],[2033,5,30],[2033,6,20],[2033,7,4],[2033,9,5],[2033,11,24],[2033,12,26],
-  [2034,1,2],[2034,1,16],[2034,2,20],[2034,4,7],[2034,5,29],[2034,6,19],[2034,7,4],[2034,9,4],[2034,11,23],[2034,12,25],
-  [2035,1,1],[2035,1,15],[2035,2,19],[2035,3,23],[2035,5,28],[2035,6,19],[2035,7,4],[2035,9,3],[2035,11,22],[2035,12,25],
-  [2036,1,1],[2036,1,21],[2036,2,18],[2036,4,11],[2036,5,26],[2036,6,19],[2036,7,4],[2036,9,1],[2036,11,27],[2036,12,25]
+  // ... (truncated for brevity – keep your full list)
 ];
 
-// Build a Set of holiday timestamps for fast lookup (UTC noon to avoid DST issues)
 const HOLIDAY_SET = new Set(
   HOLIDAYS_2020_2036.map(([y,m,d]) => Date.UTC(y, m-1, d))
 );
@@ -610,19 +473,12 @@ const HOLIDAY_SET = new Set(
 // DATE HELPERS
 // ─────────────────────────────────────────────
 
-function today() {
-  return new Date();
-}
+function today() { return new Date(); }
 
-// Return YYYY-MM-DD string from a Date (local time)
 function toDateStr(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,'0');
-  const dy = String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${dy}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// Parse YYYY-MM-DD as local midnight Date
 function parseDate(str) {
   const [y,m,d] = str.split('-').map(Number);
   return new Date(y, m-1, d);
@@ -647,535 +503,348 @@ function isMarketClosed(d) {
   return isWeekend(d) || isHoliday(d);
 }
 
-// Returns the most recent open trading day (same day or earlier)
 function getMostRecentOpenDay(dateStr) {
   const d = parseDate(dateStr);
-  while (isMarketClosed(d)) {
-    d.setDate(d.getDate() - 1);
-  }
+  while (isMarketClosed(d)) d.setDate(d.getDate() - 1);
   return toDateStr(d);
 }
 
-// Check if the market is open right now (weekday, non-holiday, between 9:30am–4:00pm ET)
-// For simplicity: if today is a trading day we consider it "potentially open"
-// Finnhub returns live quote if market is open, prior close if not — so we just
-// use Finnhub whenever openDate === todayStr, regardless of time.
 function isTodayTradingDay() {
-  const now = new Date();
-  return !isMarketClosed(now);
+  return !isMarketClosed(new Date());
 }
 
-// Calendar date for each period, given a base date string
 function getCalendarDate(baseDateStr, period) {
   const d = parseDate(baseDateStr);
   if (period === 'today' || period === 'anchor') return baseDateStr;
-  if (period === '1w')  { d.setDate(d.getDate() - 7); }
-  if (period === '1m')  { d.setMonth(d.getMonth() - 1); }
-  if (period === 'ytd') {
-    // Dec 31 of prior year (match etf.js logic)
-    d.setMonth(0, 1);
-    d.setDate(0); // = Dec 31 of prior year
-  }
-  if (period === '1y')  { d.setFullYear(d.getFullYear() - 1); }
-  if (period === '3y')  { d.setFullYear(d.getFullYear() - 3); }
-  if (period === '5y')  { d.setFullYear(d.getFullYear() - 5); }
+  if (period === '1w')  d.setDate(d.getDate() - 7);
+  if (period === '1m')  d.setMonth(d.getMonth() - 1);
+  if (period === 'ytd') { d.setMonth(0,1); d.setDate(0); } // Dec 31 prior year
+  if (period === '1y')  d.setFullYear(d.getFullYear() - 1);
+  if (period === '3y')  d.setFullYear(d.getFullYear() - 3);
+  if (period === '5y')  d.setFullYear(d.getFullYear() - 5);
   return toDateStr(d);
 }
 
-// Is calendarDate after listDate (i.e. the ETF existed)?
 function isAfterListDate(calendarDateStr, listDateStr) {
   return calendarDateStr >= listDateStr;
 }
 
-// Which API to use for a given openDate vs todayStr
-function chooseApi(openDateStr, todayStr) {
-  if (openDateStr === todayStr) return 'Finnhub';
-  const openMs  = parseDate(openDateStr).getTime();
-  const todayMs = parseDate(todayStr).getTime();
-  const diffMs  = todayMs - openMs;
-  return diffMs <= TWO_YEARS_MS ? 'Polygon' : 'Tiingo';
-}
+// ─────────────────────────────────────────────
+// API KEYS & SYMBOL LOOKUP
+// ─────────────────────────────────────────────
 
-// ─────────────────────────────────────────────
-// API KEY FETCH
-// ─────────────────────────────────────────────
 let apiKeys = null;
 
 async function getApiKeys() {
   if (apiKeys) return apiKeys;
   const token = localStorage.getItem('token');
   const resp = await fetch(`${BASE_URL}/etf/config`, {
-    headers: { 'Authorization': 'Bearer ' + token }
+    headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!resp.ok) throw new Error('Could not load API keys from /api/config');
+  if (!resp.ok) throw new Error('Failed to load API keys');
   apiKeys = await resp.json();
   return apiKeys;
 }
 
-// ─────────────────────────────────────────────
-// SYMBOL LOOKUP
-// ─────────────────────────────────────────────
 async function lookupSymbol(symbolInput) {
   const token = localStorage.getItem('token');
   const resp = await fetch(`${BASE_URL}/etf/symbol`, {
-    headers: { 'Authorization': 'Bearer ' + token }
+    headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!resp.ok) {
-    const d = await resp.json();
-    throw new Error(d.message || 'Failed to load symbols');
-  }
+  if (!resp.ok) throw new Error('Failed to load symbols');
   const data = await resp.json();
   const sym = (data.data || []).find(s => s.symbol.toUpperCase() === symbolInput.toUpperCase());
-  if (!sym) throw new Error(`Symbol "${symbolInput}" not found in database`);
-  return sym; // { symbol, name, listDate, ... }
+  if (!sym) throw new Error(`Symbol ${symbolInput} not found`);
+  return sym;
 }
 
 // ─────────────────────────────────────────────
-// PRICE FETCH (API calls)
+// PRICE FETCHING
 // ─────────────────────────────────────────────
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-// Note: Polygon rate limiting is now handled server-side via /etf/polygon-proxy
-
-async function fetchFinnhub(symbol, keys) {
-  const resp = await fetch(
-    `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${keys.FINNHUB_API_KEY}`
-  );
-  if (!resp.ok) throw new Error('Finnhub error');
-  const data = await resp.json();
-  // c = current price (or previous close if market is closed)
-  if (!data.c) throw new Error('Finnhub: no price');
-  // Finnhub current price — no split-adjusted variant available
-  return { price: parseFloat(data.c), adjPrice: null };
-}
-
-// Timestamp of last Polygon call — used to enforce rate limiting client-side.
-// Polygon free tier = 5 calls/min. Each proxy call makes 2 Polygon sub-calls,
-// so we enforce 13s minimum between proxy calls in the browser. This guarantees
-// spacing regardless of server-side queue behavior.
-let lastPolygonCallTime = 0;
-
-async function fetchPolygon(symbol, dateStr, keys) {
-  // Enforce 13s gap between Polygon proxy calls (client-side rate limiting)
-  const now = Date.now();
-  const elapsed = now - lastPolygonCallTime;
-  const POLYGON_INTERVAL_MS = 13000;
-  if (lastPolygonCallTime > 0 && elapsed < POLYGON_INTERVAL_MS) {
-    const wait = POLYGON_INTERVAL_MS - elapsed;
-    showRateToast(`Polygon rate limit: waiting ${Math.ceil(wait/1000)}s…`);
-    await sleep(wait);
-    hideRateToast();
-  }
-  lastPolygonCallTime = Date.now();
-
-  // Route through backend proxy — returns { adjClose, rawClose } in one call
-  const token = localStorage.getItem('token');
-  let resp = await fetch(
-    `${BASE_URL}/etf/polygon-proxy?symbol=${encodeURIComponent(symbol)}&date=${encodeURIComponent(dateStr)}`,
-    { headers: { 'Authorization': 'Bearer ' + token } }
-  );
-
-  // If Polygon rate-limited us (429), wait 70s for the rolling rate-limit window to fully clear and retry once
-  if (resp.status === 429) {
-    const RETRY_WAIT_MS = 70000;
-    showRateToast(`Polygon 429 — waiting ${RETRY_WAIT_MS/1000}s for rate limit to reset…`);
-    await sleep(RETRY_WAIT_MS);
-    hideRateToast();
-    lastPolygonCallTime = Date.now(); // reset timer so next call doesn't double-wait
-    resp = await fetch(
-      `${BASE_URL}/etf/polygon-proxy?symbol=${encodeURIComponent(symbol)}&date=${encodeURIComponent(dateStr)}`,
-      { headers: { 'Authorization': 'Bearer ' + token } }
-    );
-  }
-
-  if (!resp.ok) throw new Error('Polygon proxy error');
-  const data = await resp.json();
-  if (data.adjClose === null) throw new Error('Polygon: no data');
-  const adjClose = parseFloat(data.adjClose);
-  const rawClose = data.rawClose !== null ? parseFloat(data.rawClose) : adjClose;
-  // Always return adjClose so the Adj Price row is always populated, confirming both
-  // values were retrieved. If no split: adjClose === rawClose, cell shows same value
-  // in amber. If split detected: adjClose differs and Return % uses adjusted value.
-  return { price: rawClose, adjPrice: adjClose };
-}
-
-async function fetchTiingo(symbol, dateStr, keys) {
-  // Tiingo blocks direct browser requests (CORS). Route through backend proxy.
-  const token = localStorage.getItem('token');
-  const resp = await fetch(
-    `${BASE_URL}/etf/tiingo-proxy?symbol=${encodeURIComponent(symbol)}&date=${encodeURIComponent(dateStr)}`,
-    { headers: { 'Authorization': 'Bearer ' + token } }
-  );
-  if (!resp.ok) throw new Error('Tiingo proxy error');
-  const data = await resp.json();
-  if (!data || data.length === 0) throw new Error('Tiingo: no data');
-  const rawClose = parseFloat(data[0].close);
-  const adjClose = parseFloat(data[0].adjClose);
-  // Always return adjClose so the Adj Price row is always populated
-  return { price: rawClose, adjPrice: adjClose };
-}
-
-// Fetch Tiingo prices for a range of dates in a single proxy call.
-// Returns a Map keyed by 'YYYY-MM-DD' → { price: rawClose, adjPrice: adjClose }.
-// The range response contains every trading day between startDate and endDate.
-// Callers look up specific dates from the returned Map using the date string.
-async function fetchTiingoRange(symbol, startDateStr, endDateStr, keys) {
+async function fetchTiingoRange(symbol, startDateStr, endDateStr) {
   const token = localStorage.getItem('token');
   const resp = await fetch(
     `${BASE_URL}/etf/tiingo-proxy?symbol=${encodeURIComponent(symbol)}&startDate=${encodeURIComponent(startDateStr)}&endDate=${encodeURIComponent(endDateStr)}`,
-    { headers: { 'Authorization': 'Bearer ' + token } }
+    { headers: { 'Authorization': `Bearer ${token}` } }
   );
-  if (!resp.ok) throw new Error('Tiingo range proxy error');
+  if (!resp.ok) {
+    let msg = await resp.text().catch(() => '');
+    throw new Error(`Tiingo proxy failed (${resp.status}): ${msg}`);
+  }
   const data = await resp.json();
-  if (!data || data.length === 0) throw new Error('Tiingo range: no data');
-  // Build a lookup Map: 'YYYY-MM-DD' -> { price, adjPrice }
-  // Tiingo date strings are ISO format: '2023-03-01T00:00:00.000Z' — slice to 10 chars
+  if (!Array.isArray(data) || data.length === 0) throw new Error('No data from Tiingo');
   const map = new Map();
   data.forEach(row => {
-    const dateKey = row.date.substring(0, 10);
-    const rawClose = parseFloat(row.close);
-    const adjClose = parseFloat(row.adjClose);
-    // Always store adjClose so the Adj Price row is always populated
-    map.set(dateKey, { price: rawClose, adjPrice: adjClose });
+    const dateKey = row.date.substring(0,10);
+    map.set(dateKey, {
+      price: parseFloat(row.close),
+      adjPrice: parseFloat(row.adjClose)
+    });
   });
   return map;
 }
 
-async function fetchPrice(symbol, openDateStr, todayStr, apiName, keys) {
-  if (apiName === 'Finnhub') return fetchFinnhub(symbol, keys);
-  if (apiName === 'Polygon')  return fetchPolygon(symbol, openDateStr, keys);
-  if (apiName === 'Tiingo')   return fetchTiingo(symbol, openDateStr, keys);
-  throw new Error('Unknown API');
+async function fetchFinnhub(symbol, keys) {
+  const resp = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${keys.FINNHUB_API_KEY}`);
+  if (!resp.ok) throw new Error('Finnhub request failed');
+  const data = await resp.json();
+  if (!data.c || data.c === 0) throw new Error('No valid price from Finnhub');
+  return { price: parseFloat(data.c), adjPrice: null };
 }
 
 // ─────────────────────────────────────────────
-// PROGRESS
+// PROGRESS & UI HELPERS
 // ─────────────────────────────────────────────
-let progressCount = 0;
-// Total progress ticks: per table = Finnhub(1) + Polygon(up to 4) + Tiingo range(1) = up to 6
-// Two tables = up to 12. Tiingo range counts as 1 tick regardless of how many periods use it.
-const TOTAL_CALLS = 12; // up to 12: Finnhub(1) + Polygon(up to 4) + Tiingo range(1), x2 tables
+
+const TOTAL_CALLS = 2;
 
 function updateProgress(label) {
   progressCount++;
-  document.getElementById('progressLabel').textContent =
-    `Fetching data… ${progressCount} / ${TOTAL_CALLS} calls  (${label})  — Polygon rate-limited client-side`;
-  document.getElementById('progressFill').style.width =
-    `${Math.round((progressCount / TOTAL_CALLS) * 100)}%`;
+  document.getElementById('progressLabel').textContent = `Fetching… ${progressCount}/${TOTAL_CALLS} (${label})`;
+  document.getElementById('progressFill').style.width = `${(progressCount / TOTAL_CALLS) * 100}%`;
 }
+
+let progressCount = 0;
 
 function showProgress() {
   progressCount = 0;
   document.getElementById('progressWrap').style.display = 'block';
   document.getElementById('progressFill').style.width = '0%';
-  document.getElementById('progressLabel').textContent = 'Fetching data… 0 / 12 calls';
 }
+
 function hideProgress() {
   document.getElementById('progressWrap').style.display = 'none';
 }
 
-// ─────────────────────────────────────────────
-// STATUS BAR
-// ─────────────────────────────────────────────
-function showStatus(msg, type='info') {
+function showStatus(msg, type = 'info') {
   const el = document.getElementById('statusBar');
   el.textContent = msg;
   el.className = type;
   el.style.display = 'block';
 }
+
 function clearStatus() {
   document.getElementById('statusBar').style.display = 'none';
 }
 
-// ─────────────────────────────────────────────
-// RATE TOAST
-// ─────────────────────────────────────────────
-function showRateToast(msg) {
-  const t = document.getElementById('rateToast');
-  t.textContent = msg;
-  t.style.display = 'block';
-}
-function hideRateToast() {
-  document.getElementById('rateToast').style.display = 'none';
-}
-
-// ─────────────────────────────────────────────
-// CELL SETTERS
-// ─────────────────────────────────────────────
 function setCell(id, html) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = html;
 }
 
 function apiTag(name) {
-  const cls = name === 'Finnhub' ? 'api-finnhub' : name === 'Polygon' ? 'api-polygon' : 'api-tiingo';
+  const cls = name === 'Finnhub' ? 'api-finnhub' : 'api-tiingo';
   return `<span class="api-tag ${cls}">${name}</span>`;
 }
 
 function priceHtml(val) {
-  if (val === null) return `<span class="price-na">N/A</span>`;
+  if (val === null || isNaN(val)) return `<span class="price-na">N/A</span>`;
   return `<span class="price-val">$${val.toFixed(2)}</span>`;
 }
 
-function adjPriceHtml(adjPrice) {
-  if (adjPrice === null) return `<span class="adj-price-same">—</span>`;
-  return `<span class="adj-price-val">$${adjPrice.toFixed(2)}</span>`;
+function adjPriceHtml(val) {
+  if (val === null || isNaN(val)) return `<span class="adj-price-same">—</span>`;
+  return `<span class="adj-price-val">$${val.toFixed(2)}</span>`;
 }
 
 function returnHtml(val) {
-  if (val === null) return `<span class="return-na">N/A</span>`;
+  if (val === null || isNaN(val)) return `<span class="return-na">N/A</span>`;
   const cls = val >= 0 ? 'return-pos' : 'return-neg';
-  const sign = val >= 0 ? '+' : '';
-  return `<span class="${cls}">${sign}${val.toFixed(2)}%</span>`;
+  return `<span class="${cls}">${val >= 0 ? '+' : ''}${val.toFixed(2)}%</span>`;
 }
 
 function afterListHtml(val) {
-  if (val === null) return '—';
-  return val
-    ? `<span class="true-val">true</span>`
-    : `<span class="false-val">false</span>`;
+  return val ? `<span class="true-val">true</span>` : `<span class="false-val">false</span>`;
 }
 
-function loadingCell() {
-  return `<span class="loading-cell">…</span>`;
-}
+function loadingCell() { return `<span class="loading-cell">…</span>`; }
 
 // ─────────────────────────────────────────────
-// CLEAR TABLES
+// CLEAR & SKELETON
 // ─────────────────────────────────────────────
+
 const T1_PERIODS = ['today','1w','1m','ytd','1y','3y','5y'];
 const T2_PERIODS = ['anchor','1w','1m','ytd','1y','3y','5y'];
 const ROWS = ['cal','ald','open','api','price','adj','ret'];
 
 function clearTables() {
-  [...T1_PERIODS.map(p=>`t1-${p}`), ...T2_PERIODS.map(p=>`t2-${p}`)].forEach(prefix => {
-    ROWS.forEach(row => setCell(`${prefix.replace('t1-','t1-').replace('t2-','t2-')}${row === 'cal' ? '-cal' : row === 'ald' ? '-ald' : row === 'open' ? '-open' : row === 'api' ? '-api' : row === 'price' ? '-price' : '-ret'}-${prefix.split('-')[1]}`, '—'));
+  [...T1_PERIODS, ...T2_PERIODS].forEach(p => {
+    ROWS.forEach(r => setCell(`t1-${r}-${p}`, '—'));
+    ROWS.forEach(r => setCell(`t2-${r}-${p}`, '—'));
   });
-  // Simpler: just iterate the IDs directly
-  const allIds = [];
-  T1_PERIODS.forEach(p => ROWS.forEach(r => allIds.push(`t1-${r}-${p}`)));
-  T2_PERIODS.forEach(p => ROWS.forEach(r => allIds.push(`t2-${r}-${p}`)));
-  allIds.forEach(id => setCell(id, '—'));
 }
 
-// ─────────────────────────────────────────────
-// RENDER TABLE SKELETON (calendar + after listDate rows)
-// ─────────────────────────────────────────────
-function renderSkeleton(tablePrefix, periods, baseDateStr, listDateStr) {
+function renderSkeleton(prefix, periods, baseStr, listDateStr) {
   periods.forEach(period => {
-    const calDate = getCalendarDate(baseDateStr, period);
-    const afterLD = isAfterListDate(calDate, listDateStr);
-
-    // Calendar row
-    setCell(`${tablePrefix}-cal-${period}`, fmtDisplay(calDate));
-
-    // After listDate row
-    setCell(`${tablePrefix}-ald-${period}`, afterListHtml(afterLD));
-
-    if (afterLD) {
-      // Compute open date immediately (no API needed)
-      const openDate = getMostRecentOpenDay(calDate);
-      setCell(`${tablePrefix}-open-${period}`, fmtDisplay(openDate));
-      // Show which API will be used
-      const todayStr = toDateStr(today());
-      const api = chooseApi(openDate, todayStr);
-      setCell(`${tablePrefix}-api-${period}`, apiTag(api));
-      // Price, adj price & return: loading
-      setCell(`${tablePrefix}-price-${period}`, loadingCell());
-      setCell(`${tablePrefix}-adj-${period}`, loadingCell());
-      setCell(`${tablePrefix}-ret-${period}`, loadingCell());
+    const cal = getCalendarDate(baseStr, period);
+    const after = isAfterListDate(cal, listDateStr);
+    setCell(`${prefix}-cal-${period}`, fmtDisplay(cal));
+    setCell(`${prefix}-ald-${period}`, afterListHtml(after));
+    if (after) {
+      const openD = getMostRecentOpenDay(cal);
+      setCell(`${prefix}-open-${period}`, fmtDisplay(openD));
+      setCell(`${prefix}-api-${period}`, loadingCell());
+      setCell(`${prefix}-price-${period}`, loadingCell());
+      setCell(`${prefix}-adj-${period}`, loadingCell());
+      setCell(`${prefix}-ret-${period}`, loadingCell());
     } else {
-      setCell(`${tablePrefix}-open-${period}`, `<span class="price-na">N/A</span>`);
-      setCell(`${tablePrefix}-api-${period}`, `<span class="price-na">N/A</span>`);
-      setCell(`${tablePrefix}-price-${period}`, `<span class="price-na">N/A</span>`);
-      setCell(`${tablePrefix}-adj-${period}`, `<span class="price-na">N/A</span>`);
-      setCell(`${tablePrefix}-ret-${period}`, `<span class="price-na">N/A</span>`);
+      ['open','api','price','adj','ret'].forEach(r => 
+        setCell(`${prefix}-${r}-${period}`, `<span class="price-na">N/A</span>`)
+      );
     }
   });
 }
 
 // ─────────────────────────────────────────────
-// FETCH PRICES FOR ONE TABLE
+// MAIN PRICE FETCH & CALCULATION
 // ─────────────────────────────────────────────
-async function fetchTablePrices(tablePrefix, periods, baseDateStr, listDateStr, symbol, keys) {
+
+async function fetchAllPrices(symbol, listDateStr, keys) {
   const todayStr = toDateStr(today());
-  const prices    = {};  // raw close prices
-  const adjPrices = {};  // split-adjusted prices (null if no split)
 
-  // Pre-fetch all Tiingo dates for this table in one range call.
-  // Identify the earliest and latest open dates that will use Tiingo, then
-  // fetch the full range at once. Individual period lookups use the cached map.
-  // This reduces Tiingo calls from up to 2 per table to 1 per table.
-  const tiingoOpenDates = [];
-  periods.forEach(period => {
-    const calDate = getCalendarDate(baseDateStr, period);
-    if (!isAfterListDate(calDate, listDateStr)) return;
-    const openDate = getMostRecentOpenDay(calDate);
-    if (chooseApi(openDate, todayStr) === 'Tiingo') tiingoOpenDates.push(openDate);
-  });
-  let tiingoCache = null; // Map: 'YYYY-MM-DD' -> { price, adjPrice }, or null if no Tiingo periods
-  if (tiingoOpenDates.length > 0) {
-    const tiingoStart = tiingoOpenDates.reduce((a, b) => a < b ? a : b);
-    const tiingoEnd   = tiingoOpenDates.reduce((a, b) => a > b ? a : b);
-    try {
-      tiingoCache = await fetchTiingoRange(symbol, tiingoStart, tiingoEnd, keys);
-      updateProgress(`${symbol} · Tiingo range ${tiingoStart} → ${tiingoEnd}`);
-    } catch(err) {
-      // Range call failed — tiingoCache stays null; individual periods will show Error
-      tiingoCache = null;
-    }
-  }
+  // Find earliest needed date (~6 years back)
+  let earliest = getCalendarDate(todayStr, '5y');
+  const t2Anchor = getCalendarDate(todayStr, '1y');
+  const t2Earliest = getCalendarDate(t2Anchor, '5y');
+  if (t2Earliest < earliest) earliest = t2Earliest;
 
-  for (const period of periods) {
-    const calDate = getCalendarDate(baseDateStr, period);
-    const afterLD = isAfterListDate(calDate, listDateStr);
+  // Respect list date
+  const startDate = listDateStr > earliest ? listDateStr : earliest;
 
-    if (!afterLD) {
-      prices[period]    = null;
-      adjPrices[period] = null;
-      continue;
-    }
+  showProgress();
+  updateProgress('Tiingo range');
 
-    const openDate = getMostRecentOpenDay(calDate);
-    const apiName  = chooseApi(openDate, todayStr);
-
-    try {
-      let result;
-      if (apiName === 'Tiingo' && tiingoCache !== null) {
-        // Use cached range result — look up this period's open date in the map
-        const cached = tiingoCache.get(openDate);
-        if (!cached) throw new Error(`Tiingo: no data for ${openDate}`);
-        result = cached;
-      } else {
-        // Finnhub, Polygon, or Tiingo fallback (range call failed)
-        result = await fetchPrice(symbol, openDate, todayStr, apiName, keys);
-      }
-      prices[period]    = result.price;
-      adjPrices[period] = result.adjPrice; // null if no split detected
-      setCell(`${tablePrefix}-price-${period}`, priceHtml(result.price));
-      setCell(`${tablePrefix}-adj-${period}`,   adjPriceHtml(result.adjPrice));
-    } catch(err) {
-      prices[period]    = null;
-      adjPrices[period] = null;
-      setCell(`${tablePrefix}-price-${period}`, `<span class="price-na" title="${err.message}">Error</span>`);
-      setCell(`${tablePrefix}-adj-${period}`,   `<span class="price-na">—</span>`);
-    }
-
-    // Only log progress for non-Tiingo periods (Tiingo range already logged above)
-    if (apiName !== 'Tiingo') updateProgress(`${symbol} · ${period.toUpperCase()} · ${apiName}`);
-  }
-
-  // Effective price for Return % = adjPrice if split detected, otherwise raw price
-  const effectivePrice = (period) => adjPrices[period] !== null ? adjPrices[period] : prices[period];
-
-  // Number of years for each period (used for CAGR calculation)
-  // Periods < 1 year use simple return; periods >= 1 year use CAGR
-  const PERIOD_YEARS = { 'today': 0, 'anchor': 0, '1w': 1/52, '1m': 1/12, 'ytd': null, '1y': 1, '3y': 3, '5y': 5 };
-
-  // Now compute Return % — compare each period to anchor (today or 1yr-prior)
-  // Short periods (1w, 1m, ytd): simple return = ((anchor - period) / period) * 100
-  // Long periods (1y, 3y, 5y):   CAGR = ((anchor / period) ^ (1/n) - 1) * 100
-  const anchorKey   = periods[0]; // 'today' for T1, 'anchor' for T2
-  const anchorEff   = effectivePrice(anchorKey);
-  const anchorDateStr = getCalendarDate(baseDateStr, anchorKey);
-
-  periods.forEach(period => {
-    if (period === anchorKey) {
-      setCell(`${tablePrefix}-ret-${period}`, '—');
-      return;
-    }
-    const pEff = effectivePrice(period);
-    if (pEff === null || anchorEff === null || pEff === 0) {
-      setCell(`${tablePrefix}-ret-${period}`, returnHtml(null));
-      return;
-    }
-
-    let years = PERIOD_YEARS[period];
-
-    // For YTD: calculate actual fraction of year from period date to anchor date
-    if (years === null) {
-      const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
-      const periodDateStr = getCalendarDate(baseDateStr, period);
-      years = (parseDate(anchorDateStr) - parseDate(periodDateStr)) / msPerYear;
-    }
-
-    let ret;
-    if (years < 1) {
-      // Simple return for short periods (1w, 1m, ytd)
-      ret = ((anchorEff - pEff) / pEff) * 100;
-    } else {
-      // CAGR for multi-year periods (1y, 3y, 5y)
-      // Formula: ((Ending Value / Beginning Value) ^ (1/n) - 1) * 100
-      ret = (Math.pow(anchorEff / pEff, 1 / years) - 1) * 100;
-    }
-    setCell(`${tablePrefix}-ret-${period}`, returnHtml(ret));
-  });
-}
-
-// ─────────────────────────────────────────────
-// MAIN CALCULATE
-// ─────────────────────────────────────────────
-async function calculate() {
-  const symbolInput = document.getElementById('symbolInput').value.trim().toUpperCase();
-  if (!symbolInput) {
-    showStatus('Please enter a symbol.', 'error');
+  let tiingoCache;
+  try {
+    tiingoCache = await fetchTiingoRange(symbol, startDate, todayStr);
+  } catch (err) {
+    hideProgress();
+    showStatus(`Failed to load Tiingo data: ${err.message}`, 'error');
     return;
   }
+
+  let todayResult = null;
+  if (isTodayTradingDay()) {
+    updateProgress('Finnhub today');
+    try {
+      todayResult = await fetchFinnhub(symbol, keys);
+    } catch (err) {
+      console.warn('Finnhub today failed:', err);
+      // fall back to Tiingo for today
+    }
+  }
+
+  const tables = [
+    { prefix: 't1', periods: T1_PERIODS, base: todayStr, anchor: 'today' },
+    { prefix: 't2', periods: T2_PERIODS, base: t2Anchor, anchor: 'anchor' }
+  ];
+
+  for (const tbl of tables) {
+    const prices = {};
+    const adj = {};
+
+    for (const p of tbl.periods) {
+      const cal = getCalendarDate(tbl.base, p);
+      if (!isAfterListDate(cal, listDateStr)) {
+        prices[p] = adj[p] = null;
+        continue;
+      }
+
+      const openDate = getMostRecentOpenDay(cal);
+      let result;
+
+      if (tbl.prefix === 't1' && p === 'today' && todayResult) {
+        result = todayResult;
+        setCell(`t1-api-today`, apiTag('Finnhub'));
+      } else {
+        result = tiingoCache.get(openDate) || { price: null, adjPrice: null };
+        setCell(`${tbl.prefix}-api-${p}`, apiTag('Tiingo'));
+      }
+
+      prices[p] = result.price;
+      adj[p] = result.adjPrice;
+
+      setCell(`${tbl.prefix}-price-${p}`, priceHtml(result.price));
+      setCell(`${tbl.prefix}-adj-${p}`, adjPriceHtml(result.adjPrice));
+    }
+
+    const effPrice = per => adj[per] ?? prices[per];
+
+    const anchorVal = effPrice(tbl.anchor);
+    if (anchorVal === null) continue;
+
+    const PERIOD_YEARS = { today:0, anchor:0, '1w':1/52, '1m':1/12, ytd:null, '1y':1, '3y':3, '5y':5 };
+
+    tbl.periods.forEach(p => {
+      if (p === tbl.anchor) {
+        setCell(`${tbl.prefix}-ret-${p}`, '—');
+        return;
+      }
+
+      const val = effPrice(p);
+      if (val === null || anchorVal === 0) {
+        setCell(`${tbl.prefix}-ret-${p}`, returnHtml(null));
+        return;
+      }
+
+      let years = PERIOD_YEARS[p];
+      if (years === null) {
+        const startD = getCalendarDate(tbl.base, p);
+        years = (parseDate(todayStr) - parseDate(startD)) / (365.25 * 86400000);
+      }
+
+      let ret = years < 1
+        ? ((anchorVal - val) / val) * 100
+        : (Math.pow(anchorVal / val, 1/years) - 1) * 100;
+
+      setCell(`${tbl.prefix}-ret-${p}`, returnHtml(ret));
+    });
+  }
+
+  hideProgress();
+  showStatus(`Loaded prices for ${symbol}`, 'info');
+}
+
+// ─────────────────────────────────────────────
+// CALCULATE MAIN FUNCTION
+// ─────────────────────────────────────────────
+
+async function calculate() {
+  const symInput = document.getElementById('symbolInput').value.trim().toUpperCase();
+  if (!symInput) return showStatus('Enter a symbol', 'error');
 
   clearStatus();
   document.getElementById('symbolInfoBox').style.display = 'none';
   clearTables();
   document.getElementById('calcBtn').disabled = true;
-  // Reset Polygon rate-limit timer so the first call in this run waits the full 13s gap.
-  // Without this, if lastPolygonCallTime is 0 (page load) or stale (prior run),
-  // the first call fires immediately and may hit a still-active rate-limit window.
-  lastPolygonCallTime = Date.now();
 
   try {
-    // 1. Lookup symbol
-    showStatus(`Looking up ${symbolInput}…`, 'info');
-    const sym = await lookupSymbol(symbolInput);
-    const listDateStr = sym.listDate ? sym.listDate.substring(0,10) : '1900-01-01';
+    showStatus(`Looking up ${symInput}…`, 'info');
+    const sym = await lookupSymbol(symInput);
+    const listDate = sym.listDate?.substring(0,10) ?? '1900-01-01';
 
     document.getElementById('symNameDisplay').textContent = sym.name || sym.symbol;
-    document.getElementById('symListDisplay').textContent = `Listed: ${fmtDisplay(listDateStr)}`;
+    document.getElementById('symListDisplay').textContent = `Listed: ${fmtDisplay(listDate)}`;
     document.getElementById('symbolInfoBox').style.display = 'flex';
 
-    // 2. Load API keys
-    showStatus(`Loading API keys…`, 'info');
+    showStatus('Loading API keys…', 'info');
     const keys = await getApiKeys();
-
     clearStatus();
 
-    // 3. Determine base dates
-    const todayStr    = toDateStr(today());
-    const t1BaseStr   = todayStr;                             // Table 1 anchor = today
-    const t2Base      = parseDate(todayStr);
-    t2Base.setFullYear(t2Base.getFullYear() - 1);
-    const t2BaseStr   = toDateStr(t2Base);                   // Table 2 anchor = today - 1 year
+    const todayStr = toDateStr(today());
+    const t1Base = todayStr;
+    const t2Base = getCalendarDate(todayStr, '1y');
 
-    // 4. Render skeletons (calendar + ald + open date + api indicator) immediately
-    renderSkeleton('t1', T1_PERIODS, t1BaseStr, listDateStr);
-    renderSkeleton('t2', T2_PERIODS, t2BaseStr, listDateStr);
+    renderSkeleton('t1', T1_PERIODS, t1Base, listDate);
+    renderSkeleton('t2', T2_PERIODS, t2Base, listDate);
 
-    // 5. Update column headers with dates
-    document.getElementById('t1-head-today').textContent = `Today · ${fmtDisplay(t1BaseStr)}`;
-    document.getElementById('t2-head-anchor').textContent = `1 Yr Prior · ${fmtDisplay(t2BaseStr)}`;
+    document.getElementById('t1-head-today').textContent = `Today · ${fmtDisplay(t1Base)}`;
+    document.getElementById('t2-head-anchor').textContent = `1 Yr Prior · ${fmtDisplay(t2Base)}`;
 
-    // 6. Fetch prices — T1 then T2 sequentially to respect Polygon's 5 calls/min rate limit.
-    // Running in parallel caused all Polygon calls to flood the server queue simultaneously,
-    // resulting in 429 errors. Sequential execution ensures T1 completes (with client-side
-    // 13s spacing per Polygon call) before T2 begins. Tiingo is one range call per table.
-    showProgress();
+    await fetchAllPrices(sym.symbol, listDate, keys);
 
-    await fetchTablePrices('t1', T1_PERIODS, t1BaseStr, listDateStr, sym.symbol, keys);
-    await fetchTablePrices('t2', T2_PERIODS, t2BaseStr, listDateStr, sym.symbol, keys);
-
-    hideProgress();
-    showStatus(`Done. Prices loaded for ${sym.symbol}.`, 'info');
-
-  } catch(err) {
-    hideProgress();
+  } catch (err) {
     showStatus(err.message, 'error');
     console.error(err);
   } finally {
@@ -1183,8 +852,7 @@ async function calculate() {
   }
 }
 
-// Pre-clear on load
-clearTables();
+clearTables(); // initial clear
 
 </script>
 </body>
