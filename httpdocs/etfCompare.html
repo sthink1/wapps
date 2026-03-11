@@ -25,6 +25,20 @@
     .close { float: right; font-size: 24px; cursor: pointer; }
     button { padding: 8px 16px; cursor: pointer; }
     .sorted-column { background-color: #e0f7fa !important; font-weight: bold; }
+
+    /* Added for Listed date styling */
+    .name-cell {
+      text-align: left;
+      padding: 8px;
+    }
+    .listed-date {
+      display: block;
+      color: red;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 0.85em;
+      padding-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -39,17 +53,11 @@
     </select>
   </label>
 
-  <label>Current Date:
-    <input type="date" id="currentDate" value="2026-02-22">
-  </label>
-
-  <label>Past Date:
-    <input type="date" id="pastDate" value="2025-02-22">
-  </label>
+  <!-- Current Date and Past Date inputs removed (Change #3) -->
 
   <label>Rows:
     <select id="rows">
-      <option value="5" selected>5</option>          <!-- changed default to 5 -->
+      <option value="5" selected>5</option>
       <option value="10">10</option>
       <option value="25">25</option>
       <option value="50">50</option>
@@ -91,15 +99,14 @@
           <th>Name</th>
           <th>Invest</th>
           <th>Movement</th>
-          <th>AUM</th>
-          <th>Volume</th>
+          <!-- AUM and Volume removed (Change #1) -->
           <th>Price</th>
-          <th class="perf">YTD %</th>          <!-- added % -->
-          <th class="perf">1W %</th>           <!-- added % -->
-          <th class="perf">1M %</th>           <!-- added % -->
-          <th class="perf">1Y %</th>           <!-- added % -->
-          <th class="perf">3Y %</th>           <!-- added % -->
-          <th class="perf">5Y %</th>           <!-- added % -->
+          <th class="perf">YTD %</th>
+          <th class="perf">1W %</th>
+          <th class="perf">1M %</th>
+          <th class="perf">1Y %</th>
+          <th class="perf">3Y %</th>
+          <th class="perf">5Y %</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -114,12 +121,12 @@
         <tr>
           <th>Symbol</th>
           <th>Price</th>
-          <th class="perf">YTD %</th>           <!-- added % -->
-          <th class="perf">1W %</th>            <!-- added % -->
-          <th class="perf">1M %</th>            <!-- added % -->
-          <th class="perf">1Y %</th>            <!-- added % -->
-          <th class="perf">3Y %</th>            <!-- added % -->
-          <th class="perf">5Y %</th>            <!-- added % -->
+          <th class="perf">YTD %</th>
+          <th class="perf">1W %</th>
+          <th class="perf">1M %</th>
+          <th class="perf">1Y %</th>
+          <th class="perf">3Y %</th>
+          <th class="perf">5Y %</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -127,16 +134,16 @@
   </div>
 </div>
 
-<!-- Invest Modal -->
+<!-- Invest Modal (unchanged) -->
 <div id="investModal">
   <div class="modal-content">
-    <span class="close" onclick="closeInvestModal()">&times;</span>
+    <span class="close" onclick="closeInvestModal()">×</span>
     <h3>Invest</h3>
     <label>How much to invest: $
       <input type="number" id="investAmount" placeholder="5000" min="1">
     </label>
     <button onclick="calculateAllocation()">Calculate</button>
-    <button onclick="printModal()">Print</button>           <!-- Added: Print button -->
+    <button onclick="printModal()">Print</button>
     <button onclick="closeInvestModal()">Cancel</button>
 
     <table id="allocTable">
@@ -151,9 +158,71 @@
 </div>
 
 <script>
-// Replace with your actual JWT token storage method (from login)
-const token = localStorage.getItem('token') || ''; // adjust as needed
+// ─────────────────────────────────────────────
+// JWT token (unchanged)
+const token = localStorage.getItem('token') || '';
 
+// ─────────────────────────────────────────────
+// Trading day helpers (copied from etfAPItest.html for Change #3)
+const HOLIDAYS_2020_2036 = [
+  [2020,1,1],[2020,1,20],[2020,2,17],[2020,4,10],[2020,5,25],[2020,7,3],[2020,9,7],[2020,11,26],[2020,12,25],
+  [2021,1,1],[2021,1,18],[2021,2,15],[2021,4,2],[2021,5,31],[2021,6,18],[2021,7,5],[2021,9,6],[2021,11,25],[2021,12,24],
+  [2022,1,17],[2022,2,21],[2022,4,15],[2022,5,30],[2022,6,20],[2022,7,4],[2022,9,5],[2022,11,24],[2022,12,26],
+  [2023,1,2],[2023,1,16],[2023,2,20],[2023,4,7],[2023,5,29],[2023,6,19],[2023,7,4],[2023,9,4],[2023,11,23],[2023,12,25],
+  [2024,1,1],[2024,1,15],[2024,2,19],[2024,3,29],[2024,5,27],[2024,6,19],[2024,7,4],[2024,9,2],[2024,11,28],[2024,12,25],
+  [2025,1,1],[2025,1,20],[2025,2,17],[2025,4,18],[2025,5,26],[2025,6,19],[2025,7,4],[2025,9,1],[2025,11,27],[2025,12,25],
+  [2026,1,1],[2026,1,19],[2026,2,16],[2026,4,3],[2026,5,25],[2026,6,19],[2026,7,3],[2026,9,7],[2026,11,26],[2026,12,25],
+  [2027,1,1],[2027,1,18],[2027,2,15],[2027,3,26],[2027,5,31],[2027,6,18],[2027,7,5],[2027,9,6],[2027,11,25],[2027,12,24],
+  [2028,1,17],[2028,2,21],[2028,4,14],[2028,5,29],[2028,6,19],[2028,7,4],[2028,9,4],[2028,11,23],[2028,12,25],
+  [2029,1,1],[2029,1,15],[2029,2,19],[2029,3,30],[2029,5,28],[2029,6,19],[2029,7,4],[2029,9,3],[2029,11,22],[2029,12,25],
+  [2030,1,1],[2030,1,21],[2030,2,18],[2030,4,19],[2030,5,27],[2030,6,19],[2030,7,4],[2030,9,2],[2030,11,28],[2030,12,25],
+  [2031,1,1],[2031,1,20],[2031,2,17],[2031,4,11],[2031,5,26],[2031,6,19],[2031,7,4],[2031,9,1],[2031,11,27],[2031,12,25],
+  [2032,1,1],[2032,1,19],[2032,2,16],[2032,3,26],[2032,5,31],[2032,6,18],[2032,7,5],[2032,9,6],[2032,11,25],[2032,12,24],
+  [2033,1,17],[2033,2,21],[2033,4,15],[2033,5,30],[2033,6,20],[2033,7,4],[2033,9,5],[2033,11,24],[2033,12,26],
+  [2034,1,2],[2034,1,16],[2034,2,20],[2034,4,7],[2034,5,29],[2034,6,19],[2034,7,4],[2034,9,4],[2034,11,23],[2034,12,25],
+  [2035,1,1],[2035,1,15],[2035,2,19],[2035,3,23],[2035,5,28],[2035,6,19],[2035,7,4],[2035,9,3],[2035,11,22],[2035,12,25],
+  [2036,1,1],[2036,1,21],[2036,2,18],[2036,4,11],[2036,5,26],[2036,6,19],[2036,7,4],[2036,9,1],[2036,11,27],[2036,12,25]
+];
+
+const HOLIDAY_SET = new Set(
+  HOLIDAYS_2020_2036.map(([y,m,d]) => Date.UTC(y, m-1, d))
+);
+
+function toDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const dy = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dy}`;
+}
+
+function parseDate(str) {
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function isHoliday(d) {
+  return HOLIDAY_SET.has(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+}
+
+function isWeekend(d) {
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
+
+function isMarketClosed(d) {
+  return isWeekend(d) || isHoliday(d);
+}
+
+function getMostRecentOpenDay(dateStr) {
+  let d = parseDate(dateStr);
+  while (isMarketClosed(d)) {
+    d.setDate(d.getDate() - 1);
+  }
+  return toDateStr(d);
+}
+
+// ─────────────────────────────────────────────
+// Fetch helper (unchanged)
 async function fetchWithAuth(url) {
   const res = await fetch(url, {
     headers: { 'Authorization': `Bearer ${token}` }
@@ -162,6 +231,8 @@ async function fetchWithAuth(url) {
   return res.json();
 }
 
+// ─────────────────────────────────────────────
+// Populate categories (unchanged)
 async function populateCategories() {
   try {
     const data = await fetchWithAuth('/etf/category');
@@ -172,7 +243,6 @@ async function populateCategories() {
       opt.textContent = cat.category;
       select.appendChild(opt);
     });
-    // Add ALL option
     const allOpt = document.createElement('option');
     allOpt.value = 'ALL';
     allOpt.textContent = 'ALL';
@@ -183,19 +253,29 @@ async function populateCategories() {
   }
 }
 
-// Run on page load
+// ─────────────────────────────────────────────
+// On page load — compute trading dates instead of using inputs
 window.onload = () => {
   populateCategories();
-  // Optional: set default dates if not set
-  if (!document.getElementById('currentDate').value) {
-    document.getElementById('currentDate').value = '2026-02-22';
-  }
-  if (!document.getElementById('pastDate').value) {
-    document.getElementById('pastDate').value = '2025-02-22';
-  }
+
+  // Compute current and past trading dates (Change #3)
+  const today = new Date();
+  const currentDateStr = getMostRecentOpenDay(toDateStr(today));
+
+  const oneYearAgo = new Date(today);
+  oneYearAgo.setFullYear(today.getFullYear() - 1);
+  const pastDateStr = getMostRecentOpenDay(toDateStr(oneYearAgo));
+
+  // Set display spans immediately
+  document.getElementById('currentDateDisplay').textContent = currentDateStr;
+  document.getElementById('pastDateDisplay').textContent = pastDateStr;
+
+  // Optional: auto-load on page open (uncomment if desired)
+  // loadTables();
 };
 
-// Helper: Format numbers with commas (xxx,xxx.xx)
+// ─────────────────────────────────────────────
+// Number formatting (unchanged)
 function formatNumber(num) {
   if (num === 'N/A' || num == null || isNaN(num)) return 'N/A';
   return Number(num).toLocaleString('en-US', {
@@ -204,27 +284,28 @@ function formatNumber(num) {
   });
 }
 
+// ─────────────────────────────────────────────
+// Load tables — use computed trading dates (Change #3)
 async function loadTables() {
   const cat    = document.getElementById('category').value;
   if (!cat) return alert('Please select a category');
 
-  const currDate = document.getElementById('currentDate').value;
-  const pastDate = document.getElementById('pastDate').value;
+  // Use the already computed trading dates from onload
+  const currDate = document.getElementById('currentDateDisplay').textContent;
+  const pastDate = document.getElementById('pastDateDisplay').textContent;
+
   const rowsVal  = document.getElementById('rows').value;
   const sort     = document.getElementById('sortBy').value;
   const ord      = document.getElementById('order').value;
-
-  document.getElementById('currentDateDisplay').textContent = currDate;
-  document.getElementById('pastDateDisplay').textContent   = pastDate;
 
   const params = new URLSearchParams({
     category: cat,
     currentDate: currDate,
     pastDate: pastDate,
-    rows: rowsVal === 'ToDisplay' ? '5' : rowsVal, // fallback now 5
+    rows: rowsVal === 'ToDisplay' ? '5' : rowsVal,
     sortBy: sort,
     order: ord,
-    mock: 'false' // ← change to 'false' when ready for real data
+    mock: 'false'
   });
 
   try {
@@ -233,7 +314,6 @@ async function loadTables() {
     renderTable('currentTable', current, true);
     renderTable('pastTable', past, false);
 
-    // Highlight sorted column
     document.querySelectorAll('th.perf').forEach(th => {
       th.classList.toggle('sorted-column', th.textContent.trim() === sort);
     });
@@ -245,6 +325,8 @@ async function loadTables() {
   }
 }
 
+// ─────────────────────────────────────────────
+// Render table — Name cell modified (Change #2), AUM/Volume removed (Change #1)
 function renderTable(tableId, data, isCurrent) {
   const tbody = document.querySelector(`#${tableId} tbody`);
   tbody.innerHTML = '';
@@ -254,7 +336,15 @@ function renderTable(tableId, data, isCurrent) {
 
     if (isCurrent) {
       row.insertCell().textContent = item.symbol;
-      row.insertCell().textContent = item.name;
+
+      // Modified Name cell (Change #2)
+      const nameCell = row.insertCell();
+      nameCell.className = 'name-cell';
+      nameCell.innerHTML = `
+        ${item.name || '—'}
+        ${item.listDate ? `<span class="listed-date">LISTED: ${formatListedDate(item.listDate)}</span>` : ''}
+      `;
+
       const chkCell = row.insertCell();
       const chk = document.createElement('input');
       chk.type = 'checkbox';
@@ -264,16 +354,16 @@ function renderTable(tableId, data, isCurrent) {
       chkCell.appendChild(chk);
 
       const movCell = row.insertCell();
-      movCell.textContent = item.movement || '–';  // show dash if no movement
+      movCell.textContent = item.movement || '–';
       if (item.movement?.startsWith('↑')) movCell.className = 'up';
       if (item.movement?.startsWith('↓')) movCell.className = 'down';
 
-      addCell(row, item.aum,    item.isMock);
-      addCell(row, item.volume, item.isMock);
-      addCell(row, item.price,  item.isMock);
+      // AUM and Volume removed (Change #1)
+      addCell(row, item.price, item.isMock);
+
       ['YTD','1W','1M','1Y','3Y','5Y'].forEach(p => {
         const val = item.returns[p];
-        const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';  // add % sign
+        const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';
         addCell(row, display, item.isMock);
       });
     } else {
@@ -281,11 +371,22 @@ function renderTable(tableId, data, isCurrent) {
       addCell(row, item.price, item.isMock);
       ['YTD','1W','1M','1Y','3Y','5Y'].forEach(p => {
         const val = item.returns[p];
-        const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';  // add % sign
+        const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';
         addCell(row, display, item.isMock);
       });
     }
   });
+}
+
+// Helper for Listed date format MM/DD/YYYY
+function formatListedDate(dateStr) {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return 'N/A';
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const y = d.getFullYear();
+  return `${m}/${day}/${y}`;
 }
 
 function addCell(row, value, isMock = false) {
@@ -294,6 +395,8 @@ function addCell(row, value, isMock = false) {
   if (isMock) cell.classList.add('mock');
 }
 
+// ─────────────────────────────────────────────
+// Invest modal and related functions (unchanged)
 function openInvestModal() {
   const modal = document.getElementById('investModal');
   const tbody = document.querySelector('#allocTable tbody');
@@ -306,17 +409,14 @@ function openInvestModal() {
     return;
   }
 
-  // Show modal
   modal.style.display = 'flex';
 
-  // Pre-populate selected in modal (for Calculate)
   window.selectedInvest = checked.map(chk => ({
     symbol: chk.dataset.symbol,
     name:   chk.dataset.name,
     price:  parseFloat(chk.dataset.price) || 0
   }));
 
-  // Sort by name asc for allocation
   window.selectedInvest.sort((a,b) => a.name.localeCompare(b.name));
 }
 
@@ -331,7 +431,6 @@ function calculateAllocation() {
   let remaining = amount;
   const shares = new Array(window.selectedInvest.length).fill(0);
 
-  // Greedy: keep adding 1 share to each until can't afford cheapest
   while (remaining > 0) {
     let added = false;
     const minPrice = Math.min(...window.selectedInvest.map(s => s.price).filter(p => p > 0));
@@ -358,19 +457,17 @@ function calculateAllocation() {
     const row = tbody.insertRow();
     row.insertCell().textContent = s.symbol;
     row.insertCell().textContent = s.name;
-    row.insertCell().textContent = formatNumber(s.price);           // formatted
+    row.insertCell().textContent = formatNumber(s.price);
     row.insertCell().textContent = shares[i];
-    row.insertCell().textContent = formatNumber(cost);              // formatted
+    row.insertCell().textContent = formatNumber(cost);
   });
 
-  document.getElementById('totalCost').textContent = formatNumber(totalCost);    // formatted
-  document.getElementById('remainder').textContent = formatNumber(amount - totalCost);  // formatted
+  document.getElementById('totalCost').textContent = formatNumber(totalCost);
+  document.getElementById('remainder').textContent = formatNumber(amount - totalCost);
 }
 
-// Added: Print function for the modal results
 function printModal() {
   const modalContent = document.querySelector('.modal-content').cloneNode(true);
-  // Remove buttons and close X from print version to keep it clean
   modalContent.querySelectorAll('button, .close').forEach(el => el.remove());
 
   const printWindow = window.open('', '', 'height=700,width=900');
@@ -383,7 +480,6 @@ function printModal() {
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
-  // Optional: printWindow.close();  // auto-close after printing (uncomment if desired)
 }
 </script>
 </body>
