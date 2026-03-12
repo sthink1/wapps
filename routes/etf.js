@@ -10,20 +10,41 @@ const auth = require('../middleware/auth');
 const POLYGON_API_KEY = process.env.POLYGON_API_KEY;
 
 // ────────────────────────────────────────────────
-// Helper: Adjust date to most recent prior trading day
-function getPriorTradingDay(dateStr, listDateStr) {
-  let date = new Date(dateStr);
-  const listDate = new Date(listDateStr);
-  if (date < listDate) return null; // Before listing → N/A
+// Date helpers (consistent with etfAPItest.html)
+function toDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dy = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dy}`;
+}
+
+function parseDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function getPriorTradingDay(dateStr, listDateStr = '1900-01-01') {
+  let date = parseDate(dateStr);
+  const listDate = parseDate(listDateStr);
+  if (date < listDate) return null;
   while (
-    date.getDay() === 0 || // Sunday
-    date.getDay() === 6 || // Saturday
-    holidays.some(h => h.getTime() === date.getTime())
+    date.getDay() === 0 || date.getDay() === 6 ||
+    holidays.some(h => h.getFullYear() === date.getFullYear() &&
+                       h.getMonth() === date.getMonth() &&
+                       h.getDate() === date.getDate())
   ) {
     date.setDate(date.getDate() - 1);
   }
   if (date < listDate) return null;
-  return date.toISOString().split('T')[0];
+  return toDateStr(date);
+}
+
+function isTodayTradingDay() {
+  const now = new Date();
+  return now.getDay() !== 0 && now.getDay() !== 6 &&
+         !holidays.some(h => h.getFullYear() === now.getFullYear() &&
+                             h.getMonth() === now.getMonth() &&
+                             h.getDate() === now.getDate());
 }
 
 // ────────────────────────────────────────────────
@@ -31,8 +52,8 @@ function getPriorTradingDay(dateStr, listDateStr) {
 function getAnchorDate(baseDate, period) {
   const date = new Date(baseDate);
   if (period === 'YTD') {
-    date.setMonth(0, 1); // Jan 1
-    date.setDate(0);     // Last day of previous year
+    date.setMonth(0, 1); // Jan 1 of current year
+    date.setDate(0);     // Dec 31 of previous year
   } else if (period === '1W') {
     date.setDate(date.getDate() - 7);
   } else if (period === '1M') {
@@ -48,7 +69,7 @@ function getAnchorDate(baseDate, period) {
 }
 
 // ────────────────────────────────────────────────
-// Mock data generator (used only when mock=true or API fails)
+// Mock data generator
 function getMockData(symbol, field) {
   if (field === 'price') return (Math.random() * 40 + 10).toFixed(2);
   if (field === 'aum') return Math.floor(Math.random() * 1000000000).toString();
@@ -56,10 +77,8 @@ function getMockData(symbol, field) {
   return 'N/A';
 }
 
-/* =====================================================
-   Existing routes (unchanged)
-===================================================== */
-// POST /etf/category
+// ────────────────────────────────────────────────
+// Existing routes (cleaned up, fixed string literals and queries)
 router.post(
   '/category',
   auth,
@@ -76,14 +95,14 @@ router.post(
     try {
       await withTransaction(async (connection) => {
         const [existing] = await connection.query(
-          `SELECT 1 FROM etfCategoryT WHERE category = ? AND UserID = ?`,
+          'SELECT 1 FROM etfCategoryT WHERE category = ? AND UserID = ?',
           [category, userId]
         );
         if (existing.length > 0) {
           throw new Error("Category already exists (be)");
         }
         await connection.query(
-          `INSERT INTO etfCategoryT (category, UserID) VALUES (?, ?)`,
+          'INSERT INTO etfCategoryT (category, UserID) VALUES (?, ?)',
           [category, userId]
         );
         res.json({ message: "Category saved" });
@@ -98,13 +117,12 @@ router.post(
   }
 );
 
-// GET /etf/category
 router.get('/category', auth, async (req, res) => {
   const userId = req.user.userId;
   try {
     await withTransaction(async (connection) => {
       const [rows] = await connection.query(
-        `SELECT etfCategoryID, category FROM etfCategoryT WHERE UserID = ? ORDER BY category ASC`,
+        'SELECT etfCategoryID, category FROM etfCategoryT WHERE UserID = ? ORDER BY category ASC',
         [userId]
       );
       res.json({ message: "Success", data: rows });
@@ -115,7 +133,6 @@ router.get('/category', auth, async (req, res) => {
   }
 });
 
-// PUT /etf/category/:id
 router.put(
   '/category/:id',
   auth,
@@ -131,7 +148,7 @@ router.put(
     try {
       await withTransaction(async (connection) => {
         const [result] = await connection.query(
-          `UPDATE etfCategoryT SET category = ? WHERE etfCategoryID = ? AND UserID = ?`,
+          'UPDATE etfCategoryT SET category = ? WHERE etfCategoryID = ? AND UserID = ?',
           [category, categoryID, userId]
         );
         if (result.affectedRows === 0) {
@@ -149,21 +166,20 @@ router.put(
   }
 );
 
-// DELETE /etf/category/:id
 router.delete('/category/:id', auth, async (req, res) => {
   const userId = req.user.userId;
   const categoryID = req.params.id;
   try {
     await withTransaction(async (connection) => {
       const [symbols] = await connection.query(
-        `SELECT COUNT(*) AS count FROM etfSymbolT WHERE etfCategoryID = ? AND UserID = ?`,
+        'SELECT COUNT(*) AS count FROM etfSymbolT WHERE etfCategoryID = ? AND UserID = ?',
         [categoryID, userId]
       );
       if (symbols[0].count > 0) {
         throw new Error("Cannot delete category with existing symbols (be)");
       }
       const [result] = await connection.query(
-        `DELETE FROM etfCategoryT WHERE etfCategoryID = ? AND UserID = ?`,
+        'DELETE FROM etfCategoryT WHERE etfCategoryID = ? AND UserID = ?',
         [categoryID, userId]
       );
       if (result.affectedRows === 0) {
@@ -180,7 +196,6 @@ router.delete('/category/:id', auth, async (req, res) => {
   }
 });
 
-// POST /etf/symbol
 router.post(
   '/symbol',
   auth,
@@ -196,7 +211,7 @@ router.post(
       await withTransaction(async (connection) => {
         const upperSymbol = symbol.toUpperCase();
         const [existing] = await connection.query(
-          `SELECT 1 FROM etfSymbolT WHERE symbol = ? AND UserID = ?`,
+          'SELECT 1 FROM etfSymbolT WHERE symbol = ? AND UserID = ?',
           [upperSymbol, userId]
         );
         if (existing.length > 0) {
@@ -228,7 +243,7 @@ router.post(
           throw new Error("Symbol not found. Please check symbol entered.(be)");
         }
         await connection.query(
-          `INSERT INTO etfSymbolT (symbol, name, listDate, etfCategoryID, UserID) VALUES (?, ?, ?, ?, ?)`,
+          'INSERT INTO etfSymbolT (symbol, name, listDate, etfCategoryID, UserID) VALUES (?, ?, ?, ?, ?)',
           [upperSymbol, name, listDate, etfCategoryID, userId]
         );
         res.json({ message: "Symbol saved", data: { symbol: upperSymbol, name, listDate } });
@@ -243,15 +258,14 @@ router.post(
   }
 );
 
-// GET /etf/symbol
 router.get('/symbol', auth, async (req, res) => {
   const userId = req.user.userId;
   try {
     await withTransaction(async (connection) => {
       const [rows] = await connection.query(
-        `SELECT s.etfSymbolID, s.symbol, s.name, s.listDate, c.category, s.etfCategoryID
-         FROM etfSymbolT s JOIN etfCategoryT c ON s.etfCategoryID = c.etfCategoryID
-         WHERE s.UserID = ? ORDER BY s.symbol ASC`,
+        'SELECT s.etfSymbolID, s.symbol, s.name, s.listDate, c.category, s.etfCategoryID ' +
+        'FROM etfSymbolT s JOIN etfCategoryT c ON s.etfCategoryID = c.etfCategoryID ' +
+        'WHERE s.UserID = ? ORDER BY s.symbol ASC',
         [userId]
       );
       res.json({ message: "Success", data: rows });
@@ -262,7 +276,6 @@ router.get('/symbol', auth, async (req, res) => {
   }
 });
 
-// PUT /etf/symbol/:id
 router.put(
   '/symbol/:id',
   auth,
@@ -278,7 +291,7 @@ router.put(
     try {
       await withTransaction(async (connection) => {
         const [result] = await connection.query(
-          `UPDATE etfSymbolT SET etfCategoryID = ? WHERE etfSymbolID = ? AND UserID = ?`,
+          'UPDATE etfSymbolT SET etfCategoryID = ? WHERE etfSymbolID = ? AND UserID = ?',
           [etfCategoryID, symbolID, userId]
         );
         if (result.affectedRows === 0) {
@@ -296,15 +309,13 @@ router.put(
   }
 );
 
-// DELETE /etf/symbol/:id
 router.delete('/symbol/:id', auth, async (req, res) => {
   const userId = req.user.userId;
   const symbolID = req.params.id;
   try {
     await withTransaction(async (connection) => {
-      // 7-Year Rule placeholder remains commented
       const [result] = await connection.query(
-        `DELETE FROM etfSymbolT WHERE etfSymbolID = ? AND UserID = ?`,
+        'DELETE FROM etfSymbolT WHERE etfSymbolID = ? AND UserID = ?',
         [symbolID, userId]
       );
       if (result.affectedRows === 0) {
@@ -322,13 +333,13 @@ router.delete('/symbol/:id', auth, async (req, res) => {
 });
 
 // ────────────────────────────────────────────────
-// NEW: GET /etf/compare
+// GET /etf/compare — fully aligned with etfAPItest logic
 router.get('/compare', auth, async (req, res) => {
   const userId = req.user.userId;
   const {
     category,
-    currentDate,
-    pastDate,
+    currentDate: clientCurrentDate,
+    pastDate: clientPastDate,
     rows = '10',
     sortBy = 'YTD',
     order = 'desc',
@@ -339,167 +350,206 @@ router.get('/compare', auth, async (req, res) => {
 
   try {
     await withTransaction(async (connection) => {
+      // 1. Fetch user's symbols in category
       let query = `
-        SELECT s.etfSymbolID, s.symbol, s.name, s.listDate, c.category 
-        FROM etfSymbolT s 
-        JOIN etfCategoryT c ON s.etfCategoryID = c.etfCategoryID 
+        SELECT s.symbol, s.name, s.listDate
+        FROM etfSymbolT s
+        JOIN etfCategoryT c ON s.etfCategoryID = c.etfCategoryID
         WHERE s.UserID = ?
       `;
       let params = [userId];
       if (category && category !== 'ALL') {
-        query += ` AND c.category = ?`;
+        query += ' AND c.category = ?';
         params.push(category);
       }
       const [symbols] = await connection.query(query, params);
 
+      if (symbols.length === 0) {
+        return res.json({ current: [], past: [] });
+      }
+
+      // Limit rows
       const limitedSymbols = rows === 'all' ? symbols : symbols.slice(0, parseInt(rows));
 
-      const periods = ['YTD', '1W', '1M', '1Y', '3Y', '5Y'];
+      // 2. Compute anchor dates
+      const today = new Date();
+      const currentAnchor = getPriorTradingDay(toDateStr(today)) || toDateStr(today);
+      const oneYearAgo = new Date(today);
+      oneYearAgo.setFullYear(today.getFullYear() - 1);
+      const pastAnchor = getPriorTradingDay(toDateStr(oneYearAgo)) || toDateStr(oneYearAgo);
 
-      // Helper to fetch adjusted close for a specific date
-      const fetchAdjClose = async (symbol, targetDate) => {
-        if (useMock) return parseFloat(getMockData(symbol, 'price'));
-        try {
-          const tiingoResp = await axios.get(
-            `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${targetDate}&endDate=${targetDate}&token=${process.env.TIINGO_API_KEY}`
-          );
-          return tiingoResp.data[0]?.adjClose || 0;
-        } catch (e) {
-          try {
-            const polygonResp = await axios.get(
-              `https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/${targetDate}/${targetDate}?adjusted=true&apiKey=${process.env.POLYGON_API_KEY}`
-            );
-            return polygonResp.data.results?.[0]?.c || 0;
-          } catch {
-            return 0;
+      const currBase = clientCurrentDate || currentAnchor;
+      const pastBase = clientPastDate || pastAnchor;
+
+      // 3. Periods and years
+      const periods = ['YTD', '1W', '1M', '1Y', '3Y', '5Y'];
+      const PERIOD_YEARS = {
+        'YTD': null,
+        '1W':  1/52,
+        '1M':  1/12,
+        '1Y':  1,
+        '3Y':  3,
+        '5Y':  5
+      };
+
+      // ────────────────────────────────
+      // Fetch Tiingo range once per symbol
+      const fetchTiingoRangeForSymbol = async (symbol, start, end) => {
+        if (useMock) {
+          const map = new Map();
+          let d = new Date(start);
+          const endD = new Date(end);
+          while (d <= endD) {
+            const ds = toDateStr(d);
+            map.set(ds, { price: parseFloat(getMockData(symbol, 'price')), adjPrice: parseFloat(getMockData(symbol, 'price')) });
+            d.setDate(d.getDate() + 1);
           }
+          return map;
+        }
+
+        try {
+          const resp = await axios.get(
+            `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${start}&endDate=${end}&token=${process.env.TIINGO_API_KEY}`
+          );
+          const map = new Map();
+          resp.data.forEach(row => {
+            const key = row.date.substring(0, 10);
+            map.set(key, {
+              price: parseFloat(row.close),
+              adjPrice: parseFloat(row.adjClose)
+            });
+          });
+          return map;
+        } catch (err) {
+          logger.error(`Tiingo range failed for ${symbol}: ${err.message}`);
+          return new Map();
         }
       };
 
-      const enrichForDate = async (baseDate, isCurrent) => {
+      // ────────────────────────────────
+      // Prefer adjPrice for returns
+      const getEffectivePrice = (cache, dateKey) => {
+        const entry = cache.get(dateKey);
+        if (!entry) return null;
+        const adj = entry.adjPrice;
+        return (adj !== null && !isNaN(adj)) ? adj : entry.price;
+      };
+
+      // ────────────────────────────────
+      const enrichData = async (baseDateStr, isCurrentTable) => {
         const results = [];
-        for (const sym of limitedSymbols) {
+
+        const tiingoPromises = limitedSymbols.map(sym =>
+          fetchTiingoRangeForSymbol(sym.symbol, getAnchorDate(baseDateStr, '5Y'), baseDateStr)
+            .then(cache => ({ symbol: sym.symbol, name: sym.name, listDate: sym.listDate, cache }))
+        );
+
+        const enriched = await Promise.all(tiingoPromises);
+
+        for (const { symbol, name, listDate, cache } of enriched) {
           const data = {
-            symbol: sym.symbol,
-            name: sym.name,
-            listDate: sym.listDate,
-            isMock: useMock
+            symbol,
+            name,
+            listDate,
+            isMock: useMock,
+            price: 'N/A',
+            returns: periods.reduce((acc, p) => ({ ...acc, [p]: 'N/A' }), {})
           };
 
-          const adjBaseDate = getPriorTradingDay(baseDate, sym.listDate);
-          if (!adjBaseDate) {
-            data.price = 'N/A';
-            data.aum = 'N/A';
-            data.volume = 'N/A';
-            data.returns = periods.reduce((acc, p) => ({ ...acc, [p]: 'N/A' }), {});
+          let todayPrice = null;
+          if (isCurrentTable && !useMock && isTodayTradingDay()) {
+            try {
+              const finn = await axios.get(
+                `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINNHUB_API_KEY}`
+              );
+              todayPrice = (finn.data.c && finn.data.c > 0) ? finn.data.c : null;
+            } catch (e) {
+              logger.warn(`Finnhub failed for ${symbol} (today): ${e.message}`);
+            }
+          }
+
+          const baseOpenDate = getPriorTradingDay(baseDateStr, listDate);
+          if (!baseOpenDate) {
             results.push(data);
             continue;
           }
 
-          // Current price (Finnhub) or historical (Tiingo/Polygon)
-          let price = 0;
-          if (isCurrent && !useMock) {
-            try {
-              const finnhubResp = await axios.get(
-                `https://finnhub.io/api/v1/quote?symbol=${sym.symbol}&token=${process.env.FINNHUB_API_KEY}`
-              );
-              price = finnhubResp.data.c || 0;
-            } catch {
-              price = await fetchAdjClose(sym.symbol, adjBaseDate);
-            }
-          } else {
-            price = await fetchAdjClose(sym.symbol, adjBaseDate);
-          }
-          data.price = price === 0 ? 'N/A' : price.toFixed(2);
+          const baseEntry = cache.get(baseOpenDate);
+          data.price = todayPrice ?? (baseEntry?.price?.toFixed(2) ?? 'N/A');
+          const baseEffPrice = todayPrice ?? getEffectivePrice(cache, baseOpenDate);
 
-          // AUM & Volume (Polygon)
-          if (useMock) {
-            data.aum = getMockData(sym.symbol, 'aum');
-            data.volume = getMockData(sym.symbol, 'volume');
-          } else {
-            try {
-              const tickerResp = await axios.get(
-                `https://api.polygon.io/v3/reference/tickers/${sym.symbol}?apiKey=${process.env.POLYGON_API_KEY}`
-              );
-              data.aum = tickerResp.data.results?.market_cap || 'N/A';
-            } catch {
-              data.aum = 'N/A';
-            }
-            try {
-              const volResp = await axios.get(
-                `https://api.polygon.io/v2/aggs/ticker/${sym.symbol}/range/1/day/${adjBaseDate}/${adjBaseDate}?adjusted=true&apiKey=${process.env.POLYGON_API_KEY}`
-              );
-              data.volume = volResp.data.results?.[0]?.v || 'N/A';
-            } catch {
-              data.volume = 'N/A';
-            }
-          }
-
-          // Returns for each period
-          data.returns = {};
           for (const period of periods) {
-            const anchor = getAnchorDate(baseDate, period);
-            const adjAnchor = getPriorTradingDay(anchor, sym.listDate);
-            if (!adjAnchor) {
+            const anchorStr = getAnchorDate(baseDateStr, period);
+            const anchorOpen = getPriorTradingDay(anchorStr, listDate);
+            if (!anchorOpen || anchorOpen >= baseOpenDate) {
               data.returns[period] = 'N/A';
               continue;
             }
-            const pastPrice = await fetchAdjClose(sym.symbol, adjAnchor);
-            const ret = pastPrice > 0 && price > 0
-              ? (((price - pastPrice) / pastPrice) * 100).toFixed(2)
-              : 'N/A';
-            data.returns[period] = ret;
+
+            const anchorEff = getEffectivePrice(cache, anchorOpen);
+            if (!anchorEff || !baseEffPrice || baseEffPrice === 0) {
+              data.returns[period] = 'N/A';
+              continue;
+            }
+
+            let years = PERIOD_YEARS[period];
+            if (years === null) { // YTD
+              const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
+              years = (new Date(baseDateStr) - new Date(anchorStr)) / msPerYear;
+            }
+
+            let ret;
+            if (years < 1) {
+              ret = ((baseEffPrice - anchorEff) / anchorEff) * 100;
+            } else {
+              ret = (Math.pow(baseEffPrice / anchorEff, 1 / years) - 1) * 100;
+            }
+
+            data.returns[period] = ret.toFixed(2);
           }
 
-          await new Promise(resolve => setTimeout(resolve, 12000));  // 12 seconds
           results.push(data);
         }
+
         return results;
       };
 
-      const currentData = await enrichForDate(currentDate || new Date().toISOString().split('T')[0], true);
-      const pastData = await enrichForDate(pastDate, false);
+      const current = await enrichData(currBase, true);
+      const past = await enrichData(pastBase, false);
 
-      // Sort both tables
-      const sortKey = sortBy;
-
-      // Sort both by sortBy/order (treat N/A as -Infinity for descending = bottom)
-const sortFunc = (a, b) => {
-  let valA = a.returns[sortBy];
-  let valB = b.returns[sortBy];
-
-  // Convert to number, treat N/A or invalid as -Infinity
-  valA = (valA === 'N/A' || valA == null || isNaN(parseFloat(valA))) ? -Infinity : parseFloat(valA);
-  valB = (valB === 'N/A' || valB == null || isNaN(parseFloat(valB))) ? -Infinity : parseFloat(valB);
-
-  return order === 'desc' ? valB - valA : valA - valB;
-};
-
-      currentData.sort(sortFunc);
-      pastData.sort(sortFunc);
-
-      // Calculate movement (position change)
-      const pastMap = new Map(pastData.map((d, idx) => [d.symbol, idx]));
-      currentData.forEach(d => {
+      // Movement
+      const pastMap = new Map(past.map((d, idx) => [d.symbol, idx]));
+      current.forEach(d => {
         const pastPos = pastMap.get(d.symbol);
         if (pastPos !== undefined) {
-          const currPos = currentData.findIndex(cd => cd.symbol === d.symbol);
+          const currPos = current.findIndex(c => c.symbol === d.symbol);
           const diff = pastPos - currPos;
-          d.movement = diff > 0 ? `↑${diff}` : diff < 0 ? `↓${Math.abs(diff)}` : '';
+          d.movement = diff > 0 ? `↑${diff}` : diff < 0 ? `↓${Math.abs(diff)}` : '–';
         } else {
-          d.movement = '';
+          d.movement = '–';
         }
       });
 
-      res.json({ current: currentData, past: pastData });
+      // Sort
+      const sortFunc = (a, b) => {
+        let va = parseFloat(a.returns[sortBy]) || -Infinity;
+        let vb = parseFloat(b.returns[sortBy]) || -Infinity;
+        return order === 'desc' ? vb - va : va - vb;
+      };
+
+      current.sort(sortFunc);
+      past.sort(sortFunc);
+
+      res.json({ current, past });
     });
   } catch (err) {
-    handleDbError(err, res, 'Error fetching compare data');
+    logger.error(`GET /etf/compare failed: ${err.message} - Stack: ${err.stack}`);
+    res.status(500).json({ message: 'Server error fetching comparison data' });
   }
 });
 
 // ────────────────────────────────────────────────
-// GET /etf/config  — supply API keys to etfAPItest.html
+// GET /etf/config
 router.get('/config', auth, (req, res) => {
   res.json({
     FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
@@ -509,26 +559,15 @@ router.get('/config', auth, (req, res) => {
 });
 
 // ────────────────────────────────────────────────
-// GET /etf/tiingo-proxy  — server-side proxy for Tiingo (CORS workaround)
-//
-// Supports two calling modes:
-//   Single date:  ?symbol=X&date=YYYY-MM-DD
-//                 Returns array with one element for that exact date.
-//   Date range:   ?symbol=X&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-//                 Returns array of all trading days in the range.
-//                 Used by fetchTiingoRange() in etfAPItest.html to cover all
-//                 Tiingo dates for a symbol in one call instead of one per period.
+// GET /etf/tiingo-proxy
 router.get('/tiingo-proxy', auth, async (req, res) => {
   const { symbol, date, startDate, endDate } = req.query;
-  if (!symbol) {
-    return res.status(400).json({ message: 'symbol required' });
-  }
-  // Determine date range: single-date mode uses date for both start and end
+  if (!symbol) return res.status(400).json({ message: 'symbol required' });
+
   const start = startDate || date;
   const end   = endDate   || date;
-  if (!start || !end) {
-    return res.status(400).json({ message: 'date or startDate+endDate required' });
-  }
+  if (!start || !end) return res.status(400).json({ message: 'date or startDate+endDate required' });
+
   try {
     const response = await axios.get(
       `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${start}&endDate=${end}&token=${process.env.TIINGO_API_KEY}`
@@ -541,19 +580,12 @@ router.get('/tiingo-proxy', auth, async (req, res) => {
 });
 
 // ────────────────────────────────────────────────
-// GET /etf/polygon-proxy  — server-side proxy for Polygon (CORS passthrough + adj/raw in one call)
-// Returns { adjClose, rawClose }
-//
-// Rate limiting is handled client-side in etfAPItest.html (13s gap between calls).
-// This proxy exists solely to keep the Polygon API key off the browser and to
-// fetch both adjusted and unadjusted closes in one round trip.
+// GET /etf/polygon-proxy (optional — can be removed if no longer needed)
 router.get('/polygon-proxy', auth, async (req, res) => {
   const { symbol, date } = req.query;
-  if (!symbol || !date) {
-    return res.status(400).json({ message: 'symbol and date required' });
-  }
+  if (!symbol || !date) return res.status(400).json({ message: 'symbol and date required' });
+
   try {
-    // Fetch adjusted close first, then unadjusted sequentially
     const adjResp = await axios.get(
       `https://api.polygon.io/v2/aggs/ticker/${symbol.toUpperCase()}/range/1/day/${date}/${date}?adjusted=true&sort=asc&apiKey=${process.env.POLYGON_API_KEY}`
     );
@@ -566,10 +598,9 @@ router.get('/polygon-proxy', auth, async (req, res) => {
 
     res.json({ adjClose, rawClose });
   } catch (err) {
-    // Pass 429 through explicitly so the browser can detect it and retry
-    if (err.response && err.response.status === 429) {
-      logger.error(`GET /etf/polygon-proxy: Polygon rate limit (429)`);
-      return res.status(429).json({ message: 'Polygon rate limit (be)' });
+    if (err.response?.status === 429) {
+      logger.error(`Polygon rate limit (429) for ${symbol} on ${date}`);
+      return res.status(429).json({ message: 'Polygon rate limit' });
     }
     logger.error(`GET /etf/polygon-proxy: ${err.message}`);
     res.status(500).json({ message: 'Polygon proxy error' });
