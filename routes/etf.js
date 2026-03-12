@@ -336,10 +336,6 @@ router.delete('/symbol/:id', auth, async (req, res) => {
   }
 });
 
-// GET /etf/compare — fully aligned with etfAPItest logic
-// GET /etf/compare — one Tiingo call per symbol, shared cache for both tables
-// 60 minutes cache
-
 // GET /etf/compare — one Tiingo call per symbol, shared cache for both tables
 // 60 minutes cache
 router.get('/compare', auth, async (req, res) => {
@@ -355,21 +351,18 @@ router.get('/compare', auth, async (req, res) => {
   } = req.query;
 
   const useMock = mock === 'true';
-  const cacheKey = `${userId}|${category}|${useMock}`; // per user + category + mock mode
+  const cacheKey = `${userId}|${category}|${useMock}`;
 
   // Check cache first
   const cached = compareCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     logger.info(`Cache hit for ${cacheKey}`);
-    // Still apply current sort / rows limit on cached data
     let { current, past } = cached.data;
 
-    // Re-apply rows limit if needed
     const numRows = rows === 'all' ? current.length : parseInt(rows);
     current = current.slice(0, numRows);
     past    = past.slice(0, numRows);
 
-    // Re-apply sort
     const sortFunc = (a, b) => {
       let va = parseFloat(a.returns[sortBy]) || -Infinity;
       let vb = parseFloat(b.returns[sortBy]) || -Infinity;
@@ -383,7 +376,6 @@ router.get('/compare', auth, async (req, res) => {
 
   try {
     await withTransaction(async (connection) => {
-      // Fetch symbols
       let query = `
         SELECT s.symbol, s.name, s.listDate
         FROM etfSymbolT s
@@ -403,7 +395,6 @@ router.get('/compare', auth, async (req, res) => {
 
       const limitedSymbols = rows === 'all' ? symbols : symbols.slice(0, parseInt(rows));
 
-      // Compute anchors and global start date (farthest back needed)
       const today = new Date();
       const currentAnchor = getPriorTradingDay(toDateStr(today)) || toDateStr(today);
       const oneYearAgo = new Date(today);
@@ -417,8 +408,7 @@ router.get('/compare', auth, async (req, res) => {
       const past5Y = getAnchorDate(pastBase, '5Y');
       const globalStart = curr5Y < past5Y ? curr5Y : past5Y;
 
-      // ────────────────────────────────
-      // Helper: fetch one Tiingo range per symbol (THIS WAS MISSING!)
+      // Helper: fetch Tiingo range
       const fetchTiingoRangeForSymbol = async (symbol, start, end) => {
         if (useMock) {
           const map = new Map();
@@ -426,10 +416,7 @@ router.get('/compare', auth, async (req, res) => {
           const endD = new Date(end);
           while (d <= endD) {
             const ds = toDateStr(d);
-            map.set(ds, {
-              price: parseFloat(getMockData(symbol, 'price')),
-              adjPrice: parseFloat(getMockData(symbol, 'price'))
-            });
+            map.set(ds, { price: parseFloat(getMockData(symbol, 'price')), adjPrice: parseFloat(getMockData(symbol, 'price')) });
             d.setDate(d.getDate() + 1);
           }
           return map;
@@ -441,7 +428,7 @@ router.get('/compare', auth, async (req, res) => {
           );
           const map = new Map();
           resp.data.forEach(row => {
-            const key = row.date.substring(0, 10);
+            const key = row.date.substring(0,10);
             map.set(key, {
               price: parseFloat(row.close),
               adjPrice: parseFloat(row.adjClose)
@@ -450,11 +437,10 @@ router.get('/compare', auth, async (req, res) => {
           return map;
         } catch (err) {
           logger.error(`Tiingo range failed for ${symbol}: ${err.message}`);
-          return new Map(); // empty → N/A fallback
+          return new Map();
         }
       };
 
-      // One Tiingo fetch per symbol
       const tiingoPromises = limitedSymbols.map(sym =>
         fetchTiingoRangeForSymbol(sym.symbol, globalStart, currBase)
           .then(cache => ({ symbol: sym.symbol, name: sym.name, listDate: sym.listDate, cache }))
@@ -462,7 +448,6 @@ router.get('/compare', auth, async (req, res) => {
 
       const enrichedSymbols = await Promise.all(tiingoPromises);
 
-      // Periods setup
       const periods = ['YTD', '1W', '1M', '1Y', '3Y', '5Y'];
       const PERIOD_YEARS = { 'YTD': null, '1W': 1/52, '1M': 1/12, '1Y': 1, '3Y': 3, '5Y': 5 };
 
@@ -483,31 +468,52 @@ router.get('/compare', auth, async (req, res) => {
             returns: periods.reduce((acc, p) => ({ ...acc, [p]: 'N/A' }), {})
           };
 
+          // Try Finnhub for current table if market open
           let todayPrice = null;
           if (isCurrentTable && !useMock && isTodayTradingDay()) {
             try {
-              const finn = axios.get(
+              const finnResp = await axios.get(
                 `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINNHUB_API_KEY}`
-              ).then(r => r.data);
-              todayPrice = (finn.c && finn.c > 0) ? finn.c : null;
+              );
+              todayPrice = finnResp.data.c && finnResp.data.c > 0 ? finnResp.data.c : null;
+              if (todayPrice) logger.info(`Finnhub success for ${symbol}: ${todayPrice}`);
             } catch (e) {
-              logger.warn(`Finnhub failed for ${symbol} (today): ${e.message}`);
+              logger.warn(`Finnhub failed for ${symbol}: ${e.message}`);
             }
           }
 
-          const baseOpenDate = getPriorTradingDay(baseDateStr, listDate);
+          // Get most recent open date
+          const baseOpenDate = getPriorTradingDay(baseDateStr, listDate || '1900-01-01');
           if (!baseOpenDate) {
             results.push(data);
             continue;
           }
 
           const baseEntry = cache.get(baseOpenDate);
-          data.price = todayPrice ?? (baseEntry?.price?.toFixed(2) ?? 'N/A');
-          const baseEffPrice = todayPrice ?? getEffectivePrice(cache, baseOpenDate);
+          // Improved fallback: if no exact match, use the latest available date in cache
+          let effectiveEntry = baseEntry;
+          if (!effectiveEntry) {
+            // Find the most recent date <= baseOpenDate
+            let latestDate = null;
+            let latestEntry = null;
+            for (const [dateKey, entry] of cache.entries()) {
+              if (dateKey <= baseOpenDate && (!latestDate || dateKey > latestDate)) {
+                latestDate = dateKey;
+                latestEntry = entry;
+              }
+            }
+            effectiveEntry = latestEntry;
+            if (effectiveEntry) {
+              logger.info(`Fallback to latest Tiingo date ${latestDate} for ${symbol}`);
+            }
+          }
+
+          data.price = todayPrice ?? (effectiveEntry?.price?.toFixed(2) ?? 'N/A');
+          const baseEffPrice = todayPrice ?? getEffectivePrice(cache, effectiveEntry ? latestDate || baseOpenDate : null);
 
           for (const period of periods) {
             const anchorStr = getAnchorDate(baseDateStr, period);
-            const anchorOpen = getPriorTradingDay(anchorStr, listDate);
+            const anchorOpen = getPriorTradingDay(anchorStr, listDate || '1900-01-01');
             if (!anchorOpen || anchorOpen >= baseOpenDate) {
               data.returns[period] = 'N/A';
               continue;
@@ -553,7 +559,6 @@ router.get('/compare', auth, async (req, res) => {
         }
       });
 
-      // Sort (cached in this order, frontend can re-sort)
       const sortFunc = (a, b) => {
         let va = parseFloat(a.returns[sortBy]) || -Infinity;
         let vb = parseFloat(b.returns[sortBy]) || -Infinity;
@@ -563,13 +568,11 @@ router.get('/compare', auth, async (req, res) => {
       current.sort(sortFunc);
       past.sort(sortFunc);
 
-      // Store in cache
       compareCache.set(cacheKey, {
         data: { current, past },
         timestamp: Date.now()
       });
 
-      // Clean up old entries
       for (const [key, val] of compareCache.entries()) {
         if (Date.now() - val.timestamp > CACHE_TTL_MS) {
           compareCache.delete(key);
