@@ -9,10 +9,6 @@ const { withTransaction, handleDbError, holidays } = require('../utils');
 const auth = require('../middleware/auth');
 const POLYGON_API_KEY = process.env.POLYGON_API_KEY;
 
-// Simple in-memory cache: userId + category → { data, timestamp }
-const compareCache = new Map();
-const CACHE_TTL_MS = 60 * 60 * 1000; // 60 minutes
-
 // ────────────────────────────────────────────────
 // Date helpers (consistent with etfAPItest.html)
 function toDateStr(d) {
@@ -336,16 +332,12 @@ router.delete('/symbol/:id', auth, async (req, res) => {
   }
 });
 
+// ────────────────────────────────────────────────
 // GET /etf/compare — fully aligned with etfAPItest logic
-// GET /etf/compare — one Tiingo call per symbol, shared cache for both tables
-// 60 minutes cache
-
-// GET /etf/compare — one Tiingo call per symbol, shared cache for both tables
-// 60 minutes cache
 router.get('/compare', auth, async (req, res) => {
   const userId = req.user.userId;
   const {
-    category = 'ALL',
+    category,
     currentDate: clientCurrentDate,
     pastDate: clientPastDate,
     rows = '10',
@@ -355,35 +347,10 @@ router.get('/compare', auth, async (req, res) => {
   } = req.query;
 
   const useMock = mock === 'true';
-  const cacheKey = `${userId}|${category}|${useMock}`; // per user + category + mock mode
-
-  // Check cache first
-  const cached = compareCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    logger.info(`Cache hit for ${cacheKey}`);
-    // Still apply current sort / rows limit on cached data
-    let { current, past } = cached.data;
-
-    // Re-apply rows limit if needed
-    const numRows = rows === 'all' ? current.length : parseInt(rows);
-    current = current.slice(0, numRows);
-    past    = past.slice(0, numRows);
-
-    // Re-apply sort
-    const sortFunc = (a, b) => {
-      let va = parseFloat(a.returns[sortBy]) || -Infinity;
-      let vb = parseFloat(b.returns[sortBy]) || -Infinity;
-      return order === 'desc' ? vb - va : va - vb;
-    };
-    current.sort(sortFunc);
-    past.sort(sortFunc);
-
-    return res.json({ current, past });
-  }
 
   try {
     await withTransaction(async (connection) => {
-      // Fetch symbols
+      // 1. Fetch user's symbols in category
       let query = `
         SELECT s.symbol, s.name, s.listDate
         FROM etfSymbolT s
@@ -391,7 +358,7 @@ router.get('/compare', auth, async (req, res) => {
         WHERE s.UserID = ?
       `;
       let params = [userId];
-      if (category !== 'ALL') {
+      if (category && category !== 'ALL') {
         query += ' AND c.category = ?';
         params.push(category);
       }
@@ -401,9 +368,10 @@ router.get('/compare', auth, async (req, res) => {
         return res.json({ current: [], past: [] });
       }
 
+      // Limit rows
       const limitedSymbols = rows === 'all' ? symbols : symbols.slice(0, parseInt(rows));
 
-      // Compute anchors and global start date (farthest back needed)
+      // 2. Compute anchor dates
       const today = new Date();
       const currentAnchor = getPriorTradingDay(toDateStr(today)) || toDateStr(today);
       const oneYearAgo = new Date(today);
@@ -413,12 +381,19 @@ router.get('/compare', auth, async (req, res) => {
       const currBase = clientCurrentDate || currentAnchor;
       const pastBase = clientPastDate || pastAnchor;
 
-      const curr5Y = getAnchorDate(currBase, '5Y');
-      const past5Y = getAnchorDate(pastBase, '5Y');
-      const globalStart = curr5Y < past5Y ? curr5Y : past5Y;
+      // 3. Periods and years
+      const periods = ['YTD', '1W', '1M', '1Y', '3Y', '5Y'];
+      const PERIOD_YEARS = {
+        'YTD': null,
+        '1W':  1/52,
+        '1M':  1/12,
+        '1Y':  1,
+        '3Y':  3,
+        '5Y':  5
+      };
 
       // ────────────────────────────────
-      // Helper: fetch one Tiingo range per symbol (THIS WAS MISSING!)
+      // Fetch Tiingo range once per symbol
       const fetchTiingoRangeForSymbol = async (symbol, start, end) => {
         if (useMock) {
           const map = new Map();
@@ -426,10 +401,7 @@ router.get('/compare', auth, async (req, res) => {
           const endD = new Date(end);
           while (d <= endD) {
             const ds = toDateStr(d);
-            map.set(ds, {
-              price: parseFloat(getMockData(symbol, 'price')),
-              adjPrice: parseFloat(getMockData(symbol, 'price'))
-            });
+            map.set(ds, { price: parseFloat(getMockData(symbol, 'price')), adjPrice: parseFloat(getMockData(symbol, 'price')) });
             d.setDate(d.getDate() + 1);
           }
           return map;
@@ -450,22 +422,12 @@ router.get('/compare', auth, async (req, res) => {
           return map;
         } catch (err) {
           logger.error(`Tiingo range failed for ${symbol}: ${err.message}`);
-          return new Map(); // empty → N/A fallback
+          return new Map();
         }
       };
 
-      // One Tiingo fetch per symbol
-      const tiingoPromises = limitedSymbols.map(sym =>
-        fetchTiingoRangeForSymbol(sym.symbol, globalStart, currBase)
-          .then(cache => ({ symbol: sym.symbol, name: sym.name, listDate: sym.listDate, cache }))
-      );
-
-      const enrichedSymbols = await Promise.all(tiingoPromises);
-
-      // Periods setup
-      const periods = ['YTD', '1W', '1M', '1Y', '3Y', '5Y'];
-      const PERIOD_YEARS = { 'YTD': null, '1W': 1/52, '1M': 1/12, '1Y': 1, '3Y': 3, '5Y': 5 };
-
+      // ────────────────────────────────
+      // Prefer adjPrice for returns
       const getEffectivePrice = (cache, dateKey) => {
         const entry = cache.get(dateKey);
         if (!entry) return null;
@@ -473,11 +435,22 @@ router.get('/compare', auth, async (req, res) => {
         return (adj !== null && !isNaN(adj)) ? adj : entry.price;
       };
 
-      const enrichData = (baseDateStr, isCurrentTable, symbolDataArray) => {
+      // ────────────────────────────────
+      const enrichData = async (baseDateStr, isCurrentTable) => {
         const results = [];
-        for (const { symbol, name, listDate, cache } of symbolDataArray) {
+
+        const tiingoPromises = limitedSymbols.map(sym =>
+          fetchTiingoRangeForSymbol(sym.symbol, getAnchorDate(baseDateStr, '5Y'), baseDateStr)
+            .then(cache => ({ symbol: sym.symbol, name: sym.name, listDate: sym.listDate, cache }))
+        );
+
+        const enriched = await Promise.all(tiingoPromises);
+
+        for (const { symbol, name, listDate, cache } of enriched) {
           const data = {
-            symbol, name, listDate,
+            symbol,
+            name,
+            listDate,
             isMock: useMock,
             price: 'N/A',
             returns: periods.reduce((acc, p) => ({ ...acc, [p]: 'N/A' }), {})
@@ -486,10 +459,10 @@ router.get('/compare', auth, async (req, res) => {
           let todayPrice = null;
           if (isCurrentTable && !useMock && isTodayTradingDay()) {
             try {
-              const finn = axios.get(
+              const finn = await axios.get(
                 `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINNHUB_API_KEY}`
-              ).then(r => r.data);
-              todayPrice = (finn.c && finn.c > 0) ? finn.c : null;
+              );
+              todayPrice = (finn.data.c && finn.data.c > 0) ? finn.data.c : null;
             } catch (e) {
               logger.warn(`Finnhub failed for ${symbol} (today): ${e.message}`);
             }
@@ -520,25 +493,29 @@ router.get('/compare', auth, async (req, res) => {
             }
 
             let years = PERIOD_YEARS[period];
-            if (years === null) {
+            if (years === null) { // YTD
               const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
               years = (new Date(baseDateStr) - new Date(anchorStr)) / msPerYear;
             }
 
-            let ret = years < 1
-              ? ((baseEffPrice - anchorEff) / anchorEff) * 100
-              : (Math.pow(baseEffPrice / anchorEff, 1 / years) - 1) * 100;
+            let ret;
+            if (years < 1) {
+              ret = ((baseEffPrice - anchorEff) / anchorEff) * 100;
+            } else {
+              ret = (Math.pow(baseEffPrice / anchorEff, 1 / years) - 1) * 100;
+            }
 
             data.returns[period] = ret.toFixed(2);
           }
 
           results.push(data);
         }
+
         return results;
       };
 
-      const current = enrichData(currBase, true, enrichedSymbols);
-      const past    = enrichData(pastBase, false, enrichedSymbols);
+      const current = await enrichData(currBase, true);
+      const past = await enrichData(pastBase, false);
 
       // Movement
       const pastMap = new Map(past.map((d, idx) => [d.symbol, idx]));
@@ -553,7 +530,7 @@ router.get('/compare', auth, async (req, res) => {
         }
       });
 
-      // Sort (cached in this order, frontend can re-sort)
+      // Sort
       const sortFunc = (a, b) => {
         let va = parseFloat(a.returns[sortBy]) || -Infinity;
         let vb = parseFloat(b.returns[sortBy]) || -Infinity;
@@ -562,19 +539,6 @@ router.get('/compare', auth, async (req, res) => {
 
       current.sort(sortFunc);
       past.sort(sortFunc);
-
-      // Store in cache
-      compareCache.set(cacheKey, {
-        data: { current, past },
-        timestamp: Date.now()
-      });
-
-      // Clean up old entries
-      for (const [key, val] of compareCache.entries()) {
-        if (Date.now() - val.timestamp > CACHE_TTL_MS) {
-          compareCache.delete(key);
-        }
-      }
 
       res.json({ current, past });
     });

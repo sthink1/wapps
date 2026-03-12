@@ -481,6 +481,51 @@ function printModal() {
   printWindow.focus();
   printWindow.print();
 }
+
+// ────────────────────────────────────────────────
+// Instant client-side sorting & rows limit (no re-fetch needed)
+
+let lastFullCurrent = [];  // full unsorted data from last Load
+let lastFullPast    = [];
+
+// Override renderTable to capture full data
+const originalRenderTable = renderTable;
+renderTable = function(tableId, data, isCurrent) {
+  if (isCurrent) lastFullCurrent = [...data];  // shallow copy
+  else           lastFullPast    = [...data];
+  originalRenderTable(tableId, data, isCurrent);
+};
+
+// Re-sort and re-apply rows limit
+function refreshTablesFromCache() {
+  const sortByVal = document.getElementById('sortBy').value;
+  const orderVal  = document.getElementById('order').value;
+  const rowsVal   = document.getElementById('rows').value;
+
+  const numRows = rowsVal === 'all' ? Infinity : parseInt(rowsVal);
+
+  // Sort function
+  const sortFunc = (a, b) => {
+    let va = parseFloat(a.returns[sortByVal]) || -Infinity;
+    let vb = parseFloat(b.returns[sortByVal]) || -Infinity;
+    return orderVal === 'desc' ? vb - va : va - vb;
+  };
+
+  // Apply sort + rows limit
+  const sortedCurrent = [...lastFullCurrent].sort(sortFunc).slice(0, numRows);
+  const sortedPast    = [...lastFullPast]   .sort(sortFunc).slice(0, numRows);
+
+  // Re-render
+  renderTable('currentTable', sortedCurrent, true);
+  renderTable('pastTable',    sortedPast,    false);
+}
+
+// Attach listeners (runs on dropdown change)
+document.getElementById('sortBy').addEventListener('change', refreshTablesFromCache);
+document.getElementById('order').addEventListener('change',  refreshTablesFromCache);
+document.getElementById('rows').addEventListener('change',   refreshTablesFromCache);
+
+
 </script>
 </body>
 </html>
