@@ -520,13 +520,18 @@ router.get('/compare', auth, async (req, res) => {
             
             if (!anchorOpen || anchorOpen >= baseOpenDate) {
               if (period === 'YTD') {
-                logger.info(`YTD N/A: ${symbol} anchorOpen=${anchorOpen}, baseOpenDate=${baseOpenDate}`);
+                logger.info(`YTD N/A (date check): ${symbol} anchorStr=${anchorStr}, anchorOpen=${anchorOpen}, baseOpenDate=${baseOpenDate}`);
               }
               data.returns[period] = 'N/A';
               continue;
             }
 
             const anchorEff = getEffectivePrice(cache, anchorOpen);
+            if (period === 'YTD' && !anchorEff) {
+              const cacheKeys = Array.from(cache.keys()).slice(0, 5);  // First 5 keys for debugging
+              logger.info(`YTD debug: ${symbol} anchorOpen=${anchorOpen}, cacheHas=${cache.has(anchorOpen)}, first5Keys=${JSON.stringify(cacheKeys)}`);
+            }
+            
             if (!anchorEff || !baseEffPrice || baseEffPrice === 0) {
               if (period === 'YTD') {
                 logger.info(`YTD N/A (no price): ${symbol} anchorEff=${anchorEff}, baseEffPrice=${baseEffPrice}`);
