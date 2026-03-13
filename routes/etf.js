@@ -513,15 +513,24 @@ router.get('/compare', auth, async (req, res) => {
             // If anchor date is before list date, use list date as anchor instead
             if (!anchorOpen && listDate) {
               anchorOpen = getPriorTradingDay(listDate, listDate);
+              if (period === 'YTD') {
+                logger.info(`YTD fallback: ${symbol} anchorStr=${anchorStr}, listDate=${listDate}, anchorOpen=${anchorOpen}`);
+              }
             }
             
             if (!anchorOpen || anchorOpen >= baseOpenDate) {
+              if (period === 'YTD') {
+                logger.info(`YTD N/A: ${symbol} anchorOpen=${anchorOpen}, baseOpenDate=${baseOpenDate}`);
+              }
               data.returns[period] = 'N/A';
               continue;
             }
 
             const anchorEff = getEffectivePrice(cache, anchorOpen);
             if (!anchorEff || !baseEffPrice || baseEffPrice === 0) {
+              if (period === 'YTD') {
+                logger.info(`YTD N/A (no price): ${symbol} anchorEff=${anchorEff}, baseEffPrice=${baseEffPrice}`);
+              }
               data.returns[period] = 'N/A';
               continue;
             }
@@ -547,6 +556,16 @@ router.get('/compare', auth, async (req, res) => {
       const current = await enrichData(currBase, true, enrichedSymbols);
       const past    = await enrichData(pastBase, false, enrichedSymbols);
 
+      const sortFunc = (a, b) => {
+        let va = parseFloat(a.returns[sortBy]) || -Infinity;
+        let vb = parseFloat(b.returns[sortBy]) || -Infinity;
+        return order === 'desc' ? vb - va : va - vb;
+      };
+
+      current.sort(sortFunc);
+      past.sort(sortFunc);
+
+      // Calculate Movement AFTER sorting, based on displayed positions
       const pastMap = new Map(past.map((d, idx) => [d.symbol, idx]));
       current.forEach(d => {
         const pastPos = pastMap.get(d.symbol);
@@ -558,15 +577,6 @@ router.get('/compare', auth, async (req, res) => {
           d.movement = '–';
         }
       });
-
-      const sortFunc = (a, b) => {
-        let va = parseFloat(a.returns[sortBy]) || -Infinity;
-        let vb = parseFloat(b.returns[sortBy]) || -Infinity;
-        return order === 'desc' ? vb - va : va - vb;
-      };
-
-      current.sort(sortFunc);
-      past.sort(sortFunc);
 
       compareCache.set(cacheKey, {
         data: { current, past },
