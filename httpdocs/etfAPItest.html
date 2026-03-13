@@ -703,7 +703,7 @@ function renderSkeleton(prefix, periods, baseStr, listDateStr) {
 async function fetchAllPrices(symbol, listDateStr, keys) {
   const todayStr = toDateStr(today());
 
-  // Find earliest needed date (~6 years back)
+  // Find earliest needed date (6 years back: covers Table 1 [today-5y] and Table 2 [1yr-prior-5y])
   let earliest = getCalendarDate(todayStr, '5y');
   const t2Anchor = getCalendarDate(todayStr, '1y');
   const t2Earliest = getCalendarDate(t2Anchor, '5y');
