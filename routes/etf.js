@@ -353,7 +353,6 @@ router.get('/compare', auth, async (req, res) => {
   const useMock = mock === 'true';
   const cacheKey = `${userId}|${category}|${useMock}`;
 
-  // Check cache first
   const cached = compareCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     logger.info(`Cache hit for ${cacheKey}`);
@@ -361,7 +360,7 @@ router.get('/compare', auth, async (req, res) => {
 
     const numRows = rows === 'all' ? current.length : parseInt(rows);
     current = current.slice(0, numRows);
-    past    = past.slice(0, numRows);
+    past = past.slice(0, numRows);
 
     const sortFunc = (a, b) => {
       let va = parseFloat(a.returns[sortBy]) || -Infinity;
@@ -408,7 +407,6 @@ router.get('/compare', auth, async (req, res) => {
       const past5Y = getAnchorDate(pastBase, '5Y');
       const globalStart = curr5Y < past5Y ? curr5Y : past5Y;
 
-      // Helper: fetch Tiingo range
       const fetchTiingoRangeForSymbol = async (symbol, start, end) => {
         if (useMock) {
           const map = new Map();
@@ -458,7 +456,8 @@ router.get('/compare', auth, async (req, res) => {
         return (adj !== null && !isNaN(adj)) ? adj : entry.price;
       };
 
-      const enrichData = (baseDateStr, isCurrentTable, symbolDataArray) => {
+      // FIXED: Added 'async' here
+      const enrichData = async (baseDateStr, isCurrentTable, symbolDataArray) => {
         const results = [];
         for (const { symbol, name, listDate, cache } of symbolDataArray) {
           const data = {
@@ -468,7 +467,6 @@ router.get('/compare', auth, async (req, res) => {
             returns: periods.reduce((acc, p) => ({ ...acc, [p]: 'N/A' }), {})
           };
 
-          // Try Finnhub for current table if market open
           let todayPrice = null;
           if (isCurrentTable && !useMock && isTodayTradingDay()) {
             try {
@@ -482,7 +480,6 @@ router.get('/compare', auth, async (req, res) => {
             }
           }
 
-          // Get most recent open date
           const baseOpenDate = getPriorTradingDay(baseDateStr, listDate || '1900-01-01');
           if (!baseOpenDate) {
             results.push(data);
@@ -490,10 +487,8 @@ router.get('/compare', auth, async (req, res) => {
           }
 
           const baseEntry = cache.get(baseOpenDate);
-          // Improved fallback: if no exact match, use the latest available date in cache
           let effectiveEntry = baseEntry;
           if (!effectiveEntry) {
-            // Find the most recent date <= baseOpenDate
             let latestDate = null;
             let latestEntry = null;
             for (const [dateKey, entry] of cache.entries()) {
@@ -543,10 +538,9 @@ router.get('/compare', auth, async (req, res) => {
         return results;
       };
 
-      const current = enrichData(currBase, true, enrichedSymbols);
-      const past    = enrichData(pastBase, false, enrichedSymbols);
+      const current = await enrichData(currBase, true, enrichedSymbols);
+      const past    = await enrichData(pastBase, false, enrichedSymbols);
 
-      // Movement
       const pastMap = new Map(past.map((d, idx) => [d.symbol, idx]));
       current.forEach(d => {
         const pastPos = pastMap.get(d.symbol);
