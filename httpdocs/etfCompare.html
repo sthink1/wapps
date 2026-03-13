@@ -285,10 +285,56 @@ function formatNumber(num) {
 }
 
 // ─────────────────────────────────────────────
+// Per-Category Cache with 60-minute TTL
+// Cache structure: { 'categoryName': { timestamp: ms, data: { current: [...], past: [...] } } }
+const CACHE_TTL_MS = 60 * 60 * 1000; // 60 minutes
+let categoryCache = {};
+
+function getCachedData(category) {
+  const cached = categoryCache[category];
+  if (!cached) return null;
+  
+  const now = Date.now();
+  if (now - cached.timestamp > CACHE_TTL_MS) {
+    // Cache expired, delete it
+    delete categoryCache[category];
+    return null;
+  }
+  
+  return cached.data;
+}
+
+function setCachedData(category, current, past) {
+  categoryCache[category] = {
+    timestamp: Date.now(),
+    data: { current, past }
+  };
+}
+
+function clearCache() {
+  categoryCache = {};
+}
+
+// ─────────────────────────────────────────────
 // Load tables — use computed trading dates (Change #3)
 async function loadTables() {
   const cat    = document.getElementById('category').value;
   if (!cat) return alert('Please select a category');
+
+  // Check if valid cache exists for this category
+  const cachedData = getCachedData(cat);
+  if (cachedData) {
+    console.log(`Using cached data for category: ${cat}`);
+    renderTable('currentTable', cachedData.current, true);
+    renderTable('pastTable', cachedData.past, false);
+
+    document.querySelectorAll('th.perf').forEach(th => {
+      th.classList.toggle('sorted-column', th.textContent.trim() === document.getElementById('sortBy').value);
+    });
+
+    document.getElementById('investBtn').disabled = false;
+    return;
+  }
 
   // Use the already computed trading dates from onload
   const currDate = document.getElementById('currentDateDisplay').textContent;
@@ -310,6 +356,9 @@ async function loadTables() {
 
   try {
     const { current, past } = await fetchWithAuth(`/etf/compare?${params}`);
+
+    // Store in per-category cache with TTL
+    setCachedData(cat, current, past);
 
     renderTable('currentTable', current, true);
     renderTable('pastTable', past, false);
@@ -524,6 +573,11 @@ function refreshTablesFromCache() {
 document.getElementById('sortBy').addEventListener('change', refreshTablesFromCache);
 document.getElementById('order').addEventListener('change',  refreshTablesFromCache);
 document.getElementById('rows').addEventListener('change',   refreshTablesFromCache);
+
+// ────────────────────────────────────────────────
+// Page-leave cleanup: Clear cache when user leaves
+window.addEventListener('beforeunload', clearCache);
+window.addEventListener('pagehide', clearCache);
 
 
 </script>

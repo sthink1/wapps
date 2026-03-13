@@ -488,8 +488,8 @@ router.get('/compare', auth, async (req, res) => {
 
           const baseEntry = cache.get(baseOpenDate);
           let effectiveEntry = baseEntry;
+          let latestDate = baseOpenDate;  // Initialize with baseOpenDate as fallback
           if (!effectiveEntry) {
-            let latestDate = null;
             let latestEntry = null;
             for (const [dateKey, entry] of cache.entries()) {
               if (dateKey <= baseOpenDate && (!latestDate || dateKey > latestDate)) {
@@ -508,7 +508,13 @@ router.get('/compare', auth, async (req, res) => {
 
           for (const period of periods) {
             const anchorStr = getAnchorDate(baseDateStr, period);
-            const anchorOpen = getPriorTradingDay(anchorStr, listDate || '1900-01-01');
+            let anchorOpen = getPriorTradingDay(anchorStr, listDate || '1900-01-01');
+            
+            // If anchor date is before list date, use list date as anchor instead
+            if (!anchorOpen && listDate) {
+              anchorOpen = getPriorTradingDay(listDate, listDate);
+            }
+            
             if (!anchorOpen || anchorOpen >= baseOpenDate) {
               data.returns[period] = 'N/A';
               continue;
