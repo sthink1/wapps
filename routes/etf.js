@@ -69,7 +69,7 @@ function getAnchorDate(baseDate, period) {
   } else if (period === '5Y') {
     date.setFullYear(date.getFullYear() - 5);
   }
-  return date.toISOString().split('T')[0];
+  return toDateStr(date);  // Use local timezone, not UTC
 }
 
 // ────────────────────────────────────────────────
