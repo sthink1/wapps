@@ -39,45 +39,6 @@
       font-size: 0.85em;
       padding-top: 6px;
     }
-    @media print {
-  /* 1. Ensure the Title and Filters are visible on Page 1 */
-  h2, .filters {
-    display: block !important;
-    visibility: visible !important;
-  }
-
-  /* 2. Remove the dropdown arrows and buttons from the filters */
-  /* This makes the filters look like a clean "Report Summary" */
-  .filters button, 
-  #investBtn, 
-  .filters label:nth-child(2), /* Hides the Row count if you want */
-  #order { 
-    display: none !important; 
-  }
-
-  /* 3. Stack tables vertically for the print layout */
-  .tables-container {
-    display: block !important;
-    overflow: visible !important;
-  }
-
-  /* 4. Ensure Table 2 starts on its own page */
-  #pastTable {
-    page-break-before: always;
-    margin-top: 30px;
-  }
-
-  /* 5. Keep the table column headers repeating on every page */
-  thead {
-    display: table-header-group;
-  }
-
-  /* 6. Clean up the appearance */
-  body {
-    margin: 0;
-    padding: 0;
-  }
-}
   </style>
 </head>
 <body>
@@ -125,7 +86,6 @@
   <button onclick="loadTables()">Load</button>
   <button id="investBtn" disabled onclick="openInvestModal()">Invest</button>
   <button onclick="history.back()">Back</button>
-  <button onclick="window.print()">Print Report</button>
 </div>
 
 <div class="tables-container">
