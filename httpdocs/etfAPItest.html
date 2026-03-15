@@ -156,6 +156,69 @@
   button.calc-btn:active { transform: scale(0.97); }
   button.calc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+  /* Modal styles for prompt dialog */
+  #promptModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  .prompt-modal-content {
+    background: var(--surface);
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+  }
+  .prompt-close {
+    float: right;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .prompt-close:hover {
+    color: var(--accent);
+  }
+  .prompt-modal-content h3 {
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  #promptContent {
+    font-family: 'JetBrains Mono', monospace;
+    white-space: pre-wrap;
+    background: var(--bg);
+    padding: 15px;
+    border-radius: 5px;
+    overflow-y: auto;
+    max-height: 400px;
+    color: var(--text);
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+  .prompt-modal-content button {
+    background: var(--accent);
+    color: #0d0f14;
+    border: none;
+    padding: 8px 16px;
+    margin-top: 15px;
+    margin-right: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .prompt-modal-content button:hover {
+    opacity: 0.85;
+  }
+
   /* Status/error bar */
   #statusBar {
     display: none;
@@ -364,6 +427,7 @@
     <span class="sym-list" id="symListDisplay"></span>
   </div>
   <button class="calc-btn" id="calcBtn" onclick="calculate()">Calculate</button>
+  <button class="calc-btn" onclick="openPromptModal()" style="background: var(--accent2);">Prompt</button>
 </div>
 
 <div id="statusBar"></div>
@@ -445,6 +509,18 @@
 </div>
 
 <footer>Wonderful Apps · ETF Project · API Test Page</footer>
+
+<!-- Prompt Modal -->
+<div id="promptModal">
+  <div class="prompt-modal-content">
+    <span class="prompt-close" onclick="closePromptModal()">×</span>
+    <h3>BOTZ Metrics Summary</h3>
+    <div id="promptContent" style="font-family:monospace; white-space:pre-wrap; background:var(--bg); padding:15px; border-radius:5px; overflow-y:auto; max-height:400px;"></div>
+    <button onclick="copyPromptToClipboard()">Copy to Clipboard</button>
+    <button onclick="printPrompt()">Print</button>
+    <button onclick="closePromptModal()">Close</button>
+  </div>
+</div>
 
 <script>
 
@@ -853,6 +929,86 @@ async function calculate() {
 }
 
 clearTables(); // initial clear
+
+// ─────────────────────────────────────────────
+// PROMPT MODAL FUNCTIONS
+// ─────────────────────────────────────────────
+
+function extractReturnValue(cellId) {
+  const cell = document.getElementById(cellId);
+  if (!cell || !cell.textContent) return 'N/A';
+  const text = cell.textContent.trim();
+  return text;
+}
+
+function generatePromptSummary() {
+  const symbol = document.getElementById('symbolInput').value.trim().toUpperCase() || 'N/A';
+  
+  let summary = '';
+  summary += `Symbol: ${symbol}\n`;
+  summary += 'Metrics: Return % for: 1W, 1M, YTD, 1Y, 3Y, 5Y\n';
+  summary += '\n';
+  
+  // Extract Return % values from Table 1
+  const t1_1w = extractReturnValue('t1-ret-1w');
+  const t1_1m = extractReturnValue('t1-ret-1m');
+  const t1_ytd = extractReturnValue('t1-ret-ytd');
+  const t1_1y = extractReturnValue('t1-ret-1y');
+  const t1_3y = extractReturnValue('t1-ret-3y');
+  const t1_5y = extractReturnValue('t1-ret-5y');
+  
+  summary += 'DATA Table 1:\n';
+  summary += 'Period        1W    1M    YTD   1Y    3Y    5Y\n';
+  summary += `Return %      ${t1_1w.padEnd(5)} ${t1_1m.padEnd(5)} ${t1_ytd.padEnd(5)} ${t1_1y.padEnd(5)} ${t1_3y.padEnd(5)} ${t1_5y}\n`;
+  summary += '\n';
+  
+  // Extract Return % values from Table 2
+  const t2_1w = extractReturnValue('t2-ret-1w');
+  const t2_1m = extractReturnValue('t2-ret-1m');
+  const t2_ytd = extractReturnValue('t2-ret-ytd');
+  const t2_1y = extractReturnValue('t2-ret-1y');
+  const t2_3y = extractReturnValue('t2-ret-3y');
+  const t2_5y = extractReturnValue('t2-ret-5y');
+  
+  summary += 'DATA Table 2:\n';
+  summary += 'Period        1W    1M    YTD   1Y    3Y    5Y\n';
+  summary += `Return %      ${t2_1w.padEnd(5)} ${t2_1m.padEnd(5)} ${t2_ytd.padEnd(5)} ${t2_1y.padEnd(5)} ${t2_3y.padEnd(5)} ${t2_5y}\n`;
+  
+  return summary;
+}
+
+function openPromptModal() {
+  const summary = generatePromptSummary();
+  document.getElementById('promptContent').textContent = summary;
+  document.getElementById('promptModal').style.display = 'flex';
+}
+
+function closePromptModal() {
+  document.getElementById('promptModal').style.display = 'none';
+}
+
+function copyPromptToClipboard() {
+  const summary = document.getElementById('promptContent').textContent;
+  navigator.clipboard.writeText(summary).then(() => {
+    showStatus('Summary copied to clipboard!', 'info');
+  }).catch(() => {
+    showStatus('Failed to copy to clipboard', 'error');
+  });
+}
+
+function printPrompt() {
+  const summary = document.getElementById('promptContent').textContent;
+  const printWindow = window.open('', '', 'height=700,width=900');
+  printWindow.document.write('<html><head><title>BOTZ Metrics Summary</title>');
+  printWindow.document.write('<style>body{font-family:monospace;margin:20px;white-space:pre-wrap;}</style>');
+  printWindow.document.write('</head><body>');
+  printWindow.document.write('<h2>BOTZ Metrics Summary</h2>');
+  printWindow.document.write(summary.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
 
 </script>
 </body>
