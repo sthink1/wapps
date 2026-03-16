@@ -53,8 +53,8 @@ function isTodayTradingDay() {
 
 // ────────────────────────────────────────────────
 // Helper: Calculate anchor date for performance periods
-function getAnchorDate(baseDate, period) {
-  const date = new Date(baseDate);
+function getAnchorDate(baseDateStr, period) {
+  const date = parseDate(baseDateStr);  // Use parseDate helper for consistent string parsing
   if (period === 'YTD') {
     date.setMonth(0, 1); // Jan 1 of current year
     date.setDate(0);     // Dec 31 of previous year
@@ -69,7 +69,7 @@ function getAnchorDate(baseDate, period) {
   } else if (period === '5Y') {
     date.setFullYear(date.getFullYear() - 5);
   }
-  return toDateStr(date);  // Use local timezone, not UTC
+  return toDateStr(date);
 }
 
 // ────────────────────────────────────────────────
@@ -338,6 +338,7 @@ router.delete('/symbol/:id', auth, async (req, res) => {
 
 // GET /etf/compare — one Tiingo call per symbol, shared cache for both tables
 // 60 minutes cache
+// Add ?nocache=true to bypass cache during testing
 router.get('/compare', auth, async (req, res) => {
   const userId = req.user.userId;
   const {
@@ -347,14 +348,16 @@ router.get('/compare', auth, async (req, res) => {
     rows = '10',
     sortBy = 'YTD',
     order = 'desc',
-    mock = 'false'
+    mock = 'false',
+    nocache = 'false'
   } = req.query;
 
   const useMock = mock === 'true';
+  const bypassCache = nocache === 'true';
   const cacheKey = `${userId}|${category}|${useMock}`;
 
   const cached = compareCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+  if (!bypassCache && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     logger.info(`Cache hit for ${cacheKey}`);
     let { current, past } = cached.data;
 
@@ -400,18 +403,29 @@ router.get('/compare', auth, async (req, res) => {
       oneYearAgo.setFullYear(today.getFullYear() - 1);
       const pastAnchor = getPriorTradingDay(toDateStr(oneYearAgo)) || toDateStr(oneYearAgo);
 
-      const currBase = clientCurrentDate || currentAnchor;
-      const pastBase = clientPastDate || pastAnchor;
+      // Always use today's actual date for calculations (matching etfAPItest.html logic)
+      // Ignore clientCurrentDate and clientPastDate which may be stale trading days
+      const currBase = toDateStr(today);
+      const pastBase = toDateStr(oneYearAgo);
 
       const curr5Y = getAnchorDate(currBase, '5Y');
       const past5Y = getAnchorDate(pastBase, '5Y');
       const globalStart = curr5Y < past5Y ? curr5Y : past5Y;
 
+      // Fetch Tiingo data up to TODAY, not currBase, to ensure we have all recent trading day prices
+      // (matches etfAPItest.html logic which uses todayStr as endDate)
+      // Start 7 days before globalStart to account for weekends and holidays
+      // (getPriorTradingDay may back up up to 4 days from a given date)
+      const todayStr = toDateStr(today);
+      const startDateForFetch = new Date(parseDate(globalStart));
+      startDateForFetch.setDate(startDateForFetch.getDate() - 7);
+      const fetchStartDate = toDateStr(startDateForFetch);
+
       const fetchTiingoRangeForSymbol = async (symbol, start, end) => {
         if (useMock) {
           const map = new Map();
-          let d = new Date(start);
-          const endD = new Date(end);
+          let d = parseDate(start);
+          const endD = parseDate(end);
           while (d <= endD) {
             const ds = toDateStr(d);
             map.set(ds, { price: parseFloat(getMockData(symbol, 'price')), adjPrice: parseFloat(getMockData(symbol, 'price')) });
@@ -440,7 +454,7 @@ router.get('/compare', auth, async (req, res) => {
       };
 
       const tiingoPromises = limitedSymbols.map(sym =>
-        fetchTiingoRangeForSymbol(sym.symbol, globalStart, currBase)
+        fetchTiingoRangeForSymbol(sym.symbol, fetchStartDate, todayStr)
           .then(cache => ({ symbol: sym.symbol, name: sym.name, listDate: sym.listDate, cache }))
       );
 
@@ -454,6 +468,12 @@ router.get('/compare', auth, async (req, res) => {
         if (!entry) return null;
         const adj = entry.adjPrice;
         return (adj !== null && !isNaN(adj)) ? adj : entry.price;
+      };
+
+      const getRawPrice = (cache, dateKey) => {
+        const entry = cache.get(dateKey);
+        if (!entry) return null;
+        return entry.price;
       };
 
       // FIXED: Added 'async' here
@@ -486,56 +506,26 @@ router.get('/compare', auth, async (req, res) => {
             continue;
           }
 
-          const baseEntry = cache.get(baseOpenDate);
-          let effectiveEntry = baseEntry;
-          let latestDate = baseOpenDate;  // Initialize with baseOpenDate as fallback
-          if (!effectiveEntry) {
-            let latestEntry = null;
-            for (const [dateKey, entry] of cache.entries()) {
-              if (dateKey <= baseOpenDate && (!latestDate || dateKey > latestDate)) {
-                latestDate = dateKey;
-                latestEntry = entry;
-              }
-            }
-            effectiveEntry = latestEntry;
-            if (effectiveEntry) {
-              logger.info(`Fallback to latest Tiingo date ${latestDate} for ${symbol}`);
-            }
-          }
+          // Use exact date from Tiingo cache, no fallback (matches etfAPItest.html)
+          const baseEffPrice = todayPrice ?? getEffectivePrice(cache, baseOpenDate);
 
-          data.price = todayPrice ?? (effectiveEntry?.price?.toFixed(2) ?? 'N/A');
-          const baseEffPrice = todayPrice ?? getEffectivePrice(cache, effectiveEntry ? latestDate || baseOpenDate : null);
+          // Display raw price, not adjusted price
+          data.price = todayPrice ?? (getRawPrice(cache, baseOpenDate)?.toFixed(2) ?? 'N/A');
 
           for (const period of periods) {
             const anchorStr = getAnchorDate(baseDateStr, period);
             let anchorOpen = getPriorTradingDay(anchorStr, listDate || '1900-01-01');
             
-            // If anchor date is before list date, use list date as anchor instead
-            if (!anchorOpen && listDate) {
-              anchorOpen = getPriorTradingDay(listDate, listDate);
-              if (period === 'YTD') {
-                logger.info(`YTD fallback: ${symbol} anchorStr=${anchorStr}, listDate=${listDate}, anchorOpen=${anchorOpen}`);
-              }
-            }
-            
+            // If anchor date is before list date OR anchor date >= base date, return N/A
+            // (matches etfAPItest.html logic: isAfterListDate check)
             if (!anchorOpen || anchorOpen >= baseOpenDate) {
-              if (period === 'YTD') {
-                logger.info(`YTD N/A (date check): ${symbol} anchorStr=${anchorStr}, anchorOpen=${anchorOpen}, baseOpenDate=${baseOpenDate}`);
-              }
               data.returns[period] = 'N/A';
               continue;
             }
 
             const anchorEff = getEffectivePrice(cache, anchorOpen);
-            if (period === 'YTD' && !anchorEff) {
-              const cacheKeys = Array.from(cache.keys()).slice(0, 5);  // First 5 keys for debugging
-              logger.info(`YTD debug: ${symbol} anchorOpen=${anchorOpen}, cacheHas=${cache.has(anchorOpen)}, first5Keys=${JSON.stringify(cacheKeys)}`);
-            }
             
             if (!anchorEff || !baseEffPrice || baseEffPrice === 0) {
-              if (period === 'YTD') {
-                logger.info(`YTD N/A (no price): ${symbol} anchorEff=${anchorEff}, baseEffPrice=${baseEffPrice}`);
-              }
               data.returns[period] = 'N/A';
               continue;
             }
@@ -543,7 +533,7 @@ router.get('/compare', auth, async (req, res) => {
             let years = PERIOD_YEARS[period];
             if (years === null) {
               const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
-              years = (new Date(baseDateStr) - new Date(anchorStr)) / msPerYear;
+              years = (parseDate(baseDateStr) - parseDate(anchorStr)) / msPerYear;
             }
 
             let ret = years < 1
