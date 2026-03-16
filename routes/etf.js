@@ -513,7 +513,7 @@ router.get('/compare', auth, async (req, res) => {
               years = (parseDate(baseDateStr) - parseDate(anchorStr)) / msPerYear;
             }
 
-            let ret = years < 1
+            let ret = years <= 1
               ? ((baseEffPrice - anchorEff) / anchorEff) * 100
               : (Math.pow(baseEffPrice / anchorEff, 1 / years) - 1) * 100;
 

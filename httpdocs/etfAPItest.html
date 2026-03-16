@@ -844,7 +844,7 @@ async function fetchAllPrices(symbol, listDateStr, keys) {
         years = (parseDate(todayStr) - parseDate(startD)) / (365.25 * 86400000);
       }
 
-      let ret = years < 1
+      let ret = years <= 1
         ? ((anchorVal - val) / val) * 100
         : (Math.pow(anchorVal / val, 1/years) - 1) * 100;
 
