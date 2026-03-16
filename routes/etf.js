@@ -73,14 +73,6 @@ function getAnchorDate(baseDateStr, period) {
 }
 
 // ────────────────────────────────────────────────
-// Mock data generator
-function getMockData(symbol, field) {
-  if (field === 'price') return (Math.random() * 40 + 10).toFixed(2);
-  if (field === 'aum') return Math.floor(Math.random() * 1000000000).toString();
-  if (field === 'volume') return Math.floor(Math.random() * 1000000).toString();
-  return 'N/A';
-}
-
 // ────────────────────────────────────────────────
 // Existing routes (cleaned up, fixed string literals and queries)
 router.post(
@@ -348,13 +340,11 @@ router.get('/compare', auth, async (req, res) => {
     rows = '10',
     sortBy = 'YTD',
     order = 'desc',
-    mock = 'false',
     nocache = 'false'
   } = req.query;
 
-  const useMock = mock === 'true';
   const bypassCache = nocache === 'true';
-  const cacheKey = `${userId}|${category}|${useMock}`;
+  const cacheKey = `${userId}|${category}`;
 
   const cached = compareCache.get(cacheKey);
   if (!bypassCache && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -422,18 +412,6 @@ router.get('/compare', auth, async (req, res) => {
       const fetchStartDate = toDateStr(startDateForFetch);
 
       const fetchTiingoRangeForSymbol = async (symbol, start, end) => {
-        if (useMock) {
-          const map = new Map();
-          let d = parseDate(start);
-          const endD = parseDate(end);
-          while (d <= endD) {
-            const ds = toDateStr(d);
-            map.set(ds, { price: parseFloat(getMockData(symbol, 'price')), adjPrice: parseFloat(getMockData(symbol, 'price')) });
-            d.setDate(d.getDate() + 1);
-          }
-          return map;
-        }
-
         try {
           const resp = await axios.get(
             `https://api.tiingo.com/tiingo/daily/${symbol.toLowerCase()}/prices?startDate=${start}&endDate=${end}&token=${process.env.TIINGO_API_KEY}`
@@ -482,13 +460,12 @@ router.get('/compare', auth, async (req, res) => {
         for (const { symbol, name, listDate, cache } of symbolDataArray) {
           const data = {
             symbol, name, listDate,
-            isMock: useMock,
             price: 'N/A',
             returns: periods.reduce((acc, p) => ({ ...acc, [p]: 'N/A' }), {})
           };
 
           let todayPrice = null;
-          if (isCurrentTable && !useMock && isTodayTradingDay()) {
+          if (isCurrentTable && isTodayTradingDay()) {
             try {
               const finnResp = await axios.get(
                 `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINNHUB_API_KEY}`

@@ -13,7 +13,6 @@
     th { background: #f2f2f2; position: sticky; top: 0; z-index: 1; }
     .up   { color: green; font-weight: bold; }
     .down { color: red;   font-weight: bold; }
-    .mock { color: red; font-weight: bold; background: #ffecec; }
     #investModal {
       display: none;
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -92,9 +91,7 @@
     </select>
   </label>
 
-  <!-- Current Date and Past Date inputs removed (Change #3) -->
-
-  <label>Rows:
+   <label>Rows:
     <select id="rows">
       <option value="5">5</option>
       <option value="10">10</option>
@@ -140,7 +137,6 @@
           <th>Name</th>
           <th>Invest</th>
           <th>Movement</th>
-          <!-- AUM and Volume removed (Change #1) -->
           <th>Price</th>
           <th class="perf">1W %</th>
           <th class="perf">1M %</th>
@@ -371,8 +367,7 @@ async function loadTables() {
     pastDate: pastDate,
     rows: rowsVal === 'ToDisplay' ? '5' : rowsVal,
     sortBy: sort,
-    order: ord,
-    mock: 'false'
+    order: ord
   });
 
   try {
@@ -429,20 +424,20 @@ function renderTable(tableId, data, isCurrent) {
       if (item.movement?.startsWith('↓')) movCell.className = 'down';
 
       // AUM and Volume removed (Change #1)
-      addCell(row, item.price, item.isMock);
+      addCell(row, item.price);
 
       ['1W','1M','YTD','1Y','3Y','5Y'].forEach(p => {
         const val = item.returns[p];
         const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';
-        addCell(row, display, item.isMock);
+        addCell(row, display);
       });
     } else {
       row.insertCell().textContent = item.symbol;
-      addCell(row, item.price, item.isMock);
+      addCell(row, item.price);
       ['1W','1M','YTD','1Y','3Y','5Y'].forEach(p => {
         const val = item.returns[p];
         const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';
-        addCell(row, display, item.isMock);
+        addCell(row, display);
       });
     }
   });
@@ -459,10 +454,9 @@ function formatListedDate(dateStr) {
   return `${m}/${day}/${y}`;
 }
 
-function addCell(row, value, isMock = false) {
+function addCell(row, value) {
   const cell = row.insertCell();
   cell.textContent = value;
-  if (isMock) cell.classList.add('mock');
 }
 
 // ─────────────────────────────────────────────
