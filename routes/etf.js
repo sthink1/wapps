@@ -471,7 +471,6 @@ router.get('/compare', auth, async (req, res) => {
                 `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINNHUB_API_KEY}`
               );
               todayPrice = finnResp.data.c && finnResp.data.c > 0 ? finnResp.data.c : null;
-              if (todayPrice) logger.info(`Finnhub success for ${symbol}: ${todayPrice}`);
             } catch (e) {
               logger.warn(`Finnhub failed for ${symbol}: ${e.message}`);
             }

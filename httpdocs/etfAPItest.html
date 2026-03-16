@@ -841,7 +841,7 @@ async function fetchAllPrices(symbol, listDateStr, keys) {
       let years = PERIOD_YEARS[p];
       if (years === null) {
         const startD = getCalendarDate(tbl.base, p);
-        years = (parseDate(todayStr) - parseDate(startD)) / (365.25 * 86400000);
+        years = (parseDate(tbl.base) - parseDate(startD)) / (365.25 * 86400000);
       }
 
       let ret = years <= 1
@@ -964,9 +964,9 @@ function closePromptModal() {
 function copyPromptToClipboard() {
   const summary = document.getElementById('promptContent').textContent;
   navigator.clipboard.writeText(summary).then(() => {
-    showStatus('Summary copied to clipboard!', 'info');
+    alert('Summary copied to clipboard!');
   }).catch(() => {
-    showStatus('Failed to copy to clipboard', 'error');
+    alert('Failed to copy. Please try again.');
   });
 }
 
