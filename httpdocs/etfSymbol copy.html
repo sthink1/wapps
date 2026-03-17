@@ -359,9 +359,7 @@ document.addEventListener('click', async function(e){
             alert("Deleted.");
             loadSymbols();
         } else {
-            // Backend will return specific reason (inventory held, recent sale activity, etc.)
             alert(data.message);
-            loadSymbols();
         }
 
         e.target.checked = false;
