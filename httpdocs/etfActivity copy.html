@@ -103,27 +103,6 @@
       border-radius: 4px;
     }
     #customDateRange { display: none; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-    .btn-sm {
-      padding: 4px 10px;
-      font-size: 12px;
-      margin: 1px;
-    }
-    .btn-edit  { background-color: #1565c0; }
-    .btn-edit:hover  { background-color: #0d47a1; }
-    .btn-del   { background-color: #e53935; }
-    .btn-del:hover   { background-color: #b71c1c; }
-    /* Edit modal */
-    #editModal {
-      display: none;
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;
-    }
-    .modal-content {
-      background: white; padding: 24px; border-radius: 8px;
-      width: 90%; max-width: 420px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    }
-    .modal-content h4 { margin-top: 0; }
-    .modal-close { float: right; font-size: 22px; cursor: pointer; line-height: 1; }
     footer {
       background-color: lightgray;
       height: 30px;
@@ -178,15 +157,11 @@
     </div>
     <div class="form-row">
       <label for="buyCost">Cost Per Share ($)</label>
-      <input type="number" id="buyCost" min="0.0001" step="0.0001" placeholder="0.00" oninput="calcBuyTotal()">
+      <input type="number" id="buyCost" min="0.0001" step="0.0001" placeholder="0.00">
     </div>
     <div class="form-row">
       <label for="buyShares">Shares</label>
-      <input type="number" id="buyShares" min="0.000001" step="0.000001" placeholder="0.000000" oninput="calcBuyTotal()">
-    </div>
-    <div class="form-row">
-      <label>Total Cost</label>
-      <div id="buyTotalCost" style="padding:7px;font-size:14px;font-weight:bold;color:#1565c0;min-height:32px;">—</div>
+      <input type="number" id="buyShares" min="0.000001" step="0.000001" placeholder="0.000000">
     </div>
     <button onclick="saveBuy()">Save</button>
     <button onclick="clearBuyForm()">Clear</button>
@@ -216,15 +191,11 @@
     </div>
     <div class="form-row">
       <label for="sellPrice">Selling Price Per Share ($)</label>
-      <input type="number" id="sellPrice" min="0.0001" step="0.0001" placeholder="0.00" oninput="calcSellTotal()">
+      <input type="number" id="sellPrice" min="0.0001" step="0.0001" placeholder="0.00">
     </div>
     <div class="form-row">
       <label for="sellShares">Shares</label>
-      <input type="number" id="sellShares" min="0.000001" step="0.000001" placeholder="0.000000" oninput="calcSellTotal()">
-    </div>
-    <div class="form-row">
-      <label>Total Sale</label>
-      <div id="sellTotalSale" style="padding:7px;font-size:14px;font-weight:bold;color:#1565c0;min-height:32px;">—</div>
+      <input type="number" id="sellShares" min="0.000001" step="0.000001" placeholder="0.000000">
     </div>
     <button onclick="saveSell()">Save</button>
     <button onclick="clearSellForm()">Clear</button>
@@ -293,7 +264,6 @@
         <input type="date" id="valueDate2">
       </div>
       <button onclick="alert('Value Report is under development.')">Load</button>
-      <button onclick="window.print()">Print</button>
     </div>
     <p style="color:#888;font-style:italic;text-align:left;font-size:13px;">
       Note: This report requires capturing historical inventory values. Design in progress.
@@ -305,84 +275,13 @@
   ════════════════════════════════════════ -->
   <div id="transactionSection" class="section">
     <h3>Transaction Log</h3>
-    <div class="report-filters">
-      <div>
-        <label for="txSearchType">Type</label><br>
-        <select id="txSearchType" onchange="filterTransactions()">
-          <option value="">All</option>
-          <option value="BUY">Purchase</option>
-          <option value="SELL">Sale</option>
-        </select>
-      </div>
-      <div>
-        <label for="txSearchCategory">Category</label><br>
-        <select id="txSearchCategory" onchange="filterTransactions()">
-          <option value="">All Categories</option>
-        </select>
-      </div>
-      <div>
-        <label for="txSearchSymbol">Symbol</label><br>
-        <select id="txSearchSymbol" onchange="filterTransactions()">
-          <option value="">All Symbols</option>
-        </select>
-      </div>
-      <div>
-        <label for="txSearchDateFrom">Date From</label><br>
-        <input type="date" id="txSearchDateFrom" onchange="filterTransactions()">
-      </div>
-      <div>
-        <label for="txSearchDateTo">Date To</label><br>
-        <input type="date" id="txSearchDateTo" onchange="filterTransactions()">
-      </div>
-      <button onclick="clearTxSearch()" class="btn-neutral">Clear Search</button>
-      <button onclick="loadTransactions()" class="btn-neutral">Refresh</button>
-      <button onclick="window.print()">Print</button>
-    </div>
+    <button onclick="loadTransactions()" class="btn-neutral">Refresh</button>
+    <button onclick="window.print()">Print</button>
     <div id="transactionMessage" class="message"></div>
     <div id="transactionContent"></div>
   </div>
 
 </div><!-- /container -->
-
-<!-- Edit Transaction Modal -->
-<div id="editModal">
-  <div class="modal-content">
-    <span class="modal-close" onclick="closeEditModal()">&#x2715;</span>
-    <h4>Edit Transaction</h4>
-    <input type="hidden" id="editActivityId">
-    <div class="form-row">
-      <label>Type</label>
-      <div id="editTypeDisplay" style="padding:7px;font-size:14px;font-weight:bold;"></div>
-    </div>
-    <div class="form-row">
-      <label>Category / Symbol</label>
-      <div id="editSymbolDisplay" style="padding:7px;font-size:14px;"></div>
-    </div>
-    <div class="form-row">
-      <label for="editDate">Date</label>
-      <input type="date" id="editDate">
-    </div>
-    <div class="form-row">
-      <label for="editShares">Shares</label>
-      <input type="number" id="editShares" min="0.000001" step="0.000001" oninput="calcEditTotal()">
-    </div>
-    <div id="editCostRow" class="form-row">
-      <label for="editCost">Cost Per Share ($)</label>
-      <input type="number" id="editCost" min="0.0001" step="0.0001" oninput="calcEditTotal()">
-    </div>
-    <div id="editPriceRow" class="form-row">
-      <label for="editPrice">Sale Price Per Share ($)</label>
-      <input type="number" id="editPrice" min="0.0001" step="0.0001" oninput="calcEditTotal()">
-    </div>
-    <div class="form-row">
-      <label id="editTotalLabel">Total</label>
-      <div id="editTotal" style="padding:7px;font-size:14px;font-weight:bold;color:#1565c0;min-height:32px;">—</div>
-    </div>
-    <div id="editMessage" style="margin-bottom:10px;font-weight:bold;min-height:18px;"></div>
-    <button onclick="saveEdit()">Save</button>
-    <button class="btn-neutral" onclick="closeEditModal()">Cancel</button>
-  </div>
-</div>
 
 <footer>ETF Project</footer>
 
@@ -526,7 +425,6 @@ function clearBuyForm() {
   document.getElementById('buyDate').value = '';
   document.getElementById('buyCost').value = '';
   document.getElementById('buyShares').value = '';
-  document.getElementById('buyTotalCost').textContent = '—';
 }
 
 // ─────────────────────────────────────────────
@@ -574,23 +472,6 @@ function clearSellForm() {
   document.getElementById('sellDate').value = '';
   document.getElementById('sellPrice').value = '';
   document.getElementById('sellShares').value = '';
-  document.getElementById('sellTotalSale').textContent = '—';
-}
-
-// ─────────────────────────────────────────────
-// Inline total calculators
-function calcBuyTotal() {
-  const cost   = parseFloat(document.getElementById('buyCost').value)   || 0;
-  const shares = parseFloat(document.getElementById('buyShares').value) || 0;
-  const el = document.getElementById('buyTotalCost');
-  el.textContent = (cost > 0 && shares > 0) ? fmtCurrency(cost * shares) : '—';
-}
-
-function calcSellTotal() {
-  const price  = parseFloat(document.getElementById('sellPrice').value)  || 0;
-  const shares = parseFloat(document.getElementById('sellShares').value) || 0;
-  const el = document.getElementById('sellTotalSale');
-  el.textContent = (price > 0 && shares > 0) ? fmtCurrency(price * shares) : '—';
 }
 
 // ─────────────────────────────────────────────
@@ -851,8 +732,6 @@ async function loadSalesReport() {
 
 // ─────────────────────────────────────────────
 // TRANSACTION LOG
-let allTransactions = []; // full dataset for client-side filtering
-
 async function loadTransactions() {
   const msgEl     = document.getElementById('transactionMessage');
   const contentEl = document.getElementById('transactionContent');
@@ -862,249 +741,74 @@ async function loadTransactions() {
 
   try {
     const result = await fetchWithAuth('/etf/activity/transactions');
-    allTransactions = result.data || [];
+    const data = result.data;
 
-    // Populate search dropdowns from loaded data
-    populateTxSearchDropdowns();
-
-    if (allTransactions.length === 0) {
+    if (!data || data.length === 0) {
       msgEl.textContent = 'No transactions found.';
       return;
     }
     msgEl.textContent = '';
-    renderTransactions(allTransactions);
+
+    let html = `<table>
+      <thead>
+        <tr>
+          <th class="center">#</th>
+          <th class="left">Category</th>
+          <th class="left">Symbol</th>
+          <th class="center">Type</th>
+          <th class="center">Date</th>
+          <th>Shares</th>
+          <th>Cost/Sh</th>
+          <th>Sale Price</th>
+          <th class="center">Delete</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    data.forEach(r => {
+      const typeClass = r.TransactionType === 'BUY' ? 'up' : 'down';
+      html += `<tr>
+        <td class="center">${r.UserEtfActivityID}</td>
+        <td class="left">${escHtml(r.category)}</td>
+        <td class="left">${escHtml(r.symbol)}</td>
+        <td class="center ${typeClass}">${r.TransactionType}</td>
+        <td class="center">${r.TransactionDate ? String(r.TransactionDate).substring(0,10) : ''}</td>
+        <td>${fmtShares(r.Shares)}</td>
+        <td>${r.PurchaseCost !== null ? fmtCurrency(r.PurchaseCost) : '—'}</td>
+        <td>${r.SalePrice    !== null ? fmtCurrency(r.SalePrice)    : '—'}</td>
+        <td class="center">
+          <input type="checkbox" id="deltx-${r.etfActivityID}" data-id="${r.etfActivityID}">
+        </td>
+      </tr>`;
+    });
+
+    html += '</tbody></table>';
+    contentEl.innerHTML = html;
   } catch (err) {
     msgEl.style.color = 'red';
     msgEl.textContent = 'Error loading transactions: ' + err.message;
   }
 }
 
-function populateTxSearchDropdowns() {
-  // Category dropdown
-  const catSel = document.getElementById('txSearchCategory');
-  const currentCat = catSel.value;
-  catSel.innerHTML = '<option value="">All Categories</option>';
-  const cats = [...new Set(allTransactions.map(r => r.category))].sort();
-  cats.forEach(c => {
-    const o = document.createElement('option');
-    o.value = c; o.textContent = c;
-    catSel.appendChild(o);
-  });
-  catSel.value = currentCat;
-
-  // Symbol dropdown
-  const symSel = document.getElementById('txSearchSymbol');
-  const currentSym = symSel.value;
-  symSel.innerHTML = '<option value="">All Symbols</option>';
-  const syms = [...new Set(allTransactions.map(r => r.symbol))].sort();
-  syms.forEach(s => {
-    const o = document.createElement('option');
-    o.value = s; o.textContent = s;
-    symSel.appendChild(o);
-  });
-  symSel.value = currentSym;
-}
-
-function filterTransactions() {
-  const type     = document.getElementById('txSearchType').value;
-  const category = document.getElementById('txSearchCategory').value;
-  const symbol   = document.getElementById('txSearchSymbol').value;
-  const dateFrom = document.getElementById('txSearchDateFrom').value;
-  const dateTo   = document.getElementById('txSearchDateTo').value;
-
-  const filtered = allTransactions.filter(r => {
-    const txDate = String(r.TransactionDate).substring(0, 10);
-    if (type     && r.TransactionType !== type)   return false;
-    if (category && r.category        !== category) return false;
-    if (symbol   && r.symbol          !== symbol)   return false;
-    if (dateFrom && txDate < dateFrom)              return false;
-    if (dateTo   && txDate > dateTo)                return false;
-    return true;
-  });
-
-  const msgEl = document.getElementById('transactionMessage');
-  msgEl.style.color = '#333';
-  msgEl.textContent = filtered.length < allTransactions.length
-    ? `Showing ${filtered.length} of ${allTransactions.length} transactions`
-    : '';
-
-  renderTransactions(filtered);
-}
-
-function clearTxSearch() {
-  document.getElementById('txSearchType').value     = '';
-  document.getElementById('txSearchCategory').value = '';
-  document.getElementById('txSearchSymbol').value   = '';
-  document.getElementById('txSearchDateFrom').value = '';
-  document.getElementById('txSearchDateTo').value   = '';
-  document.getElementById('transactionMessage').textContent = '';
-  renderTransactions(allTransactions);
-}
-
-function renderTransactions(data) {
-  const contentEl = document.getElementById('transactionContent');
-  if (!data || data.length === 0) {
-    contentEl.innerHTML = '<p style="color:#888;">No transactions match the search criteria.</p>';
-    return;
-  }
-
-  let html = `<table>
-    <thead>
-      <tr>
-        <th class="center">#</th>
-        <th class="left">Category</th>
-        <th class="left">Symbol</th>
-        <th class="center">Type</th>
-        <th class="center">Date</th>
-        <th>Shares</th>
-        <th>Cost/Sh</th>
-        <th>Sale Price</th>
-        <th class="center">Actions</th>
-      </tr>
-    </thead>
-    <tbody>`;
-
-  data.forEach(r => {
-    const typeClass = r.TransactionType === 'BUY' ? 'up' : 'down';
-    const txDate    = r.TransactionDate ? String(r.TransactionDate).substring(0, 10) : '';
-    // Encode row data as JSON for the edit modal
-    const rowData = escHtml(JSON.stringify({
-      id:    r.etfActivityID,
-      type:  r.TransactionType,
-      cat:   r.category,
-      sym:   r.symbol,
-      date:  txDate,
-      shares: r.Shares,
-      cost:  r.PurchaseCost,
-      price: r.SalePrice
-    }));
-    html += `<tr>
-      <td class="center">${r.UserEtfActivityID}</td>
-      <td class="left">${escHtml(r.category)}</td>
-      <td class="left">${escHtml(r.symbol)}</td>
-      <td class="center ${typeClass}">${r.TransactionType}</td>
-      <td class="center">${txDate}</td>
-      <td>${fmtShares(r.Shares)}</td>
-      <td>${r.PurchaseCost !== null ? fmtCurrency(r.PurchaseCost) : '—'}</td>
-      <td>${r.SalePrice    !== null ? fmtCurrency(r.SalePrice)    : '—'}</td>
-      <td class="center" style="white-space:nowrap;">
-        <button class="btn-sm btn-edit" onclick="openEditModal(${r.etfActivityID})">Edit</button>
-        <button class="btn-sm btn-del"  onclick="deleteTx(${r.etfActivityID})">Delete</button>
-      </td>
-    </tr>`;
-  });
-
-  html += '</tbody></table>';
-  contentEl.innerHTML = html;
-}
-
-// Delete a transaction (called from button in table row)
-async function deleteTx(id) {
-  if (!confirm('Delete this transaction? This cannot be undone.')) return;
-  try {
-    const result = await fetchWithAuth(`/etf/activity/${id}`, { method: 'DELETE' });
-    alert(result.message);
-    await loadTransactions();
-  } catch (err) {
-    alert('Error: ' + err.message);
-  }
-}
-
-// ─────────────────────────────────────────────
-// EDIT MODAL
-function openEditModal(id) {
-  const r = allTransactions.find(t => t.etfActivityID === id);
-  if (!r) return;
-
-  document.getElementById('editActivityId').value      = r.etfActivityID;
-  document.getElementById('editTypeDisplay').textContent = r.TransactionType === 'BUY' ? 'Purchase (BUY)' : 'Sale (SELL)';
-  document.getElementById('editTypeDisplay').className  = r.TransactionType === 'BUY' ? 'up' : 'down';
-  document.getElementById('editSymbolDisplay').textContent = `${r.category} / ${r.symbol}`;
-  document.getElementById('editDate').value   = String(r.TransactionDate).substring(0, 10);
-  document.getElementById('editShares').value = r.Shares;
-  document.getElementById('editMessage').textContent = '';
-
-  if (r.TransactionType === 'BUY') {
-    document.getElementById('editCostRow').style.display  = 'flex';
-    document.getElementById('editPriceRow').style.display = 'none';
-    document.getElementById('editCost').value = r.PurchaseCost;
-    document.getElementById('editPrice').value = '';
-    document.getElementById('editTotalLabel').textContent = 'Total Cost';
-  } else {
-    document.getElementById('editCostRow').style.display  = 'none';
-    document.getElementById('editPriceRow').style.display = 'flex';
-    document.getElementById('editPrice').value = r.SalePrice;
-    document.getElementById('editCost').value  = '';
-    document.getElementById('editTotalLabel').textContent = 'Total Sale';
-  }
-  calcEditTotal();
-
-  document.getElementById('editModal').style.display = 'flex';
-}
-
-function closeEditModal() {
-  document.getElementById('editModal').style.display = 'none';
-}
-
-function calcEditTotal() {
-  const shares = parseFloat(document.getElementById('editShares').value) || 0;
-  const cost   = parseFloat(document.getElementById('editCost').value)   || 0;
-  const price  = parseFloat(document.getElementById('editPrice').value)  || 0;
-  const val    = shares > 0 ? (cost > 0 ? cost * shares : price > 0 ? price * shares : 0) : 0;
-  document.getElementById('editTotal').textContent = val > 0 ? fmtCurrency(val) : '—';
-}
-
-async function saveEdit() {
-  const id     = document.getElementById('editActivityId').value;
-  const r      = allTransactions.find(t => t.etfActivityID == id);
-  const date   = document.getElementById('editDate').value;
-  const shares = document.getElementById('editShares').value;
-  const cost   = document.getElementById('editCost').value;
-  const price  = document.getElementById('editPrice').value;
-  const msgEl  = document.getElementById('editMessage');
-
-  if (!date || !shares) {
-    msgEl.style.color = 'red';
-    msgEl.textContent = 'Date and Shares are required.';
-    return;
-  }
-  if (r.TransactionType === 'BUY'  && !cost)  {
-    msgEl.style.color = 'red';
-    msgEl.textContent = 'Cost per share is required.';
-    return;
-  }
-  if (r.TransactionType === 'SELL' && !price) {
-    msgEl.style.color = 'red';
-    msgEl.textContent = 'Sale price per share is required.';
-    return;
-  }
-
-  msgEl.style.color = '#333';
-  msgEl.textContent = 'Saving...';
-
-  const body = {
-    TransactionDate: date,
-    Shares: parseFloat(shares)
-  };
-  if (r.TransactionType === 'BUY')  body.PurchaseCost = parseFloat(cost);
-  if (r.TransactionType === 'SELL') body.SalePrice    = parseFloat(price);
-
-  try {
-    const result = await fetchWithAuth(`/etf/activity/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(body)
-    });
-    msgEl.style.color = 'green';
-    msgEl.textContent = '✔ ' + result.message;
-    setTimeout(() => {
-      closeEditModal();
+// Delete transaction via checkbox
+document.addEventListener('click', async function(e) {
+  if (e.target && e.target.id && e.target.id.startsWith('deltx-')) {
+    if (!e.target.checked) return;
+    const id = e.target.dataset.id;
+    if (!confirm('Delete this transaction? This cannot be undone.')) {
+      e.target.checked = false;
+      return;
+    }
+    try {
+      const result = await fetchWithAuth(`/etf/activity/${id}`, { method: 'DELETE' });
+      alert(result.message);
       loadTransactions();
-    }, 800);
-  } catch (err) {
-    msgEl.style.color = 'red';
-    msgEl.textContent = err.message;
+    } catch (err) {
+      alert('Error: ' + err.message);
+      e.target.checked = false;
+    }
   }
-}
+});
 
 // ─────────────────────────────────────────────
 // XSS helper
