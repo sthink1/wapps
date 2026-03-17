@@ -86,9 +86,10 @@ PORT=3000 NODE_ENV=production npm start
 ## Database Rules & Architecture
 
 ### Critical Constraints
-1. **No Formal Foreign Keys**: Tables reference each other by ID, but no FK constraints exist in the schema.
-   - Reason: MySQL 5.5 compatibility and manual transaction control via `utils.js::withTransaction()`
-   - Implication: Cascading deletes are handled in application code, not database.
+1. **Foreign Key Constraints with Cascading Deletes**: All tables with parent references use `ON DELETE CASCADE ON UPDATE CASCADE`.
+   - Tables with FKs: ActivitiesT, etfCategoryT, etfSymbolT, InterestEarnedT, TrackUsageT, UserSequenceT, WeightActivitiesT, WeightsT
+   - All cascade to UsersT (or intermediate tables)
+   - Implication: Deleting a user automatically deletes child records at the database level; no app-level cascade code needed.
 
 2. **MySQL 5.5 Compatibility**:
    - No `JSON` data type (avoid storing JSON columns)
@@ -96,10 +97,12 @@ PORT=3000 NODE_ENV=production npm start
    - Limited window functions (use application-level grouping)
    - Date strings must be in `YYYY-MM-DD` format
 
-3. **User-Specific Sequences**: `UserSequenceT` table
-   - Replaces auto-increment for user-specific ID generation
-   - No FK to `UsersT`; synchronized via application logic in `dbConnection.js::getNextUserSpecificID()`
-   - Used for: `UserWeightID`, `UserActivityID`, `UserIntErndID`, etc.
+3. **Dual-Key Architecture**: `AUTO_INCREMENT` primary keys + user-scoped secondary keys
+   - Global PKs (WeightID, ActivityID, IntErndID, etc.) ensure app-wide uniqueness
+   - User-scoped IDs (UserWeightID, UserActivityID, UserIntErndID, etc.) via `UserSequenceT` table provide per-user sequences (1,2,3...)
+   - Both are actively used: PKs for joins, user-scoped IDs for user-friendly URLs and API parameters
+   - Managed via `dbConnection.js::getNextUserSpecificID(userId, tableName)` — generates and increments UserSequenceT entries
+   - FK to UsersT: `ON DELETE CASCADE` removes sequence data when user is deleted
 
 ### Key Tables & Relationships
 
@@ -263,9 +266,9 @@ NODE_ENV=development
 ## Important Notes for Contributors
 
 1. **Always use `withTransaction()`** for multi-step operations (INSERT + UPDATE)
-2. **Never add FK constraints**; handle cascade logic in application code
+2. **FK constraints are in place with CASCADE rules**; rely on database-level cascading deletes for referential integrity
 3. **Date handling**: Accept YYYY-MM-DD from frontend; store as DATE; return as YYYY-MM-DD string
-4. **User-Specific IDs**: Always use `getNextUserSpecificID()`, never auto-increment
+4. **User-Specific IDs**: Always use `getNextUserSpecificID(userId, tableName)` to populate User*ID columns (e.g., UserWeightID, UserActivityID); auto-increment PKs are assigned by MySQL
 5. **Validation**: Always validate input with express-validator before DB queries
 6. **Error Messages**: Append `(be)` to backend-generated error messages
 7. **Token Security**: Never log token values; always sanitize in error messages

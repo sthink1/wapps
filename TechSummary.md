@@ -571,6 +571,44 @@ app.use('/budgets', budgetsRoutes);
 
 ### Testing Hot Zones
 
+### ✅ IMPORTANT: User-Specific ID Pattern (Dual-Key System)
+
+**Why?**
+- Isolate user data (user 1 has IDs 1–50, user 2 has IDs 1–50)
+- Enable user-friendly API routes (e.g., `/weights/:userWeightId`)
+- Prevent ID enumeration attacks
+
+**Active Usage:**
+- `WeightsT`: UserWeightID (populated by `getNextUserSpecificID`)
+- `ActivitiesT`: UserActivityID (populated by `getNextUserSpecificID`)
+- `InterestEarnedT`: UserIntErndID (populated by `getNextUserSpecificID`)
+- **Both** the global PK and user-scoped ID are used:
+  - PKs (WeightID, ActivityID, etc.) for joins and internal references
+  - User-scoped IDs for external API parameters and user-friendly URLs
+
+**Usage Pattern:**
+```javascript
+// When creating a weight entry:
+const userWeightID = await getNextUserSpecificID(userId, 'WeightsT', 'UserWeightID');
+await connection.query(
+  'INSERT INTO WeightsT (DateWeight, Weight, UserID, UserWeightID) VALUES (?,?,?,?)',
+  [dateWeight, weight, userId, userWeightID]  // Store BOTH WeightID (auto) and UserWeightID (manual seq)
+);
+
+// When fetching by user-facing ID:
+await pool.query(
+  'SELECT * FROM WeightsT WHERE UserWeightID = ? AND UserID = ?',
+  [userWeightID, userId]  // Query via user-scoped ID
+);
+
+// ALWAYS use getNextUserSpecificID for user-scoped tables:
+// - WeightsT → UserWeightID
+// - ActivitiesT → UserActivityID
+// - InterestEarnedT → UserIntErndID
+```
+
+---
+
 | Area | Test Priority | How |
 |------|----------------|----|
 | Authentication | **Critical** | POST /users/login with valid/invalid creds |
@@ -643,7 +681,7 @@ DATABASE TRANSACTION (withTransaction)
     ├─ BEGIN TRANSACTION
     ├─ Execute queries on 'connection' object
     ├─ Generate user-specific IDs (getNextUserSpecificID)
-    ├─ Handle relationships (no FK constraints)
+    ├─ DB-enforced FK constraints with CASCADE
     │
     ├─ ON SUCCESS: COMMIT
     │  └─ Return response { success: true, data }
@@ -700,43 +738,56 @@ USER SEES RESULT
 
 ## 8. Constraints to Respect
 
-### ⚠️ CRITICAL: No Foreign Key Constraints
+### ✅ CRITICAL: Foreign Key Constraints with Cascading Deletes
 
-**Why?** MySQL 5.5 compatibility + application-level control
+**Reality:** All tables with parent references use `ON DELETE CASCADE ON UPDATE CASCADE`
+
+**Tables with FKs:**
+- ActivitiesT → UsersT
+- etfCategoryT → UsersT
+- etfSymbolT → etfCategoryT and UsersT
+- InterestEarnedT → UsersT
+- TrackUsageT → UsersT
+- UserSequenceT → UsersT
+- WeightActivitiesT → WeightsT, ActivitiesT, UsersT
+- WeightsT → UsersT
 
 **Impact:**
-- Deleting a user does NOT cascade-delete their weights
-- Deleting an activity does NOT remove weight-activity links
-- **You must handle cascades in application code**
+- Deleting a user AUTOMATICALLY cascades to delete their weights, activities, interest records, etc. via database-level constraints
+- The database enforces referential integrity; no need for application-level cascade logic
 
-**Example: Delete Weight with Activities**
+**Example: Delete Weight with Activities (No Manual Cascade Needed)**
 ```javascript
-// ✅ CORRECT (what the code does)
-DELETE FROM WeightActivitiesT WHERE WeightID = ? AND UserID = ?;
+// ✅ CORRECT: FK constraints handle cascade automatically
+// If you delete a weight, WeightActivitiesT links are automatically removed by FK constraint
 DELETE FROM WeightsT WHERE WeightID = ? AND UserID = ?;
+// The ON DELETE CASCADE rule on WeightActivitiesT.WeightID automatically cleans up links
 
-// ❌ WRONG (would fail without FK)
-// Trying to delete weight before removing activity links
-DELETE FROM WeightsT WHERE WeightID = ?;
-// ERROR: FK constraint violated
-
-// ❌ WRONG (missing logic)
-// Just deleting weight and leaving orphaned activity links
+// ✅ ALSO SAFE:
+// If you delete a user, all their records cascade-delete via FK chain:
+DELETE FROM UsersT WHERE UserID = ?;
+// Cascades → WeightsT, ActivitiesT, WeightActivitiesT, InterestEarnedT, etc.
 ```
 
 **When Adding New Tables:**
 ```sql
--- ✅ DO THIS (no FK constraint)
+-- ✅ DO THIS (include FK constraint with CASCADE)
 CREATE TABLE MyTable (
   MyID INT AUTO_INCREMENT PRIMARY KEY,
-  UserID INT NOT NULL,      -- References UsersT but NO CONSTRAINT
-  ActivityID INT,           -- References ActivitiesT but NO CONSTRAINT
-  INDEX idx_user (UserID)   -- Add index for query performance
+  UserID INT NOT NULL,
+  ActivityID INT NOT NULL,
+  INDEX idx_user (UserID),
+  CONSTRAINT fk_mytable_user FOREIGN KEY (UserID) REFERENCES UsersT(UserID) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_mytable_activity FOREIGN KEY (ActivityID) REFERENCES ActivitiesT(ActivityID) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- ❌ DON'T DO THIS
-ALTER TABLE MyTable 
-ADD CONSTRAINT fk_user FOREIGN KEY (UserID) REFERENCES UsersT(UserID);
+-- ❌ DON'T DO THIS (missing cascade rules)
+CREATE TABLE MyTable (
+  MyID INT AUTO_INCREMENT PRIMARY KEY,
+  UserID INT NOT NULL,
+  CONSTRAINT fk_user FOREIGN KEY (UserID) REFERENCES UsersT(UserID)
+  -- Missing ON DELETE CASCADE!
+);
 ```
 
 ---
@@ -794,20 +845,34 @@ WITH ranked_weights AS (...) SELECT * FROM ranked_weights;
 
 ---
 
-### ⚠️ IMPORTANT: User-Specific ID Pattern
+### ✅ IMPORTANT: User-Specific ID Pattern (Dual-Key System)
 
-**Why Not Auto-Increment?**
-- Isolate user data (user 1 has ID 1–50, user 2 has ID 1–50)
+**Active Usage:** The system uses both global PKs and user-scoped IDs simultaneously
+- Global PKs (WeightID, ActivityID, IntErndID, etc.) for database joins and internal references
+- User-scoped IDs (UserWeightID, UserActivityID, UserIntErndID, etc.) for user-friendly API routes and parameters
+- Both are populated: PKs auto-increment by MySQL, user-scoped IDs via `getNextUserSpecificID()`
+
+**Why?**
+- Isolate user data (user 1 has IDs 1–50, user 2 has IDs 1–50)
+- Enable user-friendly URLs: `/weights/:userWeightId` instead of `/weights/:globalWeightId`
 - Prevent ID enumeration attacks
-- Enable portable data exports
+- Enable portable per-user data exports
 
 **Usage Pattern:**
 ```javascript
-// When creating a weight entry:
+// When creating a weight entry - ALWAYS populate BOTH IDs:
 const userWeightID = await getNextUserSpecificID(userId, 'WeightsT', 'UserWeightID');
-await pool.query(
+const [result] = await connection.query(
   'INSERT INTO WeightsT (DateWeight, Weight, UserID, UserWeightID) VALUES (?,?,?,?)',
   [dateWeight, weight, userId, userWeightID]
+  // WeightID auto-increments; UserWeightID manually sequenced
+);
+// Response returns both: { WeightID: result.insertId, UserWeightID: userWeightID }
+
+// When fetching by user-facing API parameter - use user-scoped ID:
+await pool.query(
+  'SELECT * FROM WeightsT WHERE UserWeightID = ? AND UserID = ?',
+  [userWeightId, userId]  // Query via user-scoped ID
 );
 
 // ALWAYS use getNextUserSpecificID for user-scoped tables:
@@ -816,8 +881,8 @@ await pool.query(
 // - InterestEarnedT → UserIntErndID
 
 // NEVER use for non-user tables or system tables:
-// - TrackUsageT (can use auto-increment)
-// - UserSequenceT itself (auto-increment OK)
+// - TrackUsageT (global auto-increment is fine)
+// - UserSequenceT itself (manages the sequences)
 ```
 
 ---
@@ -827,7 +892,7 @@ await pool.query(
 **When to Use:**
 - Multi-step operations (INSERT weight + INSERT activities)
 - Atomicity required (all-or-nothing)
-- Cascading deletes (delete weight, then activities)
+- Cascading deletes (tested via FK constraints, delete weights and verify WeightActivitiesT cleanup)
 
 **Always Use:**
 ```javascript
@@ -1070,7 +1135,7 @@ logger.info(`Weight data: ${JSON.stringify(req.body)}`);
 ```
 ☐ Set NODE_ENV=production in remote server
 ☐ Verify .env is loaded (DB_HOST, JWT_SECRET, etc.)
-☐ Test on remote MySQL 5.5 (date handling, no FK, etc.)
+☐ Test on remote MySQL 5.5 (date handling, FK cascades, etc.)
 ☐ Disable SSL in connection if remote is MySQL 5.5
 ☐ Run full test suite (login, weight CRUD, activities, etc.)
 ☐ Verify CORS origins are set correctly for production domain
