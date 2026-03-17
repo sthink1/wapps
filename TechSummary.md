@@ -151,6 +151,55 @@ GET /track/stats:
   3. Return tables for dashboard
 ```
 
+### Flow 5: ETF Portfolio Comparison (Multi-API Aggregation)
+```
+User navigates to etfCompare.html
+  ↓
+Frontend: GET /etf/category (retrieve user's categories)
+          GET /etf/symbol (retrieve user's ETF symbols)
+  ↓
+User selects category + clicks "Compare"
+  ↓
+Frontend: GET /etf/compare?category=Gold&rows=10&sortBy=YTD
+  ↓
+Route Handler (routes/etf.js):
+  1. Check cache (60-min TTL per userId + category)
+     IF cached & !nocache → return cached data
+  ↓
+  2. Query etfSymbolT filtered by category
+     SELECT symbol, name, listDate FROM etfSymbolT WHERE UserID=? AND category=?
+  ↓
+  3. Fetch TIINGO data for all symbols
+     FOR each symbol:
+       → axios.get(https://api.tiingo.com/tiingo/daily/{symbol}/prices)
+       → Map date → { price, adjPrice }
+  ↓
+  4. Enrich with Finnhub real-time quotes (if today is trading day)
+     FOR each symbol:
+       → axios.get(https://finnhub.io/api/v1/quote?symbol={symbol})
+       → Use current price if available
+  ↓
+  5. Calculate returns for periods: YTD, 1W, 1M, 1Y, 3Y, 5Y
+     CAGR formula for multi-year: (EndPrice / StartPrice)^(1/Years) - 1
+     Simple return for ≤1 year: (EndPrice - StartPrice) / StartPrice
+  ↓
+  6. Sort results by requested metric (default YTD desc)
+     Calculate movement ranking (position change from past to current)
+  ↓
+  7. Cache result for 60 minutes
+  ↓
+Response: {
+  current: [ { symbol, name, price, returns: { YTD, 1Y, 5Y, ... }, movement } ],
+  past:    [ { symbol, name, price, returns: { YTD, 1Y, 5Y, ... } } ]
+}
+  ↓
+Frontend (etfCompare.html):
+  1. Render comparison table (current rankings)
+  2. Highlight movement indicators (↑ gained rank, ↓ lost rank)
+  3. Color-code returns (green positive, red negative)
+  4. Offer sort options (by YTD, 1Y, 3Y, 5Y, etc.)
+```
+
 ---
 
 ## 3. Important Dependencies
@@ -183,6 +232,9 @@ GET /track/stats:
 ### External APIs
 | Service | Purpose | Used Where | Notes |
 |---------|---------|-----------|-------|
+| Tiingo | Historical ETF pricing & OHLC data | routes/etf.js (/etf/compare, /etf/tiingo-proxy) | Requires `TIINGO_API_KEY` in .env |
+| Finnhub | Real-time ETF quotes on trading days | routes/etf.js (enrichData function) | Requires `FINNHUB_API_KEY` in .env |
+| Polygon | ETF metadata, name, list_date validation | routes/etf.js (/etf/symbol POST) | Requires `POLYGON_API_KEY` in .env |
 | Nominatim (OSM) | Reverse geocoding | TownNotice.html, geocode.js | — |
 | NOAA Flood Maps | Property research | propertyInfo.html | — |
 | Zillow | Property info | propertyInfo.html | — |
@@ -510,6 +562,9 @@ app.use('/budgets', budgetsRoutes);
 | `routes/weights.js` | Weight tracking logic | Backend dev |
 | `httpdocs/Weights.html` | Weight UI, forms | Frontend dev |
 | `routes/activities.js` | Activity CRUD | Backend dev |
+| `routes/etf.js` | ETF CRUD, API comparisons | Backend/ETF dev |
+| `httpdocs/etf.html` | ETF hub (nav to other ETF pages) | Frontend dev |
+| `httpdocs/etfCompare.html` | ETF performance comparison UI | Frontend dev |
 | `routes/interestEarned.js` | Interest calculations | Feature dev |
 | `logger.js` | Debugging | Anyone |
 | `.env` | Local config | All devs |
@@ -520,6 +575,8 @@ app.use('/budgets', budgetsRoutes);
 |------|----------------|----|
 | Authentication | **Critical** | POST /users/login with valid/invalid creds |
 | Weight operations | **Critical** | POST /weights, GET /weights with filters, DELETE /weights/range |
+| ETF category/symbol CRUD | **High** | POST /etf/category, /etf/symbol; GET, PUT, DELETE |
+| ETF compare query | **High** | GET /etf/compare with various categories, rows; verify caching (60min TTL) |
 | Activity linking | **High** | Verify WeightActivitiesT constraints (max 5) |
 | Transaction rollback | **High** | Simulate DB error mid-transaction |
 | Date format handling | **High** | Test YYYY-MM-DD parsing on MySQL 5.5 |

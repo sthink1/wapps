@@ -34,6 +34,10 @@
 - **Confetti Animation**: canvas-confetti @1.9.3 (CDN)
 - **Input Sanitization**: DOMPurify 2.3.10 (CDN)
 
+### HTTP Client & External APIs
+- **HTTP Client**: axios ^1.x (for external API calls)
+- **ETF Data APIs**: Tiingo, Finnhub, Polygon (price & reference data via axios)
+
 ### Development & Email
 - **Environment Variables**: dotenv ^16.3.1
 - **Email Service**: Custom `send_email.js` (Resend HTTP-based)
@@ -107,6 +111,8 @@ PORT=3000 NODE_ENV=production npm start
 | `WeightActivitiesT` | Weight-Activity mapping | WeightsT, ActivitiesT | (none) |
 | `InterestEarnedT` | Interest contracts | UsersT | UserIntErndID |
 | `TrackUsageT` | Page views & time spent | UsersT | (none) |
+| `etfCategoryT` | ETF portfolio categories | UsersT | (none) |
+| `etfSymbolT` | ETF symbols & metadata | UsersT, etfCategoryT | (none) |
 | `UserSequenceT` | ID generation (manual) | UsersT (implicit) | (none) |
 
 ### Data Flow Pattern
@@ -231,6 +237,11 @@ MAIL_FROM_ADDRESS=<sender-email>
 MAIL_FROM_NAME=<sender-name>
 MAIL_TO_ADDRESS=<recipient-email>
 
+# ETF External APIs
+TIINGO_API_KEY=<tiingo-api-key>
+FINNHUB_API_KEY=<finnhub-api-key>
+POLYGON_API_KEY=<polygon-api-key>
+
 # Server
 PORT=8080
 NODE_ENV=development
@@ -259,6 +270,8 @@ NODE_ENV=development
 6. **Error Messages**: Append `(be)` to backend-generated error messages
 7. **Token Security**: Never log token values; always sanitize in error messages
 8. **CORS**: Review allowed origins before deployment
+9. **ETF Caching**: `/etf/compare` endpoint caches results per (userId, category) for 60 minutes; use `?nocache=true` during testing
+10. **ETF API Keys**: Tiingo, Finnhub, Polygon keys required in `.env`; validate via Polygon in symbol POST request
 
 ---
 
@@ -273,6 +286,7 @@ root/
 ├── send_email.js          # Email service
 ├── hash.js                # Password hashing utility (one-off)
 ├── testConnection.js      # DB connection test
+├── debug_etf_compare.js   # ETF /compare endpoint debugging script
 ├── .env                   # Secrets (not in repo)
 ├── package.json           # Dependencies
 ├── routes/
@@ -281,6 +295,7 @@ root/
 │   ├── activities.js       # /activities (CRUD)
 │   ├── weightActivities.js # /weightActivities (mapping)
 │   ├── interestEarned.js   # /interestEarned (CRUD)
+│   ├── etf.js             # /etf (category, symbol, compare CRUD + Tiingo/Finnhub proxies)
 │   ├── track.js           # /track (analytics)
 │   └── geocode.js         # /geocode (reverse geocoding proxy)
 ├── middleware/
@@ -295,6 +310,12 @@ root/
 │   ├── Activities.html    # Activity management UI
 │   ├── InterestEarned.html # Interest calculator
 │   ├── amortization.html  # Loan calculator
+│   ├── etf.html           # ETF comparison & analysis hub
+│   ├── etfSymbol.html     # Add/manage ETF symbols
+│   ├── etfCategory.html   # Manage ETF categories
+│   ├── etfCompare.html    # ETF performance comparison table
+│   ├── etfActivity.html   # ETF research & activity log
+│   ├── etfAPItest.html    # ETF API testing & debugging tool
 │   ├── propertyInfo.html  # Property research tools
 │   ├── track.html         # Analytics dashboard
 │   ├── TownNotice.html    # Geolocation alerts
