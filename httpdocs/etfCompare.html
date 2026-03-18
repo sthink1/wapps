@@ -654,9 +654,23 @@ renderTable = function(tableId, data, isCurrent) {
   originalRenderTable(tableId, data, isCurrent);
 };
 
-// Handle Sort By change: refresh without recalculating movement
+// Recalculate Movement based on current sort order
+function recalculateMovement(sortedCurrent, sortedPast) {
+  const pastMap = new Map(sortedPast.map((d, idx) => [d.symbol, idx]));
+  sortedCurrent.forEach(d => {
+    const pastPos = pastMap.get(d.symbol);
+    if (pastPos !== undefined) {
+      const currPos = sortedCurrent.findIndex(c => c.symbol === d.symbol);
+      const diff = pastPos - currPos;
+      d.movement = diff > 0 ? `↑${diff}` : diff < 0 ? `↓${Math.abs(diff)}` : '–';
+    } else {
+      d.movement = '–';
+    }
+  });
+}
+
+// Handle Sort By change: refresh and recalculate movement
 function onSortByChange() {
-  // Just apply normal refresh (sort, rows limit, render) - keep original movement
   refreshTablesFromCache();
 }
 
@@ -678,6 +692,9 @@ function refreshTablesFromCache() {
   // Apply sort + rows limit
   const sortedCurrent = [...lastFullCurrent].sort(sortFunc).slice(0, numRows);
   const sortedPast    = [...lastFullPast]   .sort(sortFunc).slice(0, numRows);
+
+  // FIXED: Recalculate Movement based on the new sort order
+  recalculateMovement(sortedCurrent, sortedPast);
 
   // Re-render
   renderTable('currentTable', sortedCurrent, true);
