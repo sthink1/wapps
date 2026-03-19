@@ -697,7 +697,7 @@ router.get('/activity/symbols-by-category/:categoryId', auth, async (req, res) =
 
 // ────────────────────────────────────────────────
 // POST /etf/activity/buy
-// Record a securities purchase
+// Record a securities purchase or stock split adjustment
 router.post(
   '/activity/buy',
   auth,
@@ -705,8 +705,9 @@ router.post(
     body('etfCategoryID').isInt({ min: 1 }),
     body('etfSymbolID').isInt({ min: 1 }),
     body('TransactionDate').isDate(),
-    body('Shares').isFloat({ gt: 0 }),
-    body('PurchaseCost').isFloat({ gt: 0 })
+    body('Shares').isFloat({ ne: 0 }),  // Must be non-zero, can be negative for splits
+    body('PurchaseCost').isFloat({ min: 0 }),  // Allow zero for stock splits
+    body('isStockSplit').optional().isBoolean()
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -714,7 +715,13 @@ router.post(
       return res.status(400).json({ message: "Invalid input (be)" });
     }
     const userId = req.user.userId;
-    const { etfCategoryID, etfSymbolID, TransactionDate, Shares, PurchaseCost } = req.body;
+    const { etfCategoryID, etfSymbolID, TransactionDate, Shares, PurchaseCost, isStockSplit } = req.body;
+    
+    // Additional validation for normal purchases (non-stock-split)
+    if (!isStockSplit && PurchaseCost <= 0) {
+      return res.status(400).json({ message: "Cost Per Share must be greater than 0 for regular purchases (be)" });
+    }
+    
     try {
       // Verify the symbol belongs to this user and category
       await withTransaction(async (connection) => {
@@ -737,7 +744,9 @@ router.post(
           [userEtfActivityID, userId, etfCategoryID, etfSymbolID,
            TransactionDate, Shares, PurchaseCost]
         );
-        res.json({ message: "Purchase recorded" });
+        
+        const msgType = isStockSplit ? "Stock split adjustment recorded" : "Purchase recorded";
+        res.json({ message: msgType });
       });
     } catch (err) {
       if (err.message.endsWith("(be)")) {
