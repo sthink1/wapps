@@ -551,7 +551,7 @@ function printModal() {
 function generateSummary() {
   const category = document.getElementById('category').value || 'N/A';
   const sortBy = document.getElementById('sortBy').value;
-  const metrics = '1W, 1M, YTD, 1Y, 3Y, 5Y';
+  const metrics = 'Movement (Mvmt), Price, Return (1W, 1M, YTD, 1Y, 3Y, 5Y)';
   const currentDate = document.getElementById('currentDateDisplay').textContent;
   const pastDate = document.getElementById('pastDateDisplay').textContent;
 
@@ -567,18 +567,20 @@ function generateSummary() {
   summary += 'DATA Table 1 (Current):\n';
   const currentRows = document.querySelectorAll('#currentTable tbody tr');
   if (currentRows.length > 0) {
-    summary += 'Symbol   1W    1M    YTD   1Y    3Y    5Y\n';
+    summary += 'Symbol   Mvmt   Price  1W    1M    YTD   1Y    3Y    5Y\n';
     currentRows.forEach(row => {
       const cells = row.querySelectorAll('td');
       if (cells.length >= 11) {
         const symbol = cells[0].textContent.trim();
+        const mvmt = cells[3].textContent.trim();
+        const price = cells[4].textContent.trim();
         const col1W = cells[5].textContent.trim();
         const col1M = cells[6].textContent.trim();
         const colYTD = cells[7].textContent.trim();
         const col1Y = cells[8].textContent.trim();
         const col3Y = cells[9].textContent.trim();
         const col5Y = cells[10].textContent.trim();
-        summary += `${symbol.padEnd(8)} ${col1W.padEnd(5)} ${col1M.padEnd(5)} ${colYTD.padEnd(5)} ${col1Y.padEnd(5)} ${col3Y.padEnd(5)} ${col5Y}\n`;
+        summary += `${symbol.padEnd(8)} ${mvmt.padEnd(6)} ${price.padEnd(7)} ${col1W.padEnd(5)} ${col1M.padEnd(5)} ${colYTD.padEnd(5)} ${col1Y.padEnd(5)} ${col3Y.padEnd(5)} ${col5Y}\n`;
       }
     });
   }
@@ -588,18 +590,19 @@ function generateSummary() {
   summary += 'DATA Table 2 (Past):\n';
   const pastRows = document.querySelectorAll('#pastTable tbody tr');
   if (pastRows.length > 0) {
-    summary += 'Symbol   1W    1M    YTD   1Y    3Y    5Y\n';
+    summary += 'Symbol   Price  1W    1M    YTD   1Y    3Y    5Y\n';
     pastRows.forEach(row => {
       const cells = row.querySelectorAll('td');
       if (cells.length >= 8) {
         const symbol = cells[0].textContent.trim();
+        const price = cells[1].textContent.trim();
         const col1W = cells[2].textContent.trim();
         const col1M = cells[3].textContent.trim();
         const colYTD = cells[4].textContent.trim();
         const col1Y = cells[5].textContent.trim();
         const col3Y = cells[6].textContent.trim();
         const col5Y = cells[7].textContent.trim();
-        summary += `${symbol.padEnd(8)} ${col1W.padEnd(5)} ${col1M.padEnd(5)} ${colYTD.padEnd(5)} ${col1Y.padEnd(5)} ${col3Y.padEnd(5)} ${col5Y}\n`;
+        summary += `${symbol.padEnd(8)} ${price.padEnd(7)} ${col1W.padEnd(5)} ${col1M.padEnd(5)} ${colYTD.padEnd(5)} ${col1Y.padEnd(5)} ${col3Y.padEnd(5)} ${col5Y}\n`;
       }
     });
   }

@@ -908,7 +908,7 @@ clearTables(); // initial clear
 // PROMPT MODAL FUNCTIONS
 // ─────────────────────────────────────────────
 
-function extractReturnValue(cellId) {
+function extractCellValue(cellId) {
   const cell = document.getElementById(cellId);
   if (!cell || !cell.textContent) return 'N/A';
   const text = cell.textContent.trim();
@@ -923,30 +923,44 @@ function generatePromptSummary() {
   summary += 'Metrics: Return % for: 1W, 1M, YTD, 1Y, 3Y, 5Y\n';
   summary += '\n';
   
-  // Extract Return % values from Table 1
-  const t1_1w = extractReturnValue('t1-ret-1w');
-  const t1_1m = extractReturnValue('t1-ret-1m');
-  const t1_ytd = extractReturnValue('t1-ret-ytd');
-  const t1_1y = extractReturnValue('t1-ret-1y');
-  const t1_3y = extractReturnValue('t1-ret-3y');
-  const t1_5y = extractReturnValue('t1-ret-5y');
+  // Extract all rows from Table 1
+  const periods = ['today', '1w', '1m', 'ytd', '1y', '3y', '5y'];
+  const rows = ['cal', 'ald', 'api', 'price', 'adj', 'ret'];
+  const rowLabels = ['Calendar', 'After ListDate', 'API Used', 'Price', 'Adj Price', 'Return %'];
   
-  summary += 'DATA Table 1:\n';
-  summary += 'Period        1W    1M    YTD   1Y    3Y    5Y\n';
-  summary += `Return %      ${t1_1w.padEnd(5)} ${t1_1m.padEnd(5)} ${t1_ytd.padEnd(5)} ${t1_1y.padEnd(5)} ${t1_3y.padEnd(5)} ${t1_5y}\n`;
+  summary += 'DATA Table 1 (Current):\n';
+  summary += 'Period              Today  1W     1M     YTD    1Y     3Y     5Y\n';
+  
+  rowLabels.forEach((label, idx) => {
+    const rowKey = rows[idx];
+    let line = label.padEnd(19);
+    periods.forEach(period => {
+      const cellId = `t1-${rowKey}-${period}`;
+      const val = extractCellValue(cellId);
+      line += val.padEnd(7);
+    });
+    summary += line + '\n';
+  });
+  
   summary += '\n';
   
-  // Extract Return % values from Table 2
-  const t2_1w = extractReturnValue('t2-ret-1w');
-  const t2_1m = extractReturnValue('t2-ret-1m');
-  const t2_ytd = extractReturnValue('t2-ret-ytd');
-  const t2_1y = extractReturnValue('t2-ret-1y');
-  const t2_3y = extractReturnValue('t2-ret-3y');
-  const t2_5y = extractReturnValue('t2-ret-5y');
+  // Extract all rows from Table 2
+  const periods2 = ['anchor', '1w', '1m', 'ytd', '1y', '3y', '5y'];
+  const period2Labels = ['1 Yr Prior', '1W', '1M', 'YTD', '1Y', '3Y', '5Y'];
   
-  summary += 'DATA Table 2:\n';
-  summary += 'Period        1W    1M    YTD   1Y    3Y    5Y\n';
-  summary += `Return %      ${t2_1w.padEnd(5)} ${t2_1m.padEnd(5)} ${t2_ytd.padEnd(5)} ${t2_1y.padEnd(5)} ${t2_3y.padEnd(5)} ${t2_5y}\n`;
+  summary += 'DATA Table 2 (1 Year Prior):\n';
+  summary += 'Period              1 Yr Prior  1W     1M     YTD    1Y     3Y     5Y\n';
+  
+  rowLabels.forEach((label, idx) => {
+    const rowKey = rows[idx];
+    let line = label.padEnd(19);
+    periods2.forEach(period => {
+      const cellId = `t2-${rowKey}-${period}`;
+      const val = extractCellValue(cellId);
+      line += val.padEnd(12);
+    });
+    summary += line + '\n';
+  });
   
   return summary;
 }

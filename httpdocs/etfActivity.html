@@ -150,7 +150,6 @@
     <button onclick="showSection('sellSection')">Sale</button>
     <button onclick="showSection('inventorySection'); loadInventory()">Inventory</button>
     <button onclick="showSection('salesReportSection')">Sales Report</button>
-    <button onclick="showSection('valueReportSection')">Value Report</button>
     <button onclick="showSection('transactionSection'); loadTransactions()">Transactions</button>
     <button class="btn-neutral" onclick="goBack()">Back</button>
   </div>
@@ -274,31 +273,6 @@
     <div id="salesReportContent"></div>
   </div>
 
-  <!-- ═══════════════════════════════════════
-       VALUE REPORT  (tentative layout)
-  ════════════════════════════════════════ -->
-  <div id="valueReportSection" class="section">
-    <h3>Increase / Decrease Value Report</h3>
-    <p style="font-size:13px;color:#555;text-align:left;">
-      This report will compare inventory value between two periods (e.g. Dec 31, 2024 vs Dec 31, 2025)
-      to show how holdings have performed over time. Report format and criteria are under development.
-    </p>
-    <div class="report-filters">
-      <div>
-        <label for="valueDate1">Period 1 Date</label><br>
-        <input type="date" id="valueDate1">
-      </div>
-      <div>
-        <label for="valueDate2">Period 2 Date</label><br>
-        <input type="date" id="valueDate2">
-      </div>
-      <button onclick="alert('Value Report is under development.')">Load</button>
-      <button onclick="window.print()">Print</button>
-    </div>
-    <p style="color:#888;font-style:italic;text-align:left;font-size:13px;">
-      Note: This report requires capturing historical inventory values. Design in progress.
-    </p>
-  </div>
 
   <!-- ═══════════════════════════════════════
        TRANSACTIONS LOG
