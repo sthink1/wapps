@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETF Activity</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f4f4f4;
+      padding-bottom: 60px;
+    }
+    .container {
+      text-align: center;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      width: 680px;
+      max-width: 98vw;
+    }
+    h2 { margin-bottom: 8px; }
+    h3 { margin-top: 10px; }
+    .nav-buttons { margin-bottom: 16px; }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      font-size: 15px;
+      margin: 4px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover { background-color: #45a049; }
+    button:disabled { background-color: #aaa; cursor: not-allowed; }
+    .btn-danger  { background-color: #e53935; }
+    .btn-danger:hover  { background-color: #b71c1c; }
+    .btn-neutral { background-color: #1565c0; }
+    .btn-neutral:hover { background-color: #0d47a1; }
+    .section { display: none; }
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .form-row label { font-weight: bold; margin-bottom: 4px; }
+    .form-row select,
+    .form-row input[type="text"],
+    .form-row input[type="number"],
+    .form-row input[type="date"] {
+      width: 100%;
+      padding: 7px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .message {
+      margin-top: 10px;
+      font-weight: bold;
+      min-height: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      text-align: right;
+    }
+    th { background: #f2f2f2; text-align: center; }
+    td.left, th.left { text-align: left; }
+    td.center, th.center { text-align: center; }
+    .subtotal-row td { font-weight: bold; background: #e8f5e9; }
+    .total-row    td { font-weight: bold; background: #c8e6c9; }
+    .up   { color: green; font-weight: bold; }
+    .down { color: red;   font-weight: bold; }
+    .report-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 14px;
+      text-align: left;
+    }
+    .report-filters label { font-weight: bold; font-size: 13px; }
+    .report-filters select,
+    .report-filters input[type="date"] {
+      padding: 6px;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #customDateRange { display: none; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+      margin: 1px;
+    }
+    .btn-edit  { background-color: #1565c0; }
+    .btn-edit:hover  { background-color: #0d47a1; }
+    .btn-del   { background-color: #e53935; }
+    .btn-del:hover   { background-color: #b71c1c; }
+    /* Edit modal */
+    #editModal {
+      display: none;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;
+    }
+    .modal-content {
+      background: white; padding: 24px; border-radius: 8px;
+      width: 90%; max-width: 420px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .modal-content h4 { margin-top: 0; }
+    .modal-close { float: right; font-size: 22px; cursor: pointer; line-height: 1; }
+    footer {
+      background-color: lightgray;
+      height: 30px;
+      padding-top: 5px;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      text-align: center;
+    }
+    @media print {
+      footer, .nav-buttons, .report-filters button, button { display: none !important; }
+      body { background: white; }
+      .container { box-shadow: none; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>ETF Activity</h2>
+
+  <div class="nav-buttons">
+    <button onclick="showSection('buySection')">Purchase</button>
+    <button onclick="showSection('sellSection')">Sale</button>
+    <button onclick="showSection('inventorySection'); loadInventory()">Inventory</button>
+    <button onclick="showSection('salesReportSection')">Sales Report</button>
+    <button onclick="showSection('transactionSection'); loadTransactions()">Transactions</button>
+    <button class="btn-neutral" onclick="goBack()">Back</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       PURCHASE SECTION
+  ════════════════════════════════════════ -->
+  <div id="buySection" class="section">
+    <h3>Securities Purchased</h3>
+    <div class="form-row">
+      <label for="buyCategory">Category</label>
+      <select id="buyCategory" onchange="loadSymbolsForCategory('buyCategory','buySymbol')">
+        <option value="">-- Select Category --</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="buySymbol">Symbol</label>
+      <select id="buySymbol">
+        <option value="">-- Select Symbol --</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="buyDate">Date</label>
+      <input type="date" id="buyDate">
+    </div>
+    <div class="form-row">
+      <label for="buyCost">Cost Per Share ($)</label>
+      <input type="number" id="buyCost" min="0.0001" step="0.0001" placeholder="0.00" oninput="calcBuyTotal()">
+    </div>
+    <div class="form-row">
+      <label for="buyShares">Shares</label>
+      <input type="number" id="buyShares" step="0.000001" placeholder="0.000000" oninput="calcBuyTotal()">
+    </div>
+    <div class="form-row">
+      <label>
+        <input type="checkbox" id="buyStockSplit" onchange="onStockSplitChange()">
+        Stock Split Adjustment
+      </label>
+      <div style="font-size:12px;color:#666;margin-top:4px;">Check this for stock splits (allows negative shares and $0 cost)</div>
+    </div>
+    <div class="form-row">
+      <label>Total Cost</label>
+      <div id="buyTotalCost" style="padding:7px;font-size:14px;font-weight:bold;color:#1565c0;min-height:32px;">—</div>
+    </div>
+    <button onclick="saveBuy()">Save</button>
+    <button onclick="clearBuyForm()">Clear</button>
+    <div id="buyMessage" class="message"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SALE SECTION
+  ════════════════════════════════════════ -->
+  <div id="sellSection" class="section">
+    <h3>Securities Sold</h3>
+    <div class="form-row">
+      <label for="sellCategory">Category</label>
+      <select id="sellCategory" onchange="loadSymbolsForCategory('sellCategory','sellSymbol')">
+        <option value="">-- Select Category --</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="sellSymbol">Symbol</label>
+      <select id="sellSymbol">
+        <option value="">-- Select Symbol --</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="sellDate">Date</label>
+      <input type="date" id="sellDate">
+    </div>
+    <div class="form-row">
+      <label for="sellPrice">Selling Price Per Share ($)</label>
+      <input type="number" id="sellPrice" min="0.0001" step="0.0001" placeholder="0.00" oninput="calcSellTotal()">
+    </div>
+    <div class="form-row">
+      <label for="sellShares">Shares</label>
+      <input type="number" id="sellShares" min="0.000001" step="0.000001" placeholder="0.000000" oninput="calcSellTotal()">
+    </div>
+    <div class="form-row">
+      <label>Total Sale</label>
+      <div id="sellTotalSale" style="padding:7px;font-size:14px;font-weight:bold;color:#1565c0;min-height:32px;">—</div>
+    </div>
+    <button onclick="saveSell()">Save</button>
+    <button onclick="clearSellForm()">Clear</button>
+    <div id="sellMessage" class="message"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       INVENTORY REPORT
+  ════════════════════════════════════════ -->
+  <div id="inventorySection" class="section">
+    <h3>Inventory Report</h3>
+    <p style="font-size:12px;color:#555;margin:0 0 10px;">Average cost method &bull; Current prices via live feed</p>
+    <button onclick="loadInventory()" class="btn-neutral">Refresh</button>
+    <button onclick="window.print()">Print</button>
+    <div id="inventoryMessage" class="message"></div>
+    <div id="inventoryContent"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SALES REPORT
+  ════════════════════════════════════════ -->
+  <div id="salesReportSection" class="section">
+    <h3>Sales Report</h3>
+    <div class="report-filters">
+      <div>
+        <label for="salesPeriod">Period</label><br>
+        <select id="salesPeriod" onchange="toggleCustomDates()">
+          <option value="current-year">Current Year</option>
+          <option value="last-year">Last Calendar Year</option>
+          <option value="custom">Custom Period</option>
+        </select>
+      </div>
+      <div id="customDateRange">
+        <div>
+          <label for="salesStart">From</label><br>
+          <input type="date" id="salesStart">
+        </div>
+        <div>
+          <label for="salesEnd">To</label><br>
+          <input type="date" id="salesEnd">
+        </div>
+      </div>
+      <button onclick="loadSalesReport()">Load</button>
+      <button onclick="window.print()">Print</button>
+    </div>
+    <div id="salesReportMessage" class="message"></div>
+    <div id="salesReportContent"></div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════
+       TRANSACTIONS LOG
+  ════════════════════════════════════════ -->
+  <div id="transactionSection" class="section">
+    <h3>Transaction Log</h3>
+    <div class="report-filters">
+      <div>
+        <label for="txSearchType">Type</label><br>
+        <select id="txSearchType" onchange="filterTransactions()">
+          <option value="">All</option>
+          <option value="BUY">Purchase</option>
+          <option value="SELL">Sale</option>
+        </select>
+      </div>
+      <div>
+        <label for="txSearchCategory">Category</label><br>
+        <select id="txSearchCategory" onchange="filterTransactions()">
+          <option value="">All Categories</option>
+        </select>
+      </div>
+      <div>
+        <label for="txSearchSymbol">Symbol</label><br>
+        <select id="txSearchSymbol" onchange="filterTransactions()">
+          <option value="">All Symbols</option>
+        </select>
+      </div>
+      <div>
+        <label for="txSearchDateFrom">Date From</label><br>
+        <input type="date" id="txSearchDateFrom" onchange="filterTransactions()">
+      </div>
+      <div>
+        <label for="txSearchDateTo">Date To</label><br>
+        <input type="date" id="txSearchDateTo" onchange="filterTransactions()">
+      </div>
+      <button onclick="clearTxSearch()" class="btn-neutral">Clear Search</button>
+      <button onclick="loadTransactions()" class="btn-neutral">Refresh</button>
+      <button onclick="window.print()">Print</button>
+    </div>
+    <div id="transactionMessage" class="message"></div>
+    <div id="transactionContent"></div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Edit Transaction Modal -->
+<div id="editModal">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeEditModal()">&#x2715;</span>
+    <h4>Edit Transaction</h4>
+    <input type="hidden" id="editActivityId">
+    <div class="form-row">
+      <label>Type</label>
+      <div id="editTypeDisplay" style="padding:7px;font-size:14px;font-weight:bold;"></div>
+    </div>
+    <div class="form-row">
+      <label>Category / Symbol</label>
+      <div id="editSymbolDisplay" style="padding:7px;font-size:14px;"></div>
+    </div>
+    <div class="form-row">
+      <label for="editDate">Date</label>
+      <input type="date" id="editDate">
+    </div>
+    <div class="form-row">
+      <label for="editShares">Shares</label>
+      <input type="number" id="editShares" min="0.000001" step="0.000001" oninput="calcEditTotal()">
+    </div>
+    <div id="editCostRow" class="form-row">
+      <label for="editCost">Cost Per Share ($)</label>
+      <input type="number" id="editCost" min="0.0001" step="0.0001" oninput="calcEditTotal()">
+    </div>
+    <div id="editPriceRow" class="form-row">
+      <label for="editPrice">Sale Price Per Share ($)</label>
+      <input type="number" id="editPrice" min="0.0001" step="0.0001" oninput="calcEditTotal()">
+    </div>
+    <div class="form-row">
+      <label id="editTotalLabel">Total</label>
+      <div id="editTotal" style="padding:7px;font-size:14px;font-weight:bold;color:#1565c0;min-height:32px;">—</div>
+    </div>
+    <div id="editMessage" style="margin-bottom:10px;font-weight:bold;min-height:18px;"></div>
+    <button onclick="saveEdit()">Save</button>
+    <button class="btn-neutral" onclick="closeEditModal()">Cancel</button>
+  </div>
+</div>
+
+<footer>ETF Project</footer>
+
+<script src="js/holidays.js"></script>
+<script>
+
+// ─────────────────────────────────────────────
+const token = localStorage.getItem('token') || '';
+
+// ─────────────────────────────────────────────
+// Auth fetch helper
+async function fetchWithAuth(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      ...(options.headers || {})
+    }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Request failed');
+  return data;
+}
+
+// ─────────────────────────────────────────────
+// Number formatting
+function fmt(n, decimals = 2) {
+  if (n === null || n === undefined || isNaN(n)) return 'N/A';
+  return Number(n).toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+}
+
+function fmtCurrency(n) {
+  if (n === null || n === undefined || isNaN(n)) return 'N/A';
+  return '$' + fmt(n, 2);
+}
+
+function fmtShares(n) {
+  if (n === null || n === undefined || isNaN(n)) return 'N/A';
+  // Show up to 6 decimal places, trim trailing zeros
+  return Number(n).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 6
+  });
+}
+
+// ─────────────────────────────────────────────
+// Section navigation
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+}
+
+function goBack() {
+  window.location.href = 'etf.html';
+}
+
+// ─────────────────────────────────────────────
+// Load categories into a dropdown
+async function loadCategories(selectId) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = '<option value="">-- Select Category --</option>';
+  try {
+    const data = await fetchWithAuth('/etf/category');
+    data.data.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.etfCategoryID;
+      opt.textContent = cat.category;
+      select.appendChild(opt);
+    });
+  } catch (err) {
+    alert('Could not load categories: ' + err.message);
+  }
+}
+
+// ─────────────────────────────────────────────
+// Load symbols for a selected category (chained dropdown)
+async function loadSymbolsForCategory(categorySelectId, symbolSelectId) {
+  const categoryId = document.getElementById(categorySelectId).value;
+  const symSelect  = document.getElementById(symbolSelectId);
+  symSelect.innerHTML = '<option value="">-- Select Symbol --</option>';
+  if (!categoryId) return;
+  try {
+    const data = await fetchWithAuth(`/etf/activity/symbols-by-category/${categoryId}`);
+    data.data.forEach(sym => {
+      const opt = document.createElement('option');
+      opt.value = sym.etfSymbolID;
+      opt.textContent = sym.symbol + (sym.name ? ' – ' + sym.name : '');
+      symSelect.appendChild(opt);
+    });
+  } catch (err) {
+    alert('Could not load symbols: ' + err.message);
+  }
+}
+
+// ─────────────────────────────────────────────
+// PURCHASE — Save
+async function saveBuy() {
+  const etfCategoryID   = document.getElementById('buyCategory').value;
+  const etfSymbolID     = document.getElementById('buySymbol').value;
+  const TransactionDate = document.getElementById('buyDate').value;
+  const PurchaseCost    = document.getElementById('buyCost').value;
+  const Shares          = document.getElementById('buyShares').value;
+  const isStockSplit    = document.getElementById('buyStockSplit').checked;
+  const msgEl           = document.getElementById('buyMessage');
+
+  // Validate required fields
+  if (!etfCategoryID || !etfSymbolID || !TransactionDate) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = 'Category, Symbol, and Date are required.';
+    return;
+  }
+
+  // For stock splits, only require Shares. For normal purchases, require Cost and Shares
+  if (isStockSplit) {
+    if (!Shares) {
+      msgEl.style.color = 'red';
+      msgEl.textContent = 'Shares required for stock split adjustment.';
+      return;
+    }
+  } else {
+    if (!PurchaseCost || !Shares) {
+      msgEl.style.color = 'red';
+      msgEl.textContent = 'Cost Per Share and Shares are required.';
+      return;
+    }
+  }
+
+  msgEl.style.color = '#333';
+  msgEl.textContent = 'Saving...';
+
+  try {
+    const result = await fetchWithAuth('/etf/activity/buy', {
+      method: 'POST',
+      body: JSON.stringify({
+        etfCategoryID: parseInt(etfCategoryID),
+        etfSymbolID:   parseInt(etfSymbolID),
+        TransactionDate,
+        Shares:        parseFloat(Shares),
+        PurchaseCost:  isStockSplit ? 0 : parseFloat(PurchaseCost),
+        isStockSplit
+      })
+    });
+    msgEl.style.color = 'green';
+    msgEl.textContent = '✔ ' + result.message;
+    clearBuyForm();
+  } catch (err) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = err.message;
+  }
+}
+
+function clearBuyForm() {
+  document.getElementById('buyCategory').value = '';
+  document.getElementById('buySymbol').innerHTML = '<option value="">-- Select Symbol --</option>';
+  document.getElementById('buyDate').value = '';
+  document.getElementById('buyCost').value = '';
+  document.getElementById('buyShares').value = '';
+  document.getElementById('buyStockSplit').checked = false;
+  document.getElementById('buyTotalCost').textContent = '—';
+  updateBuyFieldsForSplit();
+}
+
+// ─────────────────────────────────────────────
+// SALE — Save
+async function saveSell() {
+  const etfCategoryID   = document.getElementById('sellCategory').value;
+  const etfSymbolID     = document.getElementById('sellSymbol').value;
+  const TransactionDate = document.getElementById('sellDate').value;
+  const SalePrice       = document.getElementById('sellPrice').value;
+  const Shares          = document.getElementById('sellShares').value;
+  const msgEl           = document.getElementById('sellMessage');
+
+  if (!etfCategoryID || !etfSymbolID || !TransactionDate || !SalePrice || !Shares) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = 'All fields are required.';
+    return;
+  }
+
+  msgEl.style.color = '#333';
+  msgEl.textContent = 'Saving...';
+
+  try {
+    const result = await fetchWithAuth('/etf/activity/sell', {
+      method: 'POST',
+      body: JSON.stringify({
+        etfCategoryID: parseInt(etfCategoryID),
+        etfSymbolID:   parseInt(etfSymbolID),
+        TransactionDate,
+        Shares:    parseFloat(Shares),
+        SalePrice: parseFloat(SalePrice)
+      })
+    });
+    msgEl.style.color = 'green';
+    msgEl.textContent = '✔ ' + result.message;
+    clearSellForm();
+  } catch (err) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = err.message;
+  }
+}
+
+function clearSellForm() {
+  document.getElementById('sellCategory').value = '';
+  document.getElementById('sellSymbol').innerHTML = '<option value="">-- Select Symbol --</option>';
+  document.getElementById('sellDate').value = '';
+  document.getElementById('sellPrice').value = '';
+  document.getElementById('sellShares').value = '';
+  document.getElementById('sellTotalSale').textContent = '—';
+}
+
+// ─────────────────────────────────────────────
+// Inline total calculators
+function calcBuyTotal() {
+  const isStockSplit = document.getElementById('buyStockSplit').checked;
+  if (isStockSplit) {
+    document.getElementById('buyTotalCost').textContent = '— (Stock Split)';
+    return;
+  }
+  const cost   = parseFloat(document.getElementById('buyCost').value)   || 0;
+  const shares = parseFloat(document.getElementById('buyShares').value) || 0;
+  const el = document.getElementById('buyTotalCost');
+  el.textContent = (cost > 0 && shares > 0) ? fmtCurrency(cost * shares) : '—';
+}
+
+function onStockSplitChange() {
+  updateBuyFieldsForSplit();
+  calcBuyTotal();
+}
+
+function updateBuyFieldsForSplit() {
+  const isStockSplit = document.getElementById('buyStockSplit').checked;
+  const costInput = document.getElementById('buyCost');
+  const sharesInput = document.getElementById('buyShares');
+  
+  if (isStockSplit) {
+    costInput.disabled = true;
+    costInput.value = '0';
+    sharesInput.min = '';
+    sharesInput.placeholder = 'Enter shares (can be negative for reverse splits)';
+  } else {
+    costInput.disabled = false;
+    costInput.value = '';
+    sharesInput.min = '0.000001';
+    sharesInput.placeholder = '0.000000';
+  }
+}
+
+function calcSellTotal() {
+  const price  = parseFloat(document.getElementById('sellPrice').value)  || 0;
+  const shares = parseFloat(document.getElementById('sellShares').value) || 0;
+  const el = document.getElementById('sellTotalSale');
+  el.textContent = (price > 0 && shares > 0) ? fmtCurrency(price * shares) : '—';
+}
+
+// ─────────────────────────────────────────────
+// INVENTORY REPORT
+async function loadInventory() {
+  const msgEl     = document.getElementById('inventoryMessage');
+  const contentEl = document.getElementById('inventoryContent');
+  msgEl.textContent     = 'Loading...';
+  msgEl.style.color     = '#333';
+  contentEl.innerHTML   = '';
+
+  try {
+    const result = await fetchWithAuth('/etf/activity/inventory');
+    const data = result.data;
+
+    if (!data || data.length === 0) {
+      msgEl.textContent = 'No inventory found.';
+      return;
+    }
+    msgEl.textContent = '';
+
+    // Group by category
+    const byCategory = {};
+    data.forEach(row => {
+      if (!byCategory[row.category]) byCategory[row.category] = [];
+      byCategory[row.category].push(row);
+    });
+
+    let grandTotalCost  = 0;
+    let grandTotalValue = 0;
+    let grandTotalChange = 0;
+    let grandHasPrice   = false;
+
+    const categories = Object.keys(byCategory).sort();
+    const html = [];
+
+    categories.forEach(cat => {
+      const rows = byCategory[cat];
+      let catTotalCost   = 0;
+      let catTotalValue  = 0;
+      let catTotalChange = 0;
+      let catHasPrice    = false;
+
+      html.push(`<h4 style="text-align:left;margin:14px 0 4px;">${escHtml(cat)}</h4>`);
+      html.push(`<table>
+        <thead>
+          <tr>
+            <th class="left">Symbol</th>
+            <th class="left">Name</th>
+            <th>Shares</th>
+            <th>Avg Cost/Sh</th>
+            <th>Inventory Cost</th>
+            <th>Current Price</th>
+            <th>Total Value</th>
+            <th>Inc / Dec</th>
+          </tr>
+        </thead>
+        <tbody>`);
+
+      rows.forEach(r => {
+        const change = r.changeAmount;
+        const changeClass = change === null ? '' : (change >= 0 ? 'up' : 'down');
+        const changeDisplay = change === null ? 'N/A' : fmtCurrency(change);
+
+        catTotalCost   += r.inventoryCost || 0;
+        catTotalValue  += r.totalValue    || 0;
+        catTotalChange += change          || 0;
+        if (r.currentPrice !== null) catHasPrice = true;
+
+        html.push(`<tr>
+          <td class="left">${escHtml(r.symbol)}</td>
+          <td class="left">${escHtml(r.name || '—')}</td>
+          <td>${fmtShares(r.shares)}</td>
+          <td>${fmtCurrency(r.avgCostPerShare)}</td>
+          <td>${fmtCurrency(r.inventoryCost)}</td>
+          <td>${r.currentPrice !== null ? fmtCurrency(r.currentPrice) : 'N/A'}</td>
+          <td>${r.totalValue   !== null ? fmtCurrency(r.totalValue)   : 'N/A'}</td>
+          <td class="${changeClass}">${changeDisplay}</td>
+        </tr>`);
+      });
+
+      // Category subtotal
+      const catChangeClass = catTotalChange >= 0 ? 'up' : 'down';
+      html.push(`</tbody>
+        <tfoot>
+          <tr class="subtotal-row">
+            <td class="left" colspan="4">Category Subtotal</td>
+            <td>${fmtCurrency(catTotalCost)}</td>
+            <td></td>
+            <td>${catHasPrice ? fmtCurrency(catTotalValue) : 'N/A'}</td>
+            <td class="${catChangeClass}">${catHasPrice ? fmtCurrency(catTotalChange) : 'N/A'}</td>
+          </tr>
+        </tfoot>
+      </table>`);
+
+      grandTotalCost   += catTotalCost;
+      grandTotalValue  += catTotalValue;
+      grandTotalChange += catTotalChange;
+      if (catHasPrice) grandHasPrice = true;
+    });
+
+    // Grand total
+    const grandChangeClass = grandTotalChange >= 0 ? 'up' : 'down';
+    html.push(`<table style="margin-top:10px;">
+      <tfoot>
+        <tr class="total-row">
+          <td class="left" colspan="4"><strong>Grand Total</strong></td>
+          <td>${fmtCurrency(grandTotalCost)}</td>
+          <td></td>
+          <td>${grandHasPrice ? fmtCurrency(grandTotalValue) : 'N/A'}</td>
+          <td class="${grandChangeClass}">${grandHasPrice ? fmtCurrency(grandTotalChange) : 'N/A'}</td>
+        </tr>
+      </tfoot>
+    </table>`);
+
+    contentEl.innerHTML = html.join('');
+  } catch (err) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = 'Error loading inventory: ' + err.message;
+  }
+}
+
+// ─────────────────────────────────────────────
+// SALES REPORT
+function toggleCustomDates() {
+  const period = document.getElementById('salesPeriod').value;
+  const customEl = document.getElementById('customDateRange');
+  customEl.style.display = (period === 'custom') ? 'flex' : 'none';
+}
+
+async function loadSalesReport() {
+  const period    = document.getElementById('salesPeriod').value;
+  const startDate = document.getElementById('salesStart').value;
+  const endDate   = document.getElementById('salesEnd').value;
+  const msgEl     = document.getElementById('salesReportMessage');
+  const contentEl = document.getElementById('salesReportContent');
+
+  if (period === 'custom' && (!startDate || !endDate)) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = 'Please enter both From and To dates.';
+    return;
+  }
+
+  msgEl.style.color   = '#333';
+  msgEl.textContent   = 'Loading...';
+  contentEl.innerHTML = '';
+
+  let url = `/etf/activity/sales-report?period=${period}`;
+  if (period === 'custom') url += `&startDate=${startDate}&endDate=${endDate}`;
+
+  try {
+    const result = await fetchWithAuth(url);
+    const data = result.data;
+
+    const periodLabel = result.rangeStart && result.rangeEnd
+      ? `${result.rangeStart} to ${result.rangeEnd}`
+      : period;
+
+    if (!data || data.length === 0) {
+      msgEl.textContent = `No sales found for ${periodLabel}.`;
+      return;
+    }
+    msgEl.textContent = `Period: ${periodLabel}`;
+
+    // Group by category
+    const byCategory = {};
+    data.forEach(row => {
+      if (!byCategory[row.category]) byCategory[row.category] = [];
+      byCategory[row.category].push(row);
+    });
+
+    let grandProceeds = 0;
+    let grandCost     = 0;
+    let grandPL       = 0;
+
+    const categories = Object.keys(byCategory).sort();
+    const html = [];
+
+    categories.forEach(cat => {
+      const rows = byCategory[cat];
+      let catProceeds = 0;
+      let catCost     = 0;
+      let catPL       = 0;
+
+      html.push(`<h4 style="text-align:left;margin:14px 0 4px;">${escHtml(cat)}</h4>`);
+      html.push(`<table>
+        <thead>
+          <tr>
+            <th class="left">Symbol</th>
+            <th class="left">Name</th>
+            <th>Date</th>
+            <th>Shares</th>
+            <th>Sale Price</th>
+            <th>Proceeds</th>
+            <th>Avg Cost/Sh</th>
+            <th>Cost Basis</th>
+            <th>Profit / Loss</th>
+          </tr>
+        </thead>
+        <tbody>`);
+
+      rows.forEach(r => {
+        const plClass = r.profitLoss >= 0 ? 'up' : 'down';
+        catProceeds += r.saleProceeds;
+        catCost     += r.costBasis;
+        catPL       += r.profitLoss;
+
+        html.push(`<tr>
+          <td class="left">${escHtml(r.symbol)}</td>
+          <td class="left">${escHtml(r.name || '—')}</td>
+          <td class="center">${r.transactionDate ? String(r.transactionDate).substring(0,10) : ''}</td>
+          <td>${fmtShares(r.shares)}</td>
+          <td>${fmtCurrency(r.salePrice)}</td>
+          <td>${fmtCurrency(r.saleProceeds)}</td>
+          <td>${fmtCurrency(r.avgCostPerShare)}</td>
+          <td>${fmtCurrency(r.costBasis)}</td>
+          <td class="${plClass}">${fmtCurrency(r.profitLoss)}</td>
+        </tr>`);
+      });
+
+      const catPLClass = catPL >= 0 ? 'up' : 'down';
+      html.push(`</tbody>
+        <tfoot>
+          <tr class="subtotal-row">
+            <td class="left" colspan="5">Category Subtotal</td>
+            <td>${fmtCurrency(catProceeds)}</td>
+            <td></td>
+            <td>${fmtCurrency(catCost)}</td>
+            <td class="${catPLClass}">${fmtCurrency(catPL)}</td>
+          </tr>
+        </tfoot>
+      </table>`);
+
+      grandProceeds += catProceeds;
+      grandCost     += catCost;
+      grandPL       += catPL;
+    });
+
+    const grandPLClass = grandPL >= 0 ? 'up' : 'down';
+    html.push(`<table style="margin-top:10px;">
+      <tfoot>
+        <tr class="total-row">
+          <td class="left" colspan="5"><strong>Grand Total</strong></td>
+          <td>${fmtCurrency(grandProceeds)}</td>
+          <td></td>
+          <td>${fmtCurrency(grandCost)}</td>
+          <td class="${grandPLClass}">${fmtCurrency(grandPL)}</td>
+        </tr>
+      </tfoot>
+    </table>`);
+
+    contentEl.innerHTML = html.join('');
+  } catch (err) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = 'Error loading sales report: ' + err.message;
+  }
+}
+
+// ─────────────────────────────────────────────
+// TRANSACTION LOG
+let allTransactions = []; // full dataset for client-side filtering
+
+async function loadTransactions() {
+  const msgEl     = document.getElementById('transactionMessage');
+  const contentEl = document.getElementById('transactionContent');
+  msgEl.textContent   = 'Loading...';
+  msgEl.style.color   = '#333';
+  contentEl.innerHTML = '';
+
+  try {
+    const result = await fetchWithAuth('/etf/activity/transactions');
+    allTransactions = result.data || [];
+
+    // Populate search dropdowns from loaded data
+    populateTxSearchDropdowns();
+
+    if (allTransactions.length === 0) {
+      msgEl.textContent = 'No transactions found.';
+      return;
+    }
+    msgEl.textContent = '';
+    renderTransactions(allTransactions);
+  } catch (err) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = 'Error loading transactions: ' + err.message;
+  }
+}
+
+function populateTxSearchDropdowns() {
+  // Category dropdown
+  const catSel = document.getElementById('txSearchCategory');
+  const currentCat = catSel.value;
+  catSel.innerHTML = '<option value="">All Categories</option>';
+  const cats = [...new Set(allTransactions.map(r => r.category))].sort();
+  cats.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    catSel.appendChild(o);
+  });
+  catSel.value = currentCat;
+
+  // Symbol dropdown
+  const symSel = document.getElementById('txSearchSymbol');
+  const currentSym = symSel.value;
+  symSel.innerHTML = '<option value="">All Symbols</option>';
+  const syms = [...new Set(allTransactions.map(r => r.symbol))].sort();
+  syms.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    symSel.appendChild(o);
+  });
+  symSel.value = currentSym;
+}
+
+function filterTransactions() {
+  const type     = document.getElementById('txSearchType').value;
+  const category = document.getElementById('txSearchCategory').value;
+  const symbol   = document.getElementById('txSearchSymbol').value;
+  const dateFrom = document.getElementById('txSearchDateFrom').value;
+  const dateTo   = document.getElementById('txSearchDateTo').value;
+
+  const filtered = allTransactions.filter(r => {
+    const txDate = String(r.TransactionDate).substring(0, 10);
+    if (type     && r.TransactionType !== type)   return false;
+    if (category && r.category        !== category) return false;
+    if (symbol   && r.symbol          !== symbol)   return false;
+    if (dateFrom && txDate < dateFrom)              return false;
+    if (dateTo   && txDate > dateTo)                return false;
+    return true;
+  });
+
+  const msgEl = document.getElementById('transactionMessage');
+  msgEl.style.color = '#333';
+  msgEl.textContent = filtered.length < allTransactions.length
+    ? `Showing ${filtered.length} of ${allTransactions.length} transactions`
+    : '';
+
+  renderTransactions(filtered);
+}
+
+function clearTxSearch() {
+  document.getElementById('txSearchType').value     = '';
+  document.getElementById('txSearchCategory').value = '';
+  document.getElementById('txSearchSymbol').value   = '';
+  document.getElementById('txSearchDateFrom').value = '';
+  document.getElementById('txSearchDateTo').value   = '';
+  document.getElementById('transactionMessage').textContent = '';
+  renderTransactions(allTransactions);
+}
+
+function renderTransactions(data) {
+  const contentEl = document.getElementById('transactionContent');
+  if (!data || data.length === 0) {
+    contentEl.innerHTML = '<p style="color:#888;">No transactions match the search criteria.</p>';
+    return;
+  }
+
+  let html = `<table>
+    <thead>
+      <tr>
+        <th class="center">#</th>
+        <th class="left">Category</th>
+        <th class="left">Symbol</th>
+        <th class="center">Type</th>
+        <th class="center">Date</th>
+        <th>Shares</th>
+        <th>Cost/Sh</th>
+        <th>Sale Price</th>
+        <th class="center">Actions</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  data.forEach(r => {
+    const typeClass = r.TransactionType === 'BUY' ? 'up' : 'down';
+    const txDate    = r.TransactionDate ? String(r.TransactionDate).substring(0, 10) : '';
+    // Encode row data as JSON for the edit modal
+    const rowData = escHtml(JSON.stringify({
+      id:    r.etfActivityID,
+      type:  r.TransactionType,
+      cat:   r.category,
+      sym:   r.symbol,
+      date:  txDate,
+      shares: r.Shares,
+      cost:  r.PurchaseCost,
+      price: r.SalePrice
+    }));
+    html += `<tr>
+      <td class="center">${r.UserEtfActivityID}</td>
+      <td class="left">${escHtml(r.category)}</td>
+      <td class="left">${escHtml(r.symbol)}</td>
+      <td class="center ${typeClass}">${r.TransactionType}</td>
+      <td class="center">${txDate}</td>
+      <td>${fmtShares(r.Shares)}</td>
+      <td>${r.PurchaseCost !== null ? fmtCurrency(r.PurchaseCost) : '—'}</td>
+      <td>${r.SalePrice    !== null ? fmtCurrency(r.SalePrice)    : '—'}</td>
+      <td class="center" style="white-space:nowrap;">
+        <button class="btn-sm btn-edit" onclick="openEditModal(${r.etfActivityID})">Edit</button>
+        <button class="btn-sm btn-del"  onclick="deleteTx(${r.etfActivityID})">Delete</button>
+      </td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  contentEl.innerHTML = html;
+}
+
+// Delete a transaction (called from button in table row)
+async function deleteTx(id) {
+  if (!confirm('Delete this transaction? This cannot be undone.')) return;
+  try {
+    const result = await fetchWithAuth(`/etf/activity/${id}`, { method: 'DELETE' });
+    alert(result.message);
+    await loadTransactions();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+// ─────────────────────────────────────────────
+// EDIT MODAL
+function openEditModal(id) {
+  const r = allTransactions.find(t => t.etfActivityID === id);
+  if (!r) return;
+
+  document.getElementById('editActivityId').value      = r.etfActivityID;
+  document.getElementById('editTypeDisplay').textContent = r.TransactionType === 'BUY' ? 'Purchase (BUY)' : 'Sale (SELL)';
+  document.getElementById('editTypeDisplay').className  = r.TransactionType === 'BUY' ? 'up' : 'down';
+  document.getElementById('editSymbolDisplay').textContent = `${r.category} / ${r.symbol}`;
+  document.getElementById('editDate').value   = String(r.TransactionDate).substring(0, 10);
+  document.getElementById('editShares').value = r.Shares;
+  document.getElementById('editMessage').textContent = '';
+
+  if (r.TransactionType === 'BUY') {
+    document.getElementById('editCostRow').style.display  = 'flex';
+    document.getElementById('editPriceRow').style.display = 'none';
+    document.getElementById('editCost').value = r.PurchaseCost;
+    document.getElementById('editPrice').value = '';
+    document.getElementById('editTotalLabel').textContent = 'Total Cost';
+  } else {
+    document.getElementById('editCostRow').style.display  = 'none';
+    document.getElementById('editPriceRow').style.display = 'flex';
+    document.getElementById('editPrice').value = r.SalePrice;
+    document.getElementById('editCost').value  = '';
+    document.getElementById('editTotalLabel').textContent = 'Total Sale';
+  }
+  calcEditTotal();
+
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+function calcEditTotal() {
+  const shares = parseFloat(document.getElementById('editShares').value) || 0;
+  const cost   = parseFloat(document.getElementById('editCost').value)   || 0;
+  const price  = parseFloat(document.getElementById('editPrice').value)  || 0;
+  const val    = shares > 0 ? (cost > 0 ? cost * shares : price > 0 ? price * shares : 0) : 0;
+  document.getElementById('editTotal').textContent = val > 0 ? fmtCurrency(val) : '—';
+}
+
+async function saveEdit() {
+  const id     = document.getElementById('editActivityId').value;
+  const r      = allTransactions.find(t => t.etfActivityID == id);
+  const date   = document.getElementById('editDate').value;
+  const shares = document.getElementById('editShares').value;
+  const cost   = document.getElementById('editCost').value;
+  const price  = document.getElementById('editPrice').value;
+  const msgEl  = document.getElementById('editMessage');
+
+  if (!date || !shares) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = 'Date and Shares are required.';
+    return;
+  }
+  if (r.TransactionType === 'BUY'  && !cost)  {
+    msgEl.style.color = 'red';
+    msgEl.textContent = 'Cost per share is required.';
+    return;
+  }
+  if (r.TransactionType === 'SELL' && !price) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = 'Sale price per share is required.';
+    return;
+  }
+
+  msgEl.style.color = '#333';
+  msgEl.textContent = 'Saving...';
+
+  const body = {
+    TransactionDate: date,
+    Shares: parseFloat(shares)
+  };
+  if (r.TransactionType === 'BUY')  body.PurchaseCost = parseFloat(cost);
+  if (r.TransactionType === 'SELL') body.SalePrice    = parseFloat(price);
+
+  try {
+    const result = await fetchWithAuth(`/etf/activity/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body)
+    });
+    msgEl.style.color = 'green';
+    msgEl.textContent = '✔ ' + result.message;
+    setTimeout(() => {
+      closeEditModal();
+      loadTransactions();
+    }, 800);
+  } catch (err) {
+    msgEl.style.color = 'red';
+    msgEl.textContent = err.message;
+  }
+}
+
+// ─────────────────────────────────────────────
+// XSS helper
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ─────────────────────────────────────────────
+// On page load: populate category dropdowns
+window.onload = async () => {
+  await loadCategories('buyCategory');
+  await loadCategories('sellCategory');
+};
+
+</script>
+</body>
+</html>

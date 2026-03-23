@@ -46,7 +46,7 @@ The app tracks weight/activities, calculates loan amortization, verifies interes
 ┌────────────────────▼────────────────────────┐
 │   Database (MySQL 5.5–8.0)                  │
 │  - 8 core tables (Users, Weights, etc.)     │
-│  - FK constraints with CASCADE rules        │
+│  - No FK constraints (app-managed)          │
 │  - UserSequenceT for ID generation          │
 └─────────────────────────────────────────────┘
 ```
@@ -151,6 +151,55 @@ GET /track/stats:
   3. Return tables for dashboard
 ```
 
+### Flow 5: ETF Portfolio Comparison (Multi-API Aggregation)
+```
+User navigates to etfCompare.html
+  ↓
+Frontend: GET /etf/category (retrieve user's categories)
+          GET /etf/symbol (retrieve user's ETF symbols)
+  ↓
+User selects category + clicks "Compare"
+  ↓
+Frontend: GET /etf/compare?category=Gold&rows=10&sortBy=YTD
+  ↓
+Route Handler (routes/etf.js):
+  1. Check cache (60-min TTL per userId + category)
+     IF cached & !nocache → return cached data
+  ↓
+  2. Query etfSymbolT filtered by category
+     SELECT symbol, name, listDate FROM etfSymbolT WHERE UserID=? AND category=?
+  ↓
+  3. Fetch TIINGO data for all symbols
+     FOR each symbol:
+       → axios.get(https://api.tiingo.com/tiingo/daily/{symbol}/prices)
+       → Map date → { price, adjPrice }
+  ↓
+  4. Enrich with Finnhub real-time quotes (if today is trading day)
+     FOR each symbol:
+       → axios.get(https://finnhub.io/api/v1/quote?symbol={symbol})
+       → Use current price if available
+  ↓
+  5. Calculate returns for periods: YTD, 1W, 1M, 1Y, 3Y, 5Y
+     CAGR formula for multi-year: (EndPrice / StartPrice)^(1/Years) - 1
+     Simple return for ≤1 year: (EndPrice - StartPrice) / StartPrice
+  ↓
+  6. Sort results by requested metric (default YTD desc)
+     Calculate movement ranking (position change from past to current)
+  ↓
+  7. Cache result for 60 minutes
+  ↓
+Response: {
+  current: [ { symbol, name, price, returns: { YTD, 1Y, 5Y, ... }, movement } ],
+  past:    [ { symbol, name, price, returns: { YTD, 1Y, 5Y, ... } } ]
+}
+  ↓
+Frontend (etfCompare.html):
+  1. Render comparison table (current rankings)
+  2. Highlight movement indicators (↑ gained rank, ↓ lost rank)
+  3. Color-code returns (green positive, red negative)
+  4. Offer sort options (by YTD, 1Y, 3Y, 5Y, etc.)
+```
+
 ---
 
 ## 3. Important Dependencies
@@ -183,6 +232,9 @@ GET /track/stats:
 ### External APIs
 | Service | Purpose | Used Where | Notes |
 |---------|---------|-----------|-------|
+| Tiingo | Historical ETF pricing & OHLC data | routes/etf.js (/etf/compare, /etf/tiingo-proxy) | Requires `TIINGO_API_KEY` in .env |
+| Finnhub | Real-time ETF quotes on trading days | routes/etf.js (enrichData function) | Requires `FINNHUB_API_KEY` in .env |
+| Polygon | ETF metadata, name, list_date validation | routes/etf.js (/etf/symbol POST) | Requires `POLYGON_API_KEY` in .env |
 | Nominatim (OSM) | Reverse geocoding | TownNotice.html, geocode.js | — |
 | NOAA Flood Maps | Property research | propertyInfo.html | — |
 | Zillow | Property info | propertyInfo.html | — |
@@ -510,16 +562,59 @@ app.use('/budgets', budgetsRoutes);
 | `routes/weights.js` | Weight tracking logic | Backend dev |
 | `httpdocs/Weights.html` | Weight UI, forms | Frontend dev |
 | `routes/activities.js` | Activity CRUD | Backend dev |
+| `routes/etf.js` | ETF CRUD, API comparisons | Backend/ETF dev |
+| `httpdocs/etf.html` | ETF hub (nav to other ETF pages) | Frontend dev |
+| `httpdocs/etfCompare.html` | ETF performance comparison UI | Frontend dev |
 | `routes/interestEarned.js` | Interest calculations | Feature dev |
 | `logger.js` | Debugging | Anyone |
 | `.env` | Local config | All devs |
 
 ### Testing Hot Zones
 
+### ✅ IMPORTANT: User-Specific ID Pattern (Dual-Key System)
+
+**Why?**
+- Isolate user data (user 1 has IDs 1–50, user 2 has IDs 1–50)
+- Enable user-friendly API routes (e.g., `/weights/:userWeightId`)
+- Prevent ID enumeration attacks
+
+**Active Usage:**
+- `WeightsT`: UserWeightID (populated by `getNextUserSpecificID`)
+- `ActivitiesT`: UserActivityID (populated by `getNextUserSpecificID`)
+- `InterestEarnedT`: UserIntErndID (populated by `getNextUserSpecificID`)
+- **Both** the global PK and user-scoped ID are used:
+  - PKs (WeightID, ActivityID, etc.) for joins and internal references
+  - User-scoped IDs for external API parameters and user-friendly URLs
+
+**Usage Pattern:**
+```javascript
+// When creating a weight entry:
+const userWeightID = await getNextUserSpecificID(userId, 'WeightsT', 'UserWeightID');
+await connection.query(
+  'INSERT INTO WeightsT (DateWeight, Weight, UserID, UserWeightID) VALUES (?,?,?,?)',
+  [dateWeight, weight, userId, userWeightID]  // Store BOTH WeightID (auto) and UserWeightID (manual seq)
+);
+
+// When fetching by user-facing ID:
+await pool.query(
+  'SELECT * FROM WeightsT WHERE UserWeightID = ? AND UserID = ?',
+  [userWeightID, userId]  // Query via user-scoped ID
+);
+
+// ALWAYS use getNextUserSpecificID for user-scoped tables:
+// - WeightsT → UserWeightID
+// - ActivitiesT → UserActivityID
+// - InterestEarnedT → UserIntErndID
+```
+
+---
+
 | Area | Test Priority | How |
 |------|----------------|----|
 | Authentication | **Critical** | POST /users/login with valid/invalid creds |
 | Weight operations | **Critical** | POST /weights, GET /weights with filters, DELETE /weights/range |
+| ETF category/symbol CRUD | **High** | POST /etf/category, /etf/symbol; GET, PUT, DELETE |
+| ETF compare query | **High** | GET /etf/compare with various categories, rows; verify caching (60min TTL) |
 | Activity linking | **High** | Verify WeightActivitiesT constraints (max 5) |
 | Transaction rollback | **High** | Simulate DB error mid-transaction |
 | Date format handling | **High** | Test YYYY-MM-DD parsing on MySQL 5.5 |
@@ -586,7 +681,7 @@ DATABASE TRANSACTION (withTransaction)
     ├─ BEGIN TRANSACTION
     ├─ Execute queries on 'connection' object
     ├─ Generate user-specific IDs (getNextUserSpecificID)
-    ├─ Handle relationships (FK constraints enforced)
+    ├─ DB-enforced FK constraints with CASCADE
     │
     ├─ ON SUCCESS: COMMIT
     │  └─ Return response { success: true, data }
@@ -643,47 +738,56 @@ USER SEES RESULT
 
 ## 8. Constraints to Respect
 
-### ✅ Foreign Key Constraints with CASCADE Rules
+### ✅ CRITICAL: Foreign Key Constraints with Cascading Deletes
 
-**Configuration:** All child tables include `ON DELETE CASCADE ON UPDATE CASCADE` constraints:
-- `ActivitiesT` → `UsersT`
-- `InterestEarnedT` → `UsersT`
-- `TrackUsageT` → `UsersT`
-- `WeightsT` → `UsersT`
-- `WeightActivitiesT` → `WeightsT`, `ActivitiesT`, `UsersT`
-- `UserSequenceT` → `UsersT`
+**Reality:** All tables with parent references use `ON DELETE CASCADE ON UPDATE CASCADE`
+
+**Tables with FKs:**
+- ActivitiesT → UsersT
+- etfCategoryT → UsersT
+- etfSymbolT → etfCategoryT and UsersT
+- InterestEarnedT → UsersT
+- TrackUsageT → UsersT
+- UserSequenceT → UsersT
+- WeightActivitiesT → WeightsT, ActivitiesT, UsersT
+- WeightsT → UsersT
 
 **Impact:**
-- Deleting a user automatically deletes all related weights, activities, interest records, and tracking data
-- Deleting an activity automatically removes all weight-activity links
-- The database enforces referential integrity at the constraint level
+- Deleting a user AUTOMATICALLY cascades to delete their weights, activities, interest records, etc. via database-level constraints
+- The database enforces referential integrity; no need for application-level cascade logic
 
-**Best Practice: Transactions**
-Even with CASCADE constraints, use transactions in your code for data consistency:
+**Example: Delete Weight with Activities (No Manual Cascade Needed)**
 ```javascript
-// ✅ CORRECT (with transaction wrapper)
-await withTransaction(async (connection) => {
-  // Application-level validation and coordination
-  const result = await connection.query('DELETE FROM WeightsT WHERE WeightID = ? AND UserID = ?', [weightId, userId]);
-  // FK CASCADE automatically handles WeightActivitiesT cleanup
-});
+// ✅ CORRECT: FK constraints handle cascade automatically
+// If you delete a weight, WeightActivitiesT links are automatically removed by FK constraint
+DELETE FROM WeightsT WHERE WeightID = ? AND UserID = ?;
+// The ON DELETE CASCADE rule on WeightActivitiesT.WeightID automatically cleans up links
+
+// ✅ ALSO SAFE:
+// If you delete a user, all their records cascade-delete via FK chain:
+DELETE FROM UsersT WHERE UserID = ?;
+// Cascades → WeightsT, ActivitiesT, WeightActivitiesT, InterestEarnedT, etc.
 ```
 
 **When Adding New Tables:**
 ```sql
--- ✅ DO THIS (with FK constraint)
+-- ✅ DO THIS (include FK constraint with CASCADE)
 CREATE TABLE MyTable (
   MyID INT AUTO_INCREMENT PRIMARY KEY,
   UserID INT NOT NULL,
-  ActivityID INT,
+  ActivityID INT NOT NULL,
   INDEX idx_user (UserID),
-  CONSTRAINT MyTable_ibfk_1 FOREIGN KEY (UserID) REFERENCES UsersT (UserID) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT MyTable_ibfk_2 FOREIGN KEY (ActivityID) REFERENCES ActivitiesT (ActivityID) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT fk_mytable_user FOREIGN KEY (UserID) REFERENCES UsersT(UserID) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_mytable_activity FOREIGN KEY (ActivityID) REFERENCES ActivitiesT(ActivityID) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- ❌ DON'T DO THIS (omitting FK constraints)
-ALTER TABLE MyTable 
-ADD CONSTRAINT fk_user FOREIGN KEY (UserID) REFERENCES UsersT(UserID);
+-- ❌ DON'T DO THIS (missing cascade rules)
+CREATE TABLE MyTable (
+  MyID INT AUTO_INCREMENT PRIMARY KEY,
+  UserID INT NOT NULL,
+  CONSTRAINT fk_user FOREIGN KEY (UserID) REFERENCES UsersT(UserID)
+  -- Missing ON DELETE CASCADE!
+);
 ```
 
 ---
@@ -741,20 +845,34 @@ WITH ranked_weights AS (...) SELECT * FROM ranked_weights;
 
 ---
 
-### ⚠️ IMPORTANT: User-Specific ID Pattern
+### ✅ IMPORTANT: User-Specific ID Pattern (Dual-Key System)
 
-**Why Not Auto-Increment?**
-- Isolate user data (user 1 has ID 1–50, user 2 has ID 1–50)
+**Active Usage:** The system uses both global PKs and user-scoped IDs simultaneously
+- Global PKs (WeightID, ActivityID, IntErndID, etc.) for database joins and internal references
+- User-scoped IDs (UserWeightID, UserActivityID, UserIntErndID, etc.) for user-friendly API routes and parameters
+- Both are populated: PKs auto-increment by MySQL, user-scoped IDs via `getNextUserSpecificID()`
+
+**Why?**
+- Isolate user data (user 1 has IDs 1–50, user 2 has IDs 1–50)
+- Enable user-friendly URLs: `/weights/:userWeightId` instead of `/weights/:globalWeightId`
 - Prevent ID enumeration attacks
-- Enable portable data exports
+- Enable portable per-user data exports
 
 **Usage Pattern:**
 ```javascript
-// When creating a weight entry:
+// When creating a weight entry - ALWAYS populate BOTH IDs:
 const userWeightID = await getNextUserSpecificID(userId, 'WeightsT', 'UserWeightID');
-await pool.query(
+const [result] = await connection.query(
   'INSERT INTO WeightsT (DateWeight, Weight, UserID, UserWeightID) VALUES (?,?,?,?)',
   [dateWeight, weight, userId, userWeightID]
+  // WeightID auto-increments; UserWeightID manually sequenced
+);
+// Response returns both: { WeightID: result.insertId, UserWeightID: userWeightID }
+
+// When fetching by user-facing API parameter - use user-scoped ID:
+await pool.query(
+  'SELECT * FROM WeightsT WHERE UserWeightID = ? AND UserID = ?',
+  [userWeightId, userId]  // Query via user-scoped ID
 );
 
 // ALWAYS use getNextUserSpecificID for user-scoped tables:
@@ -763,8 +881,8 @@ await pool.query(
 // - InterestEarnedT → UserIntErndID
 
 // NEVER use for non-user tables or system tables:
-// - TrackUsageT (can use auto-increment)
-// - UserSequenceT itself (auto-increment OK)
+// - TrackUsageT (global auto-increment is fine)
+// - UserSequenceT itself (manages the sequences)
 ```
 
 ---
@@ -774,7 +892,7 @@ await pool.query(
 **When to Use:**
 - Multi-step operations (INSERT weight + INSERT activities)
 - Atomicity required (all-or-nothing)
-- Cascading deletes (delete weight, then activities)
+- Cascading deletes (tested via FK constraints, delete weights and verify WeightActivitiesT cleanup)
 
 **Always Use:**
 ```javascript
@@ -988,95 +1106,6 @@ const [weight] = await pool.query(
 
 ---
 
-## 11. Schema Evolution & Extensibility
-
-### Adding New Tables with Foreign Keys
-
-**Best Practice: Always include FK constraints with CASCADE**
-
-```sql
-CREATE TABLE NewFeatureT (
-  FeatureID INT AUTO_INCREMENT PRIMARY KEY,
-  UserID INT NOT NULL,
-  ParentFeatureID INT,
-  Data VARCHAR(1000),
-  CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  
-  -- Always add indexes for foreign keys
-  INDEX idx_user (UserID),
-  INDEX idx_parent (ParentFeatureID),
-  
-  -- Add FK constraints with CASCADE
-  CONSTRAINT NewFeatureT_ibfk_1 
-    FOREIGN KEY (UserID) REFERENCES UsersT (UserID) 
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  
-  CONSTRAINT NewFeatureT_ibfk_2 
-    FOREIGN KEY (ParentFeatureID) REFERENCES NewFeatureT (FeatureID) 
-    ON DELETE CASCADE ON UPDATE CASCADE
-);
-```
-
-**Why CASCADE?**
-- Automatic cleanup: Deleting a user removes all related feature records
-- No orphaned data: Child records can't reference missing parents
-- Consistent with existing schema: All current tables use CASCADE
-- Less code: No need to manually handle cascades in transactions
-
-### Testing FK Behavior (Especially on MySQL 5.5)
-
-```javascript
-// Test deletion cascade
-test('DELETE user should cascade to new table', async () => {
-  const userId = 123;
-  
-  // Insert test data
-  await pool.query('INSERT INTO NewFeatureT (FeatureID, UserID, Data) VALUES (?, ?, ?)', 
-    [1, userId, 'test']);
-  
-  // DELETE user
-  await pool.query('DELETE FROM UsersT WHERE UserID = ?', [userId]);
-  
-  // Verify CASCADE deleted child records
-  const [remaining] = await pool.query('SELECT * FROM NewFeatureT WHERE UserID = ?', [userId]);
-  expect(remaining.length).toBe(0);
-});
-```
-
-### Altering Existing Tables (Advanced)
-
-**Never disable foreign key checks in production.** Test changes locally & on remote MySQL 5.5 before deploying.
-
-```javascript
-// Safe way to add a new FK constraint
-await withTransaction(async (connection) => {
-  // First, verify no orphaned data exists
-  const [orphans] = await connection.query(
-    `SELECT * FROM WeightsT WHERE ActivityID NOT IN (SELECT ActivityID FROM ActivitiesT)`
-  );
-  if (orphans.length > 0) {
-    throw new Error('Orphaned data detected; cannot add FK constraint');
-  }
-  
-  // If safe, add constraint
-  await connection.query(
-    'ALTER TABLE WeightsT ADD CONSTRAINT...' 
-  );
-});
-```
-
-### Common Schema Pitfalls
-
-| Pitfall | Problem | Solution |
-|---------|---------|----------|
-| Omitting FK constraints | Orphaned data possible | Always include CASCADE constraints |
-| Circular dependencies | Deadlocks on deletion | Design hierarchically (avoid cycles) |
-| Testing only on MySQL 8.0 | Fails on MySQL 5.5 | Test on both local & remote |
-| Manual cascade logic | Code duplication & bugs | Use database FK CASCADE |
-| Not using transactions | Partial deletes if error occurs | Wrap in withTransaction |
-
----
-
 ## Support & Debugging
 
 ### Common Issues & Fixes
@@ -1087,7 +1116,7 @@ await withTransaction(async (connection) => {
 | MySQL 5.5 date error | DATE parsing fails | Ensure YYYY-MM-DD format in code |
 | Duplicate entry | 400 error with "(be)" | Check unique constraints; may need to delete old entry |
 | Activity limit (5) | Weight save fails | Remove extra activities before saving |
-| FK violation | 1451 error | Check FK definitions; ensure ON DELETE CASCADE is applied; use transactions for complex deletes |
+| FK violation | 1451 error | Don't add FK constraints; handle in code |
 | Pool exhausted | Request timeout | Increase connectionLimit in dbConnection.js |
 
 ### Logging for Debugging
@@ -1106,7 +1135,7 @@ logger.info(`Weight data: ${JSON.stringify(req.body)}`);
 ```
 ☐ Set NODE_ENV=production in remote server
 ☐ Verify .env is loaded (DB_HOST, JWT_SECRET, etc.)
-☐ Test on remote MySQL 5.5 (date handling, FK CASCADE, etc.)
+☐ Test on remote MySQL 5.5 (date handling, FK cascades, etc.)
 ☐ Disable SSL in connection if remote is MySQL 5.5
 ☐ Run full test suite (login, weight CRUD, activities, etc.)
 ☐ Verify CORS origins are set correctly for production domain
@@ -1118,5 +1147,5 @@ logger.info(`Weight data: ${JSON.stringify(req.body)}`);
 
 *End of TechSummary.md*
 
-Last Updated: February 09, 2026
+Last Updated: [Current Date]
 Maintained by: MPG Jr and Development Team

@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETF Compare</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; align-items: center; }
+    .tables-container { display: flex; gap: 30px; overflow-x: auto; }
+    table { border-collapse: collapse; min-width: 600px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background: #f2f2f2; position: sticky; top: 0; z-index: 1; }
+    .up   { color: green; font-weight: bold; }
+    .down { color: red;   font-weight: bold; }
+    #investModal {
+      display: none;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;
+    }
+    .modal-content {
+      background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto;
+    }
+    .close { float: right; font-size: 24px; cursor: pointer; }
+    button { padding: 8px 16px; cursor: pointer; }
+    .sorted-column { background-color: #e0f7fa !important; font-weight: bold; }
+
+    /* Added for Listed date styling */
+    .name-cell {
+      text-align: left;
+      padding: 8px;
+    }
+    .listed-date {
+      display: block;
+      color: red;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 0.85em;
+      padding-top: 6px;
+    }
+    @media print {
+  /* 1. Ensure the Title and Filters are visible on Page 1 */
+  h2, .filters {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* 2. Remove the dropdown arrows and buttons from the filters */
+  /* This makes the filters look like a clean "Report Summary" */
+  .filters button, 
+  #investBtn, 
+  .filters label:nth-child(2), /* Hides the Row count if you want */
+  #order { 
+    display: none !important; 
+  }
+
+  /* 3. Stack tables vertically for the print layout */
+  .tables-container {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  /* 4. Ensure Table 2 starts on its own page */
+  #pastTable {
+    page-break-before: always;
+    margin-top: 30px;
+  }
+
+  /* 5. Keep the table column headers repeating on every page */
+  thead {
+    display: table-header-group;
+  }
+
+  /* 6. Clean up the appearance */
+  body {
+    margin: 0;
+    padding: 0;
+  }
+}
+  </style>
+</head>
+<body>
+
+<h2>ETF Compare</h2>
+
+<div class="filters">
+  <label>Category:
+    <select id="category">
+      <option value="">Choose a Category</option>
+      <!-- Populated by JS -->
+    </select>
+  </label>
+
+   <label>Rows:
+    <select id="rows">
+      <option value="5">5</option>
+      <option value="10">10</option>
+      <option value="25">25</option>
+      <option value="50">50</option>
+      <option value="all" selected>All</option>
+    </select>
+  </label>
+
+  <label>Sort By:
+    <select id="sortBy">
+      <option value="YTD">YTD</option>
+      <option value="1W">1W</option>
+      <option value="1M">1M</option>
+      <option value="1Y" selected>1Y</option>
+      <option value="3Y">3Y</option>
+      <option value="5Y">5Y</option>
+    </select>
+  </label>
+
+  <label>Order:
+    <select id="order">
+      <option value="desc">Descending</option>
+      <option value="asc">Ascending</option>
+    </select>
+  </label>
+
+  <button onclick="loadTables()">Load</button>
+  <button id="investBtn" disabled onclick="openInvestModal()">Invest</button>
+  <button onclick="history.back()">Back</button>
+  <button onclick="window.print()">Print Report</button>
+  <button onclick="openSummaryModal()">Prompt</button>
+</div>
+
+<div class="tables-container">
+  <!-- Table 1: Current -->
+  <div>
+    <h3>Table 1 - Current <span id="currentDateDisplay"></span></h3>
+    <table id="currentTable">
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Name</th>
+          <th>Invest</th>
+          <th>Movement</th>
+          <th>Price</th>
+          <th class="perf">1W %</th>
+          <th class="perf">1M %</th>
+          <th class="perf">YTD %</th>
+          <th class="perf">1Y %</th>
+          <th class="perf">3Y %</th>
+          <th class="perf">5Y %</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Table 2: Past -->
+  <div>
+    <h3>Table 2 - Past <span id="pastDateDisplay"></span></h3>
+    <table id="pastTable">
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Price</th>
+          <th class="perf">1W %</th>
+          <th class="perf">1M %</th>
+          <th class="perf">YTD %</th>
+          <th class="perf">1Y %</th>
+          <th class="perf">3Y %</th>
+          <th class="perf">5Y %</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Invest Modal (unchanged) -->
+<div id="investModal">
+  <div class="modal-content">
+    <span class="close" onclick="closeInvestModal()">×</span>
+    <h3>Invest</h3>
+    <label>How much to invest: $
+      <input type="number" id="investAmount" placeholder="5000" min="1">
+    </label>
+    <button onclick="calculateAllocation()">Calculate</button>
+    <button onclick="printModal()">Print</button>
+    <button onclick="closeInvestModal()">Cancel</button>
+
+    <table id="allocTable">
+      <thead>
+        <tr><th>Symbol</th><th>Name</th><th>Price</th><th>Shares</th><th>Cost</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p><strong>Total:</strong> $<span id="totalCost">0.00</span></p>
+    <p><strong>Remainder:</strong> $<span id="remainder">0.00</span></p>
+  </div>
+</div>
+
+<!-- Summary Modal -->
+<div id="summaryModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000;">
+  <div class="modal-content">
+    <span class="close" onclick="closeSummaryModal()">×</span>
+    <h3>ETF Comparison Summary</h3>
+    <div id="summaryContent" style="font-family:monospace; white-space:pre-wrap; background:#f9f9f9; padding:15px; border-radius:5px; overflow-y:auto; max-height:400px;"></div>
+    <button onclick="copySummaryToClipboard()" style="margin-top:15px;">Copy to Clipboard</button>
+    <button onclick="printSummary()" style="margin-top:15px;">Print</button>
+    <button onclick="closeSummaryModal()" style="margin-top:15px;">Close</button>
+  </div>
+</div>
+
+<script src="js/holidays.js"></script>
+<script>
+// ─────────────────────────────────────────────
+// JWT token (unchanged)
+const token = localStorage.getItem('token') || '';
+
+// ─────────────────────────────────────────────
+// Helper functions (trading day helpers imported from holidays.js)
+// ─────────────────────────────────────────────
+
+function toDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const dy = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dy}`;
+}
+
+function parseDate(str) {
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+// isHoliday(), isWeekend(), isMarketClosed() now imported from holidays.js
+
+function getMostRecentOpenDay(dateStr) {
+  let d = parseDate(dateStr);
+  while (isMarketClosed(d)) {
+    d.setDate(d.getDate() - 1);
+  }
+  return toDateStr(d);
+}
+
+// ─────────────────────────────────────────────
+// Fetch helper (unchanged)
+async function fetchWithAuth(url) {
+  const res = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('API error: ' + res.status);
+  return res.json();
+}
+
+// ─────────────────────────────────────────────
+// Populate categories (unchanged)
+async function populateCategories() {
+  try {
+    const data = await fetchWithAuth('/etf/category');
+    const select = document.getElementById('category');
+    data.data.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.category;
+      opt.textContent = cat.category;
+      select.appendChild(opt);
+    });
+    const allOpt = document.createElement('option');
+    allOpt.value = 'ALL';
+    allOpt.textContent = 'ALL';
+    select.appendChild(allOpt);
+  } catch (err) {
+    console.error('Failed to load categories:', err);
+    alert('Could not load categories. Check login or server.');
+  }
+}
+
+// ─────────────────────────────────────────────
+// On page load — compute trading dates instead of using inputs
+window.onload = () => {
+  populateCategories();
+
+  // Compute current and past trading dates (Change #3)
+  const today = new Date();
+  const currentDateStr = getMostRecentOpenDay(toDateStr(today));
+
+  const oneYearAgo = new Date(today);
+  oneYearAgo.setFullYear(today.getFullYear() - 1);
+  const pastDateStr = getMostRecentOpenDay(toDateStr(oneYearAgo));
+
+  // Set display spans immediately
+  document.getElementById('currentDateDisplay').textContent = currentDateStr;
+  document.getElementById('pastDateDisplay').textContent = pastDateStr;
+
+  // Optional: auto-load on page open (uncomment if desired)
+  // loadTables();
+};
+
+// ─────────────────────────────────────────────
+// Number formatting (unchanged)
+function formatNumber(num) {
+  if (num === 'N/A' || num == null || isNaN(num)) return 'N/A';
+  return Number(num).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+// ─────────────────────────────────────────────
+// Per-Category Cache with 60-minute TTL
+// Cache structure: { 'categoryName': { timestamp: ms, data: { current: [...], past: [...] } } }
+const CACHE_TTL_MS = 60 * 60 * 1000; // 60 minutes
+let categoryCache = {};
+
+function getCachedData(category) {
+  const cached = categoryCache[category];
+  if (!cached) return null;
+  
+  const now = Date.now();
+  if (now - cached.timestamp > CACHE_TTL_MS) {
+    // Cache expired, delete it
+    delete categoryCache[category];
+    return null;
+  }
+  
+  return cached.data;
+}
+
+function setCachedData(category, current, past) {
+  categoryCache[category] = {
+    timestamp: Date.now(),
+    data: { current, past }
+  };
+}
+
+function clearCache() {
+  categoryCache = {};
+}
+
+// ─────────────────────────────────────────────
+// Load tables — use computed trading dates (Change #3)
+async function loadTables() {
+  const cat    = document.getElementById('category').value;
+  if (!cat) return alert('Please select a category');
+
+  // Check if valid cache exists for this category
+  const cachedData = getCachedData(cat);
+  if (cachedData) {
+    console.log(`Using cached data for category: ${cat}`);
+    renderTable('currentTable', cachedData.current, true);
+    renderTable('pastTable', cachedData.past, false);
+
+    document.querySelectorAll('th.perf').forEach(th => {
+      th.classList.toggle('sorted-column', th.textContent.trim() === document.getElementById('sortBy').value);
+    });
+
+    document.getElementById('investBtn').disabled = false;
+    return;
+  }
+
+  // Use the already computed trading dates from onload
+  const currDate = document.getElementById('currentDateDisplay').textContent;
+  const pastDate = document.getElementById('pastDateDisplay').textContent;
+
+  const rowsVal  = document.getElementById('rows').value;
+  const sort     = document.getElementById('sortBy').value;
+  const ord      = document.getElementById('order').value;
+
+  const params = new URLSearchParams({
+    category: cat,
+    currentDate: currDate,
+    pastDate: pastDate,
+    rows: rowsVal === 'ToDisplay' ? '5' : rowsVal,
+    sortBy: sort,
+    order: ord
+  });
+
+  try {
+    const { current, past } = await fetchWithAuth(`/etf/compare?${params}`);
+
+    // Store in per-category cache with TTL
+    setCachedData(cat, current, past);
+
+    renderTable('currentTable', current, true);
+    renderTable('pastTable', past, false);
+
+    document.querySelectorAll('th.perf').forEach(th => {
+      th.classList.toggle('sorted-column', th.textContent.trim() === sort);
+    });
+
+    document.getElementById('investBtn').disabled = false;
+  } catch (err) {
+    console.error(err);
+    alert('Failed to load data: ' + err.message);
+  }
+}
+
+// ─────────────────────────────────────────────
+// Render table — Name cell modified (Change #2), AUM/Volume removed (Change #1)
+function renderTable(tableId, data, isCurrent) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  tbody.innerHTML = '';
+
+  data.forEach(item => {
+    const row = tbody.insertRow();
+
+    if (isCurrent) {
+      row.insertCell().textContent = item.symbol;
+
+      // Modified Name cell (Change #2)
+      const nameCell = row.insertCell();
+      nameCell.className = 'name-cell';
+      nameCell.innerHTML = `
+        ${item.name || '—'}
+        ${item.listDate ? `<span class="listed-date">LISTED: ${formatListedDate(item.listDate)}</span>` : ''}
+      `;
+
+      const chkCell = row.insertCell();
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.dataset.symbol = item.symbol;
+      chk.dataset.name   = item.name;
+      chk.dataset.price  = item.price !== 'N/A' ? item.price : 0;
+      chkCell.appendChild(chk);
+
+      const movCell = row.insertCell();
+      movCell.textContent = item.movement || '–';
+      if (item.movement?.startsWith('↑')) movCell.className = 'up';
+      if (item.movement?.startsWith('↓')) movCell.className = 'down';
+
+      // AUM and Volume removed (Change #1)
+      addCell(row, item.price);
+
+      ['1W','1M','YTD','1Y','3Y','5Y'].forEach(p => {
+        const val = item.returns[p];
+        const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';
+        addCell(row, display);
+      });
+    } else {
+      row.insertCell().textContent = item.symbol;
+      addCell(row, item.price);
+      ['1W','1M','YTD','1Y','3Y','5Y'].forEach(p => {
+        const val = item.returns[p];
+        const display = (val !== 'N/A' && val !== null) ? val + '%' : 'N/A';
+        addCell(row, display);
+      });
+    }
+  });
+}
+
+// Helper for Listed date format MM/DD/YYYY
+function formatListedDate(dateStr) {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return 'N/A';
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const y = d.getFullYear();
+  return `${m}/${day}/${y}`;
+}
+
+function addCell(row, value) {
+  const cell = row.insertCell();
+  cell.textContent = value;
+}
+
+// ─────────────────────────────────────────────
+// Invest modal and related functions (unchanged)
+function openInvestModal() {
+  const modal = document.getElementById('investModal');
+  const tbody = document.querySelector('#allocTable tbody');
+  tbody.innerHTML = '';
+
+  const checked = Array.from(document.querySelectorAll('#currentTable input[type="checkbox"]:checked'));
+
+  if (checked.length === 0) {
+    alert('Select at least one ETF to invest in.');
+    return;
+  }
+
+  modal.style.display = 'flex';
+
+  window.selectedInvest = checked.map(chk => ({
+    symbol: chk.dataset.symbol,
+    name:   chk.dataset.name,
+    price:  parseFloat(chk.dataset.price) || 0
+  }));
+
+  window.selectedInvest.sort((a,b) => a.name.localeCompare(b.name));
+}
+
+function closeInvestModal() {
+  document.getElementById('investModal').style.display = 'none';
+}
+
+function calculateAllocation() {
+  const amount = parseFloat(document.getElementById('investAmount').value) || 5000;
+  if (amount <= 0) return alert('Enter a positive amount');
+
+  let remaining = amount;
+  const shares = new Array(window.selectedInvest.length).fill(0);
+
+  while (remaining > 0) {
+    let added = false;
+    const minPrice = Math.min(...window.selectedInvest.map(s => s.price).filter(p => p > 0));
+    if (remaining < minPrice) break;
+
+    for (let i = 0; i < window.selectedInvest.length; i++) {
+      const p = window.selectedInvest[i].price;
+      if (p > 0 && remaining >= p) {
+        shares[i]++;
+        remaining -= p;
+        added = true;
+      }
+    }
+    if (!added) break;
+  }
+
+  const tbody = document.querySelector('#allocTable tbody');
+  tbody.innerHTML = '';
+  let totalCost = 0;
+
+  window.selectedInvest.forEach((s, i) => {
+    const cost = shares[i] * s.price;
+    totalCost += cost;
+    const row = tbody.insertRow();
+    row.insertCell().textContent = s.symbol;
+    row.insertCell().textContent = s.name;
+    row.insertCell().textContent = formatNumber(s.price);
+    row.insertCell().textContent = shares[i];
+    row.insertCell().textContent = formatNumber(cost);
+  });
+
+  document.getElementById('totalCost').textContent = formatNumber(totalCost);
+  document.getElementById('remainder').textContent = formatNumber(amount - totalCost);
+}
+
+function printModal() {
+  const modalContent = document.querySelector('.modal-content').cloneNode(true);
+  modalContent.querySelectorAll('button, .close').forEach(el => el.remove());
+
+  const printWindow = window.open('', '', 'height=700,width=900');
+  printWindow.document.write('<html><head><title>Investment Allocation</title>');
+  printWindow.document.write('<style>body{font-family:Arial,sans-serif;margin:20px;} table{border-collapse:collapse;width:100%;} th,td{border:1px solid #000;padding:8px;text-align:left;} th{background:#f2f2f2;}</style>');
+  printWindow.document.write('</head><body>');
+  printWindow.document.write('<h2>Investment Allocation - ' + new Date().toLocaleDateString() + '</h2>');
+  printWindow.document.write(modalContent.innerHTML);
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
+// ────────────────────────────────────────────────
+// Summary Modal Functions
+function generateSummary() {
+  const category = document.getElementById('category').value || 'N/A';
+  const sortBy = document.getElementById('sortBy').value;
+  const metrics = 'Movement (Mvmt), Price, Return (1W, 1M, YTD, 1Y, 3Y, 5Y)';
+  const currentDate = document.getElementById('currentDateDisplay').textContent;
+  const pastDate = document.getElementById('pastDateDisplay').textContent;
+
+  let summary = '';
+  summary += `Category: ${category}\n`;
+  summary += `Sorted by: ${sortBy} Return\n`;
+  summary += `Metrics: ${metrics}\n`;
+  summary += `Current Date: ${currentDate}\n`;
+  summary += `Past Date: ${pastDate}\n`;
+  summary += `\n`;
+
+  // Extract data from Table 1
+  summary += 'DATA Table 1 (Current):\n';
+  const currentRows = document.querySelectorAll('#currentTable tbody tr');
+  if (currentRows.length > 0) {
+    summary += 'Symbol   Mvmt   Price  1W    1M    YTD   1Y    3Y    5Y\n';
+    currentRows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      if (cells.length >= 11) {
+        const symbol = cells[0].textContent.trim();
+        const mvmt = cells[3].textContent.trim();
+        const price = cells[4].textContent.trim();
+        const col1W = cells[5].textContent.trim();
+        const col1M = cells[6].textContent.trim();
+        const colYTD = cells[7].textContent.trim();
+        const col1Y = cells[8].textContent.trim();
+        const col3Y = cells[9].textContent.trim();
+        const col5Y = cells[10].textContent.trim();
+        summary += `${symbol.padEnd(8)} ${mvmt.padEnd(6)} ${price.padEnd(7)} ${col1W.padEnd(5)} ${col1M.padEnd(5)} ${colYTD.padEnd(5)} ${col1Y.padEnd(5)} ${col3Y.padEnd(5)} ${col5Y}\n`;
+      }
+    });
+  }
+  summary += `\n`;
+
+  // Extract data from Table 2
+  summary += 'DATA Table 2 (Past):\n';
+  const pastRows = document.querySelectorAll('#pastTable tbody tr');
+  if (pastRows.length > 0) {
+    summary += 'Symbol   Price  1W    1M    YTD   1Y    3Y    5Y\n';
+    pastRows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      if (cells.length >= 8) {
+        const symbol = cells[0].textContent.trim();
+        const price = cells[1].textContent.trim();
+        const col1W = cells[2].textContent.trim();
+        const col1M = cells[3].textContent.trim();
+        const colYTD = cells[4].textContent.trim();
+        const col1Y = cells[5].textContent.trim();
+        const col3Y = cells[6].textContent.trim();
+        const col5Y = cells[7].textContent.trim();
+        summary += `${symbol.padEnd(8)} ${price.padEnd(7)} ${col1W.padEnd(5)} ${col1M.padEnd(5)} ${colYTD.padEnd(5)} ${col1Y.padEnd(5)} ${col3Y.padEnd(5)} ${col5Y}\n`;
+      }
+    });
+  }
+
+  return summary;
+}
+
+function openSummaryModal() {
+  const summary = generateSummary();
+  document.getElementById('summaryContent').textContent = summary;
+  document.getElementById('summaryModal').style.display = 'flex';
+}
+
+function closeSummaryModal() {
+  document.getElementById('summaryModal').style.display = 'none';
+}
+
+function copySummaryToClipboard() {
+  const summary = document.getElementById('summaryContent').textContent;
+  navigator.clipboard.writeText(summary).then(() => {
+    alert('Summary copied to clipboard!');
+  }).catch(() => {
+    alert('Failed to copy. Please try again.');
+  });
+}
+
+function printSummary() {
+  const summary = document.getElementById('summaryContent').textContent;
+  const printWindow = window.open('', '', 'height=700,width=900');
+  printWindow.document.write('<html><head><title>ETF Comparison Summary</title>');
+  printWindow.document.write('<style>body{font-family:monospace;margin:20px;white-space:pre-wrap;}</style>');
+  printWindow.document.write('</head><body>');
+  printWindow.document.write('<h2>ETF Comparison Summary</h2>');
+  printWindow.document.write(summary.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
+// ────────────────────────────────────────────────
+// Instant client-side sorting & rows limit (no re-fetch needed)
+
+let lastFullCurrent = [];  // full unsorted data from last Load
+let lastFullPast    = [];
+
+// Override renderTable to capture full data
+const originalRenderTable = renderTable;
+renderTable = function(tableId, data, isCurrent) {
+  if (isCurrent) lastFullCurrent = [...data];  // shallow copy
+  else           lastFullPast    = [...data];
+  originalRenderTable(tableId, data, isCurrent);
+};
+
+// Recalculate Movement based on current sort order
+function recalculateMovement(sortedCurrent, sortedPast) {
+  const pastMap = new Map(sortedPast.map((d, idx) => [d.symbol, idx]));
+  sortedCurrent.forEach(d => {
+    const pastPos = pastMap.get(d.symbol);
+    if (pastPos !== undefined) {
+      const currPos = sortedCurrent.findIndex(c => c.symbol === d.symbol);
+      const diff = pastPos - currPos;
+      d.movement = diff > 0 ? `↑${diff}` : diff < 0 ? `↓${Math.abs(diff)}` : '–';
+    } else {
+      d.movement = '–';
+    }
+  });
+}
+
+// Handle Sort By change: refresh and recalculate movement
+function onSortByChange() {
+  refreshTablesFromCache();
+}
+
+// Re-sort and re-apply rows limit
+function refreshTablesFromCache() {
+  const sortByVal = document.getElementById('sortBy').value;
+  const orderVal  = document.getElementById('order').value;
+  const rowsVal   = document.getElementById('rows').value;
+
+  const numRows = rowsVal === 'all' ? Infinity : parseInt(rowsVal);
+
+  // Sort function
+  const sortFunc = (a, b) => {
+    let va = parseFloat(a.returns[sortByVal]) || -Infinity;
+    let vb = parseFloat(b.returns[sortByVal]) || -Infinity;
+    return orderVal === 'desc' ? vb - va : va - vb;
+  };
+
+  // Apply sort + rows limit
+  const sortedCurrent = [...lastFullCurrent].sort(sortFunc).slice(0, numRows);
+  const sortedPast    = [...lastFullPast]   .sort(sortFunc).slice(0, numRows);
+
+  // FIXED: Recalculate Movement based on the new sort order
+  recalculateMovement(sortedCurrent, sortedPast);
+
+  // Re-render
+  renderTable('currentTable', sortedCurrent, true);
+  renderTable('pastTable',    sortedPast,    false);
+}
+
+// Attach listeners
+document.getElementById('sortBy').addEventListener('change', onSortByChange);
+document.getElementById('order').addEventListener('change',  refreshTablesFromCache);
+document.getElementById('rows').addEventListener('change',   refreshTablesFromCache);
+
+// ────────────────────────────────────────────────
+// Page-leave cleanup: Clear cache when user leaves
+window.addEventListener('beforeunload', clearCache);
+window.addEventListener('pagehide', clearCache);
+
+
+</script>
+</body>
+</html>

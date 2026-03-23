@@ -1,10 +1,7 @@
-// File: utils.js
-const logger = require('./logger');
-const { pool } = require('./dbConnection');
+// ─────────────────────────────────────────────
+// NYSE Holidays 2020–2036 (Single Source of Truth)
+// ─────────────────────────────────────────────
 
-// ────────────────────────────────────────────────
-// NYSE Holidays 2020–2036 (from etfHolidays.html)
-// Used for adjusting dates to prior trading days in ETF compare
 const HOLIDAYS_2020_2036 = [
   [2020, 1, 1], [2020, 1, 20], [2020, 2, 17], [2020, 4, 10], [2020, 5, 25], [2020, 7, 3], [2020, 9, 7], [2020, 11, 26], [2020, 12, 25],
   [2021, 1, 1], [2021, 1, 18], [2021, 2, 15], [2021, 4, 2], [2021, 5, 31], [2021, 6, 18], [2021, 7, 5], [2021, 9, 6], [2021, 11, 25], [2021, 12, 24],
@@ -25,33 +22,19 @@ const HOLIDAYS_2020_2036 = [
   [2036, 1, 1], [2036, 1, 21], [2036, 2, 18], [2036, 4, 11], [2036, 5, 26], [2036, 6, 19], [2036, 7, 4], [2036, 9, 1], [2036, 11, 27], [2036, 12, 25]
 ];
 
-const holidays = HOLIDAYS_2020_2036.map(([y, m, d]) => new Date(y, m - 1, d));
+const HOLIDAY_SET = new Set(
+  HOLIDAYS_2020_2036.map(([y, m, d]) => Date.UTC(y, m - 1, d))
+);
 
-function handleDbError(error, res, customMessage = 'Database error') {
-    logger.error(`${customMessage}: ${error.message}`);
-    if (error.code === 'ER_DUP_ENTRY') {
-        return res.status(400).json({ error: 'Duplicate entry(be)' });
-    }
-    res.status(500).json({ error: customMessage });
+function isHoliday(d) {
+  return HOLIDAY_SET.has(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
 }
 
-async function withTransaction(callback) {
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
-        const result = await callback(connection);
-        await connection.commit();
-        return result;
-    } catch (err) {
-        await connection.rollback();
-        throw err;
-    } finally {
-        connection.release();
-    }
+function isWeekend(d) {
+  const day = d.getDay();
+  return day === 0 || day === 6;
 }
 
-module.exports = {
-    handleDbError,
-    withTransaction,
-    holidays          // ← export the Date objects array
-};
+function isMarketClosed(d) {
+  return isWeekend(d) || isHoliday(d);
+}

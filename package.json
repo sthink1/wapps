@@ -17,6 +17,7 @@
   "license": "proprietary",
   "description": "Various web applications.",
   "dependencies": {
+    "axios": "^1.13.5",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
@@ -29,7 +30,8 @@
     "mysql2": "^3.14.1",
     "resend": "^6.4.2",
     "rotating-file-stream": "^3.2.6",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "yahoo-finance2": "^2.13.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

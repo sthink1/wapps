@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETF Categories</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #f4f4f4;
+    padding-bottom: 40px;
+}
+.container {
+    text-align: center;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    width: 460px;
+}
+button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    margin: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+button:hover {
+    background-color: #45a049;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 6px;
+    text-align: center;
+}
+input[type="text"] {
+    width: 95%;
+    padding: 6px;
+}
+footer {
+    background-color: lightgray;
+    height: 30px;
+    padding-top: 5px;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>ETF Categories</h2>
+
+    <button onclick="showInput()">Input</button>
+    <button onclick="showList()">List</button>
+    <button onclick="goBack()">Back</button>
+
+    <!-- INPUT SECTION -->
+    <div id="inputSection" style="display:none;">
+        <h3>Add Category</h3>
+        <input type="text" id="categoryInput" placeholder="Category name">
+        <br>
+        <button onclick="saveCategory()">Save</button>
+        <button onclick="clearInput()">Clear</button>
+        <p id="inputMessage"></p>
+    </div>
+
+    <!-- LIST SECTION -->
+    <div id="listSection" style="display:none;">
+        <h3>Categories</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Revise</th>
+                    <th>Delete</th>
+                </tr>
+            </thead>
+            <tbody id="categoryTableBody"></tbody>
+        </table>
+        <p id="listMessage"></p>
+    </div>
+
+</div>
+
+<footer>
+ETF Project
+</footer>
+
+<script>
+
+const token = localStorage.getItem("token");
+
+/* ===========================
+   VIEW TOGGLES
+=========================== */
+
+function showInput(){
+    document.getElementById('inputSection').style.display = "block";
+    document.getElementById('listSection').style.display = "none";
+    document.getElementById('inputMessage').innerText = "";
+}
+
+function showList(){
+    document.getElementById('listSection').style.display = "block";
+    document.getElementById('inputSection').style.display = "none";
+    loadCategories();
+}
+
+function goBack(){
+    window.location.href = "etf.html";
+}
+
+function clearInput(){
+    document.getElementById('categoryInput').value = "";
+}
+
+/* ===========================
+   SAVE CATEGORY
+=========================== */
+
+async function saveCategory(){
+
+    const category = document.getElementById('categoryInput').value.trim();
+
+    if(!category){
+        document.getElementById('inputMessage').innerText = "Enter category name.";
+        return;
+    }
+
+    const response = await fetch('/etf/category', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ category })
+    });
+
+    const data = await response.json();
+
+    if(response.ok){
+        document.getElementById('inputMessage').innerText = "Saved successfully.";
+        clearInput();
+    } else {
+        document.getElementById('inputMessage').innerText = data.message;
+    }
+}
+
+/* ===========================
+   LOAD CATEGORIES
+=========================== */
+
+async function loadCategories(){
+
+    const response = await fetch('/etf/category', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+
+    const data = await response.json();
+
+    if(!response.ok){
+        document.getElementById('listMessage').innerText = data.message;
+        return;
+    }
+
+    const tbody = document.getElementById('categoryTableBody');
+    tbody.innerHTML = "";
+
+    data.data.forEach(cat => {
+
+        const row = document.createElement('tr');
+
+        row.innerHTML = `
+            <td>
+                <input type="text" value="${cat.category}" id="cat-${cat.etfCategoryID}">
+            </td>
+            <td>
+                <input type="checkbox" onchange="updateCategory(${cat.etfCategoryID})">
+            </td>
+            <td>
+                <input type="checkbox" onchange="deleteCategory(${cat.etfCategoryID})">
+            </td>
+        `;
+
+        tbody.appendChild(row);
+    });
+}
+
+/* ===========================
+   UPDATE CATEGORY
+=========================== */
+
+async function updateCategory(id){
+
+    const newValue = document.getElementById(`cat-${id}`).value.trim();
+
+    if(!newValue){
+        alert("Category cannot be empty.");
+        return;
+    }
+
+    const response = await fetch(`/etf/category/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ category: newValue })
+    });
+
+    const data = await response.json();
+
+    if(!response.ok){
+        alert(data.message);
+    } else {
+        alert("Updated.");
+    }
+
+    loadCategories();
+}
+
+/* ===========================
+   DELETE CATEGORY
+=========================== */
+
+async function deleteCategory(id){
+
+    if(!confirm("Are you sure?")) return;
+
+    const response = await fetch(`/etf/category/${id}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    });
+
+    const data = await response.json();
+
+    if(!response.ok){
+        alert(data.message);
+    } else {
+        alert("Deleted.");
+    }
+
+    loadCategories();
+}
+
+</script>
+
+</body>
+</html>

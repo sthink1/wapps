@@ -34,6 +34,10 @@
 - **Confetti Animation**: canvas-confetti @1.9.3 (CDN)
 - **Input Sanitization**: DOMPurify 2.3.10 (CDN)
 
+### HTTP Client & External APIs
+- **HTTP Client**: axios ^1.x (for external API calls)
+- **ETF Data APIs**: Tiingo, Finnhub, Polygon (price & reference data via axios)
+
 ### Development & Email
 - **Environment Variables**: dotenv ^16.3.1
 - **Email Service**: Custom `send_email.js` (Resend HTTP-based)
@@ -82,10 +86,10 @@ PORT=3000 NODE_ENV=production npm start
 ## Database Rules & Architecture
 
 ### Critical Constraints
-1. **Foreign Key Constraints**: The live database schema includes foreign key constraints with `ON DELETE CASCADE ON UPDATE CASCADE` on all child tables:
-   - Applied to: `ActivitiesT`, `InterestEarnedT`, `TrackUsageT`, `WeightsT`, `WeightActivitiesT`, `UserSequenceT`
-   - Impact: Cascading deletes are enforced at the database level when users are deleted
-   - Note: Application code (`utils.js::withTransaction()`) still provides additional transaction control for complex operations
+1. **Foreign Key Constraints with Cascading Deletes**: All tables with parent references use `ON DELETE CASCADE ON UPDATE CASCADE`.
+   - Tables with FKs: ActivitiesT, etfCategoryT, etfSymbolT, InterestEarnedT, TrackUsageT, UserSequenceT, WeightActivitiesT, WeightsT
+   - All cascade to UsersT (or intermediate tables)
+   - Implication: Deleting a user automatically deletes child records at the database level; no app-level cascade code needed.
 
 2. **MySQL 5.5 Compatibility**:
    - No `JSON` data type (avoid storing JSON columns)
@@ -93,11 +97,12 @@ PORT=3000 NODE_ENV=production npm start
    - Limited window functions (use application-level grouping)
    - Date strings must be in `YYYY-MM-DD` format
 
-3. **User-Specific Sequences**: `UserSequenceT` table
-   - Replaces auto-increment for user-specific ID generation
-   - Has FK to `UsersT` with `ON DELETE CASCADE` (no manual intervention needed)
-   - Synchronized via `dbConnection.js::getNextUserSpecificID()`
-   - Used for: `UserWeightID`, `UserActivityID`, `UserIntErndID`, etc.
+3. **Dual-Key Architecture**: `AUTO_INCREMENT` primary keys + user-scoped secondary keys
+   - Global PKs (WeightID, ActivityID, IntErndID, etc.) ensure app-wide uniqueness
+   - User-scoped IDs (UserWeightID, UserActivityID, UserIntErndID, etc.) via `UserSequenceT` table provide per-user sequences (1,2,3...)
+   - Both are actively used: PKs for joins, user-scoped IDs for user-friendly URLs and API parameters
+   - Managed via `dbConnection.js::getNextUserSpecificID(userId, tableName)` — generates and increments UserSequenceT entries
+   - FK to UsersT: `ON DELETE CASCADE` removes sequence data when user is deleted
 
 ### Key Tables & Relationships
 
@@ -109,6 +114,8 @@ PORT=3000 NODE_ENV=production npm start
 | `WeightActivitiesT` | Weight-Activity mapping | WeightsT, ActivitiesT | (none) |
 | `InterestEarnedT` | Interest contracts | UsersT | UserIntErndID |
 | `TrackUsageT` | Page views & time spent | UsersT | (none) |
+| `etfCategoryT` | ETF portfolio categories | UsersT | (none) |
+| `etfSymbolT` | ETF symbols & metadata | UsersT, etfCategoryT | (none) |
 | `UserSequenceT` | ID generation (manual) | UsersT (implicit) | (none) |
 
 ### Data Flow Pattern
@@ -233,6 +240,11 @@ MAIL_FROM_ADDRESS=<sender-email>
 MAIL_FROM_NAME=<sender-name>
 MAIL_TO_ADDRESS=<recipient-email>
 
+# ETF External APIs
+TIINGO_API_KEY=<tiingo-api-key>
+FINNHUB_API_KEY=<finnhub-api-key>
+POLYGON_API_KEY=<polygon-api-key>
+
 # Server
 PORT=8080
 NODE_ENV=development
@@ -254,13 +266,15 @@ NODE_ENV=development
 ## Important Notes for Contributors
 
 1. **Always use `withTransaction()`** for multi-step operations (INSERT + UPDATE)
-2. **Always add FK constraints** with `ON DELETE CASCADE ON UPDATE CASCADE` for new tables; use transactions for additional control and validation
+2. **FK constraints are in place with CASCADE rules**; rely on database-level cascading deletes for referential integrity
 3. **Date handling**: Accept YYYY-MM-DD from frontend; store as DATE; return as YYYY-MM-DD string
-4. **User-Specific IDs**: Always use `getNextUserSpecificID()`, never auto-increment
+4. **User-Specific IDs**: Always use `getNextUserSpecificID(userId, tableName)` to populate User*ID columns (e.g., UserWeightID, UserActivityID); auto-increment PKs are assigned by MySQL
 5. **Validation**: Always validate input with express-validator before DB queries
 6. **Error Messages**: Append `(be)` to backend-generated error messages
 7. **Token Security**: Never log token values; always sanitize in error messages
 8. **CORS**: Review allowed origins before deployment
+9. **ETF Caching**: `/etf/compare` endpoint caches results per (userId, category) for 60 minutes; use `?nocache=true` during testing
+10. **ETF API Keys**: Tiingo, Finnhub, Polygon keys required in `.env`; validate via Polygon in symbol POST request
 
 ---
 
@@ -275,6 +289,7 @@ root/
 ├── send_email.js          # Email service
 ├── hash.js                # Password hashing utility (one-off)
 ├── testConnection.js      # DB connection test
+├── debug_etf_compare.js   # ETF /compare endpoint debugging script
 ├── .env                   # Secrets (not in repo)
 ├── package.json           # Dependencies
 ├── routes/
@@ -283,6 +298,7 @@ root/
 │   ├── activities.js       # /activities (CRUD)
 │   ├── weightActivities.js # /weightActivities (mapping)
 │   ├── interestEarned.js   # /interestEarned (CRUD)
+│   ├── etf.js             # /etf (category, symbol, compare CRUD + Tiingo/Finnhub proxies)
 │   ├── track.js           # /track (analytics)
 │   └── geocode.js         # /geocode (reverse geocoding proxy)
 ├── middleware/
@@ -297,6 +313,12 @@ root/
 │   ├── Activities.html    # Activity management UI
 │   ├── InterestEarned.html # Interest calculator
 │   ├── amortization.html  # Loan calculator
+│   ├── etf.html           # ETF comparison & analysis hub
+│   ├── etfSymbol.html     # Add/manage ETF symbols
+│   ├── etfCategory.html   # Manage ETF categories
+│   ├── etfCompare.html    # ETF performance comparison table
+│   ├── etfActivity.html   # ETF research & activity log
+│   ├── etfAPItest.html    # ETF API testing & debugging tool
 │   ├── propertyInfo.html  # Property research tools
 │   ├── track.html         # Analytics dashboard
 │   ├── TownNotice.html    # Geolocation alerts
@@ -316,7 +338,7 @@ root/
 ## Version History
 
 - **Current**: Node 18+, Express 4.18.2, MySQL 5.5–8.0 compatible
-- **Last Updated**: February 09, 2026
+- **Last Updated**: [Current Date]
 - **Maintainers**: MPG Jr and team
 
 ---
