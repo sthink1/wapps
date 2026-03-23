@@ -123,11 +123,16 @@ router.post('/login', async (req, res) => {
         );
 
         // Send verification code via email
-        await sendVerificationCode({
-            email: user.Email,
-            verificationCode: verificationCode,
-            username: user.UserName
-        });
+        try {
+            await sendVerificationCode({
+                email: user.Email,
+                verificationCode: verificationCode,
+                username: user.UserName
+            });
+        } catch (emailError) {
+            console.error('Email sending failed:', emailError.message);
+            return res.status(500).json({ error: 'Failed to send verification code. Email service error.(be)' });
+        }
 
         // Return temporary token instead of final JWT
         res.status(200).json({
@@ -136,6 +141,7 @@ router.post('/login', async (req, res) => {
             userId: user.UserID
         });
     } catch (error) {
+        console.error('Login error:', error.message);
         handleDbError(error, res, 'Error during login');
     }
 });
