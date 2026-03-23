@@ -124,4 +124,33 @@ router.post('/logout', (req, res) => {
     res.status(200).json({ message: 'Logged out successfully' });
 });
 
+router.get('/is-admin', (req, res) => {
+    try {
+        // Extract token from Authorization header
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+        
+        if (!token) {
+            return res.status(401).json({ error: 'Access denied. No token provided.' });
+        }
+
+        // Verify and decode the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Get admin username from environment variables
+        const adminUsername = process.env.ADMIN_USERNAME;
+        
+        if (!adminUsername) {
+            return res.status(500).json({ error: 'Admin username not configured.' });
+        }
+        
+        // Check if the current user is the admin
+        const isAdmin = decoded.username === adminUsername;
+        
+        res.status(200).json({ isAdmin, username: decoded.username });
+    } catch (error) {
+        console.error('Error checking admin status:', error.message);
+        res.status(401).json({ error: 'Invalid token or token verification failed.' });
+    }
+});
+
 module.exports = router;

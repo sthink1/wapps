@@ -64,6 +64,68 @@
         #applications .app-buttons a:last-child {
             margin-bottom: 0;
         }
+        /* Modal styles for access denied messages */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 30px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .modal-content h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .modal-content p {
+            color: #666;
+            line-height: 1.6;
+            margin: 15px 0;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .modal-buttons button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .modal-buttons button:hover {
+            background-color: #45a049;
+        }
+        .modal-buttons .cancel-btn {
+            background-color: #888;
+        }
+        .modal-buttons .cancel-btn:hover {
+            background-color: #666;
+        }
         footer {
             background-color: lightgray;
             height: 30px;
@@ -94,23 +156,37 @@
         <div id="applications">
             <h3>Applications</h3>
             <div class="app-buttons">
-                <a href="Weights.html"><button>WeighIn - Weight</button></a>
-                <a href="Activities.html"><button>WeighIn - Activity</button></a>
-                <a href="amortization.html"><button>Loan Payment</button></a>
-                <a href="propertyInfo.html"><button>Property Info</button></a>
-                <a href="InterestEarned.html"><button>Interest Earned</button></a>
-                <a href="TownNotice.html"><button>Town Notice</button></a>
-                <a href="etf.html"><button>ETF Investing</button></a>
+                <button class="restricted-btn" data-page="Weights.html">WeighIn - Weight</button>
+                <button class="restricted-btn" data-page="Activities.html">WeighIn - Activity</button>
+                <button class="restricted-btn" data-page="amortization.html">Loan Payment</button>
+                <button class="restricted-btn" data-page="propertyInfo.html">Property Info</button>
+                <button class="restricted-btn" data-page="InterestEarned.html">Interest Earned</button>
+                <button class="restricted-btn" data-page="TownNotice.html">Town Notice</button>
+                <button class="restricted-btn" data-page="etf.html">ETF Investing</button>
             </div>
         </div>
         <div id="statistics">
             <h3>Other</h3>
             <div class="button-group">
-                <a href="track.html"><button>Track Activity</button></a>
-                <a href="ContactUs.html"><button>Contact Us</button></a>
+                <button id="trackActivityBtn" class="admin-only-btn" data-page="track.html">Track Activity</button>
+                <button class="restricted-btn" data-page="ContactUs.html">Contact Us</button>
             </div>
         </div>
     </div>
+    
+    <!-- Modal for access denied messages -->
+    <div id="accessDeniedModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Access Denied</h2>
+            <p id="modalMessage"></p>
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeAccessDeniedModal()">Close</button>
+                <button id="loginFromModalBtn" style="display: none;" onclick="redirectToLogin()">Go to Login</button>
+                <button id="registerFromModalBtn" style="display: none;" onclick="redirectToRegister()">Go to Register</button>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <table>
             <tr>
@@ -122,23 +198,154 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Service Worker registered'))
-      .catch(err => console.error('Service Worker registration failed:', err));
-  });
-}
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
+        }
+
         const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
-        document.addEventListener('DOMContentLoaded', (event) => {
+
+        // Helper function to get current logged-in user
+        function getCurrentUser() {
             const token = localStorage.getItem('token');
-            const userDisplay = document.getElementById('userDisplay');
-            if (token) {
+            if (!token) return null;
+            
+            try {
                 const base64Url = token.split('.')[1];
                 const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
                 const decodedToken = JSON.parse(decodeURIComponent(atob(base64).split('').map(function(c) {
                     return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
                 }).join('')));
-                userDisplay.textContent = `Logged in as: ${decodedToken.username}`;
+                return decodedToken;
+            } catch (error) {
+                console.error('Error decoding token:', error);
+                return null;
+            }
+        }
+
+        // Helper function to check if user is logged in
+        function isUserLoggedIn() {
+            return localStorage.getItem('token') !== null;
+        }
+
+        // Helper function to check if user is admin
+        async function isUserAdmin() {
+            const token = localStorage.getItem('token');
+            if (!token) return false;
+
+            try {
+                const response = await fetch(`${BASE_URL}/users/is-admin`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) return false;
+                const data = await response.json();
+                return data.isAdmin || false;
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+                return false;
+            }
+        }
+
+        // Functions to manage access denied modal
+        function showAccessDeniedModal(title, message, showLoginBtn = false, showRegisterBtn = false) {
+            const modal = document.getElementById('accessDeniedModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const loginBtn = document.getElementById('loginFromModalBtn');
+            const registerBtn = document.getElementById('registerFromModalBtn');
+
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            loginBtn.style.display = showLoginBtn ? 'block' : 'none';
+            registerBtn.style.display = showRegisterBtn ? 'block' : 'none';
+            
+            modal.classList.add('show');
+        }
+
+        function closeAccessDeniedModal() {
+            const modal = document.getElementById('accessDeniedModal');
+            modal.classList.remove('show');
+        }
+
+        function redirectToLogin() {
+            closeAccessDeniedModal();
+            window.location.href = 'login.html';
+        }
+
+        function redirectToRegister() {
+            closeAccessDeniedModal();
+            window.location.href = 'register.html';
+        }
+
+        // Close modal when clicking outside of it
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('accessDeniedModal');
+            if (event.target === modal) {
+                closeAccessDeniedModal();
+            }
+        });
+
+        // Handle restricted button clicks (login required)
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handler for restricted buttons (login required)
+            const restrictedButtons = document.querySelectorAll('.restricted-btn');
+            restrictedButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    if (!isUserLoggedIn()) {
+                        showAccessDeniedModal(
+                            'Login Required',
+                            'You must be logged in to use this application. Please Login. If not registered, please Register first.',
+                            true,  // show login button
+                            true   // show register button
+                        );
+                    } else {
+                        // User is logged in, navigate to the page
+                        window.location.href = this.dataset.page;
+                    }
+                });
+            });
+
+            // Handler for admin-only buttons
+            const adminButtons = document.querySelectorAll('.admin-only-btn');
+            adminButtons.forEach(button => {
+                button.addEventListener('click', async function() {
+                    if (!isUserLoggedIn()) {
+                        showAccessDeniedModal(
+                            'Login Required',
+                            'You must be logged in to use this application. Please Login. If not registered, please Register first.',
+                            true,  // show login button
+                            true   // show register button
+                        );
+                    } else if (!(await isUserAdmin())) {
+                        showAccessDeniedModal(
+                            'Admin Access Required',
+                            'Only the administrator is permitted to use this application.'
+                        );
+                    } else {
+                        // User is admin, navigate to the page
+                        window.location.href = this.dataset.page;
+                    }
+                });
+            });
+
+            // Original user display and logout logic
+            const token = localStorage.getItem('token');
+            const userDisplay = document.getElementById('userDisplay');
+            if (token) {
+                const decodedToken = getCurrentUser();
+                if (decodedToken) {
+                    userDisplay.textContent = `Logged in as: ${decodedToken.username}`;
+                } else {
+                    userDisplay.textContent = 'Not Logged In';
+                }
+                
                 document.getElementById('logoutBtn').addEventListener('click', () => {
                     localStorage.removeItem('token');
                     alert('You have been logged out.');
@@ -147,6 +354,8 @@
             } else {
                 userDisplay.textContent = 'Not Logged In';
             }
+
+            // Track page view
             if (token) {
                 const page = window.location.pathname;
                 fetch(`${BASE_URL}/track/log/page`, {
@@ -169,6 +378,8 @@
                 .catch(error => {
                     console.error('Error tracking page view:', error.message);
                 });
+
+                // Track time spent on page
                 let startTime = Date.now();
                 window.addEventListener('beforeunload', () => {
                     const duration = Math.floor((Date.now() - startTime) / 1000);
