@@ -32,7 +32,7 @@ The app tracks weight/activities, calculates loan amortization, verifies interes
                      │
 ┌────────────────────▼────────────────────────┐
 │   Route Layer (routes/*.js)                 │
-│  - 7 routers: users, weights, activities... │
+│  - 8 routers: users, weights, activities... │
 │  - Input validation, business logic         │
 └────────────────────┬────────────────────────┘
                      │
@@ -45,8 +45,8 @@ The app tracks weight/activities, calculates loan amortization, verifies interes
                      │
 ┌────────────────────▼────────────────────────┐
 │   Database (MySQL 5.5–8.0)                  │
-│  - 8 core tables (Users, Weights, etc.)     │
-│  - No FK constraints (app-managed)          │
+│  - 9 core tables (Users, Weights, etc.)     │
+│  - Foreign keys with ON DELETE CASCADE      │
 │  - UserSequenceT for ID generation          │
 └─────────────────────────────────────────────┘
 ```
@@ -744,6 +744,7 @@ USER SEES RESULT
 
 **Tables with FKs:**
 - ActivitiesT → UsersT
+- etfActivityT → UsersT, etfCategoryT, etfSymbolT
 - etfCategoryT → UsersT
 - etfSymbolT → etfCategoryT and UsersT
 - InterestEarnedT → UsersT
