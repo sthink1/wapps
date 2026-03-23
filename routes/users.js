@@ -6,6 +6,8 @@ const { pool } = require('../dbConnection');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { handleDbError } = require('../utils');
+const { sendVerificationCode } = require('../send_email');
+const crypto = require('crypto');
 
 require('dotenv').config();
 
@@ -105,16 +107,34 @@ router.post('/login', async (req, res) => {
 
         const user = results[0];
         const match = await bcrypt.compare(password, user.PasswordHash);
-        if (match) {
-            const token = jwt.sign(
-                { userId: user.UserID, username: user.UserName },
-                process.env.JWT_SECRET,
-                { expiresIn: '8h' }
-            );
-            res.status(200).json({ message: 'Login successful', token });
-        } else {
-            res.status(401).json({ error: 'Invalid credentials' });
+        if (!match) {
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
+
+        // Credentials are valid - generate 6-digit verification code
+        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const tempToken = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+        // Store verification code in database
+        await pool.query(
+            'INSERT INTO LoginVerificationT SET UserID = ?, VerificationCode = ?, TempToken = ?, ExpiresAt = ?, IsVerified = 0',
+            [user.UserID, verificationCode, tempToken, expiresAt]
+        );
+
+        // Send verification code via email
+        await sendVerificationCode({
+            email: user.Email,
+            verificationCode: verificationCode,
+            username: user.UserName
+        });
+
+        // Return temporary token instead of final JWT
+        res.status(200).json({
+            message: 'Verification code sent to your email.',
+            tempToken: tempToken,
+            userId: user.UserID
+        });
     } catch (error) {
         handleDbError(error, res, 'Error during login');
     }
@@ -122,6 +142,68 @@ router.post('/login', async (req, res) => {
 
 router.post('/logout', (req, res) => {
     res.status(200).json({ message: 'Logged out successfully' });
+});
+
+router.post('/verify-code', async (req, res) => {
+    const { tempToken, verificationCode } = req.body;
+
+    if (!tempToken || !verificationCode) {
+        return res.status(400).json({ error: 'Temporary token and verification code are required.(be)' });
+    }
+
+    try {
+        // Find the verification record
+        const [verifications] = await pool.query(
+            'SELECT * FROM LoginVerificationT WHERE TempToken = ? AND IsVerified = 0 ORDER BY VerificationID DESC LIMIT 1',
+            [tempToken]
+        );
+
+        if (verifications.length === 0) {
+            return res.status(401).json({ error: 'Invalid or expired verification request.(be)' });
+        }
+
+        const verification = verifications[0];
+
+        // Check if code has expired
+        const now = new Date();
+        if (now > new Date(verification.ExpiresAt)) {
+            return res.status(401).json({ error: 'Verification code has expired. Please log in again.(be)' });
+        }
+
+        // Check if code matches
+        if (verificationCode !== verification.VerificationCode) {
+            return res.status(401).json({ error: 'Invalid verification code.(be)' });
+        }
+
+        // Code is valid - mark as verified
+        await pool.query(
+            'UPDATE LoginVerificationT SET IsVerified = 1 WHERE VerificationID = ?',
+            [verification.VerificationID]
+        );
+
+        // Get user info
+        const [users] = await pool.query(
+            'SELECT UserID, UserName FROM UsersT WHERE UserID = ?',
+            [verification.UserID]
+        );
+
+        if (users.length === 0) {
+            return res.status(401).json({ error: 'User not found.(be)' });
+        }
+
+        const user = users[0];
+
+        // Generate final JWT token with 8-hour expiration
+        const token = jwt.sign(
+            { userId: user.UserID, username: user.UserName },
+            process.env.JWT_SECRET,
+            { expiresIn: '8h' }
+        );
+
+        res.status(200).json({ message: 'Login successful', token });
+    } catch (error) {
+        handleDbError(error, res, 'Error during code verification');
+    }
 });
 
 router.get('/is-admin', (req, res) => {

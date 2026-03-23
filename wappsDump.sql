@@ -31,6 +31,23 @@ CREATE TABLE `UsersT` (
 ) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------
+-- Table structure for table `LoginVerificationT`
+-- ------------------------------------------------------
+DROP TABLE IF EXISTS `LoginVerificationT`;
+CREATE TABLE `LoginVerificationT` (
+  `VerificationID` int(11) NOT NULL AUTO_INCREMENT,
+  `UserID` int(11) NOT NULL,
+  `VerificationCode` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `TempToken` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `IsVerified` tinyint(1) NOT NULL DEFAULT '0',
+  `ExpiresAt` datetime NOT NULL,
+  `CreatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`VerificationID`),
+  KEY `fk_login_verification_user` (`UserID`),
+  CONSTRAINT `fk_login_verification_user` FOREIGN KEY (`UserID`) REFERENCES `UsersT` (`UserID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------
 -- Table structure for table `ActivitiesT`
 -- ------------------------------------------------------
 DROP TABLE IF EXISTS `ActivitiesT`;
