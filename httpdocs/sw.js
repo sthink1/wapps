@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wonderful-apps-cache-v4';
+const CACHE_NAME = 'wonderful-apps-cache-v5';
 
 const urlsToCache = [
   '/',

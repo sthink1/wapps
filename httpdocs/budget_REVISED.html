@@ -27,28 +27,15 @@
             width: 460px;
         }
 
-        #budgetPage {
-            position: relative;
-            background-color: aqua;
-            padding: 20px 20px 70px 20px;
-            min-height: 560px;
-        }
-
-        #budgetPage h1 {
-            margin-top: 0;
-            margin-bottom: 20px;
-            font-size: 38px;
-        }
-
+        .button-group,
         .app-buttons {
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            margin-bottom: 20px;
         }
 
-        .app-buttons button,
-        #homeBtn {
+        .button-group button,
+        .app-buttons button {
             background-color: #4CAF50;
             color: white;
             border: none;
@@ -62,15 +49,29 @@
             transition: background-color 0.3s;
         }
 
-        .app-buttons button:hover,
-        #homeBtn:hover {
+        .button-group button:hover,
+        .app-buttons button:hover {
             background-color: #45a049;
         }
 
-        #homeBtn {
-            position: absolute;
-            right: 15px;
-            bottom: 15px;
+        #budgetApplications {
+            margin-bottom: 20px;
+            background-color: aqua;
+            padding-bottom: 10px;
+        }
+
+        #budgetApplications h3 {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        #budgetApplications .app-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #userDisplay {
+            margin-bottom: 15px;
         }
 
         footer {
@@ -107,9 +108,16 @@
 
 <body>
     <div class="container">
-        <div id="budgetPage">
-            <h1>Budget</h1>
+        <h1>Budget</h1>
 
+        <div class="button-group">
+            <button id="homeBtn">Home</button>
+        </div>
+
+        <div id="userDisplay"></div>
+
+        <div id="budgetApplications">
+            <h3>Budget</h3>
             <div class="app-buttons">
                 <button class="budget-btn" data-page="monthlybudget.html">Monthly Budget</button>
                 <button class="budget-btn" data-page="in.html">In</button>
@@ -121,8 +129,6 @@
                 <button class="budget-btn" data-page="creditcard.html">Credit Card</button>
                 <button class="budget-btn" data-page="reports.html">Reports</button>
             </div>
-
-            <button id="homeBtn">Home</button>
         </div>
     </div>
 
@@ -149,14 +155,44 @@
                 ? 'http://localhost:8080'
                 : window.location.origin;
 
+        function getCurrentUser() {
+            const token = localStorage.getItem('token');
+            if (!token) return null;
+
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(
+                    decodeURIComponent(
+                        atob(base64)
+                            .split('')
+                            .map(function(c) {
+                                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                            })
+                            .join('')
+                    )
+                );
+            } catch (error) {
+                console.error('Error decoding token:', error);
+                return null;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const token = localStorage.getItem('token');
 
+            // Budget is a logged-in application.
             if (!token) {
                 alert('You must be logged in to use the Budget application.');
                 window.location.href = 'home.html';
                 return;
             }
+
+            const currentUser = getCurrentUser();
+            document.getElementById('userDisplay').textContent =
+                currentUser && currentUser.username
+                    ? `Logged in as: ${currentUser.username}`
+                    : 'Logged In';
 
             document.getElementById('homeBtn').addEventListener('click', function() {
                 window.location.href = 'home.html';
@@ -168,6 +204,7 @@
                 });
             });
 
+            // Track page view.
             fetch(`${BASE_URL}/track/log/page`, {
                 method: 'POST',
                 headers: {
@@ -185,6 +222,7 @@
             .then(data => console.log('Page view tracked:', data.message || 'Success'))
             .catch(error => console.error('Error tracking page view:', error.message));
 
+            // Track time spent on page.
             const startTime = Date.now();
 
             window.addEventListener('beforeunload', () => {
