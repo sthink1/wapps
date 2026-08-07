@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wonderful Apps - Budget</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+            padding-bottom: 40px;
+        }
+
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 460px;
+        }
+
+        .button-group,
+        .app-buttons {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .button-group button,
+        .app-buttons button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .button-group button:hover,
+        .app-buttons button:hover {
+            background-color: #45a049;
+        }
+
+        #budgetApplications {
+            margin-bottom: 20px;
+            background-color: aqua;
+            padding-bottom: 10px;
+        }
+
+        #budgetApplications h3 {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        #budgetApplications .app-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #userDisplay {
+            margin-bottom: 15px;
+        }
+
+        footer {
+            background-color: lightgray;
+            height: 30px;
+            padding-top: 5px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        footer table {
+            width: 460px;
+            margin: 0 auto;
+        }
+
+        footer td {
+            text-align: center;
+        }
+
+        @media (max-width: 520px) {
+            .container {
+                width: calc(100% - 40px);
+                margin: 0 10px;
+            }
+
+            footer table {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Budget</h1>
+
+        <div class="button-group">
+            <button id="homeBtn">Home</button>
+        </div>
+
+        <div id="userDisplay"></div>
+
+        <div id="budgetApplications">
+            <h3>Budget</h3>
+            <div class="app-buttons">
+                <button class="budget-btn" data-page="monthlybudget.html">Monthly Budget</button>
+                <button class="budget-btn" data-page="in.html">In</button>
+                <button class="budget-btn" data-page="out.html">Out</button>
+                <button class="budget-btn" data-page="subscription.html">Subscription</button>
+                <button class="budget-btn" data-page="loan.html">Loan</button>
+                <button class="budget-btn" data-page="leaserent.html">Lease/Rent</button>
+                <button class="budget-btn" data-page="estimateallowance.html">Estimate/Allowance</button>
+                <button class="budget-btn" data-page="creditcard.html">Credit Card</button>
+                <button class="budget-btn" data-page="reports.html">Reports</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <table>
+            <tr>
+                <td>Copyright © 2025 M P Galvin Jr</td>
+                <td style="text-align: center; border: 1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(() => console.log('Service Worker registered'))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
+        }
+
+        const BASE_URL =
+            window.location.hostname === 'localhost' && window.location.port !== '8080'
+                ? 'http://localhost:8080'
+                : window.location.origin;
+
+        function getCurrentUser() {
+            const token = localStorage.getItem('token');
+            if (!token) return null;
+
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(
+                    decodeURIComponent(
+                        atob(base64)
+                            .split('')
+                            .map(function(c) {
+                                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                            })
+                            .join('')
+                    )
+                );
+            } catch (error) {
+                console.error('Error decoding token:', error);
+                return null;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+
+            // Budget is a logged-in application.
+            if (!token) {
+                alert('You must be logged in to use the Budget application.');
+                window.location.href = 'home.html';
+                return;
+            }
+
+            const currentUser = getCurrentUser();
+            document.getElementById('userDisplay').textContent =
+                currentUser && currentUser.username
+                    ? `Logged in as: ${currentUser.username}`
+                    : 'Logged In';
+
+            document.getElementById('homeBtn').addEventListener('click', function() {
+                window.location.href = 'home.html';
+            });
+
+            document.querySelectorAll('.budget-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    window.location.href = this.dataset.page;
+                });
+            });
+
+            // Track page view.
+            fetch(`${BASE_URL}/track/log/page`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ page: window.location.pathname })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => console.log('Page view tracked:', data.message || 'Success'))
+            .catch(error => console.error('Error tracking page view:', error.message));
+
+            // Track time spent on page.
+            const startTime = Date.now();
+
+            window.addEventListener('beforeunload', () => {
+                const duration = Math.floor((Date.now() - startTime) / 1000);
+
+                if (duration > 0) {
+                    fetch(`${BASE_URL}/track/log/time-spent`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            page: window.location.pathname,
+                            duration: duration,
+                            token: token
+                        })
+                    }).catch(error =>
+                        console.error('Error sending time spent:', error.message)
+                    );
+                }
+            });
+        });
+    </script>
+</body>
+</html>

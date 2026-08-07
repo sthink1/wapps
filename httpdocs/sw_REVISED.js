@@ -1,9 +1,8 @@
-const CACHE_NAME = 'wonderful-apps-cache-v4';
+const CACHE_NAME = 'wonderful-apps-cache-v3';
 
 const urlsToCache = [
   '/',
   '/home.html',
-  '/budget.html',
   '/TownNotice.html',
   '/Activities.html',
   '/amortization.html',
