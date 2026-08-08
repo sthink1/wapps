@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wonderful Apps - Monthly Budget</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <style>
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8e8d9;
+            margin: 0;
+            padding: 0 0 42px 0;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin: 10px 0;
+        }
+        h1 { font-size: 34px; }
+        .page-header {
+            position: relative;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        button {
+            padding: 9px 18px;
+            font-size: 15px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        button:hover { background-color: #0056b3; }
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #565e64; }
+        button.danger { background-color: #c82333; }
+        button.danger:hover { background-color: #a71d2a; }
+        button.small { padding: 6px 10px; font-size: 13px; }
+        button:disabled { opacity: .55; cursor: not-allowed; }
+
+        .section {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 18px;
+        }
+        .section-form { background-color: #e6f0fa; }
+        .section-records { background-color: #f5f5f5; }
+        .instructions {
+            background-color: #fff4cc;
+            border: 1px solid #e3c969;
+            border-radius: 5px;
+            padding: 10px 14px;
+            margin: 10px 0 16px 0;
+            line-height: 1.45;
+        }
+        .instructions p { margin: 5px 0; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 180px minmax(0, 1fr);
+            gap: 10px 14px;
+            align-items: center;
+            max-width: 760px;
+            margin: 0 auto;
+        }
+        .form-grid label {
+            font-weight: bold;
+            text-align: right;
+        }
+        input[type="text"],
+        input[type="date"],
+        input[type="number"],
+        input[type="month"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px 9px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font: inherit;
+            background-color: #fff;
+        }
+        textarea { min-height: 78px; resize: vertical; }
+        input[readonly] { background-color: #f1f1f1; }
+        .inline-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .inline-control > :first-child { flex: 1; }
+        .check-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .check-wrap input { width: auto; transform: scale(1.15); }
+        .form-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .message {
+            max-width: 760px;
+            margin: 10px auto 0 auto;
+            padding: 8px 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .message.show { display: block; }
+        .message.success { background:#e6f7e6; border:1px solid #8bc98b; }
+        .message.error { background:#fde7e9; border:1px solid #d99; color:#8a1f2d; }
+
+        .table-shell {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+            background: #fff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        th, td {
+            border-right: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+        }
+        th:last-child, td:last-child { border-right: none; }
+        thead th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .scroll-body {
+            max-height: 310px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .scroll-body table { margin: 0; }
+        .scroll-body tbody tr { cursor: pointer; }
+        .scroll-body tbody tr:hover { background-color: #eaf3ff; }
+        .scroll-body tbody tr.selected { background-color: #d9ebff; }
+        .empty-row { color: #777; cursor: default !important; }
+        .empty-row:hover { background: #fff !important; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            inset: 0;
+            background-color: rgba(0,0,0,.45);
+            overflow-y: auto;
+            padding: 30px 10px;
+        }
+        .modal.show { display: block; }
+        .modal-content {
+            background: #fff;
+            width: min(720px, 96vw);
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 6px 18px rgba(0,0,0,.25);
+        }
+        .modal-content.narrow { width: min(500px, 96vw); }
+        .modal-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        .modal-top h2 { flex: 1; }
+        .close-x {
+            font-size: 28px;
+            line-height: 1;
+            color: #777;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+        .frequency-grid {
+            display: grid;
+            grid-template-columns: 170px minmax(0,1fr);
+            gap: 10px 12px;
+            align-items: center;
+        }
+        .frequency-grid > label { text-align: right; font-weight: bold; }
+        .pattern-box {
+            margin-top: 14px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            padding: 12px;
+        }
+        .pattern-row {
+            display:flex;
+            align-items:center;
+            gap:8px;
+            flex-wrap:wrap;
+            margin:8px 0;
+        }
+        .pattern-row input[type="number"] { width: 85px; }
+        .pattern-row select { width: auto; min-width: 150px; }
+        .weekday-grid, .monthday-grid {
+            display: grid;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .weekday-grid { grid-template-columns: repeat(4, 1fr); }
+        .monthday-grid { grid-template-columns: repeat(8, 1fr); }
+        .weekday-grid label, .monthday-grid label {
+            font-weight: normal;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .range-box {
+            margin-top: 14px;
+            background: #eef7ee;
+            border-radius: 5px;
+            padding: 12px;
+        }
+        .preview {
+            max-height: 110px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 8px;
+            margin-top: 10px;
+            background: #fff;
+            font-size: 13px;
+        }
+
+        footer {
+            background-color: lightgray;
+            height: 30px;
+            padding-top: 5px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 20;
+        }
+        footer table { width: 460px; margin: 0 auto; table-layout:auto; }
+        footer td { border: none; padding: 2px 8px; }
+
+        @media (max-width: 720px) {
+            .container { margin: 10px; padding: 12px; }
+            .form-grid, .frequency-grid { grid-template-columns: 1fr; }
+            .form-grid label, .frequency-grid > label { text-align: left; }
+            .weekday-grid { grid-template-columns: repeat(2, 1fr); }
+            .monthday-grid { grid-template-columns: repeat(4, 1fr); }
+            footer table { width: 100%; }
+        }
+
+        .range-controls {
+            display:flex;
+            gap:10px;
+            justify-content:center;
+            align-items:end;
+            flex-wrap:wrap;
+        }
+        .range-controls label {
+            display:flex;
+            flex-direction:column;
+            gap:4px;
+            font-weight:bold;
+            text-align:left;
+        }
+        .range-controls input[type="month"] { width:170px; }
+        .summary-table th:nth-child(1), .summary-table td:nth-child(1) { width:34%; }
+        .summary-table th:nth-child(n+2), .summary-table td:nth-child(n+2) { width:22%; }
+        .month-link {
+            color:#0069d9;
+            text-decoration:underline;
+            cursor:pointer;
+            font-weight:bold;
+        }
+        .deficit {
+            background-color:pink !important;
+            font-weight:bold;
+        }
+        .totals-note {
+            text-align:center;
+            margin:8px 0 0;
+            color:#666;
+            font-size:13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="page-header">
+            <h1>Monthly Budget</h1>
+            <div class="header-actions">
+                <button type="button" id="budgetBtn">Budget Page</button>
+            </div>
+        </header>
+
+        <section class="section section-form">
+            <h2>Date Range</h2>
+            <div class="range-controls">
+                <label>From
+                    <input type="month" id="fromMonth">
+                </label>
+                <label>To
+                    <input type="month" id="toMonth">
+                </label>
+                <button type="button" id="applyRange">Apply Range</button>
+                <button type="button" id="defaultRange" class="secondary">Current + 11 Months</button>
+                <button type="button" id="add12">Show Additional 12 Months</button>
+            </div>
+            <div id="pageMessage" class="message"></div>
+        </section>
+
+        <section class="section section-records">
+            <h2>Monthly Summary</h2>
+            <div class="table-shell">
+                <table class="summary-table" aria-hidden="true">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>In</th>
+                            <th>Out</th>
+                            <th>Net</th>
+                        </tr>
+                    </thead>
+                </table>
+                <div class="scroll-body" style="max-height:470px;">
+                    <table class="summary-table">
+                        <tbody id="summaryBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="totals-note">Click a month to open its Monthly Detail report.</p>
+        </section>
+    </div>
+
+
+    <footer>
+        <table>
+            <tr>
+                <td>Copyright © 2025 M P Galvin Jr</td>
+                <td style="text-align:center; border:1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+
+
+    <script>
+
+        const BASE_URL =
+            window.location.hostname === 'localhost' && window.location.port !== '8080'
+                ? 'http://localhost:8080'
+                : window.location.origin;
+
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function requireLogin() {
+            if (!getToken()) {
+                alert('You must be logged in to use the Budget application.');
+                window.location.href = 'home.html';
+                return false;
+            }
+            return true;
+        }
+
+        async function apiFetch(path, options = {}) {
+            const token = getToken();
+            const headers = {
+                ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...(options.headers || {})
+            };
+            const response = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+            let data = null;
+            try { data = await response.json(); } catch (_) {}
+            if (!response.ok) {
+                const message = (data && (data.error || data.message)) || `HTTP error ${response.status}`;
+                throw new Error(String(message).replace(/\(be\)$/,''));
+            }
+            return data;
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err =>
+                    console.error('Service Worker registration failed:', err)
+                );
+            });
+        }
+
+        function showPageMessage(text, type='error') {
+            const el = document.getElementById('pageMessage');
+            el.textContent = text;
+            el.className = `message show ${type}`;
+        }
+        function clearPageMessage() {
+            const el = document.getElementById('pageMessage');
+            el.textContent = '';
+            el.className = 'message';
+        }
+        function monthString(date) {
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        }
+        function addMonthsToYM(ym, count) {
+            const [y,m] = ym.split('-').map(Number);
+            const d = new Date(y, m-1 + count, 1);
+            return monthString(d);
+        }
+        function setDefaultRange() {
+            const now = new Date();
+            const from = monthString(new Date(now.getFullYear(), now.getMonth(), 1));
+            document.getElementById('fromMonth').value = from;
+            document.getElementById('toMonth').value = addMonthsToYM(from, 11);
+        }
+        function moneyDisplay(v) {
+            return Number(v || 0).toLocaleString('en-US', {style:'currency', currency:'USD'});
+        }
+        async function loadSummary() {
+            clearPageMessage();
+            const from = document.getElementById('fromMonth').value;
+            const to = document.getElementById('toMonth').value;
+            if (!from || !to) {
+                showPageMessage('Select both From and To months.');
+                return;
+            }
+            if (from > to) {
+                showPageMessage('The From month may not be later than the To month.');
+                return;
+            }
+            const body = document.getElementById('summaryBody');
+            body.innerHTML = '<tr class="empty-row"><td colspan="4">Loading...</td></tr>';
+            try {
+                const data = await apiFetch(`/budget/monthly/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+                body.innerHTML = '';
+                (data.summary || []).forEach(r => {
+                    const tr = document.createElement('tr');
+                    if (r.Deficit) tr.classList.add('deficit');
+                    const [year,month] = r.Month.split('-');
+                    tr.innerHTML = `
+                        <td><span class="month-link" data-year="${year}" data-month="${Number(month)}">${r.MonthLabel}</span></td>
+                        <td>${moneyDisplay(r.In)}</td>
+                        <td>${moneyDisplay(r.Out)}</td>
+                        <td>${moneyDisplay(r.Net)}</td>`;
+                    tr.querySelector('.month-link').addEventListener('click', e => {
+                        const y = e.currentTarget.dataset.year;
+                        const m = e.currentTarget.dataset.month;
+                        location.href = `monthDetailReport.html?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}`;
+                    });
+                    body.appendChild(tr);
+                });
+                if (!(data.summary || []).length) {
+                    body.innerHTML = '<tr class="empty-row"><td colspan="4">No months found for the selected range.</td></tr>';
+                }
+            } catch (err) {
+                body.innerHTML = '';
+                showPageMessage(err.message);
+            }
+        }
+
+        document.getElementById('budgetBtn').addEventListener('click', () => location.href='budget.html');
+        document.getElementById('applyRange').addEventListener('click', loadSummary);
+        document.getElementById('defaultRange').addEventListener('click', () => {
+            setDefaultRange();
+            loadSummary();
+        });
+        document.getElementById('add12').addEventListener('click', () => {
+            const to = document.getElementById('toMonth').value;
+            if (!to) {
+                showPageMessage('Select a To month first.');
+                return;
+            }
+            document.getElementById('toMonth').value = addMonthsToYM(to, 12);
+            loadSummary();
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!requireLogin()) return;
+            setDefaultRange();
+            await loadSummary();
+        });
+    </script>
+</body>
+</html>

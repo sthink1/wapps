@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wonderful Apps - Monthly Budget Detail</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8e8d9;
+            margin: 0;
+            padding: 0 0 42px 0;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        h1 {
+            font-size: 34px;
+        }
+
+        .page-header {
+            margin-bottom: 16px;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        button {
+            padding: 9px 18px;
+            font-size: 15px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button.secondary {
+            background-color: #6c757d;
+        }
+
+        button.secondary:hover {
+            background-color: #565e64;
+        }
+
+        .source-key {
+            background-color: #fff4cc;
+            border: 1px solid #e3c969;
+            border-radius: 5px;
+            padding: 10px 14px;
+            margin-bottom: 18px;
+            text-align: center;
+            line-height: 1.45;
+        }
+
+        .section {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 18px;
+        }
+
+        .section-in {
+            background-color: #e6f7e6;
+        }
+
+        .section-out {
+            background-color: #e6f0fa;
+        }
+
+        .section-net {
+            background-color: #f5f5f5;
+        }
+
+        .table-shell {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            border-right: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            padding: 9px;
+            text-align: center;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+        }
+
+        th:last-child,
+        td:last-child {
+            border-right: none;
+        }
+
+        thead th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        .scroll-body {
+            max-height: 255px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .scroll-body table {
+            margin: 0;
+        }
+
+        .detail-row {
+            cursor: pointer;
+        }
+
+        .detail-row:hover {
+            background-color: #eaf3ff;
+        }
+
+        .empty-row {
+            color: #777;
+        }
+
+        .amount {
+            text-align: right;
+            padding-right: 18px;
+        }
+
+        .estimated {
+            font-style: italic;
+        }
+
+        .section-total {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 17px;
+            font-weight: bold;
+        }
+
+        .section-total .value {
+            min-width: 130px;
+            text-align: right;
+        }
+
+        .net-row {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .deficit {
+            background-color: pink !important;
+            font-weight: bold;
+        }
+
+        .message {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 12px auto;
+            max-width: 760px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.error {
+            background-color: #fde7e9;
+            border: 1px solid #d99;
+            color: #8a1f2d;
+        }
+
+        footer {
+            background-color: lightgray;
+            height: 30px;
+            padding-top: 5px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 20;
+        }
+
+        footer table {
+            width: 460px;
+            margin: 0 auto;
+            table-layout: auto;
+        }
+
+        footer td {
+            border: none;
+            padding: 2px 8px;
+        }
+
+        @media (max-width: 720px) {
+            .container {
+                margin: 10px;
+                padding: 12px;
+            }
+
+            th,
+            td {
+                padding: 7px 5px;
+                font-size: 13px;
+            }
+
+            footer table {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="page-header">
+            <h1 id="pageTitle">Monthly Budget Detail</h1>
+
+            <div class="header-actions">
+                <button type="button" id="budgetBtn">Budget Page</button>
+                <button type="button" id="monthlyBudgetBtn" class="secondary">Monthly Budget</button>
+            </div>
+        </header>
+
+        <div class="source-key">
+            <strong>Source:</strong>
+            In, Out, Sub = Subscription, Loan, Lease = Lease/Rent,
+            Card = Credit Card, Est = Estimate/Allowance
+        </div>
+
+        <div id="pageMessage" class="message"></div>
+
+        <section class="section section-in">
+            <h2>In</h2>
+
+            <div class="table-shell">
+                <table aria-hidden="true">
+                    <colgroup>
+                        <col style="width: 15%">
+                        <col style="width: 11%">
+                        <col style="width: 25%">
+                        <col style="width: 31%">
+                        <col style="width: 18%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Source</th>
+                            <th>From/To</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                </table>
+
+                <div class="scroll-body">
+                    <table>
+                        <colgroup>
+                            <col style="width: 15%">
+                            <col style="width: 11%">
+                            <col style="width: 25%">
+                            <col style="width: 31%">
+                            <col style="width: 18%">
+                        </colgroup>
+                        <tbody id="inBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-total">
+                <span>Total In:</span>
+                <span id="totalIn" class="value">$0.00</span>
+            </div>
+        </section>
+
+        <section class="section section-out">
+            <h2>Out</h2>
+
+            <div class="table-shell">
+                <table aria-hidden="true">
+                    <colgroup>
+                        <col style="width: 15%">
+                        <col style="width: 11%">
+                        <col style="width: 25%">
+                        <col style="width: 31%">
+                        <col style="width: 18%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Source</th>
+                            <th>From/To</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                </table>
+
+                <div class="scroll-body">
+                    <table>
+                        <colgroup>
+                            <col style="width: 15%">
+                            <col style="width: 11%">
+                            <col style="width: 25%">
+                            <col style="width: 31%">
+                            <col style="width: 18%">
+                        </colgroup>
+                        <tbody id="outBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-total">
+                <span>Total Out:</span>
+                <span id="totalOut" class="value">$0.00</span>
+            </div>
+        </section>
+
+        <section id="netSection" class="section section-net">
+            <h2>Net</h2>
+            <table>
+                <tbody>
+                    <tr id="netRow" class="net-row">
+                        <td style="width:70%; text-align:right;">Net:</td>
+                        <td id="netAmount" class="amount" style="width:30%;">$0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <footer>
+        <table>
+            <tr>
+                <td>Copyright © 2025 M P Galvin Jr</td>
+                <td style="text-align: center; border: 1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+
+    <script>
+        const BASE_URL =
+            window.location.hostname === 'localhost' && window.location.port !== '8080'
+                ? 'http://localhost:8080'
+                : window.location.origin;
+
+        const SOURCE_PAGES = {
+            'in': 'inForm.html',
+            'out': 'outForm.html',
+            'subscriptions': 'subscriptionForm.html',
+            'loans': 'loanForm.html',
+            'lease-rent': 'leaseRentForm.html',
+            'estimates': 'estimateAllowanceForm.html',
+            'cards': 'cardForm.html'
+        };
+
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function requireLogin() {
+            if (!getToken()) {
+                alert('You must be logged in to use the Budget application.');
+                window.location.href = 'home.html';
+                return false;
+            }
+            return true;
+        }
+
+        async function apiFetch(path, options = {}) {
+            const token = getToken();
+
+            const response = await fetch(`${BASE_URL}${path}`, {
+                ...options,
+                headers: {
+                    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                    ...(options.headers || {})
+                }
+            });
+
+            let data = null;
+
+            try {
+                data = await response.json();
+            } catch (_) {
+                // Response did not contain JSON.
+            }
+
+            if (!response.ok) {
+                const message =
+                    (data && (data.error || data.message)) ||
+                    `HTTP error ${response.status}`;
+
+                throw new Error(
+                    String(message).replace(/\(be\)$/, '')
+                );
+            }
+
+            return data;
+        }
+
+        function moneyDisplay(value) {
+            return Number(value || 0).toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            });
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[character]));
+        }
+
+        function showMessage(text) {
+            const message = document.getElementById('pageMessage');
+            message.textContent = text;
+            message.className = 'message show error';
+        }
+
+        function clearMessage() {
+            const message = document.getElementById('pageMessage');
+            message.textContent = '';
+            message.className = 'message';
+        }
+
+        function getRequestedMonth() {
+            const params = new URLSearchParams(window.location.search);
+            const year = Number(params.get('year'));
+            const month = Number(params.get('month'));
+
+            if (
+                !Number.isInteger(year) ||
+                year < 1900 ||
+                year > 9999 ||
+                !Number.isInteger(month) ||
+                month < 1 ||
+                month > 12
+            ) {
+                return null;
+            }
+
+            return { year, month };
+        }
+
+        function openSourceRecord(item) {
+            const page = SOURCE_PAGES[item.SourceRoute];
+
+            if (!page || !item.SourceUserID) {
+                return;
+            }
+
+            window.location.href =
+                `${page}?id=${encodeURIComponent(item.SourceUserID)}`;
+        }
+
+        function fillSection(bodyId, items, directionLabel) {
+            const body = document.getElementById(bodyId);
+            body.innerHTML = '';
+
+            if (!items.length) {
+                body.innerHTML =
+                    `<tr class="empty-row"><td colspan="5">No ${directionLabel} items for this month.</td></tr>`;
+                return;
+            }
+
+            items.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'detail-row';
+
+                if (item.Estimated) {
+                    row.classList.add('estimated');
+                    row.title = 'Estimated amount';
+                }
+
+                row.innerHTML = `
+                    <td>${escapeHtml(item.Date)}</td>
+                    <td>${escapeHtml(item.Source)}</td>
+                    <td>${escapeHtml(item.FromTo)}</td>
+                    <td>${escapeHtml(item.Description)}</td>
+                    <td class="amount">${moneyDisplay(item.Amount)}</td>
+                `;
+
+                row.addEventListener('click', () => openSourceRecord(item));
+                body.appendChild(row);
+            });
+        }
+
+        async function loadMonthlyDetail() {
+            clearMessage();
+
+            const requested = getRequestedMonth();
+
+            if (!requested) {
+                showMessage(
+                    'A valid year and month are required. Return to Monthly Budget and select a month.'
+                );
+                return;
+            }
+
+            const { year, month } = requested;
+
+            try {
+                const data = await apiFetch(
+                    `/budget/monthly/detail/${year}/${month}`
+                );
+
+                document.getElementById('pageTitle').textContent =
+                    `Monthly Budget Detail - ${data.MonthLabel}`;
+
+                fillSection('inBody', data.In || [], 'In');
+                fillSection('outBody', data.Out || [], 'Out');
+
+                document.getElementById('totalIn').textContent =
+                    moneyDisplay(data.TotalIn);
+
+                document.getElementById('totalOut').textContent =
+                    moneyDisplay(data.TotalOut);
+
+                document.getElementById('netAmount').textContent =
+                    moneyDisplay(data.Net);
+
+                const netSection = document.getElementById('netSection');
+                const netRow = document.getElementById('netRow');
+
+                netSection.classList.toggle('deficit', !!data.Deficit);
+                netRow.classList.toggle('deficit', !!data.Deficit);
+            } catch (error) {
+                showMessage(error.message);
+            }
+        }
+
+        document.getElementById('budgetBtn').addEventListener('click', () => {
+            window.location.href = 'budget.html';
+        });
+
+        document.getElementById('monthlyBudgetBtn').addEventListener('click', () => {
+            window.location.href = 'monthBudget.html';
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker
+                    .register('/sw.js')
+                    .catch(error =>
+                        console.error(
+                            'Service Worker registration failed:',
+                            error
+                        )
+                    );
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!requireLogin()) {
+                return;
+            }
+
+            await loadMonthlyDetail();
+        });
+    </script>
+</body>
+</html>
