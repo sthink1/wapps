@@ -1,8 +1,9 @@
-const CACHE_NAME = 'wonderful-apps-cache-v6';
+const CACHE_NAME = 'wonderful-apps-cache-v5';
 
 const urlsToCache = [
   '/',
   '/home.html',
+  '/budget.html',
   '/TownNotice.html',
   '/Activities.html',
   '/amortization.html',
@@ -37,29 +38,6 @@ self.addEventListener('fetch', event => {
     return; // Let the browser handle it normally
   }
 
-  const isHtmlRequest =
-    event.request.mode === 'navigate' ||
-    requestUrl.pathname.endsWith('.html');
-
-  if (isHtmlRequest) {
-    // Network-first for HTML pages:
-    // use the newest page from the server when available,
-    // and fall back to the cached copy only if the network fails.
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const responseCopy = response.clone();
-          caches.open(CACHE_NAME)
-            .then(cache => cache.put(event.request, responseCopy))
-            .catch(() => {});
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // Cache-first remains appropriate for ordinary static assets.
   event.respondWith(
     caches.match(event.request)
       .then(response => response || fetch(event.request))

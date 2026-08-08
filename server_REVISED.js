@@ -17,7 +17,7 @@ const userRoutes = require('./routes/users');
 const trackRoutes = require('./routes/track');
 const interestEarnedRoutes = require('./routes/interestEarned');
 const etfRoutes = require('./routes/etf');
-
+const budgetRoutes = require('./routes/budget');
 const app = express();
 const port = process.env.PORT || 8080;
 
@@ -39,14 +39,11 @@ app.use(multer().none());
 
 // Serve static files with cache control
 app.use(express.static(path.join(__dirname, 'httpdocs'), {
-  maxAge: '1d', // Keep caching for ordinary static assets
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) {
-      // Always revalidate HTML so development changes appear on normal refresh.
-      res.set('Cache-Control', 'no-cache');
-    } else if (filePath.endsWith('manifest.json')) {
+  maxAge: '1d', // Cache static files for 1 day
+  setHeaders: (res, path) => {
+    if (path.endsWith('manifest.json')) {
       res.set('Content-Type', 'application/manifest+json');
-    } else if (filePath.endsWith('sw.js')) {
+    } else if (path.endsWith('sw.js')) {
       res.set('Content-Type', 'application/javascript');
       res.set('Cache-Control', 'no-cache'); // Prevent caching service worker
     }
@@ -86,6 +83,7 @@ app.use('/track', trackRoutes);
 app.use('/interestEarned', interestEarnedRoutes);
 app.use('/etf', etfRoutes);
 app.use('/api/geocode', require('./routes/geocode'));
+app.use('/budget', budgetRoutes);
 
 // Catch-all route for undefined endpoints
 app.use((req, res) => {
