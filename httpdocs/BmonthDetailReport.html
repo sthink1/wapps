@@ -384,13 +384,13 @@
                 : window.location.origin;
 
         const SOURCE_PAGES = {
-            'in': 'inForm.html',
-            'out': 'outForm.html',
-            'subscriptions': 'subscriptionForm.html',
-            'loans': 'loanForm.html',
-            'lease-rent': 'leaseRentForm.html',
-            'estimates': 'estimateAllowanceForm.html',
-            'cards': 'cardForm.html'
+            'in': 'BinForm.html',
+            'out': 'BoutForm.html',
+            'subscriptions': 'BsubscriptionForm.html',
+            'loans': 'BloanForm.html',
+            'lease-rent': 'BleaseRentForm.html',
+            'estimates': 'BestimateAllowanceForm.html',
+            'cards': 'BcardForm.html'
         };
 
         function getToken() {
@@ -579,7 +579,7 @@
         });
 
         document.getElementById('monthlyBudgetBtn').addEventListener('click', () => {
-            window.location.href = 'monthBudget.html';
+            window.location.href = 'BmonthBudget.html';
         });
 
         if ('serviceWorker' in navigator) {
