@@ -17,6 +17,7 @@ const userRoutes = require('./routes/users');
 const trackRoutes = require('./routes/track');
 const interestEarnedRoutes = require('./routes/interestEarned');
 const etfRoutes = require('./routes/etf');
+const budgetRoutes = require('./routes/budget');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -85,6 +86,7 @@ app.use('/users', userRoutes);
 app.use('/track', trackRoutes);
 app.use('/interestEarned', interestEarnedRoutes);
 app.use('/etf', etfRoutes);
+app.use('/budget', budgetRoutes);
 app.use('/api/geocode', require('./routes/geocode'));
 
 // Catch-all route for undefined endpoints
