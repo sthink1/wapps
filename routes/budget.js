@@ -709,10 +709,6 @@ async function activity(userId,range){
     fromTo:r=>r.ToName,description:r=>r.Description,amount:r=>r.Amount,estimated:r=>r.Estimated,userKey:'UserOutID',route:'out'});
   addRecurring(a,subs,map,range,{start:'DateBegin',end:'DateEnd',direction:()=> 'Out',source:'Sub',
     fromTo:r=>r.ToName,description:r=>r.Description,amount:r=>r.Amount,estimated:r=>r.Estimated,userKey:'UserSubscriptionID',route:'subscriptions'});
-  for(const r of loans) if(r.DateLoan>=range.fromIso&&r.DateLoan<=range.toIso) a.push({
-    Date:r.DateLoan,Direction:'In',Source:'Loan',FromTo:r.FromName,Description:r.Description,Amount:Number(r.LoanAmount),
-    Estimated:!!r.LoanAmountIsEstimated,SourceUserID:r.UserLoanID,SourceRoute:'loans'
-  });
   addRecurring(a,loans,map,range,{start:'PaymentDateBegin',end:'PaymentDateEnd',direction:()=> 'Out',source:'Loan',
     fromTo:r=>r.FromName,description:r=>r.Description,amount:r=>r.PaymentAmount,estimated:r=>r.PaymentAmountIsEstimated,userKey:'UserLoanID',route:'loans'});
   addRecurring(a,leases,map,range,{start:'PaymentDateBegin',end:'PaymentDateEnd',direction:()=> 'Out',source:'Lease',
