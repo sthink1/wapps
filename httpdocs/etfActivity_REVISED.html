@@ -675,7 +675,6 @@ async function loadInventory() {
             <th>Current Price</th>
             <th>Total Value</th>
             <th>Inc / Dec</th>
-            <th>% Change</th>
           </tr>
         </thead>
         <tbody>`);
@@ -684,12 +683,6 @@ async function loadInventory() {
         const change = r.changeAmount;
         const changeClass = change === null ? '' : (change >= 0 ? 'up' : 'down');
         const changeDisplay = change === null ? 'N/A' : fmtCurrency(change);
-        const percentChange =
-          change === null || !r.inventoryCost
-            ? null
-            : (change / r.inventoryCost) * 100;
-        const percentChangeDisplay =
-          percentChange === null ? 'N/A' : percentChange.toFixed(2) + '%';
 
         catTotalCost   += r.inventoryCost || 0;
         catTotalValue  += r.totalValue    || 0;
@@ -705,16 +698,11 @@ async function loadInventory() {
           <td>${r.currentPrice !== null ? fmtCurrency(r.currentPrice) : 'N/A'}</td>
           <td>${r.totalValue   !== null ? fmtCurrency(r.totalValue)   : 'N/A'}</td>
           <td class="${changeClass}">${changeDisplay}</td>
-          <td class="${changeClass}">${percentChangeDisplay}</td>
         </tr>`);
       });
 
       // Category subtotal
       const catChangeClass = catTotalChange >= 0 ? 'up' : 'down';
-      const catPercentChange =
-        catHasPrice && catTotalCost
-          ? (catTotalChange / catTotalCost) * 100
-          : null;
       html.push(`</tbody>
         <tfoot>
           <tr class="subtotal-row">
@@ -723,7 +711,6 @@ async function loadInventory() {
             <td></td>
             <td>${catHasPrice ? fmtCurrency(catTotalValue) : 'N/A'}</td>
             <td class="${catChangeClass}">${catHasPrice ? fmtCurrency(catTotalChange) : 'N/A'}</td>
-            <td class="${catChangeClass}">${catPercentChange === null ? 'N/A' : catPercentChange.toFixed(2) + '%'}</td>
           </tr>
         </tfoot>
       </table>`);
@@ -736,10 +723,6 @@ async function loadInventory() {
 
     // Grand total
     const grandChangeClass = grandTotalChange >= 0 ? 'up' : 'down';
-    const grandPercentChange =
-      grandHasPrice && grandTotalCost
-        ? (grandTotalChange / grandTotalCost) * 100
-        : null;
     html.push(`<table style="margin-top:10px;">
       <tfoot>
         <tr class="total-row">
@@ -748,7 +731,6 @@ async function loadInventory() {
           <td></td>
           <td>${grandHasPrice ? fmtCurrency(grandTotalValue) : 'N/A'}</td>
           <td class="${grandChangeClass}">${grandHasPrice ? fmtCurrency(grandTotalChange) : 'N/A'}</td>
-          <td class="${grandChangeClass}">${grandPercentChange === null ? 'N/A' : grandPercentChange.toFixed(2) + '%'}</td>
         </tr>
       </tfoot>
     </table>`);

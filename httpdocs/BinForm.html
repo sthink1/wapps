@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wonderful Apps - Budget In</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <style>
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8e8d9;
+            margin: 0;
+            padding: 0 0 42px 0;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin: 10px 0;
+        }
+        h1 { font-size: 34px; }
+        .page-header {
+            position: relative;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        button {
+            padding: 9px 18px;
+            font-size: 15px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        button:hover { background-color: #0056b3; }
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #565e64; }
+        button.danger { background-color: #c82333; }
+        button.danger:hover { background-color: #a71d2a; }
+        button.small { padding: 6px 10px; font-size: 13px; }
+        button:disabled { opacity: .55; cursor: not-allowed; }
+
+        .section {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 18px;
+        }
+        .section-form { background-color: #e6f0fa; }
+        .section-records { background-color: #f5f5f5; }
+        .instructions {
+            background-color: #fff4cc;
+            border: 1px solid #e3c969;
+            border-radius: 5px;
+            padding: 10px 14px;
+            margin: 10px 0 16px 0;
+            line-height: 1.45;
+        }
+        .instructions p { margin: 5px 0; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 180px minmax(0, 1fr);
+            gap: 10px 14px;
+            align-items: center;
+            max-width: 760px;
+            margin: 0 auto;
+        }
+        .form-grid label {
+            font-weight: bold;
+            text-align: right;
+        }
+        input[type="text"],
+        input[type="date"],
+        input[type="number"],
+        input[type="month"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px 9px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font: inherit;
+            background-color: #fff;
+        }
+        textarea { min-height: 78px; resize: vertical; }
+        input[readonly] { background-color: #f1f1f1; }
+        .inline-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .inline-control > :first-child { flex: 1; }
+        .check-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .check-wrap input { width: auto; transform: scale(1.15); }
+        .form-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .message {
+            max-width: 760px;
+            margin: 10px auto 0 auto;
+            padding: 8px 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .message.show { display: block; }
+        .message.success { background:#e6f7e6; border:1px solid #8bc98b; }
+        .message.error { background:#fde7e9; border:1px solid #d99; color:#8a1f2d; }
+
+        .table-shell {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+            background: #fff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        th, td {
+            border-right: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+        }
+        th:last-child, td:last-child { border-right: none; }
+        thead th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .scroll-body {
+            max-height: 310px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .scroll-body table { margin: 0; }
+        .scroll-body tbody tr { cursor: pointer; }
+        .scroll-body tbody tr:hover { background-color: #eaf3ff; }
+        .scroll-body tbody tr.selected { background-color: #d9ebff; }
+        .empty-row { color: #777; cursor: default !important; }
+        .empty-row:hover { background: #fff !important; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            inset: 0;
+            background-color: rgba(0,0,0,.45);
+            overflow-y: auto;
+            padding: 30px 10px;
+        }
+        .modal.show { display: block; }
+        .modal-content {
+            background: #fff;
+            width: min(720px, 96vw);
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 6px 18px rgba(0,0,0,.25);
+        }
+        .modal-content.narrow { width: min(500px, 96vw); }
+        .modal-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        .modal-top h2 { flex: 1; }
+        .close-x {
+            font-size: 28px;
+            line-height: 1;
+            color: #777;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+        .frequency-grid {
+            display: grid;
+            grid-template-columns: 170px minmax(0,1fr);
+            gap: 10px 12px;
+            align-items: center;
+        }
+        .frequency-grid > label { text-align: right; font-weight: bold; }
+        .pattern-box {
+            margin-top: 14px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            padding: 12px;
+        }
+        .pattern-row {
+            display:flex;
+            align-items:center;
+            gap:8px;
+            flex-wrap:wrap;
+            margin:8px 0;
+        }
+        .pattern-row input[type="number"] { width: 85px; }
+        .pattern-row select { width: auto; min-width: 150px; }
+        .weekday-grid, .monthday-grid {
+            display: grid;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .weekday-grid { grid-template-columns: repeat(4, 1fr); }
+        .monthday-grid { grid-template-columns: repeat(8, 1fr); }
+        .weekday-grid label, .monthday-grid label {
+            font-weight: normal;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .range-box {
+            margin-top: 14px;
+            background: #eef7ee;
+            border-radius: 5px;
+            padding: 12px;
+        }
+        .preview {
+            max-height: 110px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 8px;
+            margin-top: 10px;
+            background: #fff;
+            font-size: 13px;
+        }
+
+        footer {
+            background-color: lightgray;
+            height: 30px;
+            padding-top: 5px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 20;
+        }
+        footer table { width: 460px; margin: 0 auto; table-layout:auto; }
+        footer td { border: none; padding: 2px 8px; }
+
+        @media (max-width: 720px) {
+            .container { margin: 10px; padding: 12px; }
+            .form-grid, .frequency-grid { grid-template-columns: 1fr; }
+            .form-grid label, .frequency-grid > label { text-align: left; }
+            .weekday-grid { grid-template-columns: repeat(2, 1fr); }
+            .monthday-grid { grid-template-columns: repeat(4, 1fr); }
+            footer table { width: 100%; }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="page-header">
+            <h1>Budget - In</h1>
+            <div class="header-actions">
+                <button type="button" id="budgetBtn">Budget Page</button>
+            </div>
+        </header>
+
+        
+
+        <section class="section section-form">
+            <h2>In Item</h2>
+            <form id="entryForm">
+                <div class="form-grid">
+                    <label for="party">From</label>
+                    <input type="text" id="party" maxlength="100" required>
+
+                    <label for="description">Description</label>
+                    <div class="inline-control">
+                        <select id="description" required>
+                            <option value="">Select a description</option>
+                        </select>
+                        <button type="button" class="small" id="addDescriptionBtn">Add Description</button>
+                    </div>
+
+                    <label for="dateBegin">Date Begin</label>
+                    <input type="date" id="dateBegin" required>
+
+                    <label for="dateEnd">Date End</label>
+                    <input type="date" id="dateEnd">
+
+                    <label for="amount">Amount</label>
+                    <input type="number" id="amount" min="0" step="0.01" required>
+
+                    <label for="frequencySummary">Frequency</label>
+                    <div class="inline-control">
+                        <input type="text" id="frequencySummary" readonly value="One Time">
+                        <button type="button" class="small" id="frequencyBtn">Frequency</button>
+                    </div>
+
+                    <label>Active</label>
+                    <div class="check-wrap"><input type="checkbox" id="active" checked><span>Include this item in the Budget</span></div>
+
+                    <label>Amount is Estimated</label>
+                    <div class="check-wrap"><input type="checkbox" id="estimated"><span>Estimated amount</span></div>
+
+                    <label for="note">Note</label>
+                    <textarea id="note" maxlength="2000"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="saveBtn">Save</button>
+                    <button type="button" class="secondary" id="newBtn">New</button>
+                    <button type="button" class="danger" id="deleteBtn" style="display:none;">Delete</button>
+                </div>
+                <div id="formMessage" class="message"></div>
+            </form>
+        </section>
+
+        <section class="section section-records">
+            <h2>Existing In Items</h2>
+            <p style="text-align:center; margin-top:0;">Click a row to edit that item.</p>
+            <div class="table-shell">
+                <table aria-hidden="true">
+                    <colgroup>
+                        <col style="width:18%">
+                        <col style="width:24%">
+                        <col style="width:13%">
+                        <col style="width:13%">
+                        <col style="width:12%">
+                        <col style="width:10%">
+                        <col style="width:10%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>From</th>
+                            <th>Description</th>
+                            <th>Date Begin</th>
+                            <th>Date End</th>
+                            <th>Amount</th>
+                            <th>Active</th>
+                            <th>Estimated</th>
+                        </tr>
+                    </thead>
+                </table>
+                <div class="scroll-body">
+                    <table>
+                        <colgroup>
+                            <col style="width:18%">
+                            <col style="width:24%">
+                            <col style="width:13%">
+                            <col style="width:13%">
+                            <col style="width:12%">
+                            <col style="width:10%">
+                            <col style="width:10%">
+                        </colgroup>
+                        <tbody id="recordsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+
+    <div id="frequencyModal" class="modal" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-top">
+                <h2>Frequency</h2>
+                <span class="close-x" id="frequencyClose" aria-label="Close">&times;</span>
+            </div>
+
+            <div class="frequency-grid">
+                <label>Begin Date</label>
+                <input type="date" id="freqBegin" readonly>
+
+                <label>End Date</label>
+                <input type="date" id="freqEnd" readonly>
+
+                <label for="frequencyType">Frequency Type</label>
+                <select id="frequencyType">
+                    <option value="OneTime">One Time</option>
+                    <option value="Daily">Daily</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Yearly">Yearly</option>
+                </select>
+            </div>
+
+            <div id="patternBox" class="pattern-box"></div>
+
+            <div id="rangeBox" class="range-box">
+                <strong>Range</strong>
+                <div class="pattern-row">
+                    <label><input type="radio" name="rangeType" value="NoEnd"> No end date</label>
+                    <label><input type="radio" name="rangeType" value="EndDate"> End on form End Date</label>
+                    <label><input type="radio" name="rangeType" value="OccurrenceCount"> End after</label>
+                    <input type="number" id="occurrenceCount" min="1" step="1" value="1" aria-label="Occurrences">
+                    <span>occurrence(s)</span>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" id="previewFrequency">Preview</button>
+                <button type="button" id="saveFrequency">Use Frequency</button>
+                <button type="button" class="secondary" id="cancelFrequency">Cancel</button>
+            </div>
+            <div id="frequencyMessage" class="message"></div>
+            <div id="frequencyPreview" class="preview" style="display:none;"></div>
+        </div>
+    </div>
+
+
+    <div id="descriptionModal" class="modal" aria-hidden="true">
+        <div class="modal-content narrow">
+            <div class="modal-top">
+                <h2>Add In Description</h2>
+                <span class="close-x" id="descriptionClose">&times;</span>
+            </div>
+            <label for="newDescription"><strong>Description</strong></label>
+            <input type="text" id="newDescription" maxlength="100">
+            <div class="form-actions">
+                <button type="button" id="saveDescription">Save</button>
+                <button type="button" class="secondary" id="cancelDescription">Cancel</button>
+            </div>
+            <div id="descriptionMessage" class="message"></div>
+        </div>
+    </div>
+
+
+    <footer>
+        <table>
+            <tr>
+                <td>Copyright © 2025 M P Galvin Jr</td>
+                <td style="text-align:center; border:1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+
+
+    <script>
+
+        const BASE_URL =
+            window.location.hostname === 'localhost' && window.location.port !== '8080'
+                ? 'http://localhost:8080'
+                : window.location.origin;
+
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function requireLogin() {
+            if (!getToken()) {
+                alert('You must be logged in to use the Budget application.');
+                window.location.href = 'home.html';
+                return false;
+            }
+            return true;
+        }
+
+        async function apiFetch(path, options = {}) {
+            const token = getToken();
+            const headers = {
+                ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...(options.headers || {})
+            };
+            const response = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+            let data = null;
+            try { data = await response.json(); } catch (_) {}
+            if (!response.ok) {
+                const message = (data && (data.error || data.message)) || `HTTP error ${response.status}`;
+                throw new Error(String(message).replace(/\(be\)$/,''));
+            }
+            return data;
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err =>
+                    console.error('Service Worker registration failed:', err)
+                );
+            });
+        }
+
+        let selectedId = null;
+
+        function showMessage(text, type='success') {
+            const el = document.getElementById('formMessage');
+            el.textContent = text;
+            el.className = `message show ${type}`;
+        }
+
+        function clearMessage() {
+            const el = document.getElementById('formMessage');
+            el.textContent = '';
+            el.className = 'message';
+        }
+
+        function moneyDisplay(v) {
+            const n = Number(v || 0);
+            return n.toLocaleString('en-US', {style:'currency', currency:'USD'});
+        }
+
+        async function loadDescriptions(selectedText='') {
+            try {
+                const rows = await apiFetch('/budget/descriptions?inOrOut=In');
+                const sel = document.getElementById('description');
+                sel.innerHTML = '<option value="">Select a description</option>';
+                rows.forEach(r => {
+                    const o = document.createElement('option');
+                    o.value = r.Description;
+                    o.textContent = r.Description;
+                    sel.appendChild(o);
+                });
+                if (selectedText && ![...sel.options].some(o => o.value === selectedText)) {
+                    const o = document.createElement('option');
+                    o.value = selectedText;
+                    o.textContent = selectedText;
+                    sel.appendChild(o);
+                }
+                sel.value = selectedText || '';
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        async function loadRecords() {
+            try {
+                const rows = await apiFetch('/budget/in?status=all');
+                const body = document.getElementById('recordsBody');
+                body.innerHTML = '';
+                if (!rows.length) {
+                    body.innerHTML = '<tr class="empty-row"><td colspan="7">No In items have been entered.</td></tr>';
+                    return;
+                }
+                rows.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.dataset.id = r.UserInID;
+                    tr.innerHTML = `
+                        <td>${escapeHtml(r.FromName || '')}</td>
+                        <td>${escapeHtml(r.Description || '')}</td>
+                        <td>${r.DateBegin || ''}</td>
+                        <td>${r.DateEnd || ''}</td>
+                        <td>${moneyDisplay(r.Amount)}</td>
+                        <td>${Number(r.Active) ? 'Yes' : 'No'}</td>
+                        <td>${Number(r.Estimated) ? 'Yes' : 'No'}</td>`;
+                    tr.addEventListener('click', () => editRecord(r.UserInID, tr));
+                    body.appendChild(tr);
+                });
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function getRequestedRecordId() {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('id');
+
+            if (raw === null || raw === '') return null;
+
+            const id = Number(raw);
+            if (!Number.isInteger(id) || id < 1) {
+                return 'invalid';
+            }
+
+            return id;
+        }
+
+        async function editRecord(id, tr) {
+            clearMessage();
+            try {
+                const r = await apiFetch(`/budget/in/${id}`);
+                selectedId = Number(id);
+                document.querySelectorAll('#recordsBody tr').forEach(x => x.classList.remove('selected'));
+                if (tr) tr.classList.add('selected');
+
+                document.getElementById('party').value = r.FromName || '';
+                await loadDescriptions(r.Description || '');
+                document.getElementById('dateBegin').value = r.DateBegin || '';
+                document.getElementById('dateEnd').value = r.DateEnd || '';
+                document.getElementById('amount').value = r.Amount ?? '';
+                document.getElementById('active').checked = !!Number(r.Active);
+                document.getElementById('estimated').checked = !!Number(r.Estimated);
+                document.getElementById('note').value = r.Note || '';
+                recurrenceState = r.Recurrence || defaultRecurrence();
+                syncFrequencySummary();
+                document.getElementById('deleteBtn').style.display = 'inline-block';
+                document.getElementById('saveBtn').textContent = 'Save Changes';
+                window.scrollTo({top:0, behavior:'smooth'});
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        function resetForm() {
+            selectedId = null;
+            document.getElementById('entryForm').reset();
+            document.getElementById('active').checked = true;
+            document.getElementById('estimated').checked = false;
+            recurrenceState = defaultRecurrence();
+            syncFrequencySummary();
+            document.getElementById('deleteBtn').style.display = 'none';
+            document.getElementById('saveBtn').textContent = 'Save';
+            document.querySelectorAll('#recordsBody tr').forEach(x => x.classList.remove('selected'));
+            loadDescriptions();
+            clearMessage();
+        }
+
+        function formPayload() {
+            return {
+                FromName: document.getElementById('party').value.trim(),
+                Description: document.getElementById('description').value,
+                DateBegin: document.getElementById('dateBegin').value,
+                DateEnd: document.getElementById('dateEnd').value || null,
+                Amount: document.getElementById('amount').value,
+                Active: document.getElementById('active').checked,
+                Estimated: document.getElementById('estimated').checked,
+                Note: document.getElementById('note').value.trim() || null,
+                Recurrence: recurrenceState
+            };
+        }
+
+        document.getElementById('entryForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            clearMessage();
+            const payload = formPayload();
+
+            if (!payload.FromName || !payload.Description || !payload.DateBegin || payload.Amount === '') {
+                showMessage('Complete all required fields before saving.', 'error');
+                return;
+            }
+
+            try {
+                const path = selectedId ? `/budget/in/${selectedId}` : '/budget/in';
+                const method = selectedId ? 'PUT' : 'POST';
+                const result = await apiFetch(path, { method, body: JSON.stringify(payload) });
+                showMessage(result.message ? result.message.replace(/\(be\)$/,'') : 'Saved.', 'success');
+                resetForm();
+                await loadRecords();
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        });
+
+        document.getElementById('deleteBtn').addEventListener('click', async () => {
+            if (!selectedId) return;
+            if (!confirm('Delete this In item?')) return;
+            try {
+                const result = await apiFetch(`/budget/in/${selectedId}`, {method:'DELETE'});
+                resetForm();
+                await loadRecords();
+                showMessage(result.message ? result.message.replace(/\(be\)$/,'') : 'Deleted.', 'success');
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        });
+
+        document.getElementById('newBtn').addEventListener('click', resetForm);
+        document.getElementById('budgetBtn').addEventListener('click', () => location.href='budget.html');
+        document.getElementById('frequencyBtn').addEventListener('click', openFrequencyModal);
+
+        document.getElementById('dateBegin').addEventListener('change', () => {
+            if (recurrenceState.FrequencyType === 'OneTime') document.getElementById('dateEnd').value = '';
+        });
+
+        document.getElementById('addDescriptionBtn').addEventListener('click', () => {
+            document.getElementById('newDescription').value = '';
+            document.getElementById('descriptionMessage').className = 'message';
+            document.getElementById('descriptionModal').classList.add('show');
+        });
+
+        function closeDescriptionModal() {
+            document.getElementById('descriptionModal').classList.remove('show');
+        }
+        document.getElementById('descriptionClose').addEventListener('click', closeDescriptionModal);
+        document.getElementById('cancelDescription').addEventListener('click', closeDescriptionModal);
+        document.getElementById('descriptionModal').addEventListener('click', e => {
+            if (e.target.id === 'descriptionModal') closeDescriptionModal();
+        });
+        document.getElementById('saveDescription').addEventListener('click', async () => {
+            const text = document.getElementById('newDescription').value.trim();
+            const msg = document.getElementById('descriptionMessage');
+            if (!text) {
+                msg.textContent = 'Enter a description.';
+                msg.className = 'message show error';
+                return;
+            }
+            try {
+                await apiFetch('/budget/descriptions', {
+                    method:'POST',
+                    body:JSON.stringify({InOrOut:'In', Description:text})
+                });
+                await loadDescriptions(text);
+                closeDescriptionModal();
+            } catch (err) {
+                msg.textContent = err.message;
+                msg.className = 'message show error';
+            }
+        });
+
+
+        const WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const ORDINALS = ['First','Second','Third','Fourth','Last'];
+        let recurrenceState = defaultRecurrence();
+
+        function defaultRecurrence() {
+            return {
+                FrequencyType: 'OneTime',
+                IntervalNumber: 1,
+                DailyPattern: null,
+                MonthlyPattern: null,
+                OrdinalPosition: null,
+                OrdinalWeekday: null,
+                YearlyPattern: null,
+                YearMonth: null,
+                YearDay: null,
+                RangeType: null,
+                OccurrenceCount: null,
+                WeeklyDays: [],
+                MonthlyDays: []
+            };
+        }
+
+        function recurrenceSummary(r) {
+            if (!r || r.FrequencyType === 'OneTime') return 'One Time';
+            const n = Number(r.IntervalNumber || 1);
+            let s = '';
+            if (r.FrequencyType === 'Daily') {
+                if (r.DailyPattern === 'Weekday') s = 'Every weekday';
+                else if (r.DailyPattern === 'WeekendDay') s = 'Every weekend day';
+                else s = n === 1 ? 'Every day' : `Every ${n} days`;
+            } else if (r.FrequencyType === 'Weekly') {
+                const days = (r.WeeklyDays || []).join(', ');
+                s = `${n === 1 ? 'Every week' : `Every ${n} weeks`}${days ? ' on ' + days : ''}`;
+            } else if (r.FrequencyType === 'Monthly') {
+                if (r.MonthlyPattern === 'OrdinalWeekday') {
+                    s = `${r.OrdinalPosition || ''} ${r.OrdinalWeekday || ''} ${n === 1 ? 'each month' : `every ${n} months`}`.trim();
+                } else {
+                    const days = (r.MonthlyDays || []).map(d => d.IsLastDay ? 'Last Day' : d.DayOfMonth).join(', ');
+                    s = `${days || 'Selected day(s)'} ${n === 1 ? 'each month' : `every ${n} months`}`;
+                }
+            } else if (r.FrequencyType === 'Yearly') {
+                if (r.YearlyPattern === 'OrdinalWeekday') {
+                    s = `${r.OrdinalPosition || ''} ${r.OrdinalWeekday || ''} of month ${r.YearMonth || ''} ${n === 1 ? 'each year' : `every ${n} years`}`.trim();
+                } else {
+                    s = `Month ${r.YearMonth || ''}, day ${r.YearDay || ''} ${n === 1 ? 'each year' : `every ${n} years`}`.trim();
+                }
+            }
+            if (r.RangeType === 'NoEnd') s += ' • No end';
+            else if (r.RangeType === 'OccurrenceCount') s += ` • ${r.OccurrenceCount} occurrence(s)`;
+            else if (r.RangeType === 'EndDate') s += ' • End on date';
+            return s;
+        }
+
+        function syncFrequencySummary() {
+            document.getElementById('frequencySummary').value = recurrenceSummary(recurrenceState);
+        }
+
+        function showFrequencyMessage(text, type='error') {
+            const el = document.getElementById('frequencyMessage');
+            el.textContent = text;
+            el.className = `message show ${type}`;
+        }
+
+        function clearFrequencyMessage() {
+            const el = document.getElementById('frequencyMessage');
+            el.textContent = '';
+            el.className = 'message';
+        }
+
+        function openFrequencyModal() {
+            const begin = document.getElementById('dateBegin').value;
+            if (!begin) {
+                showMessage('Enter Date Begin before selecting Frequency.', 'error');
+                document.getElementById('dateBegin').focus();
+                return;
+            }
+            document.getElementById('freqBegin').value = begin;
+            document.getElementById('freqEnd').value = document.getElementById('dateEnd').value || '';
+            loadRecurrenceControls(recurrenceState);
+            document.getElementById('frequencyModal').classList.add('show');
+            document.getElementById('frequencyModal').setAttribute('aria-hidden','false');
+            clearFrequencyMessage();
+            document.getElementById('frequencyPreview').style.display = 'none';
+        }
+
+        function closeFrequencyModal() {
+            document.getElementById('frequencyModal').classList.remove('show');
+            document.getElementById('frequencyModal').setAttribute('aria-hidden','true');
+        }
+
+        function loadRecurrenceControls(r) {
+            document.getElementById('frequencyType').value = r.FrequencyType || 'OneTime';
+            renderPatternControls();
+            fillPatternValues(r);
+            const range = r.RangeType || (r.FrequencyType === 'OneTime' ? null : 'NoEnd');
+            document.querySelectorAll('input[name="rangeType"]').forEach(x => {
+                x.checked = x.value === range;
+            });
+            document.getElementById('occurrenceCount').value = r.OccurrenceCount || 1;
+            toggleRangeBox();
+        }
+
+        function renderPatternControls() {
+            const type = document.getElementById('frequencyType').value;
+            const box = document.getElementById('patternBox');
+            let html = '';
+
+            if (type === 'OneTime') {
+                html = '<strong>One Time</strong><p>The Begin Date is the only occurrence date.</p>';
+            } else if (type === 'Daily') {
+                html = `
+                    <strong>Daily Pattern</strong>
+                    <div class="pattern-row">
+                        <label><input type="radio" name="dailyPattern" value="Interval" checked> Every</label>
+                        <input id="dailyInterval" type="number" min="1" step="1" value="1">
+                        <span>day(s)</span>
+                    </div>
+                    <div class="pattern-row">
+                        <label><input type="radio" name="dailyPattern" value="Weekday"> Every weekday (Monday-Friday)</label>
+                    </div>
+                    <div class="pattern-row">
+                        <label><input type="radio" name="dailyPattern" value="WeekendDay"> Every weekend day (Saturday/Sunday)</label>
+                    </div>`;
+            } else if (type === 'Weekly') {
+                html = `
+                    <strong>Weekly Pattern</strong>
+                    <div class="pattern-row">
+                        <span>Every</span>
+                        <input id="weeklyInterval" type="number" min="1" step="1" value="1">
+                        <span>week(s) on:</span>
+                    </div>
+                    <div class="weekday-grid">
+                        ${WEEKDAYS.map(d => `<label><input type="checkbox" name="weeklyDay" value="${d}"> ${d}</label>`).join('')}
+                    </div>`;
+            } else if (type === 'Monthly') {
+                html = `
+                    <strong>Monthly Pattern</strong>
+                    <div class="pattern-row">
+                        <span>Every</span>
+                        <input id="monthlyInterval" type="number" min="1" step="1" value="1">
+                        <span>month(s)</span>
+                    </div>
+                    <div class="pattern-row">
+                        <label><input type="radio" name="monthlyPattern" value="NumberedDays" checked> Numbered day(s)</label>
+                        <label><input type="radio" name="monthlyPattern" value="OrdinalWeekday"> Ordinal weekday</label>
+                    </div>
+                    <div id="monthlyNumbered">
+                        <div class="monthday-grid">
+                            ${Array.from({length:31}, (_,i)=>i+1).map(d => `<label><input type="checkbox" name="monthDay" value="${d}"> ${d}</label>`).join('')}
+                            <label><input type="checkbox" name="monthDay" value="Last"> Last Day</label>
+                        </div>
+                    </div>
+                    <div id="monthlyOrdinal" class="pattern-row" style="display:none;">
+                        <select id="monthlyOrdinalPosition">${ORDINALS.map(x=>`<option>${x}</option>`).join('')}</select>
+                        <select id="monthlyOrdinalWeekday">${WEEKDAYS.map(x=>`<option>${x}</option>`).join('')}</select>
+                    </div>`;
+            } else if (type === 'Yearly') {
+                html = `
+                    <strong>Yearly Pattern</strong>
+                    <div class="pattern-row">
+                        <span>Every</span>
+                        <input id="yearlyInterval" type="number" min="1" step="1" value="1">
+                        <span>year(s)</span>
+                    </div>
+                    <div class="pattern-row">
+                        <label><input type="radio" name="yearlyPattern" value="SpecificDate" checked> Specific date</label>
+                        <label><input type="radio" name="yearlyPattern" value="OrdinalWeekday"> Ordinal weekday</label>
+                    </div>
+                    <div id="yearSpecific" class="pattern-row">
+                        <label>Month <input id="yearMonth" type="number" min="1" max="12" value="1"></label>
+                        <label>Day <input id="yearDay" type="number" min="1" max="31" value="1"></label>
+                    </div>
+                    <div id="yearOrdinal" class="pattern-row" style="display:none;">
+                        <select id="yearOrdinalPosition">${ORDINALS.map(x=>`<option>${x}</option>`).join('')}</select>
+                        <select id="yearOrdinalWeekday">${WEEKDAYS.map(x=>`<option>${x}</option>`).join('')}</select>
+                        <label>Month <input id="yearOrdinalMonth" type="number" min="1" max="12" value="1"></label>
+                    </div>`;
+            }
+            box.innerHTML = html;
+
+            box.querySelectorAll('input[name="monthlyPattern"]').forEach(x =>
+                x.addEventListener('change', toggleMonthlyPattern)
+            );
+            box.querySelectorAll('input[name="yearlyPattern"]').forEach(x =>
+                x.addEventListener('change', toggleYearlyPattern)
+            );
+        }
+
+        function fillPatternValues(r) {
+            const type = r.FrequencyType;
+            if (type === 'Daily') {
+                const p = r.DailyPattern || 'Interval';
+                const radio = document.querySelector(`input[name="dailyPattern"][value="${p}"]`);
+                if (radio) radio.checked = true;
+                if (document.getElementById('dailyInterval')) document.getElementById('dailyInterval').value = r.IntervalNumber || 1;
+            } else if (type === 'Weekly') {
+                document.getElementById('weeklyInterval').value = r.IntervalNumber || 1;
+                (r.WeeklyDays || []).forEach(d => {
+                    const cb = document.querySelector(`input[name="weeklyDay"][value="${d}"]`);
+                    if (cb) cb.checked = true;
+                });
+            } else if (type === 'Monthly') {
+                document.getElementById('monthlyInterval').value = r.IntervalNumber || 1;
+                const p = r.MonthlyPattern || 'NumberedDays';
+                const radio = document.querySelector(`input[name="monthlyPattern"][value="${p}"]`);
+                if (radio) radio.checked = true;
+                (r.MonthlyDays || []).forEach(d => {
+                    const val = d.IsLastDay ? 'Last' : String(d.DayOfMonth);
+                    const cb = document.querySelector(`input[name="monthDay"][value="${val}"]`);
+                    if (cb) cb.checked = true;
+                });
+                if (r.OrdinalPosition) document.getElementById('monthlyOrdinalPosition').value = r.OrdinalPosition;
+                if (r.OrdinalWeekday) document.getElementById('monthlyOrdinalWeekday').value = r.OrdinalWeekday;
+                toggleMonthlyPattern();
+            } else if (type === 'Yearly') {
+                document.getElementById('yearlyInterval').value = r.IntervalNumber || 1;
+                const p = r.YearlyPattern || 'SpecificDate';
+                const radio = document.querySelector(`input[name="yearlyPattern"][value="${p}"]`);
+                if (radio) radio.checked = true;
+                if (p === 'SpecificDate') {
+                    document.getElementById('yearMonth').value = r.YearMonth || 1;
+                    document.getElementById('yearDay').value = r.YearDay || 1;
+                } else {
+                    document.getElementById('yearOrdinalMonth').value = r.YearMonth || 1;
+                    if (r.OrdinalPosition) document.getElementById('yearOrdinalPosition').value = r.OrdinalPosition;
+                    if (r.OrdinalWeekday) document.getElementById('yearOrdinalWeekday').value = r.OrdinalWeekday;
+                }
+                toggleYearlyPattern();
+            }
+        }
+
+        function toggleMonthlyPattern() {
+            const p = document.querySelector('input[name="monthlyPattern"]:checked')?.value;
+            const n = document.getElementById('monthlyNumbered');
+            const o = document.getElementById('monthlyOrdinal');
+            if (n) n.style.display = p === 'NumberedDays' ? 'block' : 'none';
+            if (o) o.style.display = p === 'OrdinalWeekday' ? 'flex' : 'none';
+        }
+
+        function toggleYearlyPattern() {
+            const p = document.querySelector('input[name="yearlyPattern"]:checked')?.value;
+            const s = document.getElementById('yearSpecific');
+            const o = document.getElementById('yearOrdinal');
+            if (s) s.style.display = p === 'SpecificDate' ? 'flex' : 'none';
+            if (o) o.style.display = p === 'OrdinalWeekday' ? 'flex' : 'none';
+        }
+
+        function toggleRangeBox() {
+            const type = document.getElementById('frequencyType').value;
+            document.getElementById('rangeBox').style.display = type === 'OneTime' ? 'none' : 'block';
+        }
+
+        function readRecurrenceControls() {
+            const type = document.getElementById('frequencyType').value;
+            const r = defaultRecurrence();
+            r.FrequencyType = type;
+
+            if (type === 'OneTime') return r;
+
+            const rangeType = document.querySelector('input[name="rangeType"]:checked')?.value || 'NoEnd';
+            r.RangeType = rangeType;
+            r.OccurrenceCount = rangeType === 'OccurrenceCount'
+                ? Number(document.getElementById('occurrenceCount').value || 0)
+                : null;
+
+            if (type === 'Daily') {
+                r.DailyPattern = document.querySelector('input[name="dailyPattern"]:checked')?.value || 'Interval';
+                r.IntervalNumber = r.DailyPattern === 'Interval'
+                    ? Number(document.getElementById('dailyInterval').value || 1)
+                    : 1;
+            } else if (type === 'Weekly') {
+                r.IntervalNumber = Number(document.getElementById('weeklyInterval').value || 1);
+                r.WeeklyDays = [...document.querySelectorAll('input[name="weeklyDay"]:checked')].map(x => x.value);
+            } else if (type === 'Monthly') {
+                r.IntervalNumber = Number(document.getElementById('monthlyInterval').value || 1);
+                r.MonthlyPattern = document.querySelector('input[name="monthlyPattern"]:checked')?.value || 'NumberedDays';
+                if (r.MonthlyPattern === 'NumberedDays') {
+                    r.MonthlyDays = [...document.querySelectorAll('input[name="monthDay"]:checked')].map(x =>
+                        x.value === 'Last'
+                            ? { DayOfMonth: null, IsLastDay: 1 }
+                            : { DayOfMonth: Number(x.value), IsLastDay: 0 }
+                    );
+                } else {
+                    r.OrdinalPosition = document.getElementById('monthlyOrdinalPosition').value;
+                    r.OrdinalWeekday = document.getElementById('monthlyOrdinalWeekday').value;
+                }
+            } else if (type === 'Yearly') {
+                r.IntervalNumber = Number(document.getElementById('yearlyInterval').value || 1);
+                r.YearlyPattern = document.querySelector('input[name="yearlyPattern"]:checked')?.value || 'SpecificDate';
+                if (r.YearlyPattern === 'SpecificDate') {
+                    r.YearMonth = Number(document.getElementById('yearMonth').value || 0);
+                    r.YearDay = Number(document.getElementById('yearDay').value || 0);
+                } else {
+                    r.YearMonth = Number(document.getElementById('yearOrdinalMonth').value || 0);
+                    r.OrdinalPosition = document.getElementById('yearOrdinalPosition').value;
+                    r.OrdinalWeekday = document.getElementById('yearOrdinalWeekday').value;
+                }
+            }
+            return r;
+        }
+
+        async function previewRecurrence(useIt=false) {
+            clearFrequencyMessage();
+            const r = readRecurrenceControls();
+            const start = document.getElementById('dateBegin').value;
+            const end = document.getElementById('dateEnd').value || null;
+
+            try {
+                const data = await apiFetch('/budget/recurrence/preview', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        StartDate: start,
+                        EndDate: end,
+                        Recurrence: r
+                    })
+                });
+
+                if (r.RangeType === 'OccurrenceCount' && data.EndDate) {
+                    document.getElementById('dateEnd').value = data.EndDate;
+                    document.getElementById('freqEnd').value = data.EndDate;
+                } else if (r.FrequencyType === 'OneTime' || r.RangeType === 'NoEnd') {
+                    document.getElementById('dateEnd').value = '';
+                    document.getElementById('freqEnd').value = '';
+                }
+
+                const p = document.getElementById('frequencyPreview');
+                const dates = data.Occurrences || [];
+                p.innerHTML = `<strong>Occurrence preview:</strong><br>${dates.length ? dates.join(', ') : 'No occurrences in preview range.'}${data.Truncated ? '<br>Preview truncated at 100 dates.' : ''}`;
+                p.style.display = 'block';
+
+                if (useIt) {
+                    recurrenceState = r;
+                    syncFrequencySummary();
+                    closeFrequencyModal();
+                } else {
+                    showFrequencyMessage('Frequency is valid.', 'success');
+                }
+            } catch (err) {
+                showFrequencyMessage(err.message, 'error');
+            }
+        }
+
+        document.getElementById('frequencyType').addEventListener('change', () => {
+            renderPatternControls();
+            toggleRangeBox();
+            document.querySelectorAll('input[name="rangeType"]').forEach(x => x.checked = x.value === 'NoEnd');
+        });
+        document.getElementById('frequencyClose').addEventListener('click', closeFrequencyModal);
+        document.getElementById('cancelFrequency').addEventListener('click', closeFrequencyModal);
+        document.getElementById('previewFrequency').addEventListener('click', () => previewRecurrence(false));
+        document.getElementById('saveFrequency').addEventListener('click', () => previewRecurrence(true));
+        document.getElementById('frequencyModal').addEventListener('click', e => {
+            if (e.target.id === 'frequencyModal') closeFrequencyModal();
+        });
+
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!requireLogin()) return;
+
+            syncFrequencySummary();
+            await loadDescriptions();
+            await loadRecords();
+
+            const requestedId = getRequestedRecordId();
+
+            if (requestedId === 'invalid') {
+                showMessage('The requested record ID is invalid.', 'error');
+                return;
+            }
+
+            if (requestedId) {
+                const row = document.querySelector(`#recordsBody tr[data-id="${requestedId}"]`);
+                await editRecord(requestedId, row || null);
+            }
+        });
+    </script>
+</body>
+</html>
