@@ -94,7 +94,7 @@ function bool(v, def=false){
   return (v===true||v===1||v==='1'||v==='true'||v==='on')?1:0;
 }
 function text(v){ if(v===undefined||v===null) return null; const s=String(v).trim(); return s||null; }
-function money(v){ if(v===undefined||v===null||v==='') return null; const n=Number(v); return Number.isFinite(n)?Math.ceil(n):null; }
+function money(v){ if(v===undefined||v===null||v==='') return null; const n=Number(v); return Number.isFinite(n)?Number(n.toFixed(2)):null; }
 
 function ordinalDate(y,m,ordinal,weekday){
   const target=DAY_INDEX[weekday];

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wonderful-apps-cache-v9';
+const CACHE_NAME = 'wonderful-apps-cache-v8';
 
 const HTML_PAGES = [
   "/index.html",
@@ -30,8 +30,6 @@ const HTML_PAGES = [
   "/BestimateAllowanceForm.html",
   "/BcardForm.html",
   "/Breports.html",
-  "/BinReport.html",
-  "/BoutReport.html",
   "/BsubscriptionReport.html",
   "/BloanReport.html",
   "/BleaseRentReport.html",
@@ -75,8 +73,6 @@ const urlsToCache = [
   "/BestimateAllowanceForm.html",
   "/BcardForm.html",
   "/Breports.html",
-  "/BinReport.html",
-  "/BoutReport.html",
   "/BsubscriptionReport.html",
   "/BloanReport.html",
   "/BleaseRentReport.html",

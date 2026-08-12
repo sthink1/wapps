@@ -577,7 +577,8 @@
             }
         }
 
-        function escapeHtml(s) {
+        function roundUpAmount(v){if(v===null||v===undefined)return v;if(v==='')return '';const n=Number(v);return Number.isFinite(n)?Math.ceil(n):v}
+function escapeHtml(s) {
             return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
 
@@ -641,7 +642,7 @@
                 Description: document.getElementById('description').value,
                 DateBegin: document.getElementById('dateBegin').value,
                 DateEnd: document.getElementById('dateEnd').value || null,
-                Amount: document.getElementById('amount').value,
+                Amount: roundUpAmount(document.getElementById('amount').value),
                 Active: document.getElementById('active').checked,
                 Estimated: document.getElementById('estimated').checked,
                 Note: document.getElementById('note').value.trim() || null,

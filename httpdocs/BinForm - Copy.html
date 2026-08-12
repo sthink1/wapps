@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wonderful Apps - Budget Out</title>
+    <title>Wonderful Apps - Budget In</title>
 
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -284,24 +284,19 @@
 <body>
     <div class="container">
         <header class="page-header">
-            <h1>Budget - Out</h1>
+            <h1>Budget - In</h1>
             <div class="header-actions">
                 <button type="button" id="budgetBtn">Budget Page</button>
             </div>
         </header>
 
         
-        <div class="instructions">
-            <p><strong><u>Do not use for subscriptions, loan payments, rents or leases.</u></strong></p>
-            <p>Use this page for payments to a particular person or company. Use Estimate/Allowance for general items such as groceries, gasoline, and miscellaneous spending.</p>
-        </div>
-    
 
         <section class="section section-form">
-            <h2>Out Item</h2>
+            <h2>In Item</h2>
             <form id="entryForm">
                 <div class="form-grid">
-                    <label for="party">To</label>
+                    <label for="party">From</label>
                     <input type="text" id="party" maxlength="100" required>
 
                     <label for="description">Description</label>
@@ -347,7 +342,7 @@
         </section>
 
         <section class="section section-records">
-            <h2>Existing Out Items</h2>
+            <h2>Existing In Items</h2>
             <p style="text-align:center; margin-top:0;">Click a row to edit that item.</p>
             <div class="table-shell">
                 <table aria-hidden="true">
@@ -362,7 +357,7 @@
                     </colgroup>
                     <thead>
                         <tr>
-                            <th>To</th>
+                            <th>From</th>
                             <th>Description</th>
                             <th>Date Begin</th>
                             <th>Date End</th>
@@ -443,7 +438,7 @@
     <div id="descriptionModal" class="modal" aria-hidden="true">
         <div class="modal-content narrow">
             <div class="modal-top">
-                <h2>Add Out Description</h2>
+                <h2>Add In Description</h2>
                 <span class="close-x" id="descriptionClose">&times;</span>
             </div>
             <label for="newDescription"><strong>Description</strong></label>
@@ -533,7 +528,7 @@
 
         async function loadDescriptions(selectedText='') {
             try {
-                const rows = await apiFetch('/budget/descriptions?inOrOut=Out');
+                const rows = await apiFetch('/budget/descriptions?inOrOut=In');
                 const sel = document.getElementById('description');
                 sel.innerHTML = '<option value="">Select a description</option>';
                 rows.forEach(r => {
@@ -556,25 +551,25 @@
 
         async function loadRecords() {
             try {
-                const rows = await apiFetch('/budget/out?status=all');
+                const rows = await apiFetch('/budget/in?status=all');
                 const body = document.getElementById('recordsBody');
                 body.innerHTML = '';
                 if (!rows.length) {
-                    body.innerHTML = '<tr class="empty-row"><td colspan="7">No Out items have been entered.</td></tr>';
+                    body.innerHTML = '<tr class="empty-row"><td colspan="7">No In items have been entered.</td></tr>';
                     return;
                 }
                 rows.forEach(r => {
                     const tr = document.createElement('tr');
-                    tr.dataset.id = r.UserOutID;
+                    tr.dataset.id = r.UserInID;
                     tr.innerHTML = `
-                        <td>${escapeHtml(r.ToName || '')}</td>
+                        <td>${escapeHtml(r.FromName || '')}</td>
                         <td>${escapeHtml(r.Description || '')}</td>
                         <td>${r.DateBegin || ''}</td>
                         <td>${r.DateEnd || ''}</td>
                         <td>${moneyDisplay(r.Amount)}</td>
                         <td>${Number(r.Active) ? 'Yes' : 'No'}</td>
                         <td>${Number(r.Estimated) ? 'Yes' : 'No'}</td>`;
-                    tr.addEventListener('click', () => editRecord(r.UserOutID, tr));
+                    tr.addEventListener('click', () => editRecord(r.UserInID, tr));
                     body.appendChild(tr);
                 });
             } catch (err) {
@@ -582,8 +577,7 @@
             }
         }
 
-        function roundUpAmount(v){if(v===null||v===undefined)return v;if(v==='')return '';const n=Number(v);return Number.isFinite(n)?Math.ceil(n):v}
-function escapeHtml(s) {
+        function escapeHtml(s) {
             return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
 
@@ -604,12 +598,12 @@ function escapeHtml(s) {
         async function editRecord(id, tr) {
             clearMessage();
             try {
-                const r = await apiFetch(`/budget/out/${id}`);
+                const r = await apiFetch(`/budget/in/${id}`);
                 selectedId = Number(id);
                 document.querySelectorAll('#recordsBody tr').forEach(x => x.classList.remove('selected'));
                 if (tr) tr.classList.add('selected');
 
-                document.getElementById('party').value = r.ToName || '';
+                document.getElementById('party').value = r.FromName || '';
                 await loadDescriptions(r.Description || '');
                 document.getElementById('dateBegin').value = r.DateBegin || '';
                 document.getElementById('dateEnd').value = r.DateEnd || '';
@@ -643,11 +637,11 @@ function escapeHtml(s) {
 
         function formPayload() {
             return {
-                ToName: document.getElementById('party').value.trim(),
+                FromName: document.getElementById('party').value.trim(),
                 Description: document.getElementById('description').value,
                 DateBegin: document.getElementById('dateBegin').value,
                 DateEnd: document.getElementById('dateEnd').value || null,
-                Amount: roundUpAmount(document.getElementById('amount').value),
+                Amount: document.getElementById('amount').value,
                 Active: document.getElementById('active').checked,
                 Estimated: document.getElementById('estimated').checked,
                 Note: document.getElementById('note').value.trim() || null,
@@ -660,13 +654,13 @@ function escapeHtml(s) {
             clearMessage();
             const payload = formPayload();
 
-            if (!payload.ToName || !payload.Description || !payload.DateBegin || payload.Amount === '') {
+            if (!payload.FromName || !payload.Description || !payload.DateBegin || payload.Amount === '') {
                 showMessage('Complete all required fields before saving.', 'error');
                 return;
             }
 
             try {
-                const path = selectedId ? `/budget/out/${selectedId}` : '/budget/out';
+                const path = selectedId ? `/budget/in/${selectedId}` : '/budget/in';
                 const method = selectedId ? 'PUT' : 'POST';
                 const result = await apiFetch(path, { method, body: JSON.stringify(payload) });
                 showMessage(result.message ? result.message.replace(/\(be\)$/,'') : 'Saved.', 'success');
@@ -679,9 +673,9 @@ function escapeHtml(s) {
 
         document.getElementById('deleteBtn').addEventListener('click', async () => {
             if (!selectedId) return;
-            if (!confirm('Delete this Out item?')) return;
+            if (!confirm('Delete this In item?')) return;
             try {
-                const result = await apiFetch(`/budget/out/${selectedId}`, {method:'DELETE'});
+                const result = await apiFetch(`/budget/in/${selectedId}`, {method:'DELETE'});
                 resetForm();
                 await loadRecords();
                 showMessage(result.message ? result.message.replace(/\(be\)$/,'') : 'Deleted.', 'success');
@@ -723,7 +717,7 @@ function escapeHtml(s) {
             try {
                 await apiFetch('/budget/descriptions', {
                     method:'POST',
-                    body:JSON.stringify({InOrOut:'Out', Description:text})
+                    body:JSON.stringify({InOrOut:'In', Description:text})
                 });
                 await loadDescriptions(text);
                 closeDescriptionModal();
