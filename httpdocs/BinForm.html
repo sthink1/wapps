@@ -523,7 +523,7 @@
 
         function moneyDisplay(v) {
             const n = Number(v || 0);
-            return n.toLocaleString('en-US', {style:'currency', currency:'USD'});
+            return Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
         }
 
         async function loadDescriptions(selectedText='') {

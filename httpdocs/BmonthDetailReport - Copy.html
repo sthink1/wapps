@@ -440,8 +440,9 @@
         }
 
         function moneyDisplay(value) {
-            return Math.round(Number(value || 0)).toLocaleString('en-US', {
-                maximumFractionDigits: 0
+            return Number(value || 0).toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD'
             });
         }
 

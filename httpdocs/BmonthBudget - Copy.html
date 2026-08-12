@@ -443,7 +443,7 @@
             document.getElementById('toMonth').value = addMonthsToYM(from, 11);
         }
         function moneyDisplay(v) {
-            return Math.round(Number(v || 0)).toLocaleString('en-US', { maximumFractionDigits: 0 });
+            return Number(v || 0).toLocaleString('en-US', {style:'currency', currency:'USD'});
         }
         async function loadSummary() {
             clearPageMessage();
