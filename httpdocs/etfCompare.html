@@ -540,7 +540,15 @@ function printModal() {
   printWindow.document.write('</head><body>');
   printWindow.document.write('<h2>Investment Allocation - ' + new Date().toLocaleDateString() + '</h2>');
   printWindow.document.write(modalContent.innerHTML);
-  printWindow.document.write('</body></html>');
+  printWindow.document.write('<footer>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td>Copyright © 2026 Wonderful Apps Company - All Rights Reserved</td>
+            <td style="text-align: center; border: 1px solid black;">Designed by MPG Jr</td>
+        </tr>
+    </table>
+</footer>
+</body></html>');
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
