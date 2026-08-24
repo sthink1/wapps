@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Tree - New Person</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <style>
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background-color: #f4f4f4;
+            padding: 20px 12px 55px;
+        }
+        .page-shell {
+            width: min(760px, 100%);
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.1);
+            overflow: hidden;
+        }
+        header {
+            text-align: center;
+            padding: 18px 20px 10px;
+        }
+        h1 {
+            margin: 0 0 12px;
+            font-size: 30px;
+        }
+        .nav-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button, .button-link {
+            appearance: none;
+            border: 0;
+            border-radius: 4px;
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        button:hover, .button-link:hover { background: #45a049; }
+        button.secondary, .button-link.secondary { background: #777; }
+        button.secondary:hover, .button-link.secondary:hover { background: #666; }
+        button:disabled { opacity: .55; cursor: not-allowed; }
+        main {
+            background: aqua;
+            padding: 24px;
+            min-height: 300px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 18px;
+            margin: 0 auto 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.12);
+        }
+        .status {
+            min-height: 24px;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+        .error { color: #a00000; }
+        .success { color: #116611; }
+        footer {
+            background-color: lightgray;
+            min-height: 35px;
+            padding: 6px 8px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+        footer table {
+            width: min(760px, 100%);
+            margin: 0 auto;
+            border-collapse: collapse;
+        }
+        footer td { text-align: center; }
+        @media (max-width: 560px) {
+            main { padding: 16px 10px; }
+            h1 { font-size: 26px; }
+            footer td { display: block; border: 0 !important; }
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 16px;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .field.full { grid-column: 1 / -1; }
+        label { font-weight: bold; }
+        input, select {
+            width: 100%;
+            padding: 9px 10px;
+            font-size: 16px;
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            background: white;
+        }
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-height: 40px;
+        }
+        .checkbox-row input { width: auto; }
+        .form-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .note {
+            font-size: 13px;
+            color: #555;
+            margin: 0 0 16px;
+        }
+        @media (max-width: 620px) {
+            form { grid-template-columns: 1fr; }
+            .field.full, .form-actions { grid-column: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-shell">
+        <header>
+            <h1>NEW PERSON</h1>
+            <div class="nav-row">
+                <a class="button-link secondary" href="FamilyTree.html">BACK</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="card">
+                <p class="note">Enter the information known for this person. Fields may be left blank when the information is unknown.</p>
+
+                <form id="personForm" novalidate>
+                    <div class="field">
+                        <label for="FirstName">First Name</label>
+                        <input id="FirstName" name="FirstName" type="text" maxlength="100">
+                    </div>
+
+                    <div class="field">
+                        <label for="MiddleName">Middle Name</label>
+                        <input id="MiddleName" name="MiddleName" type="text" maxlength="100">
+                    </div>
+
+                    <div class="field">
+                        <label for="LastName">Last Name</label>
+                        <input id="LastName" name="LastName" type="text" maxlength="100">
+                    </div>
+
+                    <div class="field">
+                        <label for="SuffixName">Suffix Name</label>
+                        <input id="SuffixName" name="SuffixName" type="text" maxlength="50" placeholder="Jr., Sr., III">
+                    </div>
+
+                    <div class="field">
+                        <label for="NickName">Nick Name</label>
+                        <input id="NickName" name="NickName" type="text" maxlength="100">
+                    </div>
+
+                    <div class="field">
+                        <label for="MaidenName">Maiden Name</label>
+                        <input id="MaidenName" name="MaidenName" type="text" maxlength="100">
+                    </div>
+
+                    <div class="field">
+                        <label for="Gender">Gender</label>
+                        <select id="Gender" name="Gender">
+                            <option value="">-- Select --</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                            <option value="Unknown">Unknown</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="BirthDate">Birth Date</label>
+                        <input id="BirthDate" name="BirthDate" type="date">
+                    </div>
+
+                    <div class="field full">
+                        <label for="BirthPlace">Birth Place</label>
+                        <input id="BirthPlace" name="BirthPlace" type="text" maxlength="255">
+                    </div>
+
+                    <div class="field">
+                        <label>Died</label>
+                        <div class="checkbox-row">
+                            <input id="Died" name="Died" type="checkbox">
+                            <label for="Died" style="font-weight:normal;">Person is deceased</label>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="DeathDate">Death Date</label>
+                        <input id="DeathDate" name="DeathDate" type="date" disabled>
+                    </div>
+
+                    <div class="form-actions">
+                        <button id="savePersonBtn" type="submit">SAVE PERSON</button>
+                        <button id="clearBtn" type="button" class="secondary">CLEAR</button>
+                    </div>
+                </form>
+
+                <div id="statusMessage" class="status" aria-live="polite"></div>
+            </section>
+        </main>
+    </div>
+
+
+    <footer>
+        <table>
+            <tr>
+                <td>Copyright © 2026 Wonderful Apps Company - All Rights Reserved</td>
+                <td style="text-align:center; border:1px solid black;">Designed by MPG Jr</td>
+            </tr>
+        </table>
+    </footer>
+
+    <script src="js/FTPersonNew.js"></script>
+</body>
+</html>
