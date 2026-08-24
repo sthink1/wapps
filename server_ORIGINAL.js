@@ -18,7 +18,6 @@ const trackRoutes = require('./routes/track');
 const interestEarnedRoutes = require('./routes/interestEarned');
 const etfRoutes = require('./routes/etf');
 const budgetRoutes = require('./routes/budget');
-const familyTreeRoutes = require('./routes/familyTree');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -37,12 +36,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const multipartNone = multer().none();
-app.use((req, res, next) => {
-  // FamilyTree profile upload uses its own multer middleware.
-  if (req.path.startsWith('/familytree/') && req.is('multipart/form-data')) return next();
-  return multipartNone(req, res, next);
-});
+app.use(multer().none());
 
 // Serve static files with cache control
 app.use(express.static(path.join(__dirname, 'httpdocs'), {
@@ -93,7 +87,6 @@ app.use('/track', trackRoutes);
 app.use('/interestEarned', interestEarnedRoutes);
 app.use('/etf', etfRoutes);
 app.use('/budget', budgetRoutes);
-app.use('/familytree', familyTreeRoutes);
 app.use('/api/geocode', require('./routes/geocode'));
 
 // Catch-all route for undefined endpoints

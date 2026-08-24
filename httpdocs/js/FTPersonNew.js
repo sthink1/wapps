@@ -1,160 +1,22 @@
-
-const BASE_URL =
-    window.location.hostname === 'localhost' && window.location.port !== '8080'
-        ? 'http://localhost:8080'
-        : window.location.origin;
-
-function getToken() {
-    return localStorage.getItem('token');
-}
-
-function requireLogin() {
-    const token = getToken();
-    if (!token) {
-        window.location.href = 'login.html';
-        return null;
-    }
-    return token;
-}
-
-function authHeaders(includeJson = true) {
-    const token = getToken();
-    const headers = { Authorization: `Bearer ${token}` };
-    if (includeJson) headers['Content-Type'] = 'application/json';
-    return headers;
-}
-
-function showStatus(message, type = '') {
-    const el = document.getElementById('statusMessage');
-    if (!el) return;
-    el.textContent = message || '';
-    el.className = `status ${type}`.trim();
-}
-
-function trackPageView() {
-    const token = getToken();
-    if (!token) return;
-
-    fetch(`${BASE_URL}/track/log/page`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ page: window.location.pathname })
-    }).catch(() => {
-        // Tracking must never prevent FamilyTree use.
-    });
-}
-
-function nullIfBlank(value) {
-    const trimmed = String(value ?? '').trim();
-    return trimmed === '' ? null : trimmed;
-}
-
-function collectPersonForm() {
-    const died = document.getElementById('Died').checked;
-
-    return {
-        FirstName: nullIfBlank(document.getElementById('FirstName').value),
-        MiddleName: nullIfBlank(document.getElementById('MiddleName').value),
-        LastName: nullIfBlank(document.getElementById('LastName').value),
-        SuffixName: nullIfBlank(document.getElementById('SuffixName').value),
-        NickName: nullIfBlank(document.getElementById('NickName').value),
-        MaidenName: nullIfBlank(document.getElementById('MaidenName').value),
-        Gender: nullIfBlank(document.getElementById('Gender').value),
-        BirthDate: nullIfBlank(document.getElementById('BirthDate').value),
-        BirthPlace: nullIfBlank(document.getElementById('BirthPlace').value),
-        Died: died ? 1 : 0,
-        DeathDate: died
-            ? nullIfBlank(document.getElementById('DeathDate').value)
-            : null
-    };
-}
-
-function validatePerson(person) {
-    // We need enough information to make a person distinguishable in search.
-    if (!person.FirstName && !person.LastName) {
-        return 'Enter at least a First Name or Last Name.';
-    }
-
-    if (person.DeathDate && person.BirthDate && person.DeathDate < person.BirthDate) {
-        return 'Death Date cannot be earlier than Birth Date.';
-    }
-
-    return null;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    if (!requireLogin()) return;
-
-    const form = document.getElementById('personForm');
-    const died = document.getElementById('Died');
-    const deathDate = document.getElementById('DeathDate');
-    const saveButton = document.getElementById('savePersonBtn');
-
-    died.addEventListener('change', () => {
-        deathDate.disabled = !died.checked;
-        if (!died.checked) deathDate.value = '';
-    });
-
-    document.getElementById('clearBtn').addEventListener('click', () => {
-        form.reset();
-        deathDate.disabled = true;
-        showStatus('');
-        document.getElementById('FirstName').focus();
-    });
-
-    form.addEventListener('submit', async event => {
-        event.preventDefault();
-
-        const person = collectPersonForm();
-        const validationMessage = validatePerson(person);
-        if (validationMessage) {
-            showStatus(validationMessage, 'error');
-            return;
-        }
-
-        saveButton.disabled = true;
-        showStatus('Saving person...');
-
-        try {
-            // Backend route to be added in routes/familyTree.js.
-            const response = await fetch(`${BASE_URL}/familytree/persons`, {
-                method: 'POST',
-                headers: authHeaders(),
-                body: JSON.stringify(person)
-            });
-
-            let data = {};
-            try {
-                data = await response.json();
-            } catch (_) {
-                // Keep a useful fallback error below.
-            }
-
-            if (!response.ok) {
-                throw new Error(data.message || `Unable to save person (HTTP ${response.status}).`);
-            }
-
-            const personID = data.PersonID ?? data.personID ?? data.personId;
-            if (!personID) {
-                throw new Error('Person was saved, but the server did not return a PersonID.');
-            }
-
-            showStatus(`Person saved. PersonID ${personID}.`, 'success');
-
-            // FTPerson.html will be generated in the next FamilyTree development stage.
-            window.location.href = `FTPerson.html?PersonID=${encodeURIComponent(personID)}`;
-        } catch (error) {
-            console.error(error);
-            showStatus(
-                error.message.includes('404')
-                    ? 'The FamilyTree API has not yet been connected to server.js.'
-                    : error.message,
-                'error'
-            );
-        } finally {
-            saveButton.disabled = false;
-        }
-    });
-
-    trackPageView();
-});
+const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+const getToken=()=>localStorage.getItem('token');
+const auth=(json=true)=>{const h={Authorization:`Bearer ${getToken()}`};if(json)h['Content-Type']='application/json';return h;};
+const $=id=>document.getElementById(id);
+let currentPersonID=null,currentFamilyTreeCode='',activeRelationshipKind=null,dupTimer=null;
+const params=new URLSearchParams(location.search);
+function blank(v){const s=String(v??'').trim();return s||null;}
+function setStatus(m,t=''){ $('statusMessage').textContent=m; $('statusMessage').className=`status ${t}`.trim(); }
+function personName(p){const g=[p.FirstName,p.MiddleName,p.SuffixName].filter(Boolean).join(' ');let n=[p.LastName?`${p.LastName},`:'',g].filter(Boolean).join(' ').trim();const x=[p.NickName,p.MaidenName].filter(Boolean).join(' ');if(x)n+=` (${x})`;return n||`Person ${p.PersonID}`;}
+function collect(){const died=$('Died').checked;return{FirstName:blank($('FirstName').value),MiddleName:blank($('MiddleName').value),LastName:blank($('LastName').value),SuffixName:blank($('SuffixName').value),NickName:blank($('NickName').value),MaidenName:blank($('MaidenName').value),Gender:blank($('Gender').value),BirthDate:blank($('BirthDate').value),BirthPlace:blank($('BirthPlace').value),Died:died?1:0,DeathDate:died?blank($('DeathDate').value):null,familyTreeCode:currentFamilyTreeCode||null};}
+function fill(p){['FirstName','MiddleName','LastName','SuffixName','NickName','MaidenName','Gender','BirthDate','BirthPlace','DeathDate'].forEach(k=>$(k).value=p[k]||'');$('Died').checked=!!Number(p.Died);$('DeathDate').disabled=!$('Died').checked;}
+function lockCore(){document.querySelectorAll('#personForm input,#personForm select').forEach(x=>x.disabled=true);$('checkDuplicatesBtn').disabled=true;$('savePersonBtn').style.display='none';$('clearBtn').style.display='none';}
+function activate(){ $('afterSaveSection').classList.remove('hidden'); $('familyTreeCodeDisplay').textContent=currentFamilyTreeCode; sessionStorage.setItem('familyTreeCode',currentFamilyTreeCode); }
+async function duplicateSearch(){const p=collect();if(!p.FirstName&&!p.LastName&&!p.BirthDate){$('duplicateSection').classList.add('hidden');return;}const qs=new URLSearchParams();['FirstName','LastName','BirthDate','BirthPlace','MaidenName','DeathDate'].forEach(k=>{if(p[k])qs.set(k,p[k]);});const r=await fetch(`${BASE_URL}/familytree/persons/duplicates?${qs}`,{headers:auth(false)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Duplicate search failed');const b=$('duplicateBody');b.innerHTML='';(d.matches||[]).forEach(x=>{const tr=document.createElement('tr');[x.PersonID,personName(x),x.BirthDate||'',x.BirthPlace||'',x.DeathDate||'',x.OldestFamilyTreeCode||''].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});b.appendChild(tr);});$('duplicateSection').classList.toggle('hidden',!(d.matches||[]).length);}
+async function loadExisting(){const id=params.get('PersonID');if(!id)return;currentPersonID=Number(id);currentFamilyTreeCode=params.get('familyTreeCode')||sessionStorage.getItem('familyTreeCode')||'';const r=await fetch(`${BASE_URL}/familytree/persons/${currentPersonID}?familyTreeCode=${encodeURIComponent(currentFamilyTreeCode)}`,{headers:auth(false)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to load person');fill(d.person);lockCore();$('pageTitle').textContent='PERSON SETUP';activate();await Promise.all([loadRelationships(),loadEvents(),loadProfile()]);}
+async function loadRelationships(){const r=await fetch(`${BASE_URL}/familytree/persons/${currentPersonID}/relationships?familyTreeCode=${encodeURIComponent(currentFamilyTreeCode)}`,{headers:auth(false)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to load relationships');const sets={motherList:d.mother||[],fatherList:d.father||[],partnerList:d.partners||[],childList:d.children||[]};Object.entries(sets).forEach(([id,rows])=>{const ul=$(id);ul.innerHTML=rows.length?'':'<li>None entered</li>';rows.forEach(p=>{const li=document.createElement('li');li.textContent=`${p.PersonID} - ${personName(p)}`;ul.appendChild(li);});});}
+async function relationSearch(){const q=$('relationshipSearch').value.trim(),out=$('relationshipResults');out.innerHTML='';if(!q)return;const r=await fetch(`${BASE_URL}/familytree/persons/search?q=${encodeURIComponent(q)}`,{headers:auth(false)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Search failed');(d.results||[]).filter(p=>Number(p.PersonID)!==Number(currentPersonID)).forEach(p=>{const btn=document.createElement('button');btn.textContent=`${p.PersonID} - ${personName(p)}${p.OldestFamilyTreeCode?` [${p.OldestFamilyTreeCode}]`:''}`;btn.style.margin='4px';btn.addEventListener('click',()=>addRelation(p.PersonID));out.appendChild(btn);});if(!out.children.length)out.textContent='No matches.';}
+async function addRelation(relatedPersonID){const r=await fetch(`${BASE_URL}/familytree/relationships`,{method:'POST',headers:auth(),body:JSON.stringify({familyTreeCode:currentFamilyTreeCode,focalPersonID:currentPersonID,relatedPersonID,relationshipKind:activeRelationshipKind})});const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to save relationship');$('relationshipModal').classList.remove('show');await loadRelationships();}
+async function loadEvents(){const r=await fetch(`${BASE_URL}/familytree/persons/${currentPersonID}/events?familyTreeCode=${encodeURIComponent(currentFamilyTreeCode)}`,{headers:auth(false)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to load events');const ul=$('eventList');ul.innerHTML='';(d.events||[]).forEach(e=>{const li=document.createElement('li');li.textContent=`${e.EventType}${e.EventDate?' - '+e.EventDate:''}${e.EventPlace?' - '+e.EventPlace:''}${e.EventDescription?' - '+e.EventDescription:''}`;ul.appendChild(li);});if(!ul.children.length)ul.innerHTML='<li>No events entered</li>';}
+async function loadProfile(){const r=await fetch(`${BASE_URL}/familytree/persons/${currentPersonID}/profile-image?familyTreeCode=${encodeURIComponent(currentFamilyTreeCode)}`,{headers:auth(false)});if(r.status===404)return;const d=await r.json();if(r.ok&&d.url)$('profilePreview').src=d.url;}
+async function finishRelatedPerson(){const focal=params.get('returnPersonID'),kind=params.get('relationshipKind');if(!focal||!kind)return false;const r=await fetch(`${BASE_URL}/familytree/relationships`,{method:'POST',headers:auth(),body:JSON.stringify({familyTreeCode:currentFamilyTreeCode,focalPersonID:Number(focal),relatedPersonID:currentPersonID,relationshipKind:kind})});const d=await r.json();if(!r.ok)throw new Error(d.message||'Person saved but relationship failed');location.href=`FTPersonNew.html?PersonID=${encodeURIComponent(focal)}&familyTreeCode=${encodeURIComponent(currentFamilyTreeCode)}`;return true;}
+document.addEventListener('DOMContentLoaded',async()=>{if(!getToken()){location.href='login.html';return;}currentFamilyTreeCode=params.get('familyTreeCode')||sessionStorage.getItem('familyTreeCode')||'';$('familyTreeCodeDisplay').textContent=currentFamilyTreeCode||'Assigned when saved';$('modeMessage').textContent=currentFamilyTreeCode?'This person will be added to the current Family Tree.':'Saving will create a new Family Tree and assign a FamilyTreeCode.';$('Died').addEventListener('change',()=>{$('DeathDate').disabled=!$('Died').checked;if(!$('Died').checked)$('DeathDate').value='';});['FirstName','LastName','BirthDate','BirthPlace','MaidenName','DeathDate'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(dupTimer);dupTimer=setTimeout(()=>duplicateSearch().catch(console.error),650);}));$('checkDuplicatesBtn').addEventListener('click',()=>duplicateSearch().catch(e=>setStatus(e.message,'error')));$('clearBtn').addEventListener('click',()=>{$('personForm').reset();$('DeathDate').disabled=true;$('duplicateSection').classList.add('hidden');setStatus('');});$('personForm').addEventListener('submit',async e=>{e.preventDefault();const p=collect();if(!p.FirstName&&!p.LastName){setStatus('Enter at least a First Name or Last Name.','error');return;}if(p.BirthDate&&p.DeathDate&&p.DeathDate<p.BirthDate){setStatus('Death Date cannot be earlier than Birth Date.','error');return;}try{setStatus('Saving person...');const r=await fetch(`${BASE_URL}/familytree/persons`,{method:'POST',headers:auth(),body:JSON.stringify(p)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Save failed');currentPersonID=d.PersonID;currentFamilyTreeCode=d.FamilyTreeCode;sessionStorage.setItem('familyTreeCode',currentFamilyTreeCode);if(await finishRelatedPerson())return;lockCore();activate();setStatus(`Saved PersonID ${currentPersonID}. FamilyTreeCode ${currentFamilyTreeCode}.`,'success');await Promise.all([loadRelationships(),loadEvents(),loadProfile()]);}catch(e){setStatus(e.message,'error');}});document.querySelectorAll('[data-rel]').forEach(btn=>btn.addEventListener('click',()=>{activeRelationshipKind=btn.dataset.rel;$('relationshipModalTitle').textContent=`Select ${activeRelationshipKind.toUpperCase()}`;$('relationshipSearch').value='';$('relationshipResults').innerHTML='';$('relationshipModal').classList.add('show');}));$('closeRelationshipModalBtn').addEventListener('click',()=> $('relationshipModal').classList.remove('show'));$('relationshipSearchBtn').addEventListener('click',()=>relationSearch().catch(e=>$('relationshipStatus').textContent=e.message));$('newRelatedPersonBtn').addEventListener('click',()=>{const q=new URLSearchParams({familyTreeCode:currentFamilyTreeCode,returnPersonID:String(currentPersonID),relationshipKind:activeRelationshipKind});location.href=`FTPersonNew.html?${q}`;});$('addEventBtn').addEventListener('click',async()=>{const type=blank($('EventType').value);if(!type){$('eventStatus').textContent='Select an Event Type.';return;}try{const r=await fetch(`${BASE_URL}/familytree/persons/${currentPersonID}/events`,{method:'POST',headers:auth(),body:JSON.stringify({familyTreeCode:currentFamilyTreeCode,eventType:type,eventDate:blank($('EventDate').value),eventPlace:blank($('EventPlace').value),eventDescription:blank($('EventDescription').value)})});const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to add event');$('EventType').value='';$('EventDate').value='';$('EventPlace').value='';$('EventDescription').value='';$('eventStatus').textContent='Event added.';await loadEvents();}catch(e){$('eventStatus').textContent=e.message;}});$('profileImage').addEventListener('change',()=>{const f=$('profileImage').files[0];if(f)$('profilePreview').src=URL.createObjectURL(f);});$('uploadProfileBtn').addEventListener('click',async()=>{const f=$('profileImage').files[0];if(!f){$('profileStatus').textContent='Select an image first.';return;}const fd=new FormData();fd.append('profileImage',f);fd.append('familyTreeCode',currentFamilyTreeCode);try{const r=await fetch(`${BASE_URL}/familytree/persons/${currentPersonID}/profile-image`,{method:'POST',headers:{Authorization:`Bearer ${getToken()}`},body:fd});const d=await r.json();if(!r.ok)throw new Error(d.message||'Upload failed');$('profileStatus').textContent='Profile picture saved.';if(d.url)$('profilePreview').src=d.url;}catch(e){$('profileStatus').textContent=e.message;}});try{await loadExisting();}catch(e){setStatus(e.message,'error');}});
