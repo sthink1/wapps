@@ -221,6 +221,255 @@ function safelyDeleteImage(storageKey) {
     }
 }
 
+
+async function getPersonTree(c, personID) {
+    const [rows] = await c.query(
+        `SELECT ft.FamilyTreeID, ft.FamilyTreeCode
+           FROM FTFamilyTreePersonT ftp
+           JOIN FamilyTreeT ft ON ft.FamilyTreeID=ftp.FamilyTreeID
+          WHERE ftp.PersonID=?
+          ORDER BY ftp.AddedAt ASC, ft.CreatedAt ASC, ft.FamilyTreeID ASC
+          LIMIT 1`,
+        [personID]
+    );
+    return rows[0] || null;
+}
+
+async function adoptTreeForUser(c, userID, targetTree) {
+    const [sourceTrees] = await c.query(
+        `SELECT FamilyTreeID
+           FROM FTFamilyTreeUserT
+          WHERE UserID=? AND IsActive=1 AND FamilyTreeID<>?`,
+        [userID, targetTree.FamilyTreeID]
+    );
+
+    for (const source of sourceTrees) {
+        const sourceID = source.FamilyTreeID;
+
+        // Move only people this user personally added.
+        await c.query(
+            `INSERT IGNORE INTO FTFamilyTreePersonT
+             (FamilyTreeID,PersonID,AddedByUserID,AddedAt,Notes)
+             SELECT ?,PersonID,AddedByUserID,AddedAt,Notes
+               FROM FTFamilyTreePersonT
+              WHERE FamilyTreeID=? AND AddedByUserID=?`,
+            [targetTree.FamilyTreeID, sourceID, userID]
+        );
+
+        // Move parent relationships created by this user.
+        await c.query(
+            `INSERT IGNORE INTO FTParentT
+             (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
+              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+             SELECT ?,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
+                    CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt
+               FROM FTParentT
+              WHERE FamilyTreeID=? AND CreatedByUserID=?`,
+            [targetTree.FamilyTreeID, sourceID, userID]
+        );
+
+        // Move partner relationships created by this user.
+        await c.query(
+            `INSERT IGNORE INTO FTPartnerT
+             (FamilyTreeID,PersonID,PartnerPersonID,RelationshipType,Notes,
+              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+             SELECT ?,PersonID,PartnerPersonID,RelationshipType,Notes,
+                    CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt
+               FROM FTPartnerT
+              WHERE FamilyTreeID=? AND CreatedByUserID=?`,
+            [targetTree.FamilyTreeID, sourceID, userID]
+        );
+
+        await c.query(
+            `DELETE FROM FTParentT
+              WHERE FamilyTreeID=? AND CreatedByUserID=?`,
+            [sourceID, userID]
+        );
+        await c.query(
+            `DELETE FROM FTPartnerT
+              WHERE FamilyTreeID=? AND CreatedByUserID=?`,
+            [sourceID, userID]
+        );
+        await c.query(
+            `DELETE FROM FTFamilyTreePersonT
+              WHERE FamilyTreeID=? AND AddedByUserID=?`,
+            [sourceID, userID]
+        );
+    }
+
+    // One active FamilyTreeCode per user.
+    await c.query(
+        `UPDATE FTFamilyTreeUserT SET IsActive=0
+          WHERE UserID=? AND FamilyTreeID<>?`,
+        [userID, targetTree.FamilyTreeID]
+    );
+
+    await c.query(
+        `INSERT INTO FTFamilyTreeUserT
+         (FamilyTreeID,UserID,JoinedAt,LastActivityAt,IsActive,AddedByUserID)
+         VALUES (?,?,NOW(),NOW(),1,?)
+         ON DUPLICATE KEY UPDATE IsActive=1, LastActivityAt=NOW()`,
+        [targetTree.FamilyTreeID, userID, userID]
+    );
+
+    return targetTree;
+}
+
+async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
+    await c.query(
+        `INSERT IGNORE INTO FTFamilyTreePersonT
+         (FamilyTreeID,PersonID,AddedByUserID,AddedAt,Notes)
+         VALUES (?,?,?,NOW(),NULL)`,
+        [treeID, related, userID]
+    );
+
+    if (kind === 'mother' || kind === 'father') {
+        const side = kind === 'mother' ? 'Mother' : 'Father';
+        await c.query(
+            `DELETE FROM FTParentT
+              WHERE FamilyTreeID=? AND PersonID=? AND AncestrySide=?`,
+            [treeID, focal, side]
+        );
+        await c.query(
+            `INSERT INTO FTParentT
+             (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
+              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+             VALUES (?,?,?,NULL,?,NULL,?,NOW(),NULL,NULL)`,
+            [treeID, focal, related, side, userID]
+        );
+    } else if (kind === 'child') {
+        await c.query(
+            `INSERT INTO FTParentT
+             (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
+              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+             VALUES (?,?,?,NULL,NULL,NULL,?,NOW(),NULL,NULL)`,
+            [treeID, related, focal, userID]
+        );
+    } else if (kind === 'partner') {
+        const a = Math.min(focal, related);
+        const z = Math.max(focal, related);
+        await c.query(
+            `INSERT IGNORE INTO FTPartnerT
+             (FamilyTreeID,PersonID,PartnerPersonID,RelationshipType,Notes,
+              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+             VALUES (?,?,?,NULL,NULL,?,NOW(),NULL,NULL)`,
+            [treeID, a, z, userID]
+        );
+    } else {
+        const err = new Error('Unsupported relationship type.');
+        err.status = 400;
+        throw err;
+    }
+}
+
+router.get('/current-tree', auth, async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT ft.FamilyTreeID, ft.FamilyTreeCode
+               FROM FTFamilyTreeUserT ftu
+               JOIN FamilyTreeT ft ON ft.FamilyTreeID=ftu.FamilyTreeID
+              WHERE ftu.UserID=? AND ftu.IsActive=1
+              ORDER BY ftu.JoinedAt ASC, ft.FamilyTreeID ASC`,
+            [req.user.userId]
+        );
+        res.json({ tree: rows[0] || null, activeCount: rows.length });
+    } catch (e) {
+        res.status(500).json({ message: e.message });
+    }
+});
+
+router.post('/enter-code', auth, async (req, res) => {
+    const code = String((req.body || {}).familyTreeCode || '').trim().toUpperCase();
+    if (!code) return res.status(400).json({ message: 'Enter a FamilyTreeCode.' });
+
+    try {
+        const result = await withTx(async c => {
+            const tree = await getTreeByCode(c, code);
+            if (!tree) {
+                const err = new Error('FamilyTreeCode was not found.');
+                err.status = 404;
+                throw err;
+            }
+            await adoptTreeForUser(c, req.user.userId, tree);
+            return tree;
+        });
+        res.json({ FamilyTreeID: result.FamilyTreeID, FamilyTreeCode: result.FamilyTreeCode });
+    } catch (e) {
+        res.status(e.status || 500).json({ message: e.message });
+    }
+});
+
+router.get('/tree-search', auth, async (req, res) => {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.json({ results: [] });
+    const like = `%${q}%`;
+    try {
+        const [rows] = await pool.query(
+            `SELECT p.PersonID,p.FirstName,p.MiddleName,p.LastName,p.SuffixName,
+                    p.NickName,p.MaidenName,p.BirthDate,p.BirthPlace,
+                    ft.FamilyTreeCode
+               FROM FTPersonT p
+               JOIN FTFamilyTreePersonT ftp ON ftp.PersonID=p.PersonID
+               JOIN FamilyTreeT ft ON ft.FamilyTreeID=ftp.FamilyTreeID
+              WHERE CONCAT_WS(' ',p.FirstName,p.MiddleName,p.LastName,p.NickName,
+                              p.MaidenName,p.BirthPlace,IFNULL(p.BirthDate,'')) LIKE ?
+              ORDER BY p.LastName,p.FirstName,p.PersonID
+              LIMIT 50`,
+            [like]
+        );
+        res.json({ results: rows });
+    } catch (e) {
+        res.status(500).json({ message: e.message });
+    }
+});
+
+router.post('/use-existing-person', auth, async (req, res) => {
+    const b = req.body || {};
+    const existingPersonID = Number(b.personID);
+    if (!existingPersonID) return res.status(400).json({ message: 'PersonID is required.' });
+
+    try {
+        const result = await withTx(async c => {
+            const targetTree = await getPersonTree(c, existingPersonID);
+            if (!targetTree) {
+                const err = new Error('The selected person is not associated with a Family Tree.');
+                err.status = 404;
+                throw err;
+            }
+
+            await adoptTreeForUser(c, req.user.userId, targetTree);
+
+            const focal = Number(b.focalPersonID || 0);
+            const kind = String(b.relationshipKind || '').toLowerCase();
+            if (focal && kind) {
+                // The focal person may have just been created by this user in a temporary tree.
+                await c.query(
+                    `INSERT IGNORE INTO FTFamilyTreePersonT
+                     (FamilyTreeID,PersonID,AddedByUserID,AddedAt,Notes)
+                     SELECT ?,PersonID,AddedByUserID,AddedAt,Notes
+                       FROM FTFamilyTreePersonT
+                      WHERE PersonID=?`,
+                    [targetTree.FamilyTreeID, focal]
+                );
+                await addRelationshipInTree(
+                    c, targetTree.FamilyTreeID, req.user.userId,
+                    focal, existingPersonID, kind
+                );
+            }
+
+            return {
+                PersonID: existingPersonID,
+                FamilyTreeID: targetTree.FamilyTreeID,
+                FamilyTreeCode: targetTree.FamilyTreeCode
+            };
+        });
+
+        res.json(result);
+    } catch (e) {
+        res.status(e.status || 500).json({ message: e.message });
+    }
+});
+
 router.get('/health', auth, async (req, res) => {
     try {
         const [[db]] = await pool.query('SELECT DATABASE() AS db');
@@ -239,23 +488,26 @@ router.get('/health', auth, async (req, res) => {
 });
 
 router.get('/persons', auth, async (req, res) => {
+    const code = String(req.query.familyTreeCode || '').trim();
+    if (!code) return res.json({ persons: [] });
+
     try {
-        const sql =
-            personSelectSql(`
-                JOIN FTFamilyTreePersonT ftp
-                  ON ftp.PersonID = p.PersonID
-                JOIN FTFamilyTreeUserT ftu
-                  ON ftu.FamilyTreeID = ftp.FamilyTreeID
-                WHERE ftu.UserID=? AND ftu.IsActive=1
-            `) +
-            ` GROUP BY p.PersonID
-              ORDER BY p.LastName,p.FirstName,p.MiddleName,p.PersonID`;
-
-        const [rows] = await pool.query(sql, [req.user.userId]);
-
-        res.json({ persons: rows });
+        const c = await pool.getConnection();
+        try {
+            const tree = await requireTree(c, code, req.user.userId);
+            const [rows] = await c.query(
+                personSelectSql(`
+                    JOIN FTFamilyTreePersonT ftp ON ftp.PersonID=p.PersonID
+                    WHERE ftp.FamilyTreeID=?
+                `) + ` ORDER BY p.LastName,p.FirstName,p.MiddleName,p.PersonID`,
+                [tree.FamilyTreeID]
+            );
+            res.json({ persons: rows, FamilyTreeCode: tree.FamilyTreeCode });
+        } finally {
+            c.release();
+        }
     } catch (e) {
-        res.status(500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: e.message });
     }
 });
 
@@ -308,7 +560,7 @@ router.get('/persons/duplicates', auth, async (req, res) => {
         }
 
         const [rows] = await pool.query(
-            personSelectSql('WHERE ' + parts.join(' AND ')) +
+            personSelectSql('WHERE ' + parts.join(' OR ')) +
                 ' ORDER BY p.LastName,p.FirstName LIMIT 20',
             vals
         );
@@ -1058,6 +1310,16 @@ router.post(
                     [id]
                 );
 
+                const physicalExists = fs.existsSync(filePath);
+                const replaceApproved = String(req.body.replaceProfile || '') === '1';
+
+                if ((old.length || physicalExists) && !replaceApproved) {
+                    const err = new Error('A profile picture already exists for this PersonID. Confirm replacement.');
+                    err.status = 409;
+                    err.requiresConfirmation = true;
+                    throw err;
+                }
+
                 fs.mkdirSync(
                     path.join(__dirname, '..', 'httpdocs', 'images'),
                     { recursive: true }
@@ -1402,6 +1664,71 @@ router.post(
         }
     }
 );
+
+
+router.delete('/persons/:id', auth, async (req, res) => {
+    const id = Number(req.params.id);
+    const code = String(req.query.familyTreeCode || '');
+    const userID = req.user.userId;
+
+    try {
+        const result = await withTx(async c => {
+            const tree = await requireTree(c, code, userID);
+
+            const [membership] = await c.query(
+                `SELECT FamilyTreePersonID
+                   FROM FTFamilyTreePersonT
+                  WHERE FamilyTreeID=? AND PersonID=? LIMIT 1`,
+                [tree.FamilyTreeID, id]
+            );
+            if (!membership.length) {
+                const err = new Error('Person is not in this Family Tree.');
+                err.status = 404;
+                throw err;
+            }
+
+            await c.query(
+                `DELETE FROM FTParentT
+                  WHERE FamilyTreeID=? AND (PersonID=? OR ParentPersonID=?)`,
+                [tree.FamilyTreeID, id, id]
+            );
+            await c.query(
+                `DELETE FROM FTPartnerT
+                  WHERE FamilyTreeID=? AND (PersonID=? OR PartnerPersonID=?)`,
+                [tree.FamilyTreeID, id, id]
+            );
+            await c.query(
+                `DELETE FROM FTFamilyTreePersonT
+                  WHERE FamilyTreeID=? AND PersonID=?`,
+                [tree.FamilyTreeID, id]
+            );
+
+            const [[remaining]] = await c.query(
+                `SELECT COUNT(*) AS n FROM FTFamilyTreePersonT WHERE PersonID=?`,
+                [id]
+            );
+
+            if (Number(remaining.n) === 0) {
+                const [images] = await c.query(
+                    `SELECT StorageKey FROM FTImageT WHERE PersonID=?`,
+                    [id]
+                );
+                await c.query(`DELETE FROM FTEventPersonT WHERE PersonID=?`, [id]);
+                await c.query(`DELETE FROM FTImageT WHERE PersonID=?`, [id]);
+                await c.query(`DELETE FROM FTContactT WHERE PersonID=?`, [id]);
+                await c.query(`DELETE FROM FTPersonT WHERE PersonID=?`, [id]);
+                images.forEach(x => safelyDeleteImage(x.StorageKey));
+                return { message: 'Person deleted.' };
+            }
+
+            return { message: 'Person removed from this Family Tree.' };
+        });
+
+        res.json(result);
+    } catch (e) {
+        res.status(e.status || 500).json({ message: e.message });
+    }
+});
 
 router.use((err, req, res, next) => {
     if (

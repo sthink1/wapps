@@ -1,225 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wonderful Apps - Family Tree</title>
-    <link rel="manifest" href="/manifest.json">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            min-height: 100vh;
-            background: #f4f4f4;
-            padding: 18px 10px 58px;
-        }
-
-        .page-shell {
-            width: min(1000px, 100%);
-            margin: 0 auto;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,.12);
-            overflow: hidden;
-        }
-
-        header {
-            text-align: center;
-            padding: 16px 18px 10px;
-        }
-
-        h1 {
-            margin: 0 0 10px;
-        }
-
-        .nav-row {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        button,
-        .button-link {
-            border: 0;
-            border-radius: 4px;
-            background: #4CAF50;
-            color: white;
-            padding: 9px 16px;
-            font-size: 15px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        button:hover,
-        .button-link:hover {
-            background: #45a049;
-        }
-
-        button.secondary,
-        .button-link.secondary {
-            background: #777;
-        }
-
-        button.secondary:hover,
-        .button-link.secondary:hover {
-            background: #666;
-        }
-
-        main {
-            background: aqua;
-            padding: 18px;
-            min-height: 360px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 7px;
-            padding: 16px;
-            margin-bottom: 14px;
-            box-shadow: 0 1px 4px rgba(0,0,0,.12);
-        }
-
-        .status {
-            min-height: 22px;
-            margin-top: 10px;
-            font-weight: bold;
-        }
-
-        .error {
-            color: #9b0000;
-        }
-
-        .success {
-            color: #086008;
-        }
-
-        code.code-display {
-            display: inline-block;
-            font-size: 18px;
-            background: #f0f0f0;
-            padding: 5px 9px;
-            border-radius: 4px;
-        }
-
-        .menu {
-            max-width: 390px;
-            margin: 0 auto;
-            display: grid;
-            gap: 12px;
-        }
-
-        .menu button {
-            width: 100%;
-            padding: 12px;
-            font-size: 17px;
-        }
-
-        .connection {
-            text-align: center;
-        }
-
-        footer {
-            background: lightgray;
-            min-height: 34px;
-            padding: 6px;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
-        }
-
-        footer table {
-            width: min(1000px, 100%);
-            margin: 0 auto;
-            border-collapse: collapse;
-        }
-
-        footer td {
-            text-align: center;
-        }
-
-        @media (max-width: 600px) {
-            main {
-                padding: 10px;
-            }
-
-            footer td {
-                display: block;
-                border: 0 !important;
-            }
-        }
-    </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Wonderful Apps - Family Tree</title>
+<link rel="manifest" href="/manifest.json"><link rel="icon" href="/favicon.ico">
+<style>
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f4f4f4;padding:18px 10px 58px}
+.shell{width:min(1000px,100%);margin:auto;background:#fff;border-radius:8px;box-shadow:0 2px 10px #0002;overflow:hidden}
+header{text-align:center;padding:16px}.btn,button{border:0;border-radius:4px;background:#4CAF50;color:#fff;padding:10px 16px;font-size:15px;cursor:pointer;text-decoration:none}
+.secondary{background:#777!important}.menu{max-width:430px;margin:auto;display:grid;gap:12px}.menu button{width:100%;font-size:17px;padding:12px}
+main{background:aqua;padding:18px;min-height:380px}.card{background:#fff;padding:16px;border-radius:7px;margin-bottom:14px}.center{text-align:center}
+code{font-size:18px;background:#eee;padding:5px 9px;border-radius:4px}.status{min-height:22px;margin-top:10px;font-weight:bold}.error{color:#900}.success{color:#075f07}
+.modal{display:none;position:fixed;inset:0;background:#0007;z-index:2000;align-items:center;justify-content:center;padding:12px}.modal.show{display:flex}
+.modal-box{background:#fff;width:min(760px,100%);max-height:88vh;overflow:auto;padding:18px;border-radius:7px}
+input{width:100%;padding:9px;border:1px solid #aaa;font-size:15px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:7px;text-align:left}th{background:#eee}
+footer{position:fixed;bottom:0;left:0;width:100%;background:#ddd;padding:6px;text-align:center}
+</style>
 </head>
-
 <body>
-    <div class="page-shell">
-        <header>
-            <h1>FAMILY TREE</h1>
+<div class="shell"><header><h1>FAMILY TREE</h1><a class="btn secondary" href="home.html">HOME</a></header>
+<main>
+<section class="card center">
+<strong>Database:</strong> <span id="dbStatus">Checking...</span><br><br>
+<strong>Current FamilyTreeCode:</strong> <code id="familyTreeCodeDisplay">None associated</code>
+</section>
+<section class="card"><div class="menu">
+<button data-page="FTPersonNew.html">NEW PERSON</button>
+<button id="personListBtn">PERSON LIST</button>
+<button id="enterCodeBtn">ENTER FAMILY CODE</button>
+<button id="searchPersonBtn">SEARCH FOR PERSON</button>
+</div><div id="statusMessage" class="status"></div></section>
+</main></div>
 
-            <div class="nav-row">
-                <a class="button-link secondary" href="home.html">HOME</a>
-            </div>
-        </header>
+<div id="codeModal" class="modal"><div class="modal-box">
+<h2>ENTER FAMILY CODE</h2><input id="codeInput" placeholder="Example: FT-SX8HGEHR">
+<div class="actions"><button id="codeSubmit">ENTER TREE</button><button class="secondary" data-close="codeModal">CANCEL</button></div>
+<div id="codeStatus" class="status"></div></div></div>
 
-        <main>
-            <section class="card connection">
-                <strong>Database:</strong>
-                <span id="dbStatus">Checking...</span>
+<div id="searchModal" class="modal"><div class="modal-box">
+<h2>SEARCH FOR PERSON</h2><input id="searchInput" placeholder="Name, birth date, or birth place">
+<div class="actions"><button id="searchSubmit">SEARCH</button><button class="secondary" data-close="searchModal">CANCEL</button></div>
+<div id="searchStatus" class="status"></div>
+<div style="overflow:auto"><table id="searchTable" style="display:none"><thead><tr><th>PersonID</th><th>Name</th><th>Birth Date</th><th>Birth Place</th><th>FamilyTreeCode</th><th></th></tr></thead><tbody id="searchBody"></tbody></table></div>
+</div></div>
 
-                <br><br>
-
-                <strong>Current FamilyTreeCode:</strong>
-                <code id="familyTreeCodeDisplay" class="code-display">
-                    None selected
-                </code>
-            </section>
-
-            <section class="card">
-                <div class="menu">
-                    <button type="button" data-page="FTPersonNew.html">
-                        NEW PERSON
-                    </button>
-
-                    <button type="button" data-page="FTPersonList.html">
-                        PERSON LIST
-                    </button>
-
-                    <button
-                        id="clearTreeBtn"
-                        type="button"
-                        class="secondary">
-                        CLEAR CURRENT TREE
-                    </button>
-                </div>
-
-                <div id="statusMessage" class="status"></div>
-            </section>
-        </main>
-    </div>
-
-    <footer>
-        <table>
-            <tr>
-                <td>
-                    Copyright © 2026 Wonderful Apps Company - All Rights Reserved
-                </td>
-
-                <td style="text-align:center; border:1px solid black;">
-                    Designed by MPG Jr
-                </td>
-            </tr>
-        </table>
-    </footer>
-
-    <script src="js/FamilyTreePage.js"></script>
-</body>
-</html>
+<footer>Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr</footer>
+<script src="js/FamilyTreePage.js?v=20260825-1"></script>
+</body></html>
