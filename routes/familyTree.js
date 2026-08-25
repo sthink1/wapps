@@ -222,6 +222,32 @@ function safelyDeleteImage(storageKey) {
 }
 
 
+function findExistingProfileFile(personID) {
+    const imagesDir = path.join(__dirname, '..', 'httpdocs', 'images');
+
+    if (!fs.existsSync(imagesDir)) {
+        return null;
+    }
+
+    const personPrefix = `${String(personID).toLowerCase()}.`;
+    const supportedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp']);
+
+    const match = fs.readdirSync(imagesDir).find(fileName => {
+        const lower = String(fileName).toLowerCase();
+
+        if (!lower.startsWith(personPrefix)) {
+            return false;
+        }
+
+        const extension = lower.split('.').pop();
+
+        return supportedExtensions.has(extension);
+    });
+
+    return match || null;
+}
+
+
 async function getPersonTree(c, personID) {
     const [rows] = await c.query(
         `SELECT ft.FamilyTreeID, ft.FamilyTreeCode
@@ -560,7 +586,7 @@ router.get('/persons/duplicates', auth, async (req, res) => {
         }
 
         const [rows] = await pool.query(
-            personSelectSql('WHERE ' + parts.join(' OR ')) +
+            personSelectSql('WHERE ' + parts.join(' AND ')) +
                 ' ORDER BY p.LastName,p.FirstName LIMIT 20',
             vals
         );
@@ -1310,11 +1336,13 @@ router.post(
                     [id]
                 );
 
-                const physicalExists = fs.existsSync(filePath);
+                const existingPhysicalFile = findExistingProfileFile(id);
                 const replaceApproved = String(req.body.replaceProfile || '') === '1';
 
-                if ((old.length || physicalExists) && !replaceApproved) {
-                    const err = new Error('A profile picture already exists for this PersonID. Confirm replacement.');
+                if ((old.length || existingPhysicalFile) && !replaceApproved) {
+                    const err = new Error(
+                        'A profile picture already exists for this PersonID. Confirm replacement.'
+                    );
                     err.status = 409;
                     err.requiresConfirmation = true;
                     throw err;
@@ -1326,6 +1354,14 @@ router.post(
                 );
 
                 fs.writeFileSync(filePath, req.file.buffer);
+
+                if (
+                    replaceApproved &&
+                    existingPhysicalFile &&
+                    existingPhysicalFile.toLowerCase() !== storageKey.toLowerCase()
+                ) {
+                    safelyDeleteImage(existingPhysicalFile);
+                }
 
                 let imageID;
 
