@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Person_F</title>
+<style>
+    :root{
+        --access-blue:#8FAADC;
+        --access-blue-light:#9DC3E6;
+        --access-blue-hover:#B4C7E7;
+        --access-blue-pressed:#2F5597;
+        --access-orange:#FFC000;
+        --access-header:#D6DCE5;
+        --access-text:#404040;
+        --access-label:#666666;
+        --line:#666;
+        --form-w:760px;   /* 11400 twips */
+        --form-h:752px;   /* 11280 twips */
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+        margin:0;
+        min-height:100%;
+        font-family:Calibri, Arial, sans-serif;
+        background:#efefef;
+        color:var(--access-text);
+    }
+
+    body{
+        padding:20px;
+        display:flex;
+        justify-content:center;
+        align-items:flex-start;
+    }
+
+    .access-form{
+        position:relative;
+        width:var(--form-w);
+        min-width:var(--form-w);
+        height:var(--form-h);
+        background:#fff;
+        box-shadow:0 1px 6px rgba(0,0,0,.20);
+        overflow:hidden;
+        transform-origin:top center;
+    }
+
+    .section-title{
+        position:absolute;
+        left:4px;
+        height:24px;
+        font-size:19px;
+        font-weight:700;
+        line-height:24px;
+        color:var(--access-label);
+        padding:0 2px;
+    }
+
+    .section-title.person{
+        background:var(--access-orange);
+        width:284px;
+    }
+
+    .divider{
+        position:absolute;
+        left:4px;
+        width:480px;
+        height:0;
+        border-top:4px solid #777;
+    }
+
+    label.access-label{
+        position:absolute;
+        height:21px;
+        line-height:21px;
+        font-size:14px;
+        color:var(--access-label);
+        white-space:nowrap;
+    }
+
+    input.access-input,
+    select.access-input{
+        position:absolute;
+        height:21px;
+        border:1px solid #a6a6a6;
+        background:#fff;
+        color:var(--access-text);
+        font-family:Calibri, Arial, sans-serif;
+        font-size:14px;
+        padding:1px 4px;
+    }
+
+    input.access-input:focus,
+    select.access-input:focus{
+        outline:1px solid #7f9db9;
+    }
+
+    select.parent-select{
+        height:24px;
+        background:var(--access-blue-light);
+        color:#353535;
+        border:1px solid #8da9c4;
+    }
+
+    .access-button{
+        position:absolute;
+        width:92px;
+        height:24px;
+        border:1px solid var(--access-blue);
+        border-radius:3px;
+        background:linear-gradient(#a9bfe5,var(--access-blue));
+        color:var(--access-text);
+        font:400 14px Calibri, Arial, sans-serif;
+        cursor:default;
+    }
+    .access-button:hover{
+        background:var(--access-blue-hover);
+        border-color:var(--access-blue-hover);
+    }
+    .access-button:active{
+        background:var(--access-blue-pressed);
+        border-color:var(--access-blue-pressed);
+        color:#fff;
+    }
+
+    .photo-box{
+        position:absolute;
+        left:484px;
+        top:92px;
+        width:252px;
+        height:168px;
+        border:1px solid #aaa;
+        background:#f8f8f8;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:#888;
+        font-size:13px;
+        overflow:hidden;
+    }
+    .photo-box img{
+        width:100%;
+        height:100%;
+        object-fit:contain;
+        display:none;
+    }
+
+    .profile-label{
+        position:absolute;
+        left:428px;
+        top:248px;
+        width:49px;
+        height:32px;
+        color:var(--access-label);
+        font-size:12px;
+        line-height:14px;
+    }
+
+    .profile-path{
+        position:absolute;
+        left:484px;
+        top:264px;
+        width:228px;
+        height:20px;
+        border:1px solid #aaa;
+        font:13px Calibri, Arial, sans-serif;
+        padding:1px 3px;
+    }
+
+    .subform{
+        position:absolute;
+        left:4px;
+        width:737px;
+        border:1px solid #a0a0a0;
+        background:#fff;
+        overflow:auto;
+    }
+
+    .subform table{
+        border-collapse:collapse;
+        width:700px;
+        min-width:700px;
+        font-size:12px;
+    }
+    .subform th{
+        height:24px;
+        background:var(--access-header);
+        color:var(--access-label);
+        border-right:1px solid #aaa;
+        border-bottom:1px solid #aaa;
+        font-weight:400;
+        text-align:left;
+        padding:2px 4px;
+        white-space:nowrap;
+    }
+    .subform td{
+        height:22px;
+        border-right:1px solid #d0d0d0;
+        border-bottom:1px solid #d0d0d0;
+        padding:1px 4px;
+        white-space:nowrap;
+    }
+    .subform td.id{
+        background:var(--access-blue-light);
+        font-weight:700;
+        width:36px;
+    }
+    .subform tbody tr:nth-child(even) td:not(.id){
+        background:#f2f2f2;
+    }
+
+    .subform .blank{
+        color:transparent;
+    }
+
+    .hint{
+        position:absolute;
+        right:9px;
+        bottom:5px;
+        color:#888;
+        font-size:10px;
+    }
+
+    @media(max-width:820px){
+        body{padding:8px; overflow-x:auto}
+    }
+</style>
+</head>
+<body>
+
+<main class="access-form" aria-label="Person form replica">
+
+    <!-- PARENTS -->
+    <div class="section-title" style="top:4px;width:84px;">PARENTS</div>
+
+    <label class="access-label" style="left:0;top:32px;width:56px;">Mother</label>
+    <select id="mother" class="access-input parent-select"
+            style="left:68px;top:32px;width:408px;"
+            title="Double-click to open the selected mother's Person page"
+            ondblclick="openPersonFromParent(this)">
+        <option value=""></option>
+    </select>
+
+    <label class="access-label" style="left:0;top:60px;width:50px;">Father</label>
+    <select id="father" class="access-input parent-select"
+            style="left:68px;top:60px;width:408px;"
+            title="Double-click to open the selected father's Person page"
+            ondblclick="openPersonFromParent(this)">
+        <option value=""></option>
+    </select>
+
+    <div class="divider" style="top:92px;"></div>
+
+    <!-- PERSON -->
+    <div class="section-title person" style="top:100px;">PERSON</div>
+
+    <label class="access-label" style="left:16px;top:128px;width:48px;">Gender</label>
+    <label class="access-label" style="left:0;top:128px;width:16px;text-align:right;">ID</label>
+
+    <input class="access-input" id="personID" style="left:144px;top:128px;width:48px;" aria-label="Person ID">
+    <input class="access-input" id="gender" style="left:196px;top:128px;width:36px;" aria-label="Gender">
+
+    <button class="access-button" style="left:384px;top:128px;"
+            ondblclick="goTo('FTAncestor.html')" title="Double-click">ANCESTOR</button>
+
+    <label class="access-label" style="left:0;top:156px;width:69px;">FirstName</label>
+    <input class="access-input" style="left:120px;top:156px;width:96px;" aria-label="FirstName">
+    <input class="access-input" style="left:220px;top:156px;width:96px;" aria-label="MiddleName">
+
+    <button class="access-button" style="left:384px;top:160px;"
+            ondblclick="goTo('FTContact.html')" title="Double-click">CONTACT</button>
+
+    <label class="access-label" style="left:0;top:180px;width:66px;">LastName</label>
+    <input class="access-input" style="left:120px;top:180px;width:96px;" aria-label="LastName">
+    <input class="access-input" style="left:220px;top:180px;width:96px;" aria-label="SuffixName">
+
+    <button class="access-button" style="left:384px;top:192px;"
+            ondblclick="goTo('FTEvent.html')" title="Double-click">EVENT</button>
+
+    <label class="access-label" style="left:0;top:204px;width:69px;">NickName</label>
+    <input class="access-input" style="left:120px;top:204px;width:96px;" aria-label="NickName">
+
+    <label class="access-label" style="left:0;top:232px;width:89px;">MaidenName</label>
+    <input class="access-input" style="left:120px;top:228px;width:96px;" aria-label="MaidenName">
+
+    <label class="access-label" style="left:0;top:256px;width:32px;">Born</label>
+    <input class="access-input" type="text" placeholder="" style="left:36px;top:256px;width:88px;" aria-label="BirthDate">
+
+    <label class="access-label" style="left:128px;top:256px;width:32px;">Died</label>
+    <input class="access-input" type="text" style="left:164px;top:256px;width:76px;" aria-label="DeathDate">
+
+    <input class="access-input" value="Age" readonly style="left:244px;top:256px;width:88px;background:#f6f6f6;" aria-label="Age label">
+    <input class="access-input" readonly style="left:336px;top:256px;width:32px;background:#f6f6f6;" aria-label="Age">
+
+    <label class="access-label" style="left:376px;top:232px;width:32px;">Died</label>
+    <input class="access-input" type="checkbox"
+           style="left:376px;top:256px;width:36px;border:0;"
+           aria-label="Died">
+
+    <!-- profile picture -->
+    <div class="photo-box">
+        <img id="profileImage" alt="Profile picture">
+        <span id="photoPlaceholder">Profile Picture</span>
+    </div>
+    <div class="profile-label">Profile<br>Picture</div>
+    <input id="profilePath" class="profile-path" type="text" aria-label="ProfilePicture">
+
+    <div class="divider" style="top:288px;"></div>
+
+    <!-- PARTNER -->
+    <div class="section-title" style="top:296px;width:84px;">PARTNER</div>
+
+    <section class="subform" style="top:324px;height:128px;" aria-label="Partner subform">
+        <table>
+            <thead>
+            <tr>
+                <th style="width:36px;">PersonID</th>
+                <th style="width:36px;">Gender</th>
+                <th style="width:28px;">Age</th>
+                <th style="width:96px;">FirstName</th>
+                <th style="width:72px;">MiddleName</th>
+                <th style="width:96px;">LastName</th>
+                <th style="width:40px;">SuffixName</th>
+                <th style="width:96px;">NickName</th>
+                <th style="width:96px;">MaidenName</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr ondblclick="openRelatedPerson(this)" data-person-id="">
+                <td class="id">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <div class="divider" style="top:464px;"></div>
+
+    <!-- CHILDREN -->
+    <div class="section-title" style="top:472px;width:86px;">CHILDREN</div>
+
+    <section class="subform" style="top:504px;height:240px;" aria-label="Children subform">
+        <table>
+            <thead>
+            <tr>
+                <th style="width:36px;">PersonID</th>
+                <th style="width:36px;">Gender</th>
+                <th style="width:28px;">Age</th>
+                <th style="width:96px;">FirstName</th>
+                <th style="width:72px;">MiddleName</th>
+                <th style="width:96px;">LastName</th>
+                <th style="width:40px;">SuffixName</th>
+                <th style="width:96px;">NickName</th>
+                <th style="width:96px;">MaidenName</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr ondblclick="openRelatedPerson(this)" data-person-id="">
+                <td class="id">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            </tr>
+            <tr ondblclick="openRelatedPerson(this)" data-person-id="">
+                <td class="id">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            </tr>
+            <tr ondblclick="openRelatedPerson(this)" data-person-id="">
+                <td class="id">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+</main>
+
+<script>
+/*
+    Web replica based on the Access documentation for Person_F.
+
+    Documented Person_F events:
+      AncestorBtn_DblClick -> opens Ancestor_F filtered to current PersonID
+      ContactBtn_DblClick  -> opens Contact_F filtered to current PersonID
+      EventBtn_DblClick    -> opens Event_F filtered to current PersonID
+      FatherCombo_DblClick -> opens Person_F filtered to FatherID
+      MotherCombo_DblClick -> opens Person_F filtered to MotherID
+
+    The Partner_F and Child_F subforms are represented as continuous-form
+    grids with the same documented column headings and approximate widths.
+
+    BloodLine is intentionally not a Person field in the new FamilyTree design.
+    Ancestry highlighting will be calculated dynamically from the user's
+    maternal/paternal selection rather than stored in ftpersont.
+
+    This HTML is a UI replica only; no database has been connected yet.
+*/
+
+function currentPersonID(){
+    return document.getElementById('personID').value.trim();
+}
+
+function goTo(page){
+    const id=currentPersonID();
+    window.location.href = id ? `${page}?PersonID=${encodeURIComponent(id)}` : page;
+}
+
+function openPersonFromParent(select){
+    const id=select.value;
+    if(id){
+        window.location.href=`fTPerson.html?PersonID=${encodeURIComponent(id)}`;
+    }
+}
+
+function openRelatedPerson(row){
+    const id=row.dataset.personId;
+    if(id){
+        window.location.href=`FTPerson.html?PersonID=${encodeURIComponent(id)}`;
+    }
+}
+
+/* Optional local preview of an image path/URL typed into ProfilePicture. */
+document.getElementById('profilePath').addEventListener('change', function(){
+    const value=this.value.trim();
+    const img=document.getElementById('profileImage');
+    const ph=document.getElementById('photoPlaceholder');
+
+    if(!value){
+        img.style.display='none';
+        ph.style.display='block';
+        return;
+    }
+
+    img.onload=()=>{
+        img.style.display='block';
+        ph.style.display='none';
+    };
+    img.onerror=()=>{
+        img.style.display='none';
+        ph.style.display='block';
+    };
+    img.src=value;
+});
+</script>
+
+</body>
+</html>
