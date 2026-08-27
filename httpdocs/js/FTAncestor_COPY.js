@@ -85,14 +85,6 @@ function openPerson(id) {
         `&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
 }
 
-function makeAncestorFocalPerson(id) {
-    if (!id) return;
-
-    window.location.href =
-        `FTAncestor.html?PersonID=${encodeURIComponent(id)}` +
-        `&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
-}
-
 function bindRelative(rowID, buttonID, nameID, photoID, person) {
     const row = $(rowID);
     const button = $(buttonID);
@@ -104,22 +96,14 @@ function bindRelative(rowID, buttonID, nameID, photoID, person) {
         photo.removeAttribute('src');
         photo.style.visibility = 'hidden';
         button.onclick = null;
-        name.onclick = null;
-        name.removeAttribute('title');
         return;
     }
 
     row.style.visibility = 'visible';
     name.textContent = nameOf(person);
 
-    // P opens the person's main FTPerson.html page.
     button.title = `PersonID ${person.PersonID}`;
     button.onclick = () => openPerson(person.PersonID);
-
-    // Clicking the Name keeps the user on FTAncestor.html,
-    // but makes that relative the new focal PERSON.
-    name.title = `Make ${nameOf(person)} the focal person`;
-    name.onclick = () => makeAncestorFocalPerson(person.PersonID);
 
     if (person.ProfileImageUrl) {
         photo.src = `${person.ProfileImageUrl}?v=${Date.now()}`;
