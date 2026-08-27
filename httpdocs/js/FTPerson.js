@@ -108,7 +108,7 @@ function personRow(person, extraCells = []) {
                     class="person-link"
                     data-id="${person.PersonID}"
                     title="Open PersonID ${person.PersonID}"
-                >${person.PersonID}</button>
+                >P</button>
             </td>
             <td>${person.Gender || ''}</td>
             <td>${ageOf(person)}</td>
@@ -450,10 +450,7 @@ async function saveNewPicture() {
     }
 
     $('addPictureModal').classList.remove('show');
-    $('pictureStatus').textContent =
-        data.ImageType === 'Profile'
-            ? 'Profile picture saved.'
-            : 'Picture saved.';
+    $('pictureStatus').textContent = 'Picture Was Saved';
 
     await loadImages();
 }

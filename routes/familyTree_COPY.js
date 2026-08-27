@@ -1228,6 +1228,92 @@ router.post('/related-person', auth, async (req, res) => {
     }
 });
 
+
+/* ============================================================================
+   CONTACTS
+   ============================================================================ */
+router.get('/persons/:id/contacts', auth, async (req, res) => {
+    const id = Number(req.params.id);
+    const code = String(req.query.familyTreeCode || '');
+    try {
+        const c = await pool.getConnection();
+        try {
+            const tree = await requireTree(c, code, req.user.userId);
+            const [member] = await c.query(
+                `SELECT 1 FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=? LIMIT 1`,
+                [tree.FamilyTreeID, id]
+            );
+            if (!member.length) return res.status(404).json({ message: 'Person is not in this Family Tree.' });
+            const [rows] = await c.query(
+                `SELECT ContactID,PersonID,ContactType,ContactValue,ContactNote,IsPrimary
+                   FROM FTContactT WHERE PersonID=?
+                  ORDER BY IsPrimary DESC,ContactType,ContactID`,
+                [id]
+            );
+            res.json({ contacts: rows });
+        } finally { c.release(); }
+    } catch (e) { res.status(e.status || 500).json({ message: e.message }); }
+});
+
+router.post('/persons/:id/contacts', auth, async (req, res) => {
+    const id = Number(req.params.id), userID = req.user.userId, b = req.body || {};
+    if (!b.ContactType) return res.status(400).json({ message: 'Contact Type is required.' });
+    if (!b.ContactValue) return res.status(400).json({ message: 'Contact Value is required.' });
+    try {
+        const result = await withTx(async c => {
+            const tree = await requireTree(c, b.familyTreeCode, userID);
+            const [member] = await c.query(`SELECT 1 FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=? LIMIT 1`, [tree.FamilyTreeID, id]);
+            if (!member.length) { const e=new Error('Person is not in this Family Tree.'); e.status=404; throw e; }
+            if (b.IsPrimary) {
+                await c.query(`UPDATE FTContactT SET IsPrimary=0,UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=? AND ContactType=?`, [userID,id,b.ContactType]);
+            }
+            const [r] = await c.query(
+                `INSERT INTO FTContactT(PersonID,ContactType,ContactValue,ContactNote,IsPrimary,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+                 VALUES(?,?,?,?,?,?,NOW(),NULL,NULL)`,
+                [id,b.ContactType,b.ContactValue,b.ContactNote||null,b.IsPrimary?1:0,userID]
+            );
+            await logActivity(c,tree.FamilyTreeID,userID,'CREATE','FTContactT',r.insertId,id,`Added ${b.ContactType} contact`);
+            return { ContactID:r.insertId, message:'Contact saved.' };
+        });
+        res.status(201).json(result);
+    } catch (e) { res.status(e.status || 500).json({ message:e.message }); }
+});
+
+router.put('/persons/:id/contacts/:contactID', auth, async (req, res) => {
+    const id=Number(req.params.id), contactID=Number(req.params.contactID), userID=req.user.userId, b=req.body||{};
+    if (!b.ContactType) return res.status(400).json({ message:'Contact Type is required.' });
+    if (!b.ContactValue) return res.status(400).json({ message:'Contact Value is required.' });
+    try {
+        const result=await withTx(async c=>{
+            const tree=await requireTree(c,b.familyTreeCode,userID);
+            const [existing]=await c.query(`SELECT ContactID FROM FTContactT WHERE ContactID=? AND PersonID=? LIMIT 1`,[contactID,id]);
+            if(!existing.length){const e=new Error('Contact not found.');e.status=404;throw e;}
+            if(b.IsPrimary){
+                await c.query(`UPDATE FTContactT SET IsPrimary=0,UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=? AND ContactType=? AND ContactID<>?`,[userID,id,b.ContactType,contactID]);
+            }
+            await c.query(`UPDATE FTContactT SET ContactType=?,ContactValue=?,ContactNote=?,IsPrimary=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE ContactID=? AND PersonID=?`,[b.ContactType,b.ContactValue,b.ContactNote||null,b.IsPrimary?1:0,userID,contactID,id]);
+            await logActivity(c,tree.FamilyTreeID,userID,'EDIT','FTContactT',contactID,id,`Edited ${b.ContactType} contact`);
+            return { message:'Contact changes saved.' };
+        });
+        res.json(result);
+    } catch(e){res.status(e.status||500).json({message:e.message});}
+});
+
+router.delete('/persons/:id/contacts/:contactID', auth, async (req,res)=>{
+    const id=Number(req.params.id), contactID=Number(req.params.contactID), code=String(req.query.familyTreeCode||''), userID=req.user.userId;
+    try{
+        const result=await withTx(async c=>{
+            const tree=await requireTree(c,code,userID);
+            const [existing]=await c.query(`SELECT ContactType FROM FTContactT WHERE ContactID=? AND PersonID=? LIMIT 1`,[contactID,id]);
+            if(!existing.length){const e=new Error('Contact not found.');e.status=404;throw e;}
+            await c.query(`DELETE FROM FTContactT WHERE ContactID=? AND PersonID=?`,[contactID,id]);
+            await logActivity(c,tree.FamilyTreeID,userID,'DELETE','FTContactT',contactID,id,`Deleted ${existing[0].ContactType||''} contact`);
+            return { message:'Contact deleted.' };
+        });
+        res.json(result);
+    }catch(e){res.status(e.status||500).json({message:e.message});}
+});
+
 router.get('/persons/:id/events', auth, async (req, res) => {
     const id = Number(req.params.id);
     const code = String(req.query.familyTreeCode || '');
@@ -1236,7 +1322,16 @@ router.get('/persons/:id/events', auth, async (req, res) => {
         const c = await pool.getConnection();
 
         try {
-            await requireTree(c, code, req.user.userId);
+            const tree = await requireTree(c, code, req.user.userId);
+
+            const [member] = await c.query(
+                `SELECT 1 FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=? LIMIT 1`,
+                [tree.FamilyTreeID, id]
+            );
+
+            if (!member.length) {
+                return res.status(404).json({ message: 'Person is not in this Family Tree.' });
+            }
 
             const [rows] = await c.query(
                 `SELECT
@@ -1336,6 +1431,40 @@ router.post('/persons/:id/events', auth, async (req, res) => {
     }
 });
 
+
+
+router.put('/persons/:id/events/:eventID', auth, async (req,res)=>{
+    const id=Number(req.params.id), eventID=Number(req.params.eventID), userID=req.user.userId, b=req.body||{};
+    if(!b.eventType) return res.status(400).json({message:'Event Type is required.'});
+    try{
+        const result=await withTx(async c=>{
+            const tree=await requireTree(c,b.familyTreeCode,userID);
+            const [existing]=await c.query(`SELECT e.EventID FROM FTEventPersonT ep JOIN FTEventT e ON e.EventID=ep.EventID WHERE ep.PersonID=? AND e.EventID=? LIMIT 1`,[id,eventID]);
+            if(!existing.length){const e=new Error('Event not found.');e.status=404;throw e;}
+            await c.query(`UPDATE FTEventT SET EventType=?,EventDate=?,EventPlace=?,EventDescription=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE EventID=?`,[b.eventType,b.eventDate||null,b.eventPlace||null,b.eventDescription||null,userID,eventID]);
+            await logActivity(c,tree.FamilyTreeID,userID,'EDIT','FTEventT',eventID,id,'Edited life event');
+            return {message:'Event changes saved.'};
+        });
+        res.json(result);
+    }catch(e){res.status(e.status||500).json({message:e.message});}
+});
+
+router.delete('/persons/:id/events/:eventID', auth, async (req,res)=>{
+    const id=Number(req.params.id), eventID=Number(req.params.eventID), code=String(req.query.familyTreeCode||''), userID=req.user.userId;
+    try{
+        const result=await withTx(async c=>{
+            const tree=await requireTree(c,code,userID);
+            const [link]=await c.query(`SELECT EventPersonID FROM FTEventPersonT WHERE EventID=? AND PersonID=? LIMIT 1`,[eventID,id]);
+            if(!link.length){const e=new Error('Event not found for this person.');e.status=404;throw e;}
+            await c.query(`DELETE FROM FTEventPersonT WHERE EventID=? AND PersonID=?`,[eventID,id]);
+            const [[remaining]]=await c.query(`SELECT COUNT(*) AS n FROM FTEventPersonT WHERE EventID=?`,[eventID]);
+            if(Number(remaining.n)===0) await c.query(`DELETE FROM FTEventT WHERE EventID=?`,[eventID]);
+            await logActivity(c,tree.FamilyTreeID,userID,'DELETE','FTEventT',eventID,id,'Deleted life event');
+            return {message:'Event deleted.'};
+        });
+        res.json(result);
+    }catch(e){res.status(e.status||500).json({message:e.message});}
+});
 
 /* ============================================================================
    PROFILE IMAGE

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Tree - Ancestor Partner</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 14px 8px 48px;
+            font-family: Calibri, Arial, sans-serif;
+            background: #efefef;
+            color: #404040;
+        }
+
+        .shell {
+            width: min(760px, 100%);
+            margin: auto;
+            background: #ffffff;
+            border: 1px solid #aaaaaa;
+        }
+
+        header {
+            text-align: center;
+            padding: 12px;
+        }
+
+        button {
+            border: 1px solid #8ba5c7;
+            border-radius: 3px;
+            background: #d7e7fb;
+            padding: 7px 12px;
+            cursor: pointer;
+        }
+
+        main {
+            padding: 12px;
+            background: #98cfe2;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+        }
+
+        th,
+        td {
+            border: 1px solid #b8b8b8;
+            padding: 6px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #d6dde8;
+            color: #4b6076;
+            font-weight: normal;
+        }
+
+        td.p-cell {
+            width: 45px;
+            padding: 0;
+            background: #9dc3e6;
+        }
+
+        td.p-cell button {
+            width: 100%;
+            border: 0;
+            border-radius: 0;
+            background: #9dc3e6;
+            font-weight: bold;
+        }
+
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #dddddd;
+            padding: 6px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="shell">
+        <header>
+            <h1>PARTNER</h1>
+            <button id="backBtn" type="button">BACK</button>
+        </header>
+
+        <main>
+            <p>
+                <strong>Person:</strong>
+                <span id="personNameDisplay"></span>
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:45px;">Person</th>
+                        <th style="width:70px;">Gender</th>
+                        <th style="width:55px;">Age</th>
+                        <th>Name</th>
+                    </tr>
+                </thead>
+
+                <tbody id="rows"></tbody>
+            </table>
+
+            <div id="status"></div>
+        </main>
+    </div>
+
+    <footer>
+        Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
+    </footer>
+
+    <script src="js/FTAncestorPartner.js?v=20260827-1"></script>
+</body>
+</html>

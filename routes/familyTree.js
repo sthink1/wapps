@@ -916,6 +916,174 @@ router.put('/persons/:id', auth, async (req, res) => {
 });
 
 
+
+/* ============================================================================
+   ANCESTOR DISPLAY
+   ============================================================================ */
+
+router.get('/persons/:id/ancestor', auth, async (req, res) => {
+    const id = Number(req.params.id);
+    const code = String(req.query.familyTreeCode || '');
+
+    try {
+        const c = await pool.getConnection();
+
+        try {
+            const tree = await requireTree(
+                c,
+                code,
+                req.user.userId
+            );
+
+            const [member] = await c.query(
+                `SELECT 1
+                   FROM FTFamilyTreePersonT
+                  WHERE FamilyTreeID=? AND PersonID=?
+                  LIMIT 1`,
+                [tree.FamilyTreeID, id]
+            );
+
+            if (!member.length) {
+                return res.status(404).json({
+                    message: 'Person is not in this Family Tree.'
+                });
+            }
+
+            const basePersonSelect = `
+                SELECT
+                    p.PersonID,
+                    p.FirstName,
+                    p.MiddleName,
+                    p.LastName,
+                    p.SuffixName,
+                    p.NickName,
+                    p.MaidenName,
+                    p.Gender,
+                    p.BirthDate,
+                    p.DeathDate,
+                    (
+                        SELECT CONCAT('/images/', i.StorageKey)
+                          FROM FTImageT i
+                         WHERE i.PersonID=p.PersonID
+                           AND i.ImageType='Profile'
+                         ORDER BY i.ImageID
+                         LIMIT 1
+                    ) AS ProfileImageUrl
+                  FROM FTPersonT p
+            `;
+
+            const [personRows] = await c.query(
+                basePersonSelect +
+                ` WHERE p.PersonID=? LIMIT 1`,
+                [id]
+            );
+
+            if (!personRows.length) {
+                return res.status(404).json({
+                    message: 'Person not found.'
+                });
+            }
+
+            async function parentFor(childID, side) {
+                const [rows] = await c.query(
+                    basePersonSelect +
+                    ` JOIN FTParentT r
+                        ON r.ParentPersonID=p.PersonID
+                      WHERE r.FamilyTreeID=?
+                        AND r.PersonID=?
+                        AND r.AncestrySide=?
+                      ORDER BY r.ParentRelationshipID
+                      LIMIT 1`,
+                    [
+                        tree.FamilyTreeID,
+                        childID,
+                        side
+                    ]
+                );
+
+                return rows[0] || null;
+            }
+
+            const mother = await parentFor(id, 'Mother');
+            const father = await parentFor(id, 'Father');
+
+            const maternalGrandmother = mother
+                ? await parentFor(mother.PersonID, 'Mother')
+                : null;
+
+            const maternalGrandfather = mother
+                ? await parentFor(mother.PersonID, 'Father')
+                : null;
+
+            const paternalGrandmother = father
+                ? await parentFor(father.PersonID, 'Mother')
+                : null;
+
+            const paternalGrandfather = father
+                ? await parentFor(father.PersonID, 'Father')
+                : null;
+
+            const [children] = await c.query(
+                basePersonSelect +
+                ` JOIN FTParentT r
+                    ON r.PersonID=p.PersonID
+                  WHERE r.FamilyTreeID=?
+                    AND r.ParentPersonID=?
+                  ORDER BY
+                    p.BirthDate,
+                    p.LastName,
+                    p.FirstName`,
+                [tree.FamilyTreeID, id]
+            );
+
+            const [partners] = await c.query(
+                basePersonSelect +
+                ` JOIN FTPartnerT r
+                    ON p.PersonID=
+                       IF(
+                           r.PersonID=?,
+                           r.PartnerPersonID,
+                           r.PersonID
+                       )
+                  WHERE r.FamilyTreeID=?
+                    AND (
+                        r.PersonID=? OR
+                        r.PartnerPersonID=?
+                    )
+                  ORDER BY
+                    p.LastName,
+                    p.FirstName`,
+                [
+                    id,
+                    tree.FamilyTreeID,
+                    id,
+                    id
+                ]
+            );
+
+            res.json({
+                FamilyTreeCode: tree.FamilyTreeCode,
+                person: personRows[0],
+                mother,
+                father,
+                maternalGrandmother,
+                maternalGrandfather,
+                paternalGrandmother,
+                paternalGrandfather,
+                partners,
+                children
+            });
+        } finally {
+            c.release();
+        }
+    } catch (e) {
+        res.status(e.status || 500).json({
+            message: e.message
+        });
+    }
+});
+
+
 router.get('/persons/:id/relationships', auth, async (req, res) => {
     const id = Number(req.params.id);
     const code = String(req.query.familyTreeCode || '');
