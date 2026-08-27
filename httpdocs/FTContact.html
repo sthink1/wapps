@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Tree - Contact</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; padding: 12px 8px 48px; }
+        .shell { width: min(980px, 100%); margin: auto; background: #fff; border: 1px solid #aaa; }
+        header { text-align: center; padding: 12px; }
+        .nav, .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        button { border: 1px solid #8ba5c7; border-radius: 3px; background: #d7e7fb; padding: 7px 13px; cursor: pointer; }
+        .green { background: #4CAF50; color: #fff; border-color: #4CAF50; }
+        main { background: #98cfe2; padding: 12px; }
+        .section { background: #fff; border: 1px solid #aaa; margin-bottom: 10px; padding: 12px; }
+        .person-banner { display: grid; grid-template-columns: 130px 1fr 160px 1fr; gap: 8px 12px; align-items: center; margin-bottom: 12px; }
+        .person-banner label { font-weight: bold; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        .field.full { grid-column: 1 / -1; }
+        input, select, textarea { width: 100%; padding: 7px; border: 1px solid #aaa; font: inherit; }
+        textarea { min-height: 75px; resize: vertical; }
+        table { width: 100%; border-collapse: collapse; background: #fff; }
+        th, td { border: 1px solid #b8b8b8; padding: 6px; text-align: left; vertical-align: top; }
+        th { background: #d6dde8; color: #4b6076; font-weight: normal; }
+        .table-wrap { overflow: auto; }
+        .status { min-height: 22px; margin-top: 8px; font-weight: bold; }
+        .small { font-size: 12px; color: #555; }
+        footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #ddd; padding: 6px; text-align: center; }
+        @media (max-width: 720px) { .person-banner, .form-grid { grid-template-columns: 1fr; } .field.full { grid-column: 1; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <header>
+            <h1>CONTACT</h1>
+            <div class="nav"><button id="backBtn" type="button">BACK</button></div>
+        </header>
+        <main>
+            <section class="section">
+                <div class="person-banner">
+                    <label>PersonID</label><div id="personIDDisplay"></div>
+                    <label>FamilyTreeCode</label><div id="familyTreeCodeDisplay"></div>
+                    <label>Person</label><div id="personNameDisplay"></div>
+                </div>
+            </section>
+            <section class="section">
+                <h2 id="formTitle">ADD CONTACT</h2>
+                <div class="form-grid">
+                    <div class="field"><label for="contactType">Contact Type</label><select id="contactType"><option value=""></option><option value="Email">Email</option><option value="Mobile">Mobile</option><option value="Phone">Phone</option><option value="Address">Address</option><option value="Website">Website</option><option value="Other">Other</option></select></div>
+                    <div class="field"><label for="contactValue">Contact Value</label><input id="contactValue" maxlength="255"></div>
+                    <div class="field full"><label for="contactNote">Contact Note</label><textarea id="contactNote" maxlength="500"></textarea></div>
+                    <div class="field"><label><input id="isPrimary" type="checkbox" style="width:auto;"> Primary Contact</label></div>
+                </div>
+                <div class="actions" style="justify-content:flex-start; margin-top:10px;"><button id="saveContactBtn" class="green" type="button">SAVE CONTACT</button><button id="cancelEditBtn" type="button" style="display:none;">CANCEL EDIT</button><button id="clearBtn" type="button">CLEAR</button></div>
+                <div id="formStatus" class="status"></div>
+            </section>
+            <section class="section">
+                <h2>CONTACTS</h2>
+                <p class="small">Email and Mobile contacts may later be used for FamilyTree notifications.</p>
+                <div class="table-wrap"><table><thead><tr><th>ContactID</th><th>Type</th><th>Value</th><th>Note</th><th>Primary</th><th>Edit</th><th>Delete</th></tr></thead><tbody id="contactBody"></tbody></table></div>
+                <div id="listStatus" class="status"></div>
+            </section>
+        </main>
+    </div>
+    <footer>Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr</footer>
+    <script src="js/FTContact.js?v=20260827-1"></script>
+</body>
+</html>

@@ -803,6 +803,119 @@ router.get('/persons/:id', auth, async (req, res) => {
     }
 });
 
+
+router.put('/persons/:id', auth, async (req, res) => {
+    const id = Number(req.params.id);
+    const userID = req.user.userId;
+    const b = req.body || {};
+    const code = String(b.familyTreeCode || '');
+
+    if (!b.FirstName && !b.LastName) {
+        return res.status(400).json({
+            message: 'First Name or Last Name is required.'
+        });
+    }
+
+    if (
+        b.BirthDate &&
+        b.DeathDate &&
+        String(b.DeathDate) < String(b.BirthDate)
+    ) {
+        return res.status(400).json({
+            message: 'Death Date cannot be earlier than Birth Date.'
+        });
+    }
+
+    try {
+        const result = await withTx(async c => {
+            const tree = await requireTree(c, code, userID);
+
+            const [member] = await c.query(
+                `SELECT 1
+                   FROM FTFamilyTreePersonT
+                  WHERE FamilyTreeID=? AND PersonID=?
+                  LIMIT 1`,
+                [tree.FamilyTreeID, id]
+            );
+
+            if (!member.length) {
+                const err = new Error('Person is not in this Family Tree.');
+                err.status = 404;
+                throw err;
+            }
+
+            const [existing] = await c.query(
+                `SELECT *
+                   FROM FTPersonT
+                  WHERE PersonID=?
+                  LIMIT 1`,
+                [id]
+            );
+
+            if (!existing.length) {
+                const err = new Error('Person not found.');
+                err.status = 404;
+                throw err;
+            }
+
+            await c.query(
+                `UPDATE FTPersonT
+                    SET FirstName=?,
+                        MiddleName=?,
+                        LastName=?,
+                        SuffixName=?,
+                        NickName=?,
+                        MaidenName=?,
+                        Gender=?,
+                        BirthDate=?,
+                        BirthPlace=?,
+                        Died=?,
+                        DeathDate=?,
+                        UpdatedByUserID=?,
+                        UpdatedAt=NOW()
+                  WHERE PersonID=?`,
+                [
+                    b.FirstName || null,
+                    b.MiddleName || null,
+                    b.LastName || null,
+                    b.SuffixName || null,
+                    b.NickName || null,
+                    b.MaidenName || null,
+                    b.Gender || null,
+                    b.BirthDate || null,
+                    b.BirthPlace || null,
+                    b.Died ? 1 : 0,
+                    b.Died ? (b.DeathDate || null) : null,
+                    userID,
+                    id
+                ]
+            );
+
+            await logActivity(
+                c,
+                tree.FamilyTreeID,
+                userID,
+                'EDIT',
+                'FTPersonT',
+                id,
+                id,
+                'Edited person'
+            );
+
+            return {
+                message: 'Person changes saved.'
+            };
+        });
+
+        res.json(result);
+    } catch (e) {
+        res.status(e.status || 500).json({
+            message: e.message
+        });
+    }
+});
+
+
 router.get('/persons/:id/relationships', auth, async (req, res) => {
     const id = Number(req.params.id);
     const code = String(req.query.familyTreeCode || '');
@@ -1693,6 +1806,433 @@ router.post(
             });
 
             res.status(201).json(result);
+        } catch (e) {
+            res.status(e.status || 500).json({
+                message: e.message
+            });
+        }
+    }
+);
+
+
+
+/* ============================================================================
+   GENERAL PICTURE MANAGEMENT FOR FTPerson.html
+
+   POST /persons/:id/pictures
+     - If no Profile exists, the first picture becomes Profile.
+     - Otherwise it becomes the next Life picture.
+     - Maximum total: 5 pictures.
+
+   POST /persons/:id/pictures/:imageID/make-profile
+     - A Life picture becomes the Profile picture.
+     - The former Profile picture is retained as a Life picture in the
+       selected picture's prior slot.
+   ============================================================================ */
+
+router.post(
+    '/persons/:id/pictures',
+    auth,
+    upload.single('picture'),
+    async (req, res) => {
+        const id = Number(req.params.id);
+        const userID = req.user.userId;
+        const code = String(req.body.familyTreeCode || '');
+
+        if (!req.file) {
+            return res.status(400).json({
+                message: 'Picture is required.'
+            });
+        }
+
+        try {
+            const result = await withTx(async c => {
+                const tree = await requireTree(c, code, userID);
+
+                const [member] = await c.query(
+                    `SELECT 1
+                       FROM FTFamilyTreePersonT
+                      WHERE FamilyTreeID=? AND PersonID=?
+                      LIMIT 1`,
+                    [tree.FamilyTreeID, id]
+                );
+
+                if (!member.length) {
+                    const err = new Error(
+                        'Person is not in this Family Tree.'
+                    );
+                    err.status = 404;
+                    throw err;
+                }
+
+                const [images] = await c.query(
+                    `SELECT ImageID,ImageType,SortOrder
+                       FROM FTImageT
+                      WHERE PersonID=?
+                      ORDER BY ImageID`,
+                    [id]
+                );
+
+                if (images.length >= 5) {
+                    const err = new Error(
+                        'A person may have no more than five pictures.'
+                    );
+                    err.status = 400;
+                    throw err;
+                }
+
+                const profile = images.find(
+                    image => image.ImageType === 'Profile'
+                );
+
+                const extension =
+                    extensionFromMimeType(req.file.mimetype);
+
+                const imagesDirectory = path.join(
+                    __dirname,
+                    '..',
+                    'httpdocs',
+                    'images'
+                );
+
+                fs.mkdirSync(imagesDirectory, {
+                    recursive: true
+                });
+
+                let imageType;
+                let sortOrder;
+                let storageKey;
+
+                if (!profile) {
+                    imageType = 'Profile';
+                    sortOrder = 0;
+                    storageKey = profileFileName(id, extension);
+                } else {
+                    imageType = 'Life';
+
+                    const used = new Set(
+                        images
+                            .filter(image => image.ImageType === 'Life')
+                            .map(image => Number(image.SortOrder))
+                            .filter(number => number >= 1 && number <= 4)
+                    );
+
+                    sortOrder = 1;
+
+                    while (
+                        sortOrder <= 4 &&
+                        used.has(sortOrder)
+                    ) {
+                        sortOrder++;
+                    }
+
+                    if (sortOrder > 4) {
+                        const err = new Error(
+                            'No available picture position remains.'
+                        );
+                        err.status = 400;
+                        throw err;
+                    }
+
+                    storageKey =
+                        lifeFileName(id, sortOrder, extension);
+                }
+
+                fs.writeFileSync(
+                    imageFilePath(storageKey),
+                    req.file.buffer
+                );
+
+                const approxAge =
+                    req.body.approxAge === '' ||
+                    req.body.approxAge == null
+                        ? null
+                        : Number(req.body.approxAge);
+
+                const [imageResult] = await c.query(
+                    `INSERT INTO FTImageT
+                     (
+                        PersonID,
+                        ImageType,
+                        ApproxAge,
+                        ImageDate,
+                        StorageKey,
+                        OriginalFileName,
+                        Caption,
+                        SortOrder,
+                        CreatedByUserID,
+                        CreatedAt,
+                        UpdatedByUserID,
+                        UpdatedAt
+                     )
+                     VALUES
+                     (?,?,?,?,?,?,?,?,?,NOW(),NULL,NULL)`,
+                    [
+                        id,
+                        imageType,
+                        Number.isFinite(approxAge)
+                            ? approxAge
+                            : null,
+                        req.body.imageDate || null,
+                        storageKey,
+                        req.file.originalname,
+                        req.body.caption || null,
+                        sortOrder,
+                        userID
+                    ]
+                );
+
+                await logActivity(
+                    c,
+                    tree.FamilyTreeID,
+                    userID,
+                    'ADD_IMAGE',
+                    'FTImageT',
+                    imageResult.insertId,
+                    id,
+                    imageType === 'Profile'
+                        ? 'Added profile picture'
+                        : `Added picture ${sortOrder + 1}`
+                );
+
+                return {
+                    ImageID: imageResult.insertId,
+                    ImageType: imageType,
+                    SortOrder: sortOrder,
+                    StorageKey: storageKey,
+                    url: publicImageUrl(storageKey)
+                };
+            });
+
+            res.status(201).json(result);
+        } catch (e) {
+            res.status(e.status || 500).json({
+                message: e.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/persons/:id/pictures/:imageID/make-profile',
+    auth,
+    async (req, res) => {
+        const id = Number(req.params.id);
+        const selectedImageID = Number(req.params.imageID);
+        const userID = req.user.userId;
+        const code = String((req.body || {}).familyTreeCode || '');
+
+        try {
+            const result = await withTx(async c => {
+                const tree = await requireTree(c, code, userID);
+
+                const [member] = await c.query(
+                    `SELECT 1
+                       FROM FTFamilyTreePersonT
+                      WHERE FamilyTreeID=? AND PersonID=?
+                      LIMIT 1`,
+                    [tree.FamilyTreeID, id]
+                );
+
+                if (!member.length) {
+                    const err = new Error(
+                        'Person is not in this Family Tree.'
+                    );
+                    err.status = 404;
+                    throw err;
+                }
+
+                const [selectedRows] = await c.query(
+                    `SELECT *
+                       FROM FTImageT
+                      WHERE ImageID=? AND PersonID=?
+                      LIMIT 1`,
+                    [selectedImageID, id]
+                );
+
+                if (!selectedRows.length) {
+                    const err = new Error('Picture not found.');
+                    err.status = 404;
+                    throw err;
+                }
+
+                const selected = selectedRows[0];
+
+                if (selected.ImageType === 'Profile') {
+                    return {
+                        message: 'That picture is already the Profile Picture.'
+                    };
+                }
+
+                if (
+                    selected.ImageType !== 'Life' ||
+                    Number(selected.SortOrder) < 1 ||
+                    Number(selected.SortOrder) > 4
+                ) {
+                    const err = new Error(
+                        'Only one of the four other pictures can be made Profile.'
+                    );
+                    err.status = 400;
+                    throw err;
+                }
+
+                const [profileRows] = await c.query(
+                    `SELECT *
+                       FROM FTImageT
+                      WHERE PersonID=? AND ImageType='Profile'
+                      ORDER BY ImageID
+                      LIMIT 1`,
+                    [id]
+                );
+
+                const oldProfile =
+                    profileRows.length
+                        ? profileRows[0]
+                        : null;
+
+                const selectedExtension =
+                    path.extname(selected.StorageKey)
+                        .replace('.', '')
+                        .toLowerCase() || 'jpg';
+
+                const newProfileKey =
+                    profileFileName(
+                        id,
+                        selectedExtension
+                    );
+
+                const selectedPath =
+                    imageFilePath(selected.StorageKey);
+
+                const tempKey =
+                    `${id}_profile_swap_${Date.now()}.${selectedExtension}`;
+
+                const tempPath =
+                    imageFilePath(tempKey);
+
+                if (!fs.existsSync(selectedPath)) {
+                    const err = new Error(
+                        'The selected picture file could not be found.'
+                    );
+                    err.status = 404;
+                    throw err;
+                }
+
+                fs.renameSync(
+                    selectedPath,
+                    tempPath
+                );
+
+                let formerProfileLifeKey = null;
+
+                try {
+                    if (oldProfile) {
+                        const oldProfilePath =
+                            imageFilePath(
+                                oldProfile.StorageKey
+                            );
+
+                        const oldExtension =
+                            path.extname(
+                                oldProfile.StorageKey
+                            )
+                                .replace('.', '')
+                                .toLowerCase() || 'jpg';
+
+                        formerProfileLifeKey =
+                            lifeFileName(
+                                id,
+                                Number(selected.SortOrder),
+                                oldExtension
+                            );
+
+                        if (
+                            fs.existsSync(
+                                oldProfilePath
+                            )
+                        ) {
+                            fs.renameSync(
+                                oldProfilePath,
+                                imageFilePath(
+                                    formerProfileLifeKey
+                                )
+                            );
+                        }
+
+                        await c.query(
+                            `UPDATE FTImageT
+                                SET ImageType='Life',
+                                    SortOrder=?,
+                                    StorageKey=?,
+                                    UpdatedByUserID=?,
+                                    UpdatedAt=NOW()
+                              WHERE ImageID=?`,
+                            [
+                                Number(selected.SortOrder),
+                                formerProfileLifeKey,
+                                userID,
+                                oldProfile.ImageID
+                            ]
+                        );
+                    }
+
+                    fs.renameSync(
+                        tempPath,
+                        imageFilePath(
+                            newProfileKey
+                        )
+                    );
+
+                    await c.query(
+                        `UPDATE FTImageT
+                            SET ImageType='Profile',
+                                SortOrder=0,
+                                StorageKey=?,
+                                UpdatedByUserID=?,
+                                UpdatedAt=NOW()
+                          WHERE ImageID=?`,
+                        [
+                            newProfileKey,
+                            userID,
+                            selected.ImageID
+                        ]
+                    );
+                } catch (swapError) {
+                    if (
+                        fs.existsSync(tempPath) &&
+                        !fs.existsSync(selectedPath)
+                    ) {
+                        try {
+                            fs.renameSync(
+                                tempPath,
+                                selectedPath
+                            );
+                        } catch (_) {}
+                    }
+
+                    throw swapError;
+                }
+
+                await logActivity(
+                    c,
+                    tree.FamilyTreeID,
+                    userID,
+                    'EDIT_IMAGE',
+                    'FTImageT',
+                    selected.ImageID,
+                    id,
+                    'Changed Profile Picture'
+                );
+
+                return {
+                    message: 'Profile Picture changed.',
+                    ImageID: selected.ImageID,
+                    StorageKey: newProfileKey,
+                    url: publicImageUrl(newProfileKey)
+                };
+            });
+
+            res.json(result);
         } catch (e) {
             res.status(e.status || 500).json({
                 message: e.message
