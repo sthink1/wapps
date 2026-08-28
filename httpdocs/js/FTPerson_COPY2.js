@@ -681,22 +681,6 @@ async function deletePerson() {
     }
 
     window.alert(data.message || 'Person deleted.');
-
-    if (data.FamilyTreeCode) {
-        familyTreeCode = data.FamilyTreeCode;
-        sessionStorage.setItem(
-            'familyTreeCode',
-            data.FamilyTreeCode
-        );
-    } else {
-        sessionStorage.removeItem('familyTreeCode');
-    }
-
-    if (data.treeDeleted || data.treeSplit) {
-        window.location.href = 'FamilyTree.html';
-        return;
-    }
-
     window.location.href = 'FTPersonList.html';
 }
 

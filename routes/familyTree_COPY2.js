@@ -34,98 +34,10 @@ async function withTx(work) {
 
 async function getTreeByCode(c, code) {
     const [rows] = await c.query(
-        `SELECT
-            FamilyTreeID,
-            FamilyTreeCode,
-            CreatedByUserID,
-            CreatedAt,
-            Status,
-            MergedIntoFamilyTreeID,
-            MergedAt,
-            MergedByUserID
-         FROM FamilyTreeT
-         WHERE FamilyTreeCode=?
-         LIMIT 1`,
+        'SELECT FamilyTreeID, FamilyTreeCode FROM FamilyTreeT WHERE FamilyTreeCode = ? LIMIT 1',
         [code]
     );
-
     return rows[0] || null;
-}
-
-async function getTreeByID(c, treeID) {
-    const [rows] = await c.query(
-        `SELECT
-            FamilyTreeID,
-            FamilyTreeCode,
-            CreatedByUserID,
-            CreatedAt,
-            Status,
-            MergedIntoFamilyTreeID,
-            MergedAt,
-            MergedByUserID
-         FROM FamilyTreeT
-         WHERE FamilyTreeID=?
-         LIMIT 1`,
-        [treeID]
-    );
-
-    return rows[0] || null;
-}
-
-async function resolveTreeAlias(c, treeOrCode) {
-    let requestedTree =
-        typeof treeOrCode === 'string'
-            ? await getTreeByCode(c, treeOrCode)
-            : treeOrCode;
-
-    if (!requestedTree) {
-        return null;
-    }
-
-    let current = requestedTree;
-    const visited = new Set();
-
-    for (let i = 0; i < 25; i++) {
-        if (!current.MergedIntoFamilyTreeID) {
-            return {
-                requestedTree,
-                activeTree: current,
-                redirected:
-                    requestedTree.FamilyTreeID !== current.FamilyTreeID
-            };
-        }
-
-        if (visited.has(current.FamilyTreeID)) {
-            const err = new Error(
-                'Family Tree merge history contains a loop.'
-            );
-            err.status = 500;
-            throw err;
-        }
-
-        visited.add(current.FamilyTreeID);
-
-        const next = await getTreeByID(
-            c,
-            current.MergedIntoFamilyTreeID
-        );
-
-        if (!next) {
-            const err = new Error(
-                'The current Family Tree for this historical code was not found.'
-            );
-            err.status = 500;
-            throw err;
-        }
-
-        current = next;
-    }
-
-    const err = new Error(
-        'Family Tree merge history is too deep.'
-    );
-    err.status = 500;
-    throw err;
 }
 
 async function userHasTree(c, treeID, userID) {
@@ -143,18 +55,13 @@ async function requireTree(c, code, userID) {
         throw err;
     }
 
-    const resolved = await resolveTreeAlias(
-        c,
-        String(code).trim().toUpperCase()
-    );
+    const tree = await getTreeByCode(c, code);
 
-    if (!resolved) {
+    if (!tree) {
         const err = new Error('FamilyTreeCode was not found.');
         err.status = 404;
         throw err;
     }
-
-    const tree = resolved.activeTree;
 
     if (!(await userHasTree(c, tree.FamilyTreeID, userID))) {
         const err = new Error('You are not authorized for this Family Tree.');
@@ -343,256 +250,92 @@ function findExistingProfileFile(personID) {
 
 async function getPersonTree(c, personID) {
     const [rows] = await c.query(
-        `SELECT
-            ft.FamilyTreeID,
-            ft.FamilyTreeCode,
-            ft.CreatedByUserID,
-            ft.CreatedAt,
-            ft.Status,
-            ft.MergedIntoFamilyTreeID,
-            ft.MergedAt,
-            ft.MergedByUserID
-         FROM FTFamilyTreePersonT ftp
-         JOIN FamilyTreeT ft
-           ON ft.FamilyTreeID=ftp.FamilyTreeID
-         WHERE ftp.PersonID=?
-         ORDER BY
-            CASE WHEN ft.Status='Active' THEN 0 ELSE 1 END,
-            ftp.AddedAt ASC,
-            ft.CreatedAt ASC,
-            ft.FamilyTreeID ASC
-         LIMIT 1`,
+        `SELECT ft.FamilyTreeID, ft.FamilyTreeCode
+           FROM FTFamilyTreePersonT ftp
+           JOIN FamilyTreeT ft ON ft.FamilyTreeID=ftp.FamilyTreeID
+          WHERE ftp.PersonID=?
+          ORDER BY ftp.AddedAt ASC, ft.CreatedAt ASC, ft.FamilyTreeID ASC
+          LIMIT 1`,
         [personID]
     );
-
-    if (!rows.length) {
-        return null;
-    }
-
-    const resolved = await resolveTreeAlias(c, rows[0]);
-
-    return resolved
-        ? resolved.activeTree
-        : null;
+    return rows[0] || null;
 }
 
 async function adoptTreeForUser(c, userID, targetTree) {
-    const resolvedTarget = await resolveTreeAlias(
-        c,
-        targetTree
-    );
-
-    if (!resolvedTarget) {
-        const err = new Error('Target Family Tree was not found.');
-        err.status = 404;
-        throw err;
-    }
-
-    targetTree = resolvedTarget.activeTree;
-
     const [sourceTrees] = await c.query(
-        `SELECT DISTINCT
-            ft.FamilyTreeID,
-            ft.FamilyTreeCode,
-            ft.CreatedAt
-         FROM FTFamilyTreeUserT ftu
-         JOIN FamilyTreeT ft
-           ON ft.FamilyTreeID=ftu.FamilyTreeID
-         WHERE ftu.UserID=?
-           AND ftu.IsActive=1
-           AND ft.FamilyTreeID<>?
-           AND EXISTS (
-               SELECT 1
-               FROM FTFamilyTreePersonT ftp
-               WHERE ftp.FamilyTreeID=ft.FamilyTreeID
-               LIMIT 1
-           )`,
+        `SELECT FamilyTreeID
+           FROM FTFamilyTreeUserT
+          WHERE UserID=? AND IsActive=1 AND FamilyTreeID<>?`,
         [userID, targetTree.FamilyTreeID]
     );
 
     for (const source of sourceTrees) {
         const sourceID = source.FamilyTreeID;
 
-        /*
-         * Preserve every person's original Tree identity while the Tree is
-         * merged into the authoritative target Tree.
-         */
+        // Move only people this user personally added.
         await c.query(
-            `INSERT INTO FTFamilyTreePersonT
-             (
-                FamilyTreeID,
-                PersonID,
-                OriginFamilyTreeID,
-                AddedByUserID,
-                AddedAt,
-                Notes
-             )
-             SELECT
-                ?,
-                PersonID,
-                COALESCE(OriginFamilyTreeID, ?),
-                AddedByUserID,
-                AddedAt,
-                Notes
-             FROM FTFamilyTreePersonT
-             WHERE FamilyTreeID=?
-             ON DUPLICATE KEY UPDATE
-                OriginFamilyTreeID=
-                    COALESCE(
-                        FTFamilyTreePersonT.OriginFamilyTreeID,
-                        VALUES(OriginFamilyTreeID)
-                    )`,
-            [
-                targetTree.FamilyTreeID,
-                sourceID,
-                sourceID
-            ]
+            `INSERT IGNORE INTO FTFamilyTreePersonT
+             (FamilyTreeID,PersonID,AddedByUserID,AddedAt,Notes)
+             SELECT ?,PersonID,AddedByUserID,AddedAt,Notes
+               FROM FTFamilyTreePersonT
+              WHERE FamilyTreeID=? AND AddedByUserID=?`,
+            [targetTree.FamilyTreeID, sourceID, userID]
         );
 
+        // Move parent relationships created by this user.
         await c.query(
             `INSERT IGNORE INTO FTParentT
-             (
-                FamilyTreeID,
-                PersonID,
-                ParentPersonID,
-                ParentType,
-                AncestrySide,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             )
-             SELECT
-                ?,
-                PersonID,
-                ParentPersonID,
-                ParentType,
-                AncestrySide,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             FROM FTParentT
-             WHERE FamilyTreeID=?`,
-            [targetTree.FamilyTreeID, sourceID]
+             (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
+              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+             SELECT ?,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
+                    CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt
+               FROM FTParentT
+              WHERE FamilyTreeID=? AND CreatedByUserID=?`,
+            [targetTree.FamilyTreeID, sourceID, userID]
         );
 
+        // Move partner relationships created by this user.
         await c.query(
             `INSERT IGNORE INTO FTPartnerT
-             (
-                FamilyTreeID,
-                PersonID,
-                PartnerPersonID,
-                RelationshipType,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             )
-             SELECT
-                ?,
-                PersonID,
-                PartnerPersonID,
-                RelationshipType,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             FROM FTPartnerT
-             WHERE FamilyTreeID=?`,
-            [targetTree.FamilyTreeID, sourceID]
+             (FamilyTreeID,PersonID,PartnerPersonID,RelationshipType,Notes,
+              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+             SELECT ?,PersonID,PartnerPersonID,RelationshipType,Notes,
+                    CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt
+               FROM FTPartnerT
+              WHERE FamilyTreeID=? AND CreatedByUserID=?`,
+            [targetTree.FamilyTreeID, sourceID, userID]
         );
 
         await c.query(
             `DELETE FROM FTParentT
-             WHERE FamilyTreeID=?`,
-            [sourceID]
+              WHERE FamilyTreeID=? AND CreatedByUserID=?`,
+            [sourceID, userID]
         );
-
         await c.query(
             `DELETE FROM FTPartnerT
-             WHERE FamilyTreeID=?`,
-            [sourceID]
+              WHERE FamilyTreeID=? AND CreatedByUserID=?`,
+            [sourceID, userID]
         );
-
         await c.query(
             `DELETE FROM FTFamilyTreePersonT
-             WHERE FamilyTreeID=?`,
-            [sourceID]
-        );
-
-        /*
-         * Do NOT delete the old Tree record. It becomes a historical alias
-         * pointing to the currently authoritative Tree.
-         */
-        await c.query(
-            `UPDATE FamilyTreeT
-             SET Status='Merged',
-                 MergedIntoFamilyTreeID=?,
-                 MergedAt=NOW(),
-                 MergedByUserID=?,
-                 LastActivityAt=NOW(),
-                 LastActivityByUserID=?
-             WHERE FamilyTreeID=?`,
-            [
-                targetTree.FamilyTreeID,
-                userID,
-                userID,
-                sourceID
-            ]
-        );
-
-        await c.query(
-            `UPDATE FTFamilyTreeUserT
-             SET IsActive=0,
-                 LastActivityAt=NOW()
-             WHERE FamilyTreeID=?`,
-            [sourceID]
-        );
-
-        await logActivity(
-            c,
-            targetTree.FamilyTreeID,
-            userID,
-            'MERGE',
-            'FamilyTreeT',
-            sourceID,
-            null,
-            `Merged Family Tree ${source.FamilyTreeCode} into ${targetTree.FamilyTreeCode}`
+              WHERE FamilyTreeID=? AND AddedByUserID=?`,
+            [sourceID, userID]
         );
     }
 
+    // One active FamilyTreeCode per user.
     await c.query(
-        `UPDATE FTFamilyTreeUserT
-         SET IsActive=0
-         WHERE UserID=?
-           AND FamilyTreeID<>?`,
+        `UPDATE FTFamilyTreeUserT SET IsActive=0
+          WHERE UserID=? AND FamilyTreeID<>?`,
         [userID, targetTree.FamilyTreeID]
     );
 
     await c.query(
         `INSERT INTO FTFamilyTreeUserT
-         (
-            FamilyTreeID,
-            UserID,
-            JoinedAt,
-            LastActivityAt,
-            IsActive,
-            AddedByUserID
-         )
+         (FamilyTreeID,UserID,JoinedAt,LastActivityAt,IsActive,AddedByUserID)
          VALUES (?,?,NOW(),NOW(),1,?)
-         ON DUPLICATE KEY UPDATE
-            IsActive=1,
-            LastActivityAt=NOW()`,
-        [
-            targetTree.FamilyTreeID,
-            userID,
-            userID
-        ]
+         ON DUPLICATE KEY UPDATE IsActive=1, LastActivityAt=NOW()`,
+        [targetTree.FamilyTreeID, userID, userID]
     );
 
     return targetTree;
@@ -601,16 +344,9 @@ async function adoptTreeForUser(c, userID, targetTree) {
 async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
     await c.query(
         `INSERT IGNORE INTO FTFamilyTreePersonT
-         (
-            FamilyTreeID,
-            PersonID,
-            OriginFamilyTreeID,
-            AddedByUserID,
-            AddedAt,
-            Notes
-         )
-         VALUES (?,?,?,?,NOW(),NULL)`,
-        [treeID, related, treeID, userID]
+         (FamilyTreeID,PersonID,AddedByUserID,AddedAt,Notes)
+         VALUES (?,?,?,NOW(),NULL)`,
+        [treeID, related, userID]
     );
 
     if (kind === 'mother' || kind === 'father') {
@@ -652,571 +388,6 @@ async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
     }
 }
 
-
-async function ensureOriginTreeID(c, treeID) {
-    await c.query(
-        `UPDATE FTFamilyTreePersonT
-         SET OriginFamilyTreeID=FamilyTreeID
-         WHERE FamilyTreeID=?
-           AND OriginFamilyTreeID IS NULL`,
-        [treeID]
-    );
-}
-
-async function loadTreeComponents(c, treeID) {
-    const [people] = await c.query(
-        `SELECT
-            PersonID,
-            COALESCE(OriginFamilyTreeID, FamilyTreeID) AS OriginFamilyTreeID
-         FROM FTFamilyTreePersonT
-         WHERE FamilyTreeID=?`,
-        [treeID]
-    );
-
-    if (!people.length) {
-        return [];
-    }
-
-    const ids = people.map(row => Number(row.PersonID));
-    const parent = new Map(ids.map(id => [id, id]));
-
-    function find(x) {
-        let root = x;
-
-        while (parent.get(root) !== root) {
-            root = parent.get(root);
-        }
-
-        while (parent.get(x) !== x) {
-            const next = parent.get(x);
-            parent.set(x, root);
-            x = next;
-        }
-
-        return root;
-    }
-
-    function union(a, b) {
-        if (!parent.has(a) || !parent.has(b)) {
-            return;
-        }
-
-        const ra = find(a);
-        const rb = find(b);
-
-        if (ra !== rb) {
-            parent.set(rb, ra);
-        }
-    }
-
-    const [parentEdges] = await c.query(
-        `SELECT PersonID, ParentPersonID
-         FROM FTParentT
-         WHERE FamilyTreeID=?`,
-        [treeID]
-    );
-
-    for (const edge of parentEdges) {
-        union(
-            Number(edge.PersonID),
-            Number(edge.ParentPersonID)
-        );
-    }
-
-    const [partnerEdges] = await c.query(
-        `SELECT PersonID, PartnerPersonID
-         FROM FTPartnerT
-         WHERE FamilyTreeID=?`,
-        [treeID]
-    );
-
-    for (const edge of partnerEdges) {
-        union(
-            Number(edge.PersonID),
-            Number(edge.PartnerPersonID)
-        );
-    }
-
-    const byRoot = new Map();
-
-    for (const row of people) {
-        const root = find(Number(row.PersonID));
-
-        if (!byRoot.has(root)) {
-            byRoot.set(root, []);
-        }
-
-        byRoot.get(root).push({
-            PersonID: Number(row.PersonID),
-            OriginFamilyTreeID:
-                Number(row.OriginFamilyTreeID)
-        });
-    }
-
-    return Array.from(byRoot.values());
-}
-
-async function chooseHistoricalTreeForComponent(
-    c,
-    component,
-    currentTreeID
-) {
-    const originIDs = [
-        ...new Set(
-            component
-                .map(row => row.OriginFamilyTreeID)
-                .filter(id => id && id !== currentTreeID)
-        )
-    ];
-
-    if (!originIDs.length) {
-        return null;
-    }
-
-    const placeholders = originIDs.map(() => '?').join(',');
-
-    const [rows] = await c.query(
-        `SELECT
-            FamilyTreeID,
-            FamilyTreeCode,
-            CreatedByUserID,
-            CreatedAt,
-            Status,
-            MergedIntoFamilyTreeID
-         FROM FamilyTreeT
-         WHERE FamilyTreeID IN (${placeholders})
-         ORDER BY CreatedAt ASC, FamilyTreeID ASC`,
-        originIDs
-    );
-
-    return rows[0] || null;
-}
-
-async function moveComponentToTree(
-    c,
-    sourceTreeID,
-    destinationTreeID,
-    personIDs
-) {
-    if (!personIDs.length) {
-        return;
-    }
-
-    const placeholders =
-        personIDs.map(() => '?').join(',');
-
-    await c.query(
-        `INSERT INTO FTFamilyTreePersonT
-         (
-            FamilyTreeID,
-            PersonID,
-            OriginFamilyTreeID,
-            AddedByUserID,
-            AddedAt,
-            Notes
-         )
-         SELECT
-            ?,
-            PersonID,
-            COALESCE(OriginFamilyTreeID, ?),
-            AddedByUserID,
-            AddedAt,
-            Notes
-         FROM FTFamilyTreePersonT
-         WHERE FamilyTreeID=?
-           AND PersonID IN (${placeholders})
-         ON DUPLICATE KEY UPDATE
-            OriginFamilyTreeID=
-                COALESCE(
-                    FTFamilyTreePersonT.OriginFamilyTreeID,
-                    VALUES(OriginFamilyTreeID)
-                )`,
-        [
-            destinationTreeID,
-            sourceTreeID,
-            sourceTreeID,
-            ...personIDs
-        ]
-    );
-
-    await c.query(
-        `INSERT IGNORE INTO FTParentT
-         (
-            FamilyTreeID,
-            PersonID,
-            ParentPersonID,
-            ParentType,
-            AncestrySide,
-            Notes,
-            CreatedByUserID,
-            CreatedAt,
-            UpdatedByUserID,
-            UpdatedAt
-         )
-         SELECT
-            ?,
-            PersonID,
-            ParentPersonID,
-            ParentType,
-            AncestrySide,
-            Notes,
-            CreatedByUserID,
-            CreatedAt,
-            UpdatedByUserID,
-            UpdatedAt
-         FROM FTParentT
-         WHERE FamilyTreeID=?
-           AND PersonID IN (${placeholders})
-           AND ParentPersonID IN (${placeholders})`,
-        [
-            destinationTreeID,
-            sourceTreeID,
-            ...personIDs,
-            ...personIDs
-        ]
-    );
-
-    await c.query(
-        `INSERT IGNORE INTO FTPartnerT
-         (
-            FamilyTreeID,
-            PersonID,
-            PartnerPersonID,
-            RelationshipType,
-            Notes,
-            CreatedByUserID,
-            CreatedAt,
-            UpdatedByUserID,
-            UpdatedAt
-         )
-         SELECT
-            ?,
-            PersonID,
-            PartnerPersonID,
-            RelationshipType,
-            Notes,
-            CreatedByUserID,
-            CreatedAt,
-            UpdatedByUserID,
-            UpdatedAt
-         FROM FTPartnerT
-         WHERE FamilyTreeID=?
-           AND PersonID IN (${placeholders})
-           AND PartnerPersonID IN (${placeholders})`,
-        [
-            destinationTreeID,
-            sourceTreeID,
-            ...personIDs,
-            ...personIDs
-        ]
-    );
-
-    await c.query(
-        `DELETE FROM FTParentT
-         WHERE FamilyTreeID=?
-           AND PersonID IN (${placeholders})
-           AND ParentPersonID IN (${placeholders})`,
-        [sourceTreeID, ...personIDs, ...personIDs]
-    );
-
-    await c.query(
-        `DELETE FROM FTPartnerT
-         WHERE FamilyTreeID=?
-           AND PersonID IN (${placeholders})
-           AND PartnerPersonID IN (${placeholders})`,
-        [sourceTreeID, ...personIDs, ...personIDs]
-    );
-
-    await c.query(
-        `DELETE FROM FTFamilyTreePersonT
-         WHERE FamilyTreeID=?
-           AND PersonID IN (${placeholders})`,
-        [sourceTreeID, ...personIDs]
-    );
-}
-
-async function splitTreeIfDisconnected(
-    c,
-    tree,
-    userID
-) {
-    await ensureOriginTreeID(
-        c,
-        tree.FamilyTreeID
-    );
-
-    const components = await loadTreeComponents(
-        c,
-        tree.FamilyTreeID
-    );
-
-    if (components.length <= 1) {
-        return {
-            split: false,
-            restoredCodes: [],
-            preferredFamilyTreeCode:
-                tree.FamilyTreeCode
-        };
-    }
-
-    /*
-     * The component containing people who originated in the currently
-     * authoritative Tree keeps the current code. If no component contains
-     * such a person, the largest component keeps the current code.
-     */
-    let anchorIndex = components.findIndex(
-        component =>
-            component.some(
-                row =>
-                    row.OriginFamilyTreeID ===
-                    tree.FamilyTreeID
-            )
-    );
-
-    if (anchorIndex < 0) {
-        anchorIndex = components
-            .map((component, index) => ({
-                index,
-                size: component.length
-            }))
-            .sort((a, b) => b.size - a.size)[0].index;
-    }
-
-    const restored = [];
-
-    for (let i = 0; i < components.length; i++) {
-        if (i === anchorIndex) {
-            continue;
-        }
-
-        const component = components[i];
-        const personIDs = component.map(
-            row => row.PersonID
-        );
-
-        let destination =
-            await chooseHistoricalTreeForComponent(
-                c,
-                component,
-                tree.FamilyTreeID
-            );
-
-        let restoredPriorCode = true;
-
-        if (destination) {
-            await c.query(
-                `UPDATE FamilyTreeT
-                 SET Status='Active',
-                     MergedIntoFamilyTreeID=NULL,
-                     MergedAt=NULL,
-                     MergedByUserID=NULL,
-                     LastActivityAt=NOW(),
-                     LastActivityByUserID=?
-                 WHERE FamilyTreeID=?`,
-                [
-                    userID,
-                    destination.FamilyTreeID
-                ]
-            );
-        } else {
-            restoredPriorCode = false;
-
-            const code = await createCode(c);
-
-            const [created] = await c.query(
-                `INSERT INTO FamilyTreeT
-                 (
-                    FamilyTreeCode,
-                    CreatedByUserID,
-                    CreatedAt,
-                    LastActivityAt,
-                    LastActivityByUserID,
-                    Status,
-                    MergedIntoFamilyTreeID,
-                    MergedAt,
-                    MergedByUserID
-                 )
-                 VALUES (
-                    ?,?,
-                    NOW(),
-                    NOW(),
-                    ?,
-                    'Active',
-                    NULL,
-                    NULL,
-                    NULL
-                 )`,
-                [code, userID, userID]
-            );
-
-            destination = {
-                FamilyTreeID: created.insertId,
-                FamilyTreeCode: code,
-                CreatedByUserID: userID
-            };
-
-            /*
-             * All users who could access the combined Tree retain an inactive
-             * membership in the newly separated Tree.
-             */
-            await c.query(
-                `INSERT IGNORE INTO FTFamilyTreeUserT
-                 (
-                    FamilyTreeID,
-                    UserID,
-                    JoinedAt,
-                    LastActivityAt,
-                    IsActive,
-                    AddedByUserID
-                 )
-                 SELECT
-                    ?,
-                    UserID,
-                    NOW(),
-                    NOW(),
-                    0,
-                    ?
-                 FROM FTFamilyTreeUserT
-                 WHERE FamilyTreeID=?`,
-                [
-                    destination.FamilyTreeID,
-                    userID,
-                    tree.FamilyTreeID
-                ]
-            );
-        }
-
-        await moveComponentToTree(
-            c,
-            tree.FamilyTreeID,
-            destination.FamilyTreeID,
-            personIDs
-        );
-
-        /*
-         * Any other historical origin codes represented inside this newly
-         * separated component become aliases of the restored/created code.
-         */
-        const componentOriginIDs = [
-            ...new Set(
-                component
-                    .map(row => row.OriginFamilyTreeID)
-                    .filter(
-                        id =>
-                            id &&
-                            id !== tree.FamilyTreeID &&
-                            id !== destination.FamilyTreeID
-                    )
-            )
-        ];
-
-        if (componentOriginIDs.length) {
-            const placeholders =
-                componentOriginIDs
-                    .map(() => '?')
-                    .join(',');
-
-            await c.query(
-                `UPDATE FamilyTreeT
-                 SET Status='Merged',
-                     MergedIntoFamilyTreeID=?,
-                     MergedAt=NOW(),
-                     MergedByUserID=?
-                 WHERE FamilyTreeID IN (${placeholders})`,
-                [
-                    destination.FamilyTreeID,
-                    userID,
-                    ...componentOriginIDs
-                ]
-            );
-        }
-
-        await logActivity(
-            c,
-            destination.FamilyTreeID,
-            userID,
-            'SPLIT',
-            'FamilyTreeT',
-            destination.FamilyTreeID,
-            null,
-            restoredPriorCode
-                ? `Reactivated Family Tree ${destination.FamilyTreeCode} after the family connection was removed`
-                : `Created Family Tree ${destination.FamilyTreeCode} after the family connection was removed`
-        );
-
-        restored.push({
-            FamilyTreeID:
-                destination.FamilyTreeID,
-            FamilyTreeCode:
-                destination.FamilyTreeCode,
-            restoredPriorCode,
-            CreatedByUserID:
-                destination.CreatedByUserID || null
-        });
-    }
-
-    /*
-     * If the deleting user originally owned one of the restored Trees,
-     * return that Tree as the user's active Tree. This matches the common
-     * case where a user's newer Tree had been temporarily absorbed into an
-     * older Tree and later becomes independent again.
-     */
-    const preferred =
-        restored.find(
-            item =>
-                Number(item.CreatedByUserID) ===
-                Number(userID)
-        ) ||
-        restored.find(() => true) ||
-        null;
-
-    if (preferred) {
-        const [[hadMembership]] = await c.query(
-            `SELECT COUNT(*) AS n
-             FROM FTFamilyTreeUserT
-             WHERE FamilyTreeID=?
-               AND UserID=?`,
-            [
-                preferred.FamilyTreeID,
-                userID
-            ]
-        );
-
-        if (Number(hadMembership.n) > 0) {
-            await c.query(
-                `UPDATE FTFamilyTreeUserT
-                 SET IsActive=0
-                 WHERE UserID=?`,
-                [userID]
-            );
-
-            await c.query(
-                `UPDATE FTFamilyTreeUserT
-                 SET IsActive=1,
-                     LastActivityAt=NOW()
-                 WHERE FamilyTreeID=?
-                   AND UserID=?`,
-                [
-                    preferred.FamilyTreeID,
-                    userID
-                ]
-            );
-        }
-    }
-
-    return {
-        split: true,
-        restoredCodes:
-            restored.map(
-                item => item.FamilyTreeCode
-            ),
-        preferredFamilyTreeCode:
-            preferred
-                ? preferred.FamilyTreeCode
-                : tree.FamilyTreeCode
-    };
-}
-
 router.get('/current-tree', auth, async (req, res) => {
     try {
         const [rows] = await pool.query(
@@ -1226,8 +397,6 @@ router.get('/current-tree', auth, async (req, res) => {
                  ON ft.FamilyTreeID=ftu.FamilyTreeID
               WHERE ftu.UserID=?
                 AND ftu.IsActive=1
-                AND ft.Status='Active'
-                AND ft.MergedIntoFamilyTreeID IS NULL
                 AND EXISTS (
                     SELECT 1
                       FROM FTFamilyTreePersonT ftp
@@ -1250,59 +419,23 @@ router.get('/current-tree', auth, async (req, res) => {
 });
 
 router.post('/enter-code', auth, async (req, res) => {
-    const code = String(
-        (req.body || {}).familyTreeCode || ''
-    ).trim().toUpperCase();
-
-    if (!code) {
-        return res.status(400).json({
-            message: 'Enter a FamilyTreeCode.'
-        });
-    }
+    const code = String((req.body || {}).familyTreeCode || '').trim().toUpperCase();
+    if (!code) return res.status(400).json({ message: 'Enter a FamilyTreeCode.' });
 
     try {
         const result = await withTx(async c => {
-            const resolved = await resolveTreeAlias(
-                c,
-                code
-            );
-
-            if (!resolved) {
-                const err = new Error(
-                    'FamilyTreeCode was not found.'
-                );
+            const tree = await getTreeByCode(c, code);
+            if (!tree) {
+                const err = new Error('FamilyTreeCode was not found.');
                 err.status = 404;
                 throw err;
             }
-
-            const activeTree =
-                await adoptTreeForUser(
-                    c,
-                    req.user.userId,
-                    resolved.activeTree
-                );
-
-            return {
-                requestedCode:
-                    resolved.requestedTree.FamilyTreeCode,
-                FamilyTreeID:
-                    activeTree.FamilyTreeID,
-                FamilyTreeCode:
-                    activeTree.FamilyTreeCode,
-                redirected:
-                    resolved.redirected,
-                message:
-                    resolved.redirected
-                        ? `Family Tree Code ${resolved.requestedTree.FamilyTreeCode} was merged into ${activeTree.FamilyTreeCode}. ${activeTree.FamilyTreeCode} is the current code.`
-                        : `Family Tree ${activeTree.FamilyTreeCode} is now active.`
-            };
+            await adoptTreeForUser(c, req.user.userId, tree);
+            return tree;
         });
-
-        res.json(result);
+        res.json({ FamilyTreeID: result.FamilyTreeID, FamilyTreeCode: result.FamilyTreeCode });
     } catch (e) {
-        res.status(e.status || 500).json({
-            message: e.message
-        });
+        res.status(e.status || 500).json({ message: e.message });
     }
 });
 
@@ -1351,34 +484,11 @@ router.post('/use-existing-person', auth, async (req, res) => {
             if (focal && kind) {
                 // The focal person may have just been created by this user in a temporary tree.
                 await c.query(
-                    `INSERT INTO FTFamilyTreePersonT
-                     (
-                        FamilyTreeID,
-                        PersonID,
-                        OriginFamilyTreeID,
-                        AddedByUserID,
-                        AddedAt,
-                        Notes
-                     )
-                     SELECT
-                        ?,
-                        PersonID,
-                        COALESCE(
-                            OriginFamilyTreeID,
-                            FamilyTreeID
-                        ),
-                        AddedByUserID,
-                        AddedAt,
-                        Notes
-                     FROM FTFamilyTreePersonT
-                     WHERE PersonID=?
-                     LIMIT 1
-                     ON DUPLICATE KEY UPDATE
-                        OriginFamilyTreeID=
-                            COALESCE(
-                                FTFamilyTreePersonT.OriginFamilyTreeID,
-                                VALUES(OriginFamilyTreeID)
-                            )`,
+                    `INSERT IGNORE INTO FTFamilyTreePersonT
+                     (FamilyTreeID,PersonID,AddedByUserID,AddedAt,Notes)
+                     SELECT ?,PersonID,AddedByUserID,AddedAt,Notes
+                       FROM FTFamilyTreePersonT
+                      WHERE PersonID=?`,
                     [targetTree.FamilyTreeID, focal]
                 );
                 await addRelationshipInTree(
@@ -1628,18 +738,12 @@ router.post('/persons', auth, async (req, res) => {
                  (
                     FamilyTreeID,
                     PersonID,
-                    OriginFamilyTreeID,
                     AddedByUserID,
                     AddedAt,
                     Notes
                  )
-                 VALUES (?,?,?,?,NOW(),NULL)`,
-                [
-                    tree.FamilyTreeID,
-                    p.insertId,
-                    tree.FamilyTreeID,
-                    userID
-                ]
+                 VALUES (?,?,?,NOW(),NULL)`,
+                [tree.FamilyTreeID, p.insertId, userID]
             );
 
             await logActivity(
@@ -2102,13 +1206,12 @@ router.post('/relationships', auth, async (req, res) => {
                  (
                     FamilyTreeID,
                     PersonID,
-                    OriginFamilyTreeID,
                     AddedByUserID,
                     AddedAt,
                     Notes
                  )
-                 VALUES (?,?,?,?,NOW(),NULL)`,
-                [tid, related, tid, userID]
+                 VALUES (?,?,?,NOW(),NULL)`,
+                [tid, related, userID]
             );
 
             if (kind === 'mother' || kind === 'father') {
@@ -2253,16 +1356,9 @@ router.post('/related-person', auth, async (req, res) => {
 
             await c.query(
                 `INSERT INTO FTFamilyTreePersonT
-                 (
-                    FamilyTreeID,
-                    PersonID,
-                    OriginFamilyTreeID,
-                    AddedByUserID,
-                    AddedAt,
-                    Notes
-                 )
-                 VALUES (?,?,?,?,NOW(),NULL)`,
-                [tid, related, tid, userID]
+                 (FamilyTreeID,PersonID,AddedByUserID,AddedAt,Notes)
+                 VALUES (?,?,?,NOW(),NULL)`,
+                [tid, related, userID]
             );
 
             if (kind === 'mother' || kind === 'father') {
@@ -3635,22 +2731,6 @@ router.delete('/persons/:id', auth, async (req, res) => {
             const treeIsEmpty =
                 Number(remainingTreePeople.n) === 0;
 
-            let splitResult = {
-                split: false,
-                restoredCodes: [],
-                preferredFamilyTreeCode:
-                    tree.FamilyTreeCode
-            };
-
-            if (!treeIsEmpty) {
-                splitResult =
-                    await splitTreeIfDisconnected(
-                        c,
-                        tree,
-                        userID
-                    );
-            }
-
             if (treeIsEmpty) {
                 /*
                  * Defensive cleanup of operational Tree records.
@@ -3718,20 +2798,12 @@ router.delete('/persons/:id', auth, async (req, res) => {
             }
 
             return {
-                message: splitResult.split
-                    ? `Person deleted. The family connection was removed and the Tree separated. Active code: ${splitResult.preferredFamilyTreeCode}.`
-                    : (
-                        globalPersonDeleted
-                            ? 'Person deleted.'
-                            : 'Person removed from this Family Tree.'
-                    ),
+                message: globalPersonDeleted
+                    ? 'Person deleted.'
+                    : 'Person removed from this Family Tree.',
                 personDeleted: globalPersonDeleted,
                 treeDeleted: false,
-                treeSplit: splitResult.split,
-                restoredFamilyTreeCodes:
-                    splitResult.restoredCodes,
-                FamilyTreeCode:
-                    splitResult.preferredFamilyTreeCode
+                FamilyTreeCode: tree.FamilyTreeCode
             };
         });
 
