@@ -112,48 +112,4 @@ If you did not attempt to log in, please ignore this email.
   }
 };
 
-
-
-// Function to send a FamilyTree notification to a specific email recipient
-const sendFamilyTreeNotification = async ({ email, subject, message }) => {
-  if (!email || !subject || !message) {
-    throw new Error('Email, subject, and message are required.');
-  }
-
-  const safeMessage = String(message);
-
-  const htmlBody = `
-<div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto;">
-  <h2 style="color: #333;">Wonderful Apps - FamilyTree Notification</h2>
-  <p>${safeMessage.replace(/\n/g, '<br>')}</p>
-  <hr style="border: none; border-top: 1px solid #ddd; margin-top: 20px;">
-  <p style="color: #777; font-size: 12px;">
-    This is an automated FamilyTree notification from Wonderful Apps.
-  </p>
-</div>
-  `.trim();
-
-  try {
-    await resend.emails.send({
-      from: `${process.env.MAIL_FROM_NAME} <${process.env.MAIL_FROM_ADDRESS}>`,
-      to: email,
-      subject,
-      text: safeMessage,
-      html: htmlBody,
-    });
-
-    logger.info(`FamilyTree notification sent to ${email}`);
-
-    return {
-      status: 'success',
-      message: 'FamilyTree notification sent.',
-    };
-  } catch (error) {
-    logger.error(
-      `Failed to send FamilyTree notification to ${email}: ${error.message}`
-    );
-    throw new Error('Unable to send FamilyTree notification.');
-  }
-};
-
-module.exports = { sendEmail, sendVerificationCode, sendFamilyTreeNotification };
+module.exports = { sendEmail, sendVerificationCode };

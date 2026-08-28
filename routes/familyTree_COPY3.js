@@ -7,7 +7,6 @@ const router = express.Router();
 
 const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
-const { sendFamilyTreeNotification } = require('../send_email');
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -196,10 +195,9 @@ async function logActivity(
     entityType,
     entityID,
     personID,
-    description,
-    targetCreatedByUserID = userID
+    description
 ) {
-    const [activity] = await c.query(
+    await c.query(
         `INSERT INTO FTFamilyTreeActivityT
          (
             FamilyTreeID,
@@ -220,7 +218,7 @@ async function logActivity(
             entityType,
             entityID,
             personID,
-            targetCreatedByUserID || null,
+            userID,
             description || null
         ]
     );
@@ -240,268 +238,6 @@ async function logActivity(
          WHERE FamilyTreeID=? AND UserID=?`,
         [treeID, userID]
     );
-
-    return activity.insertId;
-}
-
-function familyTreePersonName(person) {
-    if (!person) return 'Unknown person';
-
-    return [
-        person.FirstName,
-        person.MiddleName,
-        person.LastName,
-        person.SuffixName
-    ].filter(Boolean).join(' ').trim() ||
-        `PersonID ${person.PersonID}`;
-}
-
-async function getNotificationUser(c, userID) {
-    if (!userID) return null;
-
-    const [rows] = await c.query(
-        `SELECT UserID, UserName, Email
-         FROM UsersT
-         WHERE UserID=?
-         LIMIT 1`,
-        [userID]
-    );
-
-    return rows[0] || null;
-}
-
-async function getPersonEmail(c, personID) {
-    const [rows] = await c.query(
-        `SELECT ContactID, ContactValue
-         FROM FTContactT
-         WHERE PersonID=?
-           AND LOWER(TRIM(ContactType))='email'
-           AND TRIM(ContactValue)<>''
-         ORDER BY IsPrimary DESC, ContactID ASC
-         LIMIT 1`,
-        [personID]
-    );
-
-    return rows[0] || null;
-}
-
-function addNotificationRecipient(map, recipient) {
-    const email = String(recipient.email || '').trim();
-    const key = email
-        ? `email:${email.toLowerCase()}`
-        : recipient.recipientUserID
-            ? `user:${recipient.recipientUserID}`
-            : `person:${recipient.recipientPersonID}`;
-
-    if (!map.has(key)) {
-        map.set(key, {
-            ...recipient,
-            email: email || null
-        });
-    }
-}
-
-async function getEditNotificationRecipients(
-    c,
-    originalCreatorUserID,
-    actingUserID
-) {
-    const recipients = new Map();
-
-    if (
-        originalCreatorUserID &&
-        Number(originalCreatorUserID) !== Number(actingUserID)
-    ) {
-        const creator = await getNotificationUser(
-            c,
-            originalCreatorUserID
-        );
-
-        addNotificationRecipient(recipients, {
-            recipientPersonID: null,
-            recipientUserID: originalCreatorUserID,
-            contactID: null,
-            email: creator ? creator.Email : null
-        });
-    }
-
-    return Array.from(recipients.values());
-}
-
-async function getDeleteNotificationRecipients(
-    c,
-    treeID,
-    personID,
-    originalCreatorUserID,
-    actingUserID
-) {
-    const recipients = new Map();
-
-    if (
-        originalCreatorUserID &&
-        Number(originalCreatorUserID) !== Number(actingUserID)
-    ) {
-        const creator = await getNotificationUser(
-            c,
-            originalCreatorUserID
-        );
-
-        addNotificationRecipient(recipients, {
-            recipientPersonID: null,
-            recipientUserID: originalCreatorUserID,
-            contactID: null,
-            email: creator ? creator.Email : null
-        });
-    }
-
-    const [partners] = await c.query(
-        `SELECT DISTINCT
-            CASE
-                WHEN PersonID=? THEN PartnerPersonID
-                ELSE PersonID
-            END AS RecipientPersonID
-         FROM FTPartnerT
-         WHERE FamilyTreeID=?
-           AND (PersonID=? OR PartnerPersonID=?)`,
-        [personID, treeID, personID, personID]
-    );
-
-    for (const partner of partners) {
-        const email = await getPersonEmail(
-            c,
-            partner.RecipientPersonID
-        );
-
-        addNotificationRecipient(recipients, {
-            recipientPersonID: partner.RecipientPersonID,
-            recipientUserID: null,
-            contactID: email ? email.ContactID : null,
-            email: email ? email.ContactValue : null
-        });
-    }
-
-    const [children] = await c.query(
-        `SELECT DISTINCT PersonID AS RecipientPersonID
-         FROM FTParentT
-         WHERE FamilyTreeID=?
-           AND ParentPersonID=?`,
-        [treeID, personID]
-    );
-
-    for (const child of children) {
-        const email = await getPersonEmail(
-            c,
-            child.RecipientPersonID
-        );
-
-        addNotificationRecipient(recipients, {
-            recipientPersonID: child.RecipientPersonID,
-            recipientUserID: null,
-            contactID: email ? email.ContactID : null,
-            email: email ? email.ContactValue : null
-        });
-    }
-
-    return Array.from(recipients.values());
-}
-
-async function createNotificationRecords(
-    c,
-    {
-        treeID,
-        activityID,
-        notificationType,
-        subject,
-        message,
-        recipients
-    }
-) {
-    const pendingEmails = [];
-
-    for (const recipient of recipients) {
-        const email = String(recipient.email || '').trim();
-        const hasEmail = !!email;
-
-        const [notification] = await c.query(
-            `INSERT INTO FTNotificationT
-             (
-                FamilyTreeID,
-                ActivityID,
-                RecipientPersonID,
-                RecipientUserID,
-                ContactID,
-                NotificationType,
-                DeliveryMethod,
-                NotificationText,
-                Status,
-                CreatedAt,
-                SentAt,
-                FailureReason
-             )
-             VALUES (?,?,?,?,?,?,?,?,?,NOW(),NULL,?)`,
-            [
-                treeID,
-                activityID || null,
-                recipient.recipientPersonID || null,
-                recipient.recipientUserID || null,
-                recipient.contactID || null,
-                notificationType,
-                'Email',
-                message,
-                hasEmail ? 'Pending' : 'NoEmail',
-                hasEmail
-                    ? null
-                    : 'No usable email address was available.'
-            ]
-        );
-
-        if (hasEmail) {
-            pendingEmails.push({
-                NotificationID: notification.insertId,
-                email,
-                subject,
-                message
-            });
-        }
-    }
-
-    return pendingEmails;
-}
-
-async function sendPendingFamilyTreeNotifications(pendingEmails) {
-    for (const pending of pendingEmails || []) {
-        try {
-            await sendFamilyTreeNotification({
-                email: pending.email,
-                subject: pending.subject,
-                message: pending.message
-            });
-
-            await pool.query(
-                `UPDATE FTNotificationT
-                 SET Status='Sent',
-                     SentAt=NOW(),
-                     FailureReason=NULL
-                 WHERE NotificationID=?`,
-                [pending.NotificationID]
-            );
-        } catch (error) {
-            try {
-                await pool.query(
-                    `UPDATE FTNotificationT
-                     SET Status='Failed',
-                         FailureReason=?
-                     WHERE NotificationID=?`,
-                    [
-                        String(error.message || error).slice(0, 500),
-                        pending.NotificationID
-                    ]
-                );
-            } catch (_) {
-                /* Do not undo a successful FamilyTree edit/delete. */
-            }
-        }
-    }
 }
 
 function personSelectSql(extraWhere = '') {
@@ -2006,25 +1742,23 @@ router.put('/persons/:id', auth, async (req, res) => {
 
             const [member] = await c.query(
                 `SELECT 1
-                 FROM FTFamilyTreePersonT
-                 WHERE FamilyTreeID=? AND PersonID=?
-                 LIMIT 1`,
+                   FROM FTFamilyTreePersonT
+                  WHERE FamilyTreeID=? AND PersonID=?
+                  LIMIT 1`,
                 [tree.FamilyTreeID, id]
             );
 
             if (!member.length) {
-                const err = new Error(
-                    'Person is not in this Family Tree.'
-                );
+                const err = new Error('Person is not in this Family Tree.');
                 err.status = 404;
                 throw err;
             }
 
             const [existing] = await c.query(
                 `SELECT *
-                 FROM FTPersonT
-                 WHERE PersonID=?
-                 LIMIT 1`,
+                   FROM FTPersonT
+                  WHERE PersonID=?
+                  LIMIT 1`,
                 [id]
             );
 
@@ -2034,26 +1768,22 @@ router.put('/persons/:id', auth, async (req, res) => {
                 throw err;
             }
 
-            const before = existing[0];
-            const originalCreatorUserID =
-                before.CreatedByUserID;
-
             await c.query(
                 `UPDATE FTPersonT
-                 SET FirstName=?,
-                     MiddleName=?,
-                     LastName=?,
-                     SuffixName=?,
-                     NickName=?,
-                     MaidenName=?,
-                     Gender=?,
-                     BirthDate=?,
-                     BirthPlace=?,
-                     Died=?,
-                     DeathDate=?,
-                     UpdatedByUserID=?,
-                     UpdatedAt=NOW()
-                 WHERE PersonID=?`,
+                    SET FirstName=?,
+                        MiddleName=?,
+                        LastName=?,
+                        SuffixName=?,
+                        NickName=?,
+                        MaidenName=?,
+                        Gender=?,
+                        BirthDate=?,
+                        BirthPlace=?,
+                        Died=?,
+                        DeathDate=?,
+                        UpdatedByUserID=?,
+                        UpdatedAt=NOW()
+                  WHERE PersonID=?`,
                 [
                     b.FirstName || null,
                     b.MiddleName || null,
@@ -2065,15 +1795,13 @@ router.put('/persons/:id', auth, async (req, res) => {
                     b.BirthDate || null,
                     b.BirthPlace || null,
                     b.Died ? 1 : 0,
-                    b.Died
-                        ? (b.DeathDate || null)
-                        : null,
+                    b.Died ? (b.DeathDate || null) : null,
                     userID,
                     id
                 ]
             );
 
-            const activityID = await logActivity(
+            await logActivity(
                 c,
                 tree.FamilyTreeID,
                 userID,
@@ -2081,60 +1809,13 @@ router.put('/persons/:id', auth, async (req, res) => {
                 'FTPersonT',
                 id,
                 id,
-                'Edited person',
-                originalCreatorUserID
+                'Edited person'
             );
 
-            const recipients =
-                await getEditNotificationRecipients(
-                    c,
-                    originalCreatorUserID,
-                    userID
-                );
-
-            const actor =
-                await getNotificationUser(c, userID);
-
-            const personName =
-                familyTreePersonName(before);
-
-            const actorName = actor
-                ? actor.UserName
-                : `UserID ${userID}`;
-
-            const subject =
-                `FamilyTree: ${personName} was edited`;
-
-            const message =
-                `${personName} was edited.\n\n` +
-                `Changed by: ${actorName}\n` +
-                `Date/Time: ${new Date().toISOString()}\n` +
-                `FamilyTreeCode: ${tree.FamilyTreeCode}`;
-
-            const pendingEmails =
-                await createNotificationRecords(
-                    c,
-                    {
-                        treeID: tree.FamilyTreeID,
-                        activityID,
-                        notificationType: 'Person Edited',
-                        subject,
-                        message,
-                        recipients
-                    }
-                );
-
             return {
-                message: 'Person changes saved.',
-                pendingEmails
+                message: 'Person changes saved.'
             };
         });
-
-        await sendPendingFamilyTreeNotifications(
-            result.pendingEmails
-        );
-
-        delete result.pendingEmails;
 
         res.json(result);
     } catch (e) {
@@ -2143,6 +1824,7 @@ router.put('/persons/:id', auth, async (req, res) => {
         });
     }
 });
+
 
 
 /* ============================================================================
@@ -3808,47 +3490,6 @@ router.delete('/persons/:id', auth, async (req, res) => {
             }
 
             /*
-             * Capture the person's identity and notification recipients
-             * BEFORE any relationship/contact rows are removed.
-             */
-            const [personRows] = await c.query(
-                `SELECT *
-                 FROM FTPersonT
-                 WHERE PersonID=?
-                 LIMIT 1`,
-                [id]
-            );
-
-            if (!personRows.length) {
-                const err = new Error('Person not found.');
-                err.status = 404;
-                throw err;
-            }
-
-            const deletedPerson = personRows[0];
-            const originalCreatorUserID =
-                deletedPerson.CreatedByUserID;
-
-            const deleteRecipients =
-                await getDeleteNotificationRecipients(
-                    c,
-                    treeID,
-                    id,
-                    originalCreatorUserID,
-                    userID
-                );
-
-            const actor =
-                await getNotificationUser(c, userID);
-
-            const deletedPersonName =
-                familyTreePersonName(deletedPerson);
-
-            const actorName = actor
-                ? actor.UserName
-                : `UserID ${userID}`;
-
-            /*
              * Preserve the permanent audit trail.
              *
              * This Activity row is intentionally written BEFORE a possible
@@ -3856,7 +3497,7 @@ router.delete('/persons/:id', auth, async (req, res) => {
              * occurs in one transaction, the Activity row is retained only
              * when the delete operation succeeds.
              */
-            const activityID = await logActivity(
+            await logActivity(
                 c,
                 treeID,
                 userID,
@@ -3864,31 +3505,8 @@ router.delete('/persons/:id', auth, async (req, res) => {
                 'FTPersonT',
                 id,
                 id,
-                'Deleted person',
-                originalCreatorUserID
+                'Deleted person'
             );
-
-            const notificationSubject =
-                `FamilyTree: ${deletedPersonName} was deleted`;
-
-            const notificationMessage =
-                `${deletedPersonName} was deleted from FamilyTree.\n\n` +
-                `Deleted by: ${actorName}\n` +
-                `Date/Time: ${new Date().toISOString()}\n` +
-                `FamilyTreeCode: ${tree.FamilyTreeCode}`;
-
-            const pendingEmails =
-                await createNotificationRecords(
-                    c,
-                    {
-                        treeID,
-                        activityID,
-                        notificationType: 'Person Deleted',
-                        subject: notificationSubject,
-                        message: notificationMessage,
-                        recipients: deleteRecipients
-                    }
-                );
 
             /*
              * Remove this person's relationships from the current Tree.
@@ -4055,10 +3673,11 @@ router.delete('/persons/:id', auth, async (req, res) => {
                  * Notifications and temporary archive data are operational,
                  * not the permanent audit history.
                  */
-                /*
-                 * FTNotificationT is retained so notification attempts and
-                 * delivery results remain recorded.
-                 */
+                await c.query(
+                    `DELETE FROM FTNotificationT
+                      WHERE FamilyTreeID=?`,
+                    [treeID]
+                );
 
                 await c.query(
                     `DELETE FROM FTRecordArchiveT
@@ -4094,8 +3713,7 @@ router.delete('/persons/:id', auth, async (req, res) => {
                         'Person deleted. The Family Tree is now empty and was removed. Audit activity was retained.',
                     personDeleted: globalPersonDeleted,
                     treeDeleted: true,
-                    FamilyTreeCode: null,
-                    pendingEmails
+                    FamilyTreeCode: null
                 };
             }
 
@@ -4113,16 +3731,9 @@ router.delete('/persons/:id', auth, async (req, res) => {
                 restoredFamilyTreeCodes:
                     splitResult.restoredCodes,
                 FamilyTreeCode:
-                    splitResult.preferredFamilyTreeCode,
-                pendingEmails
+                    splitResult.preferredFamilyTreeCode
             };
         });
-
-        await sendPendingFamilyTreeNotifications(
-            result.pendingEmails
-        );
-
-        delete result.pendingEmails;
 
         res.json(result);
     } catch (e) {
