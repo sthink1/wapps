@@ -259,7 +259,7 @@ async function loadImages() {
         const data = await response.json();
 
         currentProfile = data;
-        profileImage.src = `${data.url}?v=${Date.now()}`;
+        profileImage.src = data.url;
         profileImage.dataset.imageId = data.ImageID;
         profileImage.oncontextmenu = event =>
             showImageContextMenu(event, data.ImageID, true);
@@ -298,7 +298,7 @@ async function loadImages() {
 
         if (image) {
             const img = document.createElement('img');
-            img.src = `${image.url}?v=${Date.now()}`;
+            img.src = image.url;
             img.alt = image.Caption || `Picture ${slot + 1}`;
             img.title = 'Right-click for picture options';
             img.dataset.imageId = image.ImageID;
@@ -451,6 +451,104 @@ async function saveNewPicture() {
 
     $('addPictureModal').classList.remove('show');
     $('pictureStatus').textContent = 'Picture Was Saved';
+
+    await loadImages();
+}
+
+function deletePictureCard(image, label) {
+    const imageID = Number(image.ImageID);
+    const url = image.url || '';
+    const caption = image.Caption || '';
+
+    return `
+        <label class="life-card" style="cursor:pointer">
+            <input
+                type="checkbox"
+                class="delete-picture-choice"
+                value="${imageID}"
+                style="width:auto;margin-bottom:6px"
+            >
+            ${url ? `<img src="${url}" alt="${label}" style="cursor:pointer">` : ''}
+            <div class="picture-label">${label}</div>
+            ${caption ? `<div class="small">${caption}</div>` : ''}
+        </label>
+    `;
+}
+
+function openDeletePictureModal() {
+    const pictures = [];
+
+    if (currentProfile) {
+        pictures.push({
+            image: currentProfile,
+            label: 'Profile Picture'
+        });
+    }
+
+    currentLifeImages.forEach(image => {
+        pictures.push({
+            image,
+            label: `Picture ${Number(image.SortOrder) + 1}`
+        });
+    });
+
+    if (!pictures.length) {
+        $('pictureStatus').textContent = 'There are no pictures to delete.';
+        return;
+    }
+
+    $('deletePictureChoices').innerHTML = pictures
+        .map(item => deletePictureCard(item.image, item.label))
+        .join('');
+
+    $('deletePictureStatus').textContent = '';
+    $('deletePictureModal').classList.add('show');
+}
+
+async function deleteSelectedPictures() {
+    const imageIDs = Array.from(
+        document.querySelectorAll('.delete-picture-choice:checked')
+    ).map(input => Number(input.value));
+
+    if (!imageIDs.length) {
+        $('deletePictureStatus').textContent =
+            'Select at least one picture to delete.';
+        return;
+    }
+
+    const deletingProfile =
+        currentProfile &&
+        imageIDs.includes(Number(currentProfile.ImageID));
+
+    const message = deletingProfile
+        ? `Delete ${imageIDs.length} selected picture(s)? The Profile Picture is included.`
+        : `Delete ${imageIDs.length} selected picture(s)?`;
+
+    if (!window.confirm(message)) {
+        return;
+    }
+
+    const response = await fetch(
+        `${BASE_URL}/familytree/persons/${personID}/pictures`,
+        {
+            method: 'DELETE',
+            headers: authHeaders(),
+            body: JSON.stringify({
+                familyTreeCode,
+                imageIDs
+            })
+        }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Unable to delete picture(s).');
+    }
+
+    $('deletePictureModal').classList.remove('show');
+    $('pictureStatus').textContent =
+        `${data.deletedCount} picture(s) deleted.`;
 
     await loadImages();
 }
@@ -787,6 +885,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         clearPictureForm();
         $('addPictureModal').classList.add('show');
     };
+
+    $('deletePictureBtn').onclick = () =>
+        openDeletePictureModal();
+
+    $('cancelDeletePicturesBtn').onclick = () =>
+        $('deletePictureModal').classList.remove('show');
+
+    $('confirmDeletePicturesBtn').onclick = () =>
+        deleteSelectedPictures()
+            .catch(error => {
+                $('deletePictureStatus').textContent = error.message;
+            });
 
     $('cancelPictureBtn').onclick = () =>
         $('addPictureModal').classList.remove('show');

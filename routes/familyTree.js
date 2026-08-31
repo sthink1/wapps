@@ -1,17 +1,23 @@
 const express = require('express');
 const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const router = express.Router();
 
 const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
 const { sendFamilyTreeNotification } = require('../send_email');
+const {
+    optimizeFamilyTreeImage,
+    putImage,
+    deleteImage,
+    copyImage,
+    imageExists,
+    getSignedImageUrl
+} = require('../r2Storage');
 
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         const ok = ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype);
         cb(ok ? null : new Error('Only JPG, PNG, and WEBP images are allowed.'), ok);
@@ -535,73 +541,38 @@ function personSelectSql(extraWhere = '') {
       ${extraWhere}`;
 }
 
-function extensionFromMimeType(mimeType) {
-    switch (mimeType) {
-        case 'image/png':
-            return 'png';
-        case 'image/webp':
-            return 'webp';
-        case 'image/jpeg':
-        default:
-            return 'jpg';
-    }
+function profileFileName(personID) {
+    return `${personID}.jpg`;
 }
 
-function profileFileName(personID, extension) {
-    return `${personID}.${extension}`;
+function lifeFileName(personID, lifeNumber) {
+    return `${personID}_${lifeNumber}.jpg`;
 }
 
-function lifeFileName(personID, lifeNumber, extension) {
-    return `${personID}_${lifeNumber}.${extension}`;
+async function publicImageUrl(storageKey) {
+    return getSignedImageUrl(storageKey);
 }
 
-function imageFilePath(storageKey) {
-    return path.join(__dirname, '..', 'httpdocs', 'images', storageKey);
-}
-
-function publicImageUrl(storageKey) {
-    return `/images/${String(storageKey).replace(/\\/g, '/')}`;
-}
-
-function safelyDeleteImage(storageKey) {
+async function safelyDeleteImage(storageKey) {
     if (!storageKey) return;
 
     try {
-        const filePath = imageFilePath(storageKey);
-
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
+        await deleteImage(storageKey);
     } catch (err) {
-        // Image-file cleanup should not cause an otherwise-valid DB operation to fail.
-        console.error('Unable to delete old FamilyTree image:', err.message);
+        // R2 cleanup should not cause an otherwise-valid DB operation to fail.
+        console.error('Unable to delete old FamilyTree image from R2:', err.message);
     }
 }
 
-
-function findExistingProfileFile(personID) {
-    const imagesDir = path.join(__dirname, '..', 'httpdocs', 'images');
-
-    if (!fs.existsSync(imagesDir)) {
-        return null;
+async function withSignedProfileImage(person) {
+    if (!person || !person.ProfileImageUrl) {
+        return person;
     }
 
-    const personPrefix = `${String(personID).toLowerCase()}.`;
-    const supportedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp']);
-
-    const match = fs.readdirSync(imagesDir).find(fileName => {
-        const lower = String(fileName).toLowerCase();
-
-        if (!lower.startsWith(personPrefix)) {
-            return false;
-        }
-
-        const extension = lower.split('.').pop();
-
-        return supportedExtensions.has(extension);
-    });
-
-    return match || null;
+    return {
+        ...person,
+        ProfileImageUrl: await publicImageUrl(person.ProfileImageUrl)
+    };
 }
 
 
@@ -2190,7 +2161,7 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                     p.BirthDate,
                     p.DeathDate,
                     (
-                        SELECT CONCAT('/images/', i.StorageKey)
+                        SELECT i.StorageKey
                           FROM FTImageT i
                          WHERE i.PersonID=p.PersonID
                            AND i.ImageType='Profile'
@@ -2289,17 +2260,39 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 ]
             );
 
+            const [
+                signedPerson,
+                signedMother,
+                signedFather,
+                signedMaternalGrandmother,
+                signedMaternalGrandfather,
+                signedPaternalGrandmother,
+                signedPaternalGrandfather,
+                signedPartners,
+                signedChildren
+            ] = await Promise.all([
+                withSignedProfileImage(personRows[0]),
+                withSignedProfileImage(mother),
+                withSignedProfileImage(father),
+                withSignedProfileImage(maternalGrandmother),
+                withSignedProfileImage(maternalGrandfather),
+                withSignedProfileImage(paternalGrandmother),
+                withSignedProfileImage(paternalGrandfather),
+                Promise.all(partners.map(withSignedProfileImage)),
+                Promise.all(children.map(withSignedProfileImage))
+            ]);
+
             res.json({
                 FamilyTreeCode: tree.FamilyTreeCode,
-                person: personRows[0],
-                mother,
-                father,
-                maternalGrandmother,
-                maternalGrandfather,
-                paternalGrandmother,
-                paternalGrandfather,
-                partners,
-                children
+                person: signedPerson,
+                mother: signedMother,
+                father: signedFather,
+                maternalGrandmother: signedMaternalGrandmother,
+                maternalGrandfather: signedMaternalGrandfather,
+                paternalGrandmother: signedPaternalGrandmother,
+                paternalGrandfather: signedPaternalGrandfather,
+                partners: signedPartners,
+                children: signedChildren
             });
         } finally {
             c.release();
@@ -2913,7 +2906,7 @@ router.get('/persons/:id/profile-image', auth, async (req, res) => {
 
             res.json({
                 ...rows[0],
-                url: publicImageUrl(rows[0].StorageKey)
+                url: await publicImageUrl(rows[0].StorageKey)
             });
         } finally {
             c.release();
@@ -2961,14 +2954,11 @@ router.post(
                     throw e;
                 }
 
-                const extension = extensionFromMimeType(req.file.mimetype);
-                const storageKey = profileFileName(id, extension);
-                const filePath = imageFilePath(storageKey);
+                const storageKey = profileFileName(id);
 
                 /*
-                 * Check for an existing profile image.
-                 * If the extension changes (for example 24.JPG -> 24.png),
-                 * remove the old physical image after the new file is written.
+                 * All FamilyTree pictures are optimized to JPEG before R2 storage.
+                 * FTImageT.StorageKey continues to store only the filename.
                  */
                 const [old] = await c.query(
                     `SELECT
@@ -2982,10 +2972,10 @@ router.post(
                     [id]
                 );
 
-                const existingPhysicalFile = findExistingProfileFile(id);
+                const existingStoredFile = await imageExists(storageKey);
                 const replaceApproved = String(req.body.replaceProfile || '') === '1';
 
-                if ((old.length || existingPhysicalFile) && !replaceApproved) {
+                if ((old.length || existingStoredFile) && !replaceApproved) {
                     const err = new Error(
                         'A profile picture already exists for this PersonID. Confirm replacement.'
                     );
@@ -2994,20 +2984,10 @@ router.post(
                     throw err;
                 }
 
-                fs.mkdirSync(
-                    path.join(__dirname, '..', 'httpdocs', 'images'),
-                    { recursive: true }
-                );
+                const optimizedBuffer =
+                    await optimizeFamilyTreeImage(req.file.buffer);
 
-                fs.writeFileSync(filePath, req.file.buffer);
-
-                if (
-                    replaceApproved &&
-                    existingPhysicalFile &&
-                    existingPhysicalFile.toLowerCase() !== storageKey.toLowerCase()
-                ) {
-                    safelyDeleteImage(existingPhysicalFile);
-                }
+                await putImage(storageKey, optimizedBuffer);
 
                 let imageID;
 
@@ -3034,7 +3014,7 @@ router.post(
                         old[0].StorageKey.toLowerCase() !==
                             storageKey.toLowerCase()
                     ) {
-                        safelyDeleteImage(old[0].StorageKey);
+                        await safelyDeleteImage(old[0].StorageKey);
                     }
                 } else {
                     const [im] = await c.query(
@@ -3092,7 +3072,7 @@ router.post(
                 return {
                     ImageID: imageID,
                     StorageKey: storageKey,
-                    url: publicImageUrl(storageKey)
+                    url: await publicImageUrl(storageKey)
                 };
             });
 
@@ -3154,10 +3134,10 @@ router.get('/persons/:id/life-images', auth, async (req, res) => {
             );
 
             res.json({
-                images: rows.map(row => ({
+                images: await Promise.all(rows.map(async row => ({
                     ...row,
-                    url: publicImageUrl(row.StorageKey)
-                }))
+                    url: await publicImageUrl(row.StorageKey)
+                })))
             });
         } finally {
             c.release();
@@ -3247,21 +3227,13 @@ router.post(
                     throw e;
                 }
 
-                const extension =
-                    extensionFromMimeType(req.file.mimetype);
-
                 const storageKey =
-                    lifeFileName(id, lifeNumber, extension);
+                    lifeFileName(id, lifeNumber);
 
-                const filePath =
-                    imageFilePath(storageKey);
+                const optimizedBuffer =
+                    await optimizeFamilyTreeImage(req.file.buffer);
 
-                fs.mkdirSync(
-                    path.join(__dirname, '..', 'httpdocs', 'images'),
-                    { recursive: true }
-                );
-
-                fs.writeFileSync(filePath, req.file.buffer);
+                await putImage(storageKey, optimizedBuffer);
 
                 const approxAge =
                     req.body.approxAge === '' ||
@@ -3334,7 +3306,7 @@ router.post(
                     ImageID: im.insertId,
                     StorageKey: storageKey,
                     SortOrder: lifeNumber,
-                    url: publicImageUrl(storageKey)
+                    url: await publicImageUrl(storageKey)
                 };
             });
 
@@ -3418,20 +3390,6 @@ router.post(
                     image => image.ImageType === 'Profile'
                 );
 
-                const extension =
-                    extensionFromMimeType(req.file.mimetype);
-
-                const imagesDirectory = path.join(
-                    __dirname,
-                    '..',
-                    'httpdocs',
-                    'images'
-                );
-
-                fs.mkdirSync(imagesDirectory, {
-                    recursive: true
-                });
-
                 let imageType;
                 let sortOrder;
                 let storageKey;
@@ -3439,7 +3397,7 @@ router.post(
                 if (!profile) {
                     imageType = 'Profile';
                     sortOrder = 0;
-                    storageKey = profileFileName(id, extension);
+                    storageKey = profileFileName(id);
                 } else {
                     imageType = 'Life';
 
@@ -3468,13 +3426,13 @@ router.post(
                     }
 
                     storageKey =
-                        lifeFileName(id, sortOrder, extension);
+                        lifeFileName(id, sortOrder);
                 }
 
-                fs.writeFileSync(
-                    imageFilePath(storageKey),
-                    req.file.buffer
-                );
+                const optimizedBuffer =
+                    await optimizeFamilyTreeImage(req.file.buffer);
+
+                await putImage(storageKey, optimizedBuffer);
 
                 const approxAge =
                     req.body.approxAge === '' ||
@@ -3533,7 +3491,7 @@ router.post(
                     ImageType: imageType,
                     SortOrder: sortOrder,
                     StorageKey: storageKey,
-                    url: publicImageUrl(storageKey)
+                    url: await publicImageUrl(storageKey)
                 };
             });
 
@@ -3545,6 +3503,129 @@ router.post(
         }
     }
 );
+
+router.delete(
+    '/persons/:id/pictures',
+    auth,
+    async (req, res) => {
+        const id = Number(req.params.id);
+        const userID = req.user.userId;
+        const code = String((req.body || {}).familyTreeCode || '');
+        const requestedImageIDs = Array.isArray((req.body || {}).imageIDs)
+            ? req.body.imageIDs
+            : [];
+
+        const imageIDs = [
+            ...new Set(
+                requestedImageIDs
+                    .map(value => Number(value))
+                    .filter(value => Number.isInteger(value) && value > 0)
+            )
+        ];
+
+        if (!imageIDs.length) {
+            return res.status(400).json({
+                message: 'Select at least one picture to delete.'
+            });
+        }
+
+        if (imageIDs.length > 5) {
+            return res.status(400).json({
+                message: 'A maximum of five pictures can be deleted at one time.'
+            });
+        }
+
+        try {
+            const result = await withTx(async c => {
+                const tree = await requireTree(c, code, userID);
+
+                const [member] = await c.query(
+                    `SELECT 1
+                       FROM FTFamilyTreePersonT
+                      WHERE FamilyTreeID=? AND PersonID=?
+                      LIMIT 1`,
+                    [tree.FamilyTreeID, id]
+                );
+
+                if (!member.length) {
+                    const err = new Error(
+                        'Person is not in this Family Tree.'
+                    );
+                    err.status = 404;
+                    throw err;
+                }
+
+                const placeholders = imageIDs.map(() => '?').join(',');
+
+                const [images] = await c.query(
+                    `SELECT
+                        ImageID,
+                        ImageType,
+                        SortOrder,
+                        StorageKey
+                       FROM FTImageT
+                      WHERE PersonID=?
+                        AND ImageID IN (${placeholders})
+                      ORDER BY ImageID`,
+                    [id, ...imageIDs]
+                );
+
+                if (images.length !== imageIDs.length) {
+                    const err = new Error(
+                        'One or more selected pictures could not be found.'
+                    );
+                    err.status = 404;
+                    throw err;
+                }
+
+                await c.query(
+                    `DELETE FROM FTImageT
+                      WHERE PersonID=?
+                        AND ImageID IN (${placeholders})`,
+                    [id, ...imageIDs]
+                );
+
+                for (const image of images) {
+                    await logActivity(
+                        c,
+                        tree.FamilyTreeID,
+                        userID,
+                        'DELETE_IMAGE',
+                        'FTImageT',
+                        image.ImageID,
+                        id,
+                        image.ImageType === 'Profile'
+                            ? 'Deleted Profile Picture'
+                            : `Deleted picture ${Number(image.SortOrder) + 1}`
+                    );
+                }
+
+                return {
+                    deletedCount: images.length,
+                    storageKeys: images
+                        .map(image => image.StorageKey)
+                        .filter(Boolean)
+                };
+            });
+
+            await Promise.all(
+                result.storageKeys.map(storageKey =>
+                    safelyDeleteImage(storageKey)
+                )
+            );
+
+            res.json({
+                message: `${result.deletedCount} picture(s) deleted.`,
+                deletedCount: result.deletedCount
+            });
+        } catch (e) {
+            res.status(e.status || 500).json({
+                message: e.message
+            });
+        }
+    }
+);
+
 
 router.post(
     '/persons/:id/pictures/:imageID/make-profile',
@@ -3623,74 +3704,70 @@ router.post(
                         ? profileRows[0]
                         : null;
 
-                const selectedExtension =
-                    path.extname(selected.StorageKey)
-                        .replace('.', '')
-                        .toLowerCase() || 'jpg';
-
                 const newProfileKey =
-                    profileFileName(
-                        id,
-                        selectedExtension
-                    );
+                    profileFileName(id);
 
-                const selectedPath =
-                    imageFilePath(selected.StorageKey);
+                const selectedExists =
+                    await imageExists(selected.StorageKey);
 
-                const tempKey =
-                    `${id}_profile_swap_${Date.now()}.${selectedExtension}`;
-
-                const tempPath =
-                    imageFilePath(tempKey);
-
-                if (!fs.existsSync(selectedPath)) {
+                if (!selectedExists) {
                     const err = new Error(
-                        'The selected picture file could not be found.'
+                        'The selected picture file could not be found in R2.'
                     );
                     err.status = 404;
                     throw err;
                 }
 
-                fs.renameSync(
-                    selectedPath,
-                    tempPath
+                const selectedSortOrder =
+                    Number(selected.SortOrder);
+
+                const formerProfileLifeKey = oldProfile
+                    ? lifeFileName(id, selectedSortOrder)
+                    : null;
+
+                const tempSelectedKey =
+                    `_swap/${id}_selected_${Date.now()}.jpg`;
+
+                const tempProfileKey = oldProfile
+                    ? `_swap/${id}_profile_${Date.now()}.jpg`
+                    : null;
+
+                await copyImage(
+                    selected.StorageKey,
+                    tempSelectedKey
                 );
 
-                let formerProfileLifeKey = null;
+                if (oldProfile) {
+                    const oldProfileExists =
+                        await imageExists(oldProfile.StorageKey);
+
+                    if (!oldProfileExists) {
+                        await safelyDeleteImage(tempSelectedKey);
+
+                        const err = new Error(
+                            'The current Profile Picture file could not be found in R2.'
+                        );
+                        err.status = 404;
+                        throw err;
+                    }
+
+                    await copyImage(
+                        oldProfile.StorageKey,
+                        tempProfileKey
+                    );
+                }
 
                 try {
+                    await copyImage(
+                        tempSelectedKey,
+                        newProfileKey
+                    );
+
                     if (oldProfile) {
-                        const oldProfilePath =
-                            imageFilePath(
-                                oldProfile.StorageKey
-                            );
-
-                        const oldExtension =
-                            path.extname(
-                                oldProfile.StorageKey
-                            )
-                                .replace('.', '')
-                                .toLowerCase() || 'jpg';
-
-                        formerProfileLifeKey =
-                            lifeFileName(
-                                id,
-                                Number(selected.SortOrder),
-                                oldExtension
-                            );
-
-                        if (
-                            fs.existsSync(
-                                oldProfilePath
-                            )
-                        ) {
-                            fs.renameSync(
-                                oldProfilePath,
-                                imageFilePath(
-                                    formerProfileLifeKey
-                                )
-                            );
-                        }
+                        await copyImage(
+                            tempProfileKey,
+                            formerProfileLifeKey
+                        );
 
                         await c.query(
                             `UPDATE FTImageT
@@ -3701,20 +3778,13 @@ router.post(
                                     UpdatedAt=NOW()
                               WHERE ImageID=?`,
                             [
-                                Number(selected.SortOrder),
+                                selectedSortOrder,
                                 formerProfileLifeKey,
                                 userID,
                                 oldProfile.ImageID
                             ]
                         );
                     }
-
-                    fs.renameSync(
-                        tempPath,
-                        imageFilePath(
-                            newProfileKey
-                        )
-                    );
 
                     await c.query(
                         `UPDATE FTImageT
@@ -3731,19 +3801,46 @@ router.post(
                         ]
                     );
                 } catch (swapError) {
-                    if (
-                        fs.existsSync(tempPath) &&
-                        !fs.existsSync(selectedPath)
-                    ) {
+                    try {
+                        await copyImage(
+                            tempSelectedKey,
+                            selected.StorageKey
+                        );
+                    } catch (_) {}
+
+                    if (oldProfile && tempProfileKey) {
                         try {
-                            fs.renameSync(
-                                tempPath,
-                                selectedPath
+                            await copyImage(
+                                tempProfileKey,
+                                oldProfile.StorageKey
                             );
                         } catch (_) {}
+                    } else if (newProfileKey !== selected.StorageKey) {
+                        await safelyDeleteImage(newProfileKey);
                     }
 
                     throw swapError;
+                } finally {
+                    await safelyDeleteImage(tempSelectedKey);
+
+                    if (tempProfileKey) {
+                        await safelyDeleteImage(tempProfileKey);
+                    }
+                }
+
+                if (
+                    selected.StorageKey &&
+                    selected.StorageKey !== formerProfileLifeKey
+                ) {
+                    await safelyDeleteImage(selected.StorageKey);
+                }
+
+                if (
+                    oldProfile &&
+                    oldProfile.StorageKey &&
+                    oldProfile.StorageKey !== newProfileKey
+                ) {
+                    await safelyDeleteImage(oldProfile.StorageKey);
                 }
 
                 await logActivity(
@@ -3761,7 +3858,7 @@ router.post(
                     message: 'Profile Picture changed.',
                     ImageID: selected.ImageID,
                     StorageKey: newProfileKey,
-                    url: publicImageUrl(newProfileKey)
+                    url: await publicImageUrl(newProfileKey)
                 };
             });
 
@@ -3997,9 +4094,11 @@ router.delete('/persons/:id', auth, async (req, res) => {
                  * Physical image cleanup remains intentionally best-effort,
                  * as in the existing application.
                  */
-                images.forEach(image => {
-                    safelyDeleteImage(image.StorageKey);
-                });
+                await Promise.all(
+                    images.map(image =>
+                        safelyDeleteImage(image.StorageKey)
+                    )
+                );
 
                 globalPersonDeleted = true;
             }

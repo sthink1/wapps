@@ -122,7 +122,7 @@ function bindRelative(rowID, buttonID, nameID, photoID, person) {
     name.onclick = () => makeAncestorFocalPerson(person.PersonID);
 
     if (person.ProfileImageUrl) {
-        photo.src = `${person.ProfileImageUrl}?v=${Date.now()}`;
+        photo.src = person.ProfileImageUrl;
         photo.style.visibility = 'visible';
     } else {
         photo.removeAttribute('src');
@@ -276,7 +276,7 @@ async function loadAncestor() {
 
     if (data.person.ProfileImageUrl) {
         $('currentPhoto').src =
-            `${data.person.ProfileImageUrl}?v=${Date.now()}`;
+            data.person.ProfileImageUrl;
         $('currentPhoto').style.visibility = 'visible';
     } else {
         $('currentPhoto').removeAttribute('src');
