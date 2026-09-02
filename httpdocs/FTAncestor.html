@@ -18,12 +18,9 @@
             --blood-line: #fce6d4;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
-        html,
-        body {
+        html, body {
             margin: 0;
             min-height: 100%;
             font-family: Calibri, Arial, sans-serif;
@@ -46,7 +43,8 @@
         }
 
         .page-nav button,
-        .page-nav select {
+        .page-nav select,
+        .section-control select {
             border: 1px solid #8ba5c7;
             border-radius: 3px;
             background: #d7e7fb;
@@ -54,11 +52,10 @@
             font: inherit;
         }
 
-        .page-nav button {
-            cursor: pointer;
-        }
+        .page-nav button { cursor: pointer; }
 
-        .blood-control {
+        .blood-control,
+        .section-control {
             display: flex;
             align-items: center;
             gap: 7px;
@@ -71,7 +68,7 @@
             position: relative;
             width: var(--form-w);
             min-width: var(--form-w);
-            height: 760px;
+            height: 1490px;
             margin: 0 auto;
             background: #ffffff;
             border: 1px solid #999999;
@@ -89,7 +86,9 @@
             overflow: hidden;
         }
 
-        .family-photo img {
+        .family-photo img,
+        .person-photo img,
+        .table-photo {
             width: 100%;
             height: 100%;
             object-fit: contain;
@@ -104,12 +103,6 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-        }
-
-        .person-photo img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
         }
 
         .relative-row {
@@ -155,22 +148,9 @@
             border-top: 6px solid var(--line);
         }
 
-        .section-button {
+        .person-title,
+        .family-section-title {
             position: absolute;
-            border: 1px solid #9a9a9a;
-            background: #ffffff;
-            color: var(--muted);
-            font-size: 19px;
-            font-weight: 700;
-            padding: 1px 5px;
-            cursor: pointer;
-        }
-
-        .person-title {
-            position: absolute;
-            width: 200px;
-            height: 25px;
-            line-height: 25px;
             background: var(--orange);
             color: var(--muted);
             font-size: 19px;
@@ -178,9 +158,15 @@
             text-align: center;
         }
 
+        .person-title {
+            width: 200px;
+            height: 25px;
+            line-height: 25px;
+        }
+
         .current-name {
             position: absolute;
-            width: 200px;
+            width: 300px;
             min-height: 25px;
             border: 1px solid #a6a6a6;
             background: #ffffff;
@@ -197,6 +183,13 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .family-section-title {
+            height: 27px;
+            line-height: 27px;
+            padding: 0 8px;
+            text-align: left;
         }
 
         .subform {
@@ -225,13 +218,25 @@
         }
 
         td {
-            height: 25px;
-            padding: 1px 4px;
+            height: 62px;
+            padding: 2px 4px;
             border-right: 1px solid #d0d0d0;
             border-bottom: 1px solid #d0d0d0;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        td.photo-cell {
+            padding: 2px;
+            text-align: center;
+        }
+
+        .table-photo {
+            width: 48px;
+            height: 56px;
+            display: block;
+            margin: auto;
         }
 
         td.person-button-cell {
@@ -242,12 +247,20 @@
 
         td.person-button-cell button {
             width: 100%;
-            height: 24px;
+            height: 61px;
             border: 0;
             border-radius: 0;
             background: #9dc3e6;
             font-weight: 700;
             cursor: pointer;
+        }
+
+        td.table-name {
+            cursor: pointer;
+        }
+
+        td.table-name:hover {
+            text-decoration: underline;
         }
 
         .status {
@@ -284,7 +297,6 @@
 
         <div class="blood-control">
             <label for="bloodLineSelect"><strong>Highlight Blood Line:</strong></label>
-
             <select id="bloodLineSelect">
                 <option value="None">None</option>
                 <option value="Mother">Mother</option>
@@ -293,140 +305,73 @@
         </div>
     </div>
 
-    <main class="access-form" aria-label="Family Tree Ancestor">
-        <div class="family-photo" style="left:120px; top:0;">
-            <img id="mgmPhoto" alt="Maternal grandmother">
-        </div>
+    <main class="access-form" aria-label="Family Tree Ancestor and Family Relationships">
+        <div class="family-photo" style="left:120px; top:0;"><img id="mgmPhoto" alt="Maternal grandmother"></div>
+        <div class="family-photo" style="left:330px; top:0;"><img id="mgfPhoto" alt="Maternal grandfather"></div>
+        <div class="family-photo" style="left:620px; top:0;"><img id="pgmPhoto" alt="Paternal grandmother"></div>
+        <div class="family-photo" style="left:830px; top:0;"><img id="pgfPhoto" alt="Paternal grandfather"></div>
 
-        <div class="family-photo" style="left:330px; top:0;">
-            <img id="mgfPhoto" alt="Maternal grandfather">
-        </div>
-
-        <div class="family-photo" style="left:620px; top:0;">
-            <img id="pgmPhoto" alt="Paternal grandmother">
-        </div>
-
-        <div class="family-photo" style="left:830px; top:0;">
-            <img id="pgfPhoto" alt="Paternal grandfather">
-        </div>
-
-        <div id="maternalGrandmotherRow"
-             class="relative-row"
-             style="left:8px; top:118px; width:250px;">
-            <button id="mgmPersonBtn" class="person-button" type="button">P</button>
-            <div id="maternalGrandmother" class="relative-name"></div>
-        </div>
-
-        <div id="maternalGrandfatherRow"
-             class="relative-row"
-             style="left:264px; top:118px; width:250px;">
-            <button id="mgfPersonBtn" class="person-button" type="button">P</button>
-            <div id="maternalGrandfather" class="relative-name"></div>
-        </div>
-
-        <div id="paternalGrandmotherRow"
-             class="relative-row"
-             style="left:544px; top:118px; width:250px;">
-            <button id="pgmPersonBtn" class="person-button" type="button">P</button>
-            <div id="paternalGrandmother" class="relative-name"></div>
-        </div>
-
-        <div id="paternalGrandfatherRow"
-             class="relative-row"
-             style="left:800px; top:118px; width:256px;">
-            <button id="pgfPersonBtn" class="person-button" type="button">P</button>
-            <div id="paternalGrandfather" class="relative-name"></div>
-        </div>
+        <div id="maternalGrandmotherRow" class="relative-row" style="left:8px; top:118px; width:250px;"><button id="mgmPersonBtn" class="person-button" type="button">P</button><div id="maternalGrandmother" class="relative-name"></div></div>
+        <div id="maternalGrandfatherRow" class="relative-row" style="left:264px; top:118px; width:250px;"><button id="mgfPersonBtn" class="person-button" type="button">P</button><div id="maternalGrandfather" class="relative-name"></div></div>
+        <div id="paternalGrandmotherRow" class="relative-row" style="left:544px; top:118px; width:250px;"><button id="pgmPersonBtn" class="person-button" type="button">P</button><div id="paternalGrandmother" class="relative-name"></div></div>
+        <div id="paternalGrandfatherRow" class="relative-row" style="left:800px; top:118px; width:256px;"><button id="pgfPersonBtn" class="person-button" type="button">P</button><div id="paternalGrandfather" class="relative-name"></div></div>
 
         <div class="divider" style="left:35px; top:145px; width:480px;"></div>
         <div class="divider" style="left:540px; top:145px; width:480px;"></div>
 
-        <div class="family-photo" style="left:175px; top:158px;">
-            <img id="motherPhoto" alt="Mother">
-        </div>
+        <div class="family-photo" style="left:175px; top:158px;"><img id="motherPhoto" alt="Mother"></div>
+        <div class="family-photo" style="left:680px; top:158px;"><img id="fatherPhoto" alt="Father"></div>
 
-        <div class="family-photo" style="left:680px; top:158px;">
-            <img id="fatherPhoto" alt="Father">
-        </div>
+        <div id="motherRow" class="relative-row" style="left:40px; top:274px; width:350px;"><button id="motherPersonBtn" class="person-button" type="button">P</button><div id="motherName" class="relative-name"></div></div>
+        <div id="fatherRow" class="relative-row" style="left:648px; top:274px; width:350px;"><button id="fatherPersonBtn" class="person-button" type="button">P</button><div id="fatherName" class="relative-name"></div></div>
 
-        <div id="motherRow"
-             class="relative-row"
-             style="left:40px; top:274px; width:350px;">
-            <button id="motherPersonBtn" class="person-button" type="button">P</button>
-            <div id="motherName" class="relative-name"></div>
-        </div>
+        <div class="divider" style="left:224px; top:307px; width:620px;"></div>
 
-        <div id="fatherRow"
-             class="relative-row"
-             style="left:648px; top:274px; width:350px;">
-            <button id="fatherPersonBtn" class="person-button" type="button">P</button>
-            <div id="fatherName" class="relative-name"></div>
-        </div>
+        <div class="person-photo" style="left:482px; top:325px;"><img id="currentPhoto" alt="Current person"></div>
+        <div class="person-title" style="left:434px; top:470px;">PERSON</div>
+        <div class="current-name" style="left:384px; top:502px;"><button id="currentPersonBtn" class="person-button" type="button">P</button><div id="currentName" class="name"></div></div>
 
-        <div class="divider" style="left:224px; top:307px; width:480px;"></div>
-
-        <button id="partnerPageBtn"
-                class="section-button"
-                type="button"
-                style="left:10px; top:319px;">PARTNER</button>
-
-        <section class="subform"
-                 style="left:14px; top:352px; width:338px; height:132px;"
-                 aria-label="Partner preview">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:42px;">Person</th>
-                        <th style="width:48px;">Gender</th>
-                        <th style="width:42px;">Age</th>
-                        <th>Name</th>
-                    </tr>
-                </thead>
-
-                <tbody id="partnerBody"></tbody>
-            </table>
+        <div class="family-section-title" style="left:12px; top:552px; width:510px;">PARTNERS</div>
+        <section class="subform" style="left:12px; top:579px; width:510px; height:166px;" aria-label="Partners">
+            <table><thead><tr><th style="width:58px;">Picture</th><th style="width:42px;">Person</th><th style="width:55px;">Gender</th><th style="width:42px;">Age</th><th>Name</th></tr></thead><tbody id="partnerBody"></tbody></table>
         </section>
 
-        <div class="person-photo" style="left:430px; top:330px;">
-            <img id="currentPhoto" alt="Current person">
+        <div class="family-section-title" style="left:546px; top:552px; width:510px;">CHILDREN</div>
+        <section class="subform" style="left:546px; top:579px; width:510px; height:166px;" aria-label="Children">
+            <table><thead><tr><th style="width:58px;">Picture</th><th style="width:42px;">Person</th><th style="width:55px;">Gender</th><th style="width:42px;">Age</th><th>Name</th></tr></thead><tbody id="childBody"></tbody></table>
+        </section>
+
+        <div class="family-section-title" style="left:12px; top:770px; width:1044px;">GRANDCHILDREN</div>
+        <section class="subform" style="left:12px; top:797px; width:1044px; height:166px;" aria-label="Grandchildren">
+            <table><thead><tr><th style="width:58px;">Picture</th><th style="width:42px;">Person</th><th style="width:55px;">Gender</th><th style="width:42px;">Age</th><th>Name</th></tr></thead><tbody id="grandchildBody"></tbody></table>
+        </section>
+
+        <div class="family-section-title" style="left:12px; top:988px; width:1044px;">NEPHEWS AND NIECES</div>
+        <section class="subform" style="left:12px; top:1015px; width:1044px; height:166px;" aria-label="Nephews and Nieces">
+            <table><thead><tr><th style="width:58px;">Picture</th><th style="width:42px;">Person</th><th style="width:55px;">Gender</th><th style="width:42px;">Age</th><th>Name</th></tr></thead><tbody id="nephewNieceBody"></tbody></table>
+        </section>
+
+        <div class="family-section-title" style="left:12px; top:1206px; width:620px;">COUSINS</div>
+        <div class="section-control" style="position:absolute; left:650px; top:1202px; width:406px; height:35px; justify-content:flex-end;">
+            <label for="cousinGenerationSelect"><strong>Generation:</strong></label>
+            <select id="cousinGenerationSelect">
+                <option value="1">1 - First Cousins</option>
+                <option value="2">2 - Second Cousins</option>
+                <option value="3">3 - Third Cousins</option>
+                <option value="4">4 - Fourth Cousins</option>
+                <option value="5">5 - Fifth Cousins</option>
+                <option value="6">6 - Sixth Cousins</option>
+            </select>
         </div>
-
-        <div class="person-title" style="left:382px; top:490px;">PERSON</div>
-
-        <div class="current-name" style="left:382px; top:522px;">
-            <button id="currentPersonBtn" class="person-button" type="button">P</button>
-            <div id="currentName" class="name"></div>
-        </div>
-
-        <button id="childrenPageBtn"
-                class="section-button"
-                type="button"
-                style="left:636px; top:327px;">CHILDREN</button>
-
-        <section class="subform"
-                 style="left:632px; top:360px; width:420px; height:220px;"
-                 aria-label="Children preview">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:42px;">Person</th>
-                        <th style="width:48px;">Gender</th>
-                        <th style="width:42px;">Age</th>
-                        <th>Name</th>
-                    </tr>
-                </thead>
-
-                <tbody id="childBody"></tbody>
-            </table>
+        <section class="subform" style="left:12px; top:1245px; width:1044px; height:220px;" aria-label="Cousins">
+            <table><thead><tr><th style="width:58px;">Picture</th><th style="width:42px;">Person</th><th style="width:55px;">Gender</th><th style="width:42px;">Age</th><th>Name</th></tr></thead><tbody id="cousinBody"></tbody></table>
         </section>
     </main>
 
     <div id="ancestorStatus" class="status"></div>
 
-    <footer>
-        Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
-    </footer>
+    <footer>Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr</footer>
 
-    <script src="js/FTAncestor.js?v=20260827-2"></script>
+    <script src="js/FTAncestor.js?v=20260902-1"></script>
 </body>
 </html>

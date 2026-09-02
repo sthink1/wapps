@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Tree - Ancestor</title>
+
+    <style>
+        :root {
+            --form-w: 1068px;
+            --text: #404040;
+            --muted: #666666;
+            --line: #000000;
+            --name-blue: #9dc3e6;
+            --header-blue: #d6dde8;
+            --orange: #ffc000;
+            --border: #a5a5a5;
+            --blood-line: #fce6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            font-family: Calibri, Arial, sans-serif;
+            background: #efefef;
+            color: var(--text);
+        }
+
+        body {
+            padding: 12px 8px 52px;
+            overflow-x: auto;
+        }
+
+        .page-nav {
+            width: var(--form-w);
+            margin: 0 auto 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-nav button,
+        .page-nav select {
+            border: 1px solid #8ba5c7;
+            border-radius: 3px;
+            background: #d7e7fb;
+            padding: 7px 12px;
+            font: inherit;
+        }
+
+        .page-nav button {
+            cursor: pointer;
+        }
+
+        .blood-control {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: #ffffff;
+            border: 1px solid #aaaaaa;
+            padding: 5px 8px;
+        }
+
+        .access-form {
+            position: relative;
+            width: var(--form-w);
+            min-width: var(--form-w);
+            height: 760px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #999999;
+            overflow: hidden;
+        }
+
+        .family-photo {
+            position: absolute;
+            width: 100px;
+            height: 112px;
+            background: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .family-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .person-photo {
+            position: absolute;
+            width: 105px;
+            height: 140px;
+            background: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .person-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .relative-row {
+            position: absolute;
+            height: 25px;
+            display: grid;
+            grid-template-columns: 31px 1fr;
+            border: 1px solid #aab6c2;
+            background: var(--name-blue);
+            overflow: hidden;
+        }
+
+        .relative-row.blood-line .relative-name {
+            background: var(--blood-line);
+        }
+
+        .person-button {
+            border: 0;
+            border-right: 1px solid #777777;
+            border-radius: 0;
+            background: #9dc3e6;
+            padding: 0;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .relative-name {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            padding: 0 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background: var(--name-blue);
+            cursor: pointer;
+        }
+
+        .divider {
+            position: absolute;
+            height: 0;
+            border-top: 6px solid var(--line);
+        }
+
+        .section-button {
+            position: absolute;
+            border: 1px solid #9a9a9a;
+            background: #ffffff;
+            color: var(--muted);
+            font-size: 19px;
+            font-weight: 700;
+            padding: 1px 5px;
+            cursor: pointer;
+        }
+
+        .person-title {
+            position: absolute;
+            width: 200px;
+            height: 25px;
+            line-height: 25px;
+            background: var(--orange);
+            color: var(--muted);
+            font-size: 19px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .current-name {
+            position: absolute;
+            width: 200px;
+            min-height: 25px;
+            border: 1px solid #a6a6a6;
+            background: #ffffff;
+            display: grid;
+            grid-template-columns: 31px 1fr;
+            align-items: stretch;
+        }
+
+        .current-name .name {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .subform {
+            position: absolute;
+            border: 1px solid var(--border);
+            background: #ffffff;
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 12px;
+        }
+
+        th {
+            height: 24px;
+            background: var(--header-blue);
+            color: #666666;
+            font-weight: 400;
+            text-align: left;
+            border-right: 1px solid #aaaaaa;
+            border-bottom: 1px solid #aaaaaa;
+            padding: 2px 4px;
+        }
+
+        td {
+            height: 25px;
+            padding: 1px 4px;
+            border-right: 1px solid #d0d0d0;
+            border-bottom: 1px solid #d0d0d0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        td.person-button-cell {
+            padding: 0;
+            background: #9dc3e6;
+            text-align: center;
+        }
+
+        td.person-button-cell button {
+            width: 100%;
+            height: 24px;
+            border: 0;
+            border-radius: 0;
+            background: #9dc3e6;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .status {
+            width: var(--form-w);
+            margin: 8px auto 0;
+            min-height: 22px;
+            font-weight: bold;
+        }
+
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #dddddd;
+            padding: 6px;
+            text-align: center;
+        }
+
+        @media (max-width: 1120px) {
+            .page-nav,
+            .access-form,
+            .status {
+                margin-left: 0;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-nav">
+        <button id="backBtn" type="button">BACK</button>
+
+        <div class="blood-control">
+            <label for="bloodLineSelect"><strong>Highlight Blood Line:</strong></label>
+
+            <select id="bloodLineSelect">
+                <option value="None">None</option>
+                <option value="Mother">Mother</option>
+                <option value="Father">Father</option>
+            </select>
+        </div>
+    </div>
+
+    <main class="access-form" aria-label="Family Tree Ancestor">
+        <div class="family-photo" style="left:120px; top:0;">
+            <img id="mgmPhoto" alt="Maternal grandmother">
+        </div>
+
+        <div class="family-photo" style="left:330px; top:0;">
+            <img id="mgfPhoto" alt="Maternal grandfather">
+        </div>
+
+        <div class="family-photo" style="left:620px; top:0;">
+            <img id="pgmPhoto" alt="Paternal grandmother">
+        </div>
+
+        <div class="family-photo" style="left:830px; top:0;">
+            <img id="pgfPhoto" alt="Paternal grandfather">
+        </div>
+
+        <div id="maternalGrandmotherRow"
+             class="relative-row"
+             style="left:8px; top:118px; width:250px;">
+            <button id="mgmPersonBtn" class="person-button" type="button">P</button>
+            <div id="maternalGrandmother" class="relative-name"></div>
+        </div>
+
+        <div id="maternalGrandfatherRow"
+             class="relative-row"
+             style="left:264px; top:118px; width:250px;">
+            <button id="mgfPersonBtn" class="person-button" type="button">P</button>
+            <div id="maternalGrandfather" class="relative-name"></div>
+        </div>
+
+        <div id="paternalGrandmotherRow"
+             class="relative-row"
+             style="left:544px; top:118px; width:250px;">
+            <button id="pgmPersonBtn" class="person-button" type="button">P</button>
+            <div id="paternalGrandmother" class="relative-name"></div>
+        </div>
+
+        <div id="paternalGrandfatherRow"
+             class="relative-row"
+             style="left:800px; top:118px; width:256px;">
+            <button id="pgfPersonBtn" class="person-button" type="button">P</button>
+            <div id="paternalGrandfather" class="relative-name"></div>
+        </div>
+
+        <div class="divider" style="left:35px; top:145px; width:480px;"></div>
+        <div class="divider" style="left:540px; top:145px; width:480px;"></div>
+
+        <div class="family-photo" style="left:175px; top:158px;">
+            <img id="motherPhoto" alt="Mother">
+        </div>
+
+        <div class="family-photo" style="left:680px; top:158px;">
+            <img id="fatherPhoto" alt="Father">
+        </div>
+
+        <div id="motherRow"
+             class="relative-row"
+             style="left:40px; top:274px; width:350px;">
+            <button id="motherPersonBtn" class="person-button" type="button">P</button>
+            <div id="motherName" class="relative-name"></div>
+        </div>
+
+        <div id="fatherRow"
+             class="relative-row"
+             style="left:648px; top:274px; width:350px;">
+            <button id="fatherPersonBtn" class="person-button" type="button">P</button>
+            <div id="fatherName" class="relative-name"></div>
+        </div>
+
+        <div class="divider" style="left:224px; top:307px; width:480px;"></div>
+
+        <button id="partnerPageBtn"
+                class="section-button"
+                type="button"
+                style="left:10px; top:319px;">PARTNER</button>
+
+        <section class="subform"
+                 style="left:14px; top:352px; width:338px; height:132px;"
+                 aria-label="Partner preview">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:42px;">Person</th>
+                        <th style="width:48px;">Gender</th>
+                        <th style="width:42px;">Age</th>
+                        <th>Name</th>
+                    </tr>
+                </thead>
+
+                <tbody id="partnerBody"></tbody>
+            </table>
+        </section>
+
+        <div class="person-photo" style="left:430px; top:330px;">
+            <img id="currentPhoto" alt="Current person">
+        </div>
+
+        <div class="person-title" style="left:382px; top:490px;">PERSON</div>
+
+        <div class="current-name" style="left:382px; top:522px;">
+            <button id="currentPersonBtn" class="person-button" type="button">P</button>
+            <div id="currentName" class="name"></div>
+        </div>
+
+        <button id="childrenPageBtn"
+                class="section-button"
+                type="button"
+                style="left:636px; top:327px;">CHILDREN</button>
+
+        <section class="subform"
+                 style="left:632px; top:360px; width:420px; height:220px;"
+                 aria-label="Children preview">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:42px;">Person</th>
+                        <th style="width:48px;">Gender</th>
+                        <th style="width:42px;">Age</th>
+                        <th>Name</th>
+                    </tr>
+                </thead>
+
+                <tbody id="childBody"></tbody>
+            </table>
+        </section>
+    </main>
+
+    <div id="ancestorStatus" class="status"></div>
+
+    <footer>
+        Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
+    </footer>
+
+    <script src="js/FTAncestor.js?v=20260827-2"></script>
+</body>
+</html>

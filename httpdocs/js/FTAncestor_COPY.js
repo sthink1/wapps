@@ -21,13 +21,6 @@ let familyTreeCode =
     '';
 
 let ancestorData = null;
-let cousinGeneration = Number(
-    sessionStorage.getItem('familyTreeCousinGeneration') || 1
-);
-
-if (!Number.isInteger(cousinGeneration) || cousinGeneration < 1 || cousinGeneration > 6) {
-    cousinGeneration = 1;
-}
 
 function nameOf(person) {
     if (!person) return '';
@@ -119,9 +112,12 @@ function bindRelative(rowID, buttonID, nameID, photoID, person) {
     row.style.visibility = 'visible';
     name.textContent = nameOf(person);
 
+    // P opens the person's main FTPerson.html page.
     button.title = `PersonID ${person.PersonID}`;
     button.onclick = () => openPerson(person.PersonID);
 
+    // Clicking the Name keeps the user on FTAncestor.html,
+    // but makes that relative the new focal PERSON.
     name.title = `Make ${nameOf(person)} the focal person`;
     name.onclick = () => makeAncestorFocalPerson(person.PersonID);
 
@@ -135,13 +131,8 @@ function bindRelative(rowID, buttonID, nameID, photoID, person) {
 }
 
 function personTableRow(person) {
-    const photo = person.ProfileImageUrl
-        ? `<img class="table-photo" src="${person.ProfileImageUrl}" alt="${nameOf(person)}">`
-        : '';
-
     return `
         <tr>
-            <td class="photo-cell">${photo}</td>
             <td class="person-button-cell">
                 <button
                     type="button"
@@ -152,29 +143,15 @@ function personTableRow(person) {
             </td>
             <td>${person.Gender || ''}</td>
             <td>${ageOf(person)}</td>
-            <td class="table-name" data-id="${person.PersonID}" title="Make ${nameOf(person)} the focal person">${nameOf(person)}</td>
+            <td>${nameOf(person)}</td>
         </tr>
     `;
-}
-
-function fillFamilyTable(bodyID, people) {
-    const body = $(bodyID);
-    const rows = people || [];
-
-    body.innerHTML = rows.length
-        ? rows.map(personTableRow).join('')
-        : '<tr><td colspan="5">None entered</td></tr>';
 }
 
 function wireTableButtons() {
     document.querySelectorAll('.table-person-button').forEach(button => {
         button.onclick = () =>
             openPerson(Number(button.dataset.id));
-    });
-
-    document.querySelectorAll('.table-name').forEach(cell => {
-        cell.onclick = () =>
-            makeAncestorFocalPerson(Number(cell.dataset.id));
     });
 }
 
@@ -221,8 +198,7 @@ function applyBloodLineHighlight() {
 async function loadAncestor() {
     const response = await fetch(
         `${BASE_URL}/familytree/persons/${personID}/ancestor` +
-        `?familyTreeCode=${encodeURIComponent(familyTreeCode)}` +
-        `&cousinGeneration=${encodeURIComponent(cousinGeneration)}`,
+        `?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,
         {
             headers: authHeaders()
         }
@@ -233,25 +209,17 @@ async function loadAncestor() {
     if (!response.ok) {
         throw new Error(
             data.message ||
-            'Unable to load family information.'
+            'Unable to load ancestor information.'
         );
     }
 
     ancestorData = data;
     familyTreeCode = data.FamilyTreeCode || familyTreeCode;
-    cousinGeneration = Number(data.cousinGeneration || cousinGeneration);
 
     sessionStorage.setItem(
         'familyTreeCode',
         familyTreeCode
     );
-
-    sessionStorage.setItem(
-        'familyTreeCousinGeneration',
-        String(cousinGeneration)
-    );
-
-    $('cousinGenerationSelect').value = String(cousinGeneration);
 
     bindRelative(
         'maternalGrandmotherRow',
@@ -307,18 +275,21 @@ async function loadAncestor() {
         openPerson(data.person.PersonID);
 
     if (data.person.ProfileImageUrl) {
-        $('currentPhoto').src = data.person.ProfileImageUrl;
+        $('currentPhoto').src =
+            data.person.ProfileImageUrl;
         $('currentPhoto').style.visibility = 'visible';
     } else {
         $('currentPhoto').removeAttribute('src');
         $('currentPhoto').style.visibility = 'hidden';
     }
 
-    fillFamilyTable('partnerBody', data.partners);
-    fillFamilyTable('childBody', data.children);
-    fillFamilyTable('grandchildBody', data.grandchildren);
-    fillFamilyTable('nephewNieceBody', data.nephewsNieces);
-    fillFamilyTable('cousinBody', data.cousins);
+    $('partnerBody').innerHTML = (data.partners || []).length
+        ? data.partners.map(personTableRow).join('')
+        : '<tr><td colspan="4">None entered</td></tr>';
+
+    $('childBody').innerHTML = (data.children || []).length
+        ? data.children.map(personTableRow).join('')
+        : '<tr><td colspan="4">None entered</td></tr>';
 
     wireTableButtons();
     applyBloodLineHighlight();
@@ -342,30 +313,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             `&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
     };
 
+    $('partnerPageBtn').onclick = () => {
+        window.location.href =
+            `FTAncestorPartner.html?PersonID=${encodeURIComponent(personID)}` +
+            `&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
+    };
+
+    $('childrenPageBtn').onclick = () => {
+        window.location.href =
+            `FTAncestorChild.html?PersonID=${encodeURIComponent(personID)}` +
+            `&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
+    };
+
     $('bloodLineSelect').value =
         sessionStorage.getItem('familyTreeBloodLine') ||
         'None';
 
     $('bloodLineSelect').onchange =
         applyBloodLineHighlight;
-
-    $('cousinGenerationSelect').value = String(cousinGeneration);
-    $('cousinGenerationSelect').onchange = async () => {
-        cousinGeneration = Number($('cousinGenerationSelect').value || 1);
-        sessionStorage.setItem(
-            'familyTreeCousinGeneration',
-            String(cousinGeneration)
-        );
-
-        $('ancestorStatus').textContent = 'Loading cousins...';
-
-        try {
-            await loadAncestor();
-            $('ancestorStatus').textContent = '';
-        } catch (error) {
-            $('ancestorStatus').textContent = error.message;
-        }
-    };
 
     try {
         await loadAncestor();
