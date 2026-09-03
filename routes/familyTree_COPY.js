@@ -2123,6 +2123,10 @@ router.put('/persons/:id', auth, async (req, res) => {
 router.get('/persons/:id/ancestor', auth, async (req, res) => {
     const id = Number(req.params.id);
     const code = String(req.query.familyTreeCode || '');
+    const requestedGeneration = Number(req.query.cousinGeneration || 1);
+    const cousinGeneration = Number.isInteger(requestedGeneration)
+        ? Math.min(6, Math.max(1, requestedGeneration))
+        : 1;
 
     try {
         const c = await pool.getConnection();
@@ -2134,22 +2138,8 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 req.user.userId
             );
 
-            const [member] = await c.query(
-                `SELECT 1
-                   FROM FTFamilyTreePersonT
-                  WHERE FamilyTreeID=? AND PersonID=?
-                  LIMIT 1`,
-                [tree.FamilyTreeID, id]
-            );
-
-            if (!member.length) {
-                return res.status(404).json({
-                    message: 'Person is not in this Family Tree.'
-                });
-            }
-
-            const basePersonSelect = `
-                SELECT
+            const [people] = await c.query(
+                `SELECT
                     p.PersonID,
                     p.FirstName,
                     p.MiddleName,
@@ -2169,99 +2159,223 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                          LIMIT 1
                     ) AS ProfileImageUrl
                   FROM FTPersonT p
-            `;
-
-            const [personRows] = await c.query(
-                basePersonSelect +
-                ` WHERE p.PersonID=? LIMIT 1`,
-                [id]
+                  JOIN FTFamilyTreePersonT ftp
+                    ON ftp.PersonID=p.PersonID
+                 WHERE ftp.FamilyTreeID=?`,
+                [tree.FamilyTreeID]
             );
 
-            if (!personRows.length) {
+            const personByID = new Map(
+                people.map(person => [Number(person.PersonID), person])
+            );
+
+            if (!personByID.has(id)) {
                 return res.status(404).json({
-                    message: 'Person not found.'
+                    message: 'Person is not in this Family Tree.'
                 });
             }
 
-            async function parentFor(childID, side) {
-                const [rows] = await c.query(
-                    basePersonSelect +
-                    ` JOIN FTParentT r
-                        ON r.ParentPersonID=p.PersonID
-                      WHERE r.FamilyTreeID=?
-                        AND r.PersonID=?
-                        AND r.AncestrySide=?
-                      ORDER BY r.ParentRelationshipID
-                      LIMIT 1`,
-                    [
-                        tree.FamilyTreeID,
-                        childID,
-                        side
-                    ]
-                );
+            const [parentEdges] = await c.query(
+                `SELECT PersonID, ParentPersonID, AncestrySide
+                   FROM FTParentT
+                  WHERE FamilyTreeID=?`,
+                [tree.FamilyTreeID]
+            );
 
-                return rows[0] || null;
+            const [partnerEdges] = await c.query(
+                `SELECT PersonID, PartnerPersonID
+                   FROM FTPartnerT
+                  WHERE FamilyTreeID=?`,
+                [tree.FamilyTreeID]
+            );
+
+            const parentByChild = new Map();
+            const childrenByParent = new Map();
+
+            for (const edge of parentEdges) {
+                const childID = Number(edge.PersonID);
+                const parentID = Number(edge.ParentPersonID);
+
+                if (!parentByChild.has(childID)) {
+                    parentByChild.set(childID, []);
+                }
+
+                parentByChild.get(childID).push({
+                    parentID,
+                    side: edge.AncestrySide || null
+                });
+
+                if (!childrenByParent.has(parentID)) {
+                    childrenByParent.set(parentID, new Set());
+                }
+
+                childrenByParent.get(parentID).add(childID);
             }
 
-            const mother = await parentFor(id, 'Mother');
-            const father = await parentFor(id, 'Father');
+            function uniqueIDs(values) {
+                return [...new Set(values.map(Number).filter(Boolean))];
+            }
 
-            const maternalGrandmother = mother
-                ? await parentFor(mother.PersonID, 'Mother')
+            function peopleForIDs(ids) {
+                return uniqueIDs(ids)
+                    .map(personID => personByID.get(personID))
+                    .filter(Boolean)
+                    .sort((a, b) => {
+                        const dateA = a.BirthDate
+                            ? String(a.BirthDate).slice(0, 10)
+                            : '9999-99-99';
+                        const dateB = b.BirthDate
+                            ? String(b.BirthDate).slice(0, 10)
+                            : '9999-99-99';
+
+                        return dateA.localeCompare(dateB) ||
+                            String(a.LastName || '').localeCompare(String(b.LastName || '')) ||
+                            String(a.FirstName || '').localeCompare(String(b.FirstName || '')) ||
+                            Number(a.PersonID) - Number(b.PersonID);
+                    });
+            }
+
+            function parentIDFor(childID, side) {
+                const edge = (parentByChild.get(Number(childID)) || [])
+                    .find(item => item.side === side);
+
+                return edge ? edge.parentID : null;
+            }
+
+            const motherID = parentIDFor(id, 'Mother');
+            const fatherID = parentIDFor(id, 'Father');
+
+            const maternalGrandmotherID = motherID
+                ? parentIDFor(motherID, 'Mother')
+                : null;
+            const maternalGrandfatherID = motherID
+                ? parentIDFor(motherID, 'Father')
+                : null;
+            const paternalGrandmotherID = fatherID
+                ? parentIDFor(fatherID, 'Mother')
+                : null;
+            const paternalGrandfatherID = fatherID
+                ? parentIDFor(fatherID, 'Father')
                 : null;
 
-            const maternalGrandfather = mother
-                ? await parentFor(mother.PersonID, 'Father')
-                : null;
-
-            const paternalGrandmother = father
-                ? await parentFor(father.PersonID, 'Mother')
-                : null;
-
-            const paternalGrandfather = father
-                ? await parentFor(father.PersonID, 'Father')
-                : null;
-
-            const [children] = await c.query(
-                basePersonSelect +
-                ` JOIN FTParentT r
-                    ON r.PersonID=p.PersonID
-                  WHERE r.FamilyTreeID=?
-                    AND r.ParentPersonID=?
-                  ORDER BY
-                    p.BirthDate,
-                    p.LastName,
-                    p.FirstName`,
-                [tree.FamilyTreeID, id]
+            const childIDs = uniqueIDs(
+                [...(childrenByParent.get(id) || [])]
             );
 
-            const [partners] = await c.query(
-                basePersonSelect +
-                ` JOIN FTPartnerT r
-                    ON p.PersonID=
-                       IF(
-                           r.PersonID=?,
-                           r.PartnerPersonID,
-                           r.PersonID
-                       )
-                  WHERE r.FamilyTreeID=?
-                    AND (
-                        r.PersonID=? OR
-                        r.PartnerPersonID=?
-                    )
-                  ORDER BY
-                    p.LastName,
-                    p.FirstName`,
-                [
-                    id,
-                    tree.FamilyTreeID,
-                    id,
-                    id
-                ]
-            );
+            const partnerIDs = [];
+            for (const edge of partnerEdges) {
+                const a = Number(edge.PersonID);
+                const b = Number(edge.PartnerPersonID);
+
+                if (a === id) partnerIDs.push(b);
+                if (b === id) partnerIDs.push(a);
+            }
+
+            const grandchildIDs = [];
+            for (const childID of childIDs) {
+                grandchildIDs.push(
+                    ...(childrenByParent.get(childID) || [])
+                );
+            }
+
+            /*
+             * A sibling shares at least one recorded parent with the focal person.
+             * This intentionally includes full and half siblings.
+             */
+            const siblingIDs = new Set();
+            for (const parent of parentByChild.get(id) || []) {
+                for (const siblingID of childrenByParent.get(parent.parentID) || []) {
+                    if (Number(siblingID) !== id) {
+                        siblingIDs.add(Number(siblingID));
+                    }
+                }
+            }
+
+            const nephewNieceIDs = [];
+            for (const siblingID of siblingIDs) {
+                nephewNieceIDs.push(
+                    ...(childrenByParent.get(siblingID) || [])
+                );
+            }
+
+            function ancestorDepths(startID, maxDepth) {
+                const depths = new Map();
+                let frontier = [Number(startID)];
+
+                for (let depth = 1; depth <= maxDepth; depth++) {
+                    const next = [];
+
+                    for (const childID of frontier) {
+                        for (const parent of parentByChild.get(childID) || []) {
+                            const previous = depths.get(parent.parentID);
+
+                            if (previous == null || depth < previous) {
+                                depths.set(parent.parentID, depth);
+                                next.push(parent.parentID);
+                            }
+                        }
+                    }
+
+                    frontier = uniqueIDs(next);
+                    if (!frontier.length) break;
+                }
+
+                return depths;
+            }
+
+            const neededDepth = cousinGeneration + 1;
+            const focalAncestors = ancestorDepths(id, neededDepth);
+            const cousinIDs = [];
+
+            for (const candidate of people) {
+                const candidateID = Number(candidate.PersonID);
+                if (candidateID === id) continue;
+
+                const candidateAncestors = ancestorDepths(
+                    candidateID,
+                    neededDepth
+                );
+
+                let nearestEqualSharedDepth = null;
+
+                for (const [ancestorID, depth] of focalAncestors) {
+                    if (candidateAncestors.get(ancestorID) === depth) {
+                        if (
+                            nearestEqualSharedDepth == null ||
+                            depth < nearestEqualSharedDepth
+                        ) {
+                            nearestEqualSharedDepth = depth;
+                        }
+                    }
+                }
+
+                if (nearestEqualSharedDepth === neededDepth) {
+                    cousinIDs.push(candidateID);
+                }
+            }
+
+            const signedCache = new Map();
+
+            async function signedPerson(person) {
+                if (!person) return null;
+
+                const key = Number(person.PersonID);
+                if (!signedCache.has(key)) {
+                    signedCache.set(
+                        key,
+                        await withSignedProfileImage(person)
+                    );
+                }
+
+                return signedCache.get(key);
+            }
+
+            async function signedPeople(list) {
+                return Promise.all(list.map(signedPerson));
+            }
 
             const [
-                signedPerson,
+                signedPersonRow,
                 signedMother,
                 signedFather,
                 signedMaternalGrandmother,
@@ -2269,22 +2383,29 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 signedPaternalGrandmother,
                 signedPaternalGrandfather,
                 signedPartners,
-                signedChildren
+                signedChildren,
+                signedGrandchildren,
+                signedNephewsNieces,
+                signedCousins
             ] = await Promise.all([
-                withSignedProfileImage(personRows[0]),
-                withSignedProfileImage(mother),
-                withSignedProfileImage(father),
-                withSignedProfileImage(maternalGrandmother),
-                withSignedProfileImage(maternalGrandfather),
-                withSignedProfileImage(paternalGrandmother),
-                withSignedProfileImage(paternalGrandfather),
-                Promise.all(partners.map(withSignedProfileImage)),
-                Promise.all(children.map(withSignedProfileImage))
+                signedPerson(personByID.get(id)),
+                signedPerson(personByID.get(motherID)),
+                signedPerson(personByID.get(fatherID)),
+                signedPerson(personByID.get(maternalGrandmotherID)),
+                signedPerson(personByID.get(maternalGrandfatherID)),
+                signedPerson(personByID.get(paternalGrandmotherID)),
+                signedPerson(personByID.get(paternalGrandfatherID)),
+                signedPeople(peopleForIDs(partnerIDs)),
+                signedPeople(peopleForIDs(childIDs)),
+                signedPeople(peopleForIDs(grandchildIDs)),
+                signedPeople(peopleForIDs(nephewNieceIDs)),
+                signedPeople(peopleForIDs(cousinIDs))
             ]);
 
             res.json({
                 FamilyTreeCode: tree.FamilyTreeCode,
-                person: signedPerson,
+                cousinGeneration,
+                person: signedPersonRow,
                 mother: signedMother,
                 father: signedFather,
                 maternalGrandmother: signedMaternalGrandmother,
@@ -2292,7 +2413,10 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 paternalGrandmother: signedPaternalGrandmother,
                 paternalGrandfather: signedPaternalGrandfather,
                 partners: signedPartners,
-                children: signedChildren
+                children: signedChildren,
+                grandchildren: signedGrandchildren,
+                nephewsNieces: signedNephewsNieces,
+                cousins: signedCousins
             });
         } finally {
             c.release();
@@ -2303,7 +2427,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
         });
     }
 });
-
 
 router.get('/persons/:id/relationships', auth, async (req, res) => {
     const id = Number(req.params.id);

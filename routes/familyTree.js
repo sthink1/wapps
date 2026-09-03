@@ -1541,6 +1541,715 @@ router.post('/enter-code', auth, async (req, res) => {
     }
 });
 
+/* ============================================================================
+   ONE TREE METHOD
+   Global duplicate review + controlled Person/FamilyTree reconciliation.
+   ============================================================================ */
+
+const ONE_TREE_PERSON_FIELDS = [
+    'FirstName',
+    'MiddleName',
+    'LastName',
+    'SuffixName',
+    'NickName',
+    'MaidenName',
+    'Gender',
+    'BirthDate',
+    'BirthPlace',
+    'Died',
+    'DeathDate'
+];
+
+function normalizeCompareValue(value) {
+    if (value === null || value === undefined) return '';
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    return String(value).trim().toLowerCase();
+}
+
+function dateOnly(value) {
+    if (!value) return null;
+    return String(value).slice(0, 10);
+}
+
+function olderTreeOf(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    const aTime = new Date(a.CreatedAt || 0).getTime();
+    const bTime = new Date(b.CreatedAt || 0).getTime();
+    if (aTime !== bTime) return aTime <= bTime ? a : b;
+    return Number(a.FamilyTreeID) <= Number(b.FamilyTreeID) ? a : b;
+}
+
+async function treeHasPerson(c, treeID, personID) {
+    const [rows] = await c.query(
+        `SELECT 1
+         FROM FTFamilyTreePersonT
+         WHERE FamilyTreeID=? AND PersonID=?
+         LIMIT 1`,
+        [treeID, personID]
+    );
+    return !!rows.length;
+}
+
+function duplicateScore(input, candidate) {
+    const a = {};
+    const b = {};
+    for (const field of ONE_TREE_PERSON_FIELDS) {
+        a[field] = normalizeCompareValue(input[field]);
+        b[field] = normalizeCompareValue(candidate[field]);
+    }
+
+    let score = 0;
+    const reasons = [];
+
+    if (a.FirstName && b.FirstName && a.FirstName === b.FirstName) {
+        score += 20;
+        reasons.push('same first name');
+    }
+    if (a.LastName && b.LastName && a.LastName === b.LastName) {
+        score += 25;
+        reasons.push('same last name');
+    }
+    if (a.MaidenName && b.MaidenName && a.MaidenName === b.MaidenName) {
+        score += 20;
+        reasons.push('same maiden name');
+    }
+    if (
+        a.LastName && b.MaidenName && a.LastName === b.MaidenName ||
+        a.MaidenName && b.LastName && a.MaidenName === b.LastName
+    ) {
+        score += 18;
+        reasons.push('last/maiden name match');
+    }
+    if (a.BirthDate && b.BirthDate && a.BirthDate === b.BirthDate) {
+        score += 35;
+        reasons.push('same birth date');
+    }
+    if (a.BirthPlace && b.BirthPlace) {
+        if (a.BirthPlace === b.BirthPlace) {
+            score += 15;
+            reasons.push('same birth place');
+        } else if (
+            a.BirthPlace.includes(b.BirthPlace) ||
+            b.BirthPlace.includes(a.BirthPlace)
+        ) {
+            score += 8;
+            reasons.push('similar birth place');
+        }
+    }
+    if (a.MiddleName && b.MiddleName && a.MiddleName === b.MiddleName) {
+        score += 8;
+        reasons.push('same middle name');
+    }
+    if (a.Gender && b.Gender && a.Gender === b.Gender) {
+        score += 4;
+    }
+    if (a.DeathDate && b.DeathDate && a.DeathDate === b.DeathDate) {
+        score += 20;
+        reasons.push('same death date');
+    }
+
+    return { score, reasons };
+}
+
+async function personContext(c, personID, treeID) {
+    const [parentRows] = await c.query(
+        `SELECT p.PersonID,p.FirstName,p.MiddleName,p.LastName,p.SuffixName,r.AncestrySide
+         FROM FTParentT r
+         JOIN FTPersonT p ON p.PersonID=r.ParentPersonID
+         WHERE r.FamilyTreeID=? AND r.PersonID=?
+         ORDER BY r.AncestrySide,p.LastName,p.FirstName`,
+        [treeID, personID]
+    );
+
+    const [partnerRows] = await c.query(
+        `SELECT p.PersonID,p.FirstName,p.MiddleName,p.LastName,p.SuffixName
+         FROM FTPartnerT r
+         JOIN FTPersonT p
+           ON p.PersonID=IF(r.PersonID=?,r.PartnerPersonID,r.PersonID)
+         WHERE r.FamilyTreeID=?
+           AND (r.PersonID=? OR r.PartnerPersonID=?)
+         ORDER BY p.LastName,p.FirstName`,
+        [personID, treeID, personID, personID]
+    );
+
+    const [childRows] = await c.query(
+        `SELECT p.PersonID,p.FirstName,p.MiddleName,p.LastName,p.SuffixName
+         FROM FTParentT r
+         JOIN FTPersonT p ON p.PersonID=r.PersonID
+         WHERE r.FamilyTreeID=? AND r.ParentPersonID=?
+         ORDER BY p.LastName,p.FirstName`,
+        [treeID, personID]
+    );
+
+    return {
+        parents: parentRows,
+        partners: partnerRows,
+        children: childRows
+    };
+}
+
+async function personImagesForReview(c, personID) {
+    const [rows] = await c.query(
+        `SELECT ImageID,ImageType,ApproxAge,ImageDate,StorageKey,OriginalFileName,Caption,SortOrder
+         FROM FTImageT
+         WHERE PersonID=?
+         ORDER BY CASE WHEN ImageType='Profile' THEN 0 ELSE 1 END,SortOrder,ImageID`,
+        [personID]
+    );
+    const result = [];
+    for (const image of rows) {
+        let url = null;
+        try { url = await publicImageUrl(image.StorageKey); } catch (_) {}
+        result.push({ ...image, ImageDate: dateOnly(image.ImageDate), url });
+    }
+    return result;
+}
+
+async function enrichDuplicateCandidate(c, row) {
+    const context = await personContext(c, row.PersonID, row.FamilyTreeID);
+    let profileImageUrl = null;
+    if (row.ProfileStorageKey) {
+        try {
+            profileImageUrl = await publicImageUrl(row.ProfileStorageKey);
+        } catch (_) {}
+    }
+    const images = await personImagesForReview(c, row.PersonID);
+    return {
+        ...row,
+        BirthDate: dateOnly(row.BirthDate),
+        DeathDate: dateOnly(row.DeathDate),
+        ProfileImageUrl: profileImageUrl,
+        images,
+        ...context
+    };
+}
+
+async function findGlobalDuplicateCandidates(c, input, options = {}) {
+    const excludePersonID = Number(options.excludePersonID || 0);
+    const restrictTreeID = Number(options.restrictTreeID || 0);
+
+    const first = normalizeCompareValue(input.FirstName);
+    const last = normalizeCompareValue(input.LastName);
+    const maiden = normalizeCompareValue(input.MaidenName);
+    const birth = dateOnly(input.BirthDate);
+
+    const clauses = [];
+    const clauseVals = [];
+
+    if (first && last) {
+        clauses.push(`(LOWER(TRIM(p.FirstName))=? AND
+                      (LOWER(TRIM(p.LastName))=? OR LOWER(TRIM(IFNULL(p.MaidenName,'')))=?))`);
+        clauseVals.push(first, last, last);
+    }
+    if (first && maiden) {
+        clauses.push(`(LOWER(TRIM(p.FirstName))=? AND
+                      (LOWER(TRIM(p.MaidenName))=? OR LOWER(TRIM(IFNULL(p.LastName,'')))=?))`);
+        clauseVals.push(first, maiden, maiden);
+    }
+    if (birth && last) {
+        clauses.push(`(p.BirthDate=? AND
+                      (LOWER(TRIM(p.LastName))=? OR LOWER(TRIM(IFNULL(p.MaidenName,'')))=?))`);
+        clauseVals.push(birth, last, last);
+    }
+    if (birth && first) {
+        clauses.push('(p.BirthDate=? AND LOWER(TRIM(p.FirstName))=?)');
+        clauseVals.push(birth, first);
+    }
+
+    if (!clauses.length) return [];
+
+    const prefixVals = [];
+    let treeRestriction = '';
+    if (restrictTreeID) {
+        treeRestriction = ' AND ftp.FamilyTreeID=? ';
+        prefixVals.push(restrictTreeID);
+    }
+
+    let exclude = '';
+    if (excludePersonID) {
+        exclude = ' AND p.PersonID<>? ';
+        prefixVals.push(excludePersonID);
+    }
+
+    const vals = [...prefixVals, ...clauseVals];
+
+    const [rows] = await c.query(
+        `SELECT DISTINCT
+            p.PersonID,p.FirstName,p.MiddleName,p.LastName,p.SuffixName,
+            p.NickName,p.MaidenName,p.Gender,p.BirthDate,p.BirthPlace,
+            p.Died,p.DeathDate,p.CreatedByUserID,p.CreatedAt,
+            ft.FamilyTreeID,ft.FamilyTreeCode,ft.CreatedAt AS FamilyTreeCreatedAt,
+            (
+                SELECT i.StorageKey
+                FROM FTImageT i
+                WHERE i.PersonID=p.PersonID AND i.ImageType='Profile'
+                ORDER BY i.SortOrder,i.ImageID
+                LIMIT 1
+            ) AS ProfileStorageKey
+         FROM FTPersonT p
+         JOIN FTFamilyTreePersonT ftp ON ftp.PersonID=p.PersonID
+         JOIN FamilyTreeT ft ON ft.FamilyTreeID=ftp.FamilyTreeID
+         WHERE ft.Status='Active'
+           ${treeRestriction}
+           ${exclude}
+           AND (${clauses.join(' OR ')})
+         ORDER BY ft.CreatedAt,p.CreatedAt,p.PersonID
+         LIMIT 60`,
+        vals
+    );
+
+    const scored = rows
+        .map(row => {
+            const result = duplicateScore(input, row);
+            return { ...row, MatchScore: result.score, MatchReasons: result.reasons };
+        })
+        .filter(row => row.MatchScore >= 45)
+        .sort((a, b) => b.MatchScore - a.MatchScore || Number(a.PersonID) - Number(b.PersonID))
+        .slice(0, 20);
+
+    return Promise.all(scored.map(row => enrichDuplicateCandidate(c, row)));
+}
+
+function confirmedDifferentSet(body) {
+    return new Set(
+        (Array.isArray(body.confirmedDifferentPersonIDs)
+            ? body.confirmedDifferentPersonIDs
+            : [])
+            .map(Number)
+            .filter(Boolean)
+    );
+}
+
+async function requireDuplicateReviewOrContinue(c, body, excludePersonID = 0) {
+    const matches = await findGlobalDuplicateCandidates(c, body, { excludePersonID });
+    const confirmed = confirmedDifferentSet(body);
+    const unresolved = matches.filter(row => !confirmed.has(Number(row.PersonID)));
+    if (unresolved.length) {
+        const err = new Error('Possible duplicate Person records require review before a new Person can be created.');
+        err.status = 409;
+        err.responseCode = 'DUPLICATE_REVIEW_REQUIRED';
+        err.matches = unresolved;
+        throw err;
+    }
+    return matches;
+}
+
+function personConflictList(olderPerson, newerPerson) {
+    const conflicts = [];
+    for (const field of ONE_TREE_PERSON_FIELDS) {
+        const olderValue = field === 'BirthDate' || field === 'DeathDate'
+            ? dateOnly(olderPerson[field])
+            : olderPerson[field];
+        const newerValue = field === 'BirthDate' || field === 'DeathDate'
+            ? dateOnly(newerPerson[field])
+            : newerPerson[field];
+        const a = normalizeCompareValue(olderValue);
+        const b = normalizeCompareValue(newerValue);
+        if (a && b && a !== b) {
+            conflicts.push({ field, olderValue, newerValue });
+        }
+    }
+    return conflicts;
+}
+
+async function treePersonRows(c, treeID) {
+    const [rows] = await c.query(
+        `SELECT p.*,
+            (
+                SELECT i.StorageKey
+                FROM FTImageT i
+                WHERE i.PersonID=p.PersonID AND i.ImageType='Profile'
+                ORDER BY i.SortOrder,i.ImageID LIMIT 1
+            ) AS ProfileStorageKey
+         FROM FTPersonT p
+         JOIN FTFamilyTreePersonT ftp ON ftp.PersonID=p.PersonID
+         WHERE ftp.FamilyTreeID=?
+         ORDER BY p.LastName,p.FirstName,p.PersonID`,
+        [treeID]
+    );
+    return rows;
+}
+
+async function buildOneTreeReview(c, sourceTree, targetTree) {
+    const olderTree = olderTreeOf(sourceTree, targetTree);
+    const newerTree = Number(olderTree.FamilyTreeID) === Number(sourceTree.FamilyTreeID)
+        ? targetTree
+        : sourceTree;
+
+    const newerPeople = await treePersonRows(c, newerTree.FamilyTreeID);
+    const groups = [];
+
+    for (const newerPerson of newerPeople) {
+        const matches = await findGlobalDuplicateCandidates(c, newerPerson, {
+            excludePersonID: newerPerson.PersonID,
+            restrictTreeID: olderTree.FamilyTreeID
+        });
+        if (!matches.length) continue;
+
+        let profileImageUrl = null;
+        if (newerPerson.ProfileStorageKey) {
+            try { profileImageUrl = await publicImageUrl(newerPerson.ProfileStorageKey); } catch (_) {}
+        }
+        const newerContext = await personContext(c, newerPerson.PersonID, newerTree.FamilyTreeID);
+        const newerImages = await personImagesForReview(c, newerPerson.PersonID);
+
+        groups.push({
+            newerPerson: {
+                ...newerPerson,
+                BirthDate: dateOnly(newerPerson.BirthDate),
+                DeathDate: dateOnly(newerPerson.DeathDate),
+                ProfileImageUrl: profileImageUrl,
+                images: newerImages,
+                ...newerContext
+            },
+            candidates: matches.map(match => ({
+                ...match,
+                conflicts: personConflictList(match, newerPerson)
+            }))
+        });
+    }
+
+    return { olderTree, newerTree, groups };
+}
+
+async function oneTreeReviewNeededResponse(c, sourceTree, targetTree, extras = {}) {
+    const review = await buildOneTreeReview(c, sourceTree, targetTree);
+    return {
+        code: 'ONE_TREE_REVIEW_REQUIRED',
+        message: `Family Tree ${review.newerTree.FamilyTreeCode} must be reviewed before it is combined with older Family Tree ${review.olderTree.FamilyTreeCode}.`,
+        olderTree: review.olderTree,
+        newerTree: review.newerTree,
+        candidateGroups: review.groups,
+        ...extras
+    };
+}
+
+async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID, olderPersonID, resolutions, keepImageIDs, userID, r2Plan) {
+    const [[olderPerson]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? FOR UPDATE', [olderPersonID]);
+    const [[newerPerson]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? FOR UPDATE', [newerPersonID]);
+    if (!olderPerson || !newerPerson) {
+        const err = new Error('A Person selected for merge no longer exists.');
+        err.status = 409;
+        throw err;
+    }
+
+    const beforeOlder = { ...olderPerson };
+    const beforeNewer = { ...newerPerson };
+    const update = {};
+
+    for (const field of ONE_TREE_PERSON_FIELDS) {
+        const olderValue = field === 'BirthDate' || field === 'DeathDate' ? dateOnly(olderPerson[field]) : olderPerson[field];
+        const newerValue = field === 'BirthDate' || field === 'DeathDate' ? dateOnly(newerPerson[field]) : newerPerson[field];
+        const olderNorm = normalizeCompareValue(olderValue);
+        const newerNorm = normalizeCompareValue(newerValue);
+
+        if (!olderNorm && newerNorm) {
+            update[field] = newerValue;
+        } else if (olderNorm && newerNorm && olderNorm !== newerNorm) {
+            update[field] = resolutions && resolutions[field] === 'newer'
+                ? newerValue
+                : olderValue;
+        } else {
+            update[field] = olderValue;
+        }
+    }
+
+    await c.query(
+        `UPDATE FTPersonT
+         SET FirstName=?,MiddleName=?,LastName=?,SuffixName=?,NickName=?,MaidenName=?,
+             Gender=?,BirthDate=?,BirthPlace=?,Died=?,DeathDate=?,UpdatedByUserID=?,UpdatedAt=NOW()
+         WHERE PersonID=?`,
+        [
+            update.FirstName || null,
+            update.MiddleName || null,
+            update.LastName || null,
+            update.SuffixName || null,
+            update.NickName || null,
+            update.MaidenName || null,
+            update.Gender || null,
+            update.BirthDate || null,
+            update.BirthPlace || null,
+            Number(update.Died) ? 1 : 0,
+            update.DeathDate || null,
+            userID,
+            olderPersonID
+        ]
+    );
+
+    const [contacts] = await c.query('SELECT * FROM FTContactT WHERE PersonID=? ORDER BY ContactID', [newerPersonID]);
+    for (const contact of contacts) {
+        const [dup] = await c.query(
+            `SELECT ContactID FROM FTContactT
+             WHERE PersonID=? AND LOWER(TRIM(ContactType))=LOWER(TRIM(?))
+               AND LOWER(TRIM(ContactValue))=LOWER(TRIM(?)) LIMIT 1`,
+            [olderPersonID, contact.ContactType, contact.ContactValue]
+        );
+        if (dup.length) {
+            await c.query('DELETE FROM FTContactT WHERE ContactID=?', [contact.ContactID]);
+        } else {
+            await c.query('UPDATE FTContactT SET PersonID=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE ContactID=?', [olderPersonID, userID, contact.ContactID]);
+        }
+    }
+
+    const [eventLinks] = await c.query('SELECT * FROM FTEventPersonT WHERE PersonID=?', [newerPersonID]);
+    for (const link of eventLinks) {
+        const [dup] = await c.query('SELECT EventPersonID FROM FTEventPersonT WHERE EventID=? AND PersonID=? LIMIT 1', [link.EventID, olderPersonID]);
+        if (dup.length) {
+            await c.query('DELETE FROM FTEventPersonT WHERE EventPersonID=?', [link.EventPersonID]);
+        } else {
+            await c.query('UPDATE FTEventPersonT SET PersonID=? WHERE EventPersonID=?', [olderPersonID, link.EventPersonID]);
+        }
+    }
+
+    let [olderImages] = await c.query('SELECT * FROM FTImageT WHERE PersonID=? ORDER BY CASE WHEN ImageType=\'Profile\' THEN 0 ELSE 1 END,SortOrder,ImageID', [olderPersonID]);
+    let [newerImages] = await c.query('SELECT * FROM FTImageT WHERE PersonID=? ORDER BY CASE WHEN ImageType=\'Profile\' THEN 0 ELSE 1 END,SortOrder,ImageID', [newerPersonID]);
+
+    const keepSet = Array.isArray(keepImageIDs)
+        ? new Set(keepImageIDs.map(Number))
+        : new Set([...olderImages, ...newerImages].map(image => Number(image.ImageID)));
+
+    for (const image of [...olderImages, ...newerImages]) {
+        if (!keepSet.has(Number(image.ImageID))) {
+            await c.query('DELETE FROM FTImageT WHERE ImageID=?', [image.ImageID]);
+            if (image.StorageKey) r2Plan.oldKeys.push(image.StorageKey);
+        }
+    }
+
+    olderImages = olderImages.filter(image => keepSet.has(Number(image.ImageID)));
+    newerImages = newerImages.filter(image => keepSet.has(Number(image.ImageID)));
+
+    if (olderImages.length + newerImages.length > 5) {
+        const err = new Error(`PersonID ${olderPersonID} and PersonID ${newerPersonID} have more than five selected pictures. Select no more than five pictures to keep.`);
+        err.status = 409;
+        err.responseCode = 'IMAGE_LIMIT_REVIEW_REQUIRED';
+        throw err;
+    }
+
+    const hasProfile = olderImages.some(i => String(i.ImageType).toLowerCase() === 'profile');
+    const usedLife = new Set(olderImages.filter(i => String(i.ImageType).toLowerCase() !== 'profile').map(i => Number(i.SortOrder)).filter(n => n >= 1 && n <= 4));
+    let profileAvailable = !hasProfile;
+
+    for (const image of newerImages) {
+        let imageType = 'Life';
+        let sortOrder = 0;
+        let storageKey;
+
+        if (profileAvailable && String(image.ImageType).toLowerCase() === 'profile') {
+            imageType = 'Profile';
+            sortOrder = 0;
+            storageKey = profileFileName(olderPersonID);
+            profileAvailable = false;
+        } else {
+            let slot = 1;
+            while (slot <= 4 && usedLife.has(slot)) slot++;
+            if (slot > 4) {
+                const err = new Error('No picture slot is available while merging Person records.');
+                err.status = 409;
+                err.responseCode = 'IMAGE_LIMIT_REVIEW_REQUIRED';
+                throw err;
+            }
+            usedLife.add(slot);
+            imageType = 'Life';
+            sortOrder = slot;
+            storageKey = lifeFileName(olderPersonID, slot);
+        }
+
+        if (image.StorageKey !== storageKey) {
+            await copyImage(image.StorageKey, storageKey);
+            r2Plan.newKeys.push(storageKey);
+            r2Plan.oldKeys.push(image.StorageKey);
+        }
+
+        await c.query(
+            `UPDATE FTImageT
+             SET PersonID=?,ImageType=?,SortOrder=?,StorageKey=?,UpdatedByUserID=?,UpdatedAt=NOW()
+             WHERE ImageID=?`,
+            [olderPersonID, imageType, sortOrder, storageKey, userID, image.ImageID]
+        );
+    }
+
+    await c.query(
+        `INSERT INTO FTPersonMergeT
+         (SourcePersonID,SurvivingPersonID,SourceFamilyTreeID,SurvivingFamilyTreeID,
+          MergedByUserID,MergedAt,MergeReason,ConflictResolutionJSON,
+          SourcePersonSnapshot,SurvivingPersonSnapshotBefore)
+         VALUES (?,?,?,?,?,NOW(),'OneTreeMethod',?,?,?)`,
+        [
+            newerPersonID,
+            olderPersonID,
+            newerTreeID,
+            olderTreeID,
+            userID,
+            JSON.stringify(resolutions || {}),
+            JSON.stringify(beforeNewer),
+            JSON.stringify(beforeOlder)
+        ]
+    );
+
+    await logActivity(
+        c,
+        olderTreeID,
+        userID,
+        'MERGE_PERSON',
+        'FTPersonT',
+        olderPersonID,
+        olderPersonID,
+        `OneTreeMethod merged PersonID ${newerPersonID} into PersonID ${olderPersonID}`,
+        beforeOlder.CreatedByUserID
+    );
+
+    return { newerPersonID, olderPersonID };
+}
+
+async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bridge, r2Plan) {
+    const mapping = new Map();
+    const resolutionByNewerID = new Map();
+    const keepImagesByNewerID = new Map();
+
+    for (const decision of decisions || []) {
+        if (decision && decision.decision === 'same') {
+            const newerPersonID = Number(decision.newerPersonID);
+            const olderPersonID = Number(decision.olderPersonID);
+            if (newerPersonID && olderPersonID) {
+                mapping.set(newerPersonID, olderPersonID);
+                resolutionByNewerID.set(newerPersonID, decision.resolutions || {});
+                keepImagesByNewerID.set(newerPersonID, Array.isArray(decision.keepImageIDs) ? decision.keepImageIDs : []);
+            }
+        }
+    }
+
+    for (const [newerPersonID, olderPersonID] of mapping.entries()) {
+        if (!(await treeHasPerson(c, newerTree.FamilyTreeID, newerPersonID)) ||
+            !(await treeHasPerson(c, olderTree.FamilyTreeID, olderPersonID))) {
+            const err = new Error('A selected Person merge no longer matches the two Family Trees. Reload the review.');
+            err.status = 409;
+            throw err;
+        }
+        await mergePersonPairOneTree(
+            c,
+            olderTree.FamilyTreeID,
+            newerTree.FamilyTreeID,
+            newerPersonID,
+            olderPersonID,
+            resolutionByNewerID.get(newerPersonID),
+            keepImagesByNewerID.get(newerPersonID),
+            userID,
+            r2Plan
+        );
+    }
+
+    const mapID = id => mapping.get(Number(id)) || Number(id);
+
+    const [newerMemberships] = await c.query('SELECT * FROM FTFamilyTreePersonT WHERE FamilyTreeID=? ORDER BY FamilyTreePersonID', [newerTree.FamilyTreeID]);
+    for (const membership of newerMemberships) {
+        const destinationPersonID = mapID(membership.PersonID);
+        await c.query(
+            `INSERT INTO FTFamilyTreePersonT
+             (FamilyTreeID,PersonID,OriginFamilyTreeID,AddedByUserID,AddedAt,Notes)
+             VALUES (?,?,?,?,?,?)
+             ON DUPLICATE KEY UPDATE OriginFamilyTreeID=COALESCE(FTFamilyTreePersonT.OriginFamilyTreeID,VALUES(OriginFamilyTreeID))`,
+            [
+                olderTree.FamilyTreeID,
+                destinationPersonID,
+                membership.OriginFamilyTreeID || newerTree.FamilyTreeID,
+                membership.AddedByUserID,
+                membership.AddedAt,
+                membership.Notes
+            ]
+        );
+    }
+
+    const [parentRows] = await c.query('SELECT * FROM FTParentT WHERE FamilyTreeID=? ORDER BY ParentRelationshipID', [newerTree.FamilyTreeID]);
+    for (const rel of parentRows) {
+        const childID = mapID(rel.PersonID);
+        const parentID = mapID(rel.ParentPersonID);
+        if (!childID || !parentID || childID === parentID) continue;
+
+        try {
+            await c.query(
+                `INSERT INTO FTParentT
+                 (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+                 VALUES (?,?,?,?,?,?,?,?,?,?)`,
+                [olderTree.FamilyTreeID,childID,parentID,rel.ParentType,rel.AncestrySide,rel.Notes,rel.CreatedByUserID,rel.CreatedAt,rel.UpdatedByUserID,rel.UpdatedAt]
+            );
+        } catch (e) {
+            if (e.code !== 'ER_DUP_ENTRY') throw e;
+            // The older tree remains authoritative when the same ancestry slot conflicts.
+        }
+    }
+
+    const [partnerRows] = await c.query('SELECT * FROM FTPartnerT WHERE FamilyTreeID=? ORDER BY PartnerRelationshipID', [newerTree.FamilyTreeID]);
+    for (const rel of partnerRows) {
+        let a = mapID(rel.PersonID);
+        let z = mapID(rel.PartnerPersonID);
+        if (!a || !z || a === z) continue;
+        if (a > z) [a, z] = [z, a];
+        await c.query(
+            `INSERT IGNORE INTO FTPartnerT
+             (FamilyTreeID,PersonID,PartnerPersonID,RelationshipType,Notes,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+             VALUES (?,?,?,?,?,?,?,?,?,?)`,
+            [olderTree.FamilyTreeID,a,z,rel.RelationshipType,rel.Notes,rel.CreatedByUserID,rel.CreatedAt,rel.UpdatedByUserID,rel.UpdatedAt]
+        );
+    }
+
+    const [users] = await c.query('SELECT * FROM FTFamilyTreeUserT WHERE FamilyTreeID=? ORDER BY FamilyTreeUserID', [newerTree.FamilyTreeID]);
+    for (const member of users) {
+        await c.query(
+            `INSERT INTO FTFamilyTreeUserT
+             (FamilyTreeID,UserID,JoinedAt,LastActivityAt,IsActive,AddedByUserID)
+             VALUES (?,?,?,?,1,?)
+             ON DUPLICATE KEY UPDATE IsActive=1,LastActivityAt=GREATEST(COALESCE(FTFamilyTreeUserT.LastActivityAt,'1900-01-01'),COALESCE(VALUES(LastActivityAt),'1900-01-01'))`,
+            [olderTree.FamilyTreeID,member.UserID,member.JoinedAt,member.LastActivityAt,member.AddedByUserID]
+        );
+    }
+
+    await c.query('DELETE FROM FTParentT WHERE FamilyTreeID=?', [newerTree.FamilyTreeID]);
+    await c.query('DELETE FROM FTPartnerT WHERE FamilyTreeID=?', [newerTree.FamilyTreeID]);
+    await c.query('DELETE FROM FTFamilyTreePersonT WHERE FamilyTreeID=?', [newerTree.FamilyTreeID]);
+    await c.query('UPDATE FTFamilyTreeUserT SET IsActive=0,LastActivityAt=NOW() WHERE FamilyTreeID=?', [newerTree.FamilyTreeID]);
+
+    for (const newerPersonID of mapping.keys()) {
+        await c.query('DELETE FROM FTPersonT WHERE PersonID=?', [newerPersonID]);
+    }
+
+    await c.query(
+        `UPDATE FamilyTreeT
+         SET Status='Merged',MergedIntoFamilyTreeID=?,MergedAt=NOW(),MergedByUserID=?,LastActivityAt=NOW(),LastActivityByUserID=?
+         WHERE FamilyTreeID=?`,
+        [olderTree.FamilyTreeID,userID,userID,newerTree.FamilyTreeID]
+    );
+
+    await logActivity(
+        c,
+        olderTree.FamilyTreeID,
+        userID,
+        'MERGE',
+        'FamilyTreeT',
+        newerTree.FamilyTreeID,
+        null,
+        `OneTreeMethod merged Family Tree ${newerTree.FamilyTreeCode} into older Family Tree ${olderTree.FamilyTreeCode}`
+    );
+
+    let focalPersonID = bridge && bridge.focalPersonID ? mapID(bridge.focalPersonID) : null;
+    let relatedPersonID = bridge && bridge.relatedPersonID ? mapID(bridge.relatedPersonID) : null;
+    const kind = bridge ? String(bridge.relationshipKind || '').toLowerCase() : '';
+
+    if (focalPersonID && relatedPersonID && kind && focalPersonID !== relatedPersonID) {
+        await addRelationshipInTree(c, olderTree.FamilyTreeID, userID, focalPersonID, relatedPersonID, kind);
+    }
+
+    return {
+        FamilyTreeID: olderTree.FamilyTreeID,
+        FamilyTreeCode: olderTree.FamilyTreeCode,
+        focalPersonID,
+        relatedPersonID,
+        mergedTreeCode: newerTree.FamilyTreeCode,
+        mergedPersonCount: mapping.size
+    };
+}
+
+
 router.get('/tree-search', auth, async (req, res) => {
     const q = String(req.query.q || '').trim();
     if (!q) return res.json({ results: [] });
@@ -1568,7 +2277,9 @@ router.get('/tree-search', auth, async (req, res) => {
 router.post('/use-existing-person', auth, async (req, res) => {
     const b = req.body || {};
     const existingPersonID = Number(b.personID);
-    if (!existingPersonID) return res.status(400).json({ message: 'PersonID is required.' });
+    if (!existingPersonID) {
+        return res.status(400).json({ message: 'PersonID is required.' });
+    }
 
     try {
         const result = await withTx(async c => {
@@ -1579,59 +2290,93 @@ router.post('/use-existing-person', auth, async (req, res) => {
                 throw err;
             }
 
-            await adoptTreeForUser(c, req.user.userId, targetTree);
-
             const focal = Number(b.focalPersonID || 0);
             const kind = String(b.relationshipKind || '').toLowerCase();
-            if (focal && kind) {
-                // The focal person may have just been created by this user in a temporary tree.
-                await c.query(
-                    `INSERT INTO FTFamilyTreePersonT
-                     (
-                        FamilyTreeID,
-                        PersonID,
-                        OriginFamilyTreeID,
-                        AddedByUserID,
-                        AddedAt,
-                        Notes
-                     )
-                     SELECT
-                        ?,
-                        PersonID,
-                        COALESCE(
-                            OriginFamilyTreeID,
-                            FamilyTreeID
-                        ),
-                        AddedByUserID,
-                        AddedAt,
-                        Notes
-                     FROM FTFamilyTreePersonT
-                     WHERE PersonID=?
-                     LIMIT 1
-                     ON DUPLICATE KEY UPDATE
-                        OriginFamilyTreeID=
-                            COALESCE(
-                                FTFamilyTreePersonT.OriginFamilyTreeID,
-                                VALUES(OriginFamilyTreeID)
-                            )`,
-                    [targetTree.FamilyTreeID, focal]
+            let sourceTree = null;
+
+            if (b.familyTreeCode) {
+                sourceTree = await requireTree(c, b.familyTreeCode, req.user.userId);
+            } else if (focal) {
+                const focalTree = await getPersonTree(c, focal);
+                if (focalTree && await userHasTree(c, focalTree.FamilyTreeID, req.user.userId)) {
+                    sourceTree = focalTree;
+                }
+            }
+
+            if (!sourceTree) {
+                const [existingTrees] = await c.query(
+                    `SELECT ft.*
+                     FROM FTFamilyTreeUserT ftu
+                     JOIN FamilyTreeT ft ON ft.FamilyTreeID=ftu.FamilyTreeID
+                     WHERE ftu.UserID=? AND ftu.IsActive=1 AND ft.Status='Active'
+                       AND EXISTS (SELECT 1 FROM FTFamilyTreePersonT ftp WHERE ftp.FamilyTreeID=ft.FamilyTreeID LIMIT 1)
+                     ORDER BY ft.CreatedAt,ft.FamilyTreeID
+                     LIMIT 1`,
+                    [req.user.userId]
                 );
+                sourceTree = existingTrees[0] || null;
+            }
+
+            if (!sourceTree) {
+                await c.query(
+                    `INSERT INTO FTFamilyTreeUserT
+                     (FamilyTreeID,UserID,JoinedAt,LastActivityAt,IsActive,AddedByUserID)
+                     VALUES (?,?,NOW(),NOW(),1,?)
+                     ON DUPLICATE KEY UPDATE IsActive=1,LastActivityAt=NOW()`,
+                    [targetTree.FamilyTreeID,req.user.userId,req.user.userId]
+                );
+                return {
+                    PersonID: existingPersonID,
+                    FamilyTreeID: targetTree.FamilyTreeID,
+                    FamilyTreeCode: targetTree.FamilyTreeCode
+                };
+            }
+
+            if (Number(sourceTree.FamilyTreeID) !== Number(targetTree.FamilyTreeID)) {
+                const review = await oneTreeReviewNeededResponse(
+                    c,
+                    sourceTree,
+                    targetTree,
+                    {
+                        bridge: {
+                            focalPersonID: focal || null,
+                            relatedPersonID: existingPersonID,
+                            relationshipKind: kind || null
+                        }
+                    }
+                );
+                const err = new Error(review.message);
+                err.status = 409;
+                err.responseCode = review.code;
+                err.review = review;
+                throw err;
+            }
+
+            if (focal && kind) {
                 await addRelationshipInTree(
-                    c, targetTree.FamilyTreeID, req.user.userId,
-                    focal, existingPersonID, kind
+                    c,
+                    sourceTree.FamilyTreeID,
+                    req.user.userId,
+                    focal,
+                    existingPersonID,
+                    kind
                 );
             }
 
             return {
                 PersonID: existingPersonID,
-                FamilyTreeID: targetTree.FamilyTreeID,
-                FamilyTreeCode: targetTree.FamilyTreeCode
+                FamilyTreeID: sourceTree.FamilyTreeID,
+                FamilyTreeCode: sourceTree.FamilyTreeCode
             };
         });
 
         res.json(result);
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({
+            code: e.responseCode || undefined,
+            message: e.message,
+            review: e.review || undefined
+        });
     }
 });
 
@@ -1678,59 +2423,13 @@ router.get('/persons', auth, async (req, res) => {
 
 router.get('/persons/duplicates', auth, async (req, res) => {
     try {
-        const {
-            FirstName,
-            LastName,
-            BirthDate,
-            BirthPlace,
-            MaidenName,
-            DeathDate
-        } = req.query;
-
-        if (!FirstName && !LastName && !BirthDate) {
-            return res.json({ matches: [] });
+        const c = await pool.getConnection();
+        try {
+            const matches = await findGlobalDuplicateCandidates(c, req.query || {});
+            res.json({ matches });
+        } finally {
+            c.release();
         }
-
-        const parts = [];
-        const vals = [];
-
-        if (FirstName) {
-            parts.push('p.FirstName LIKE ?');
-            vals.push(`${FirstName}%`);
-        }
-
-        if (LastName) {
-            parts.push('p.LastName LIKE ?');
-            vals.push(`${LastName}%`);
-        }
-
-        if (BirthDate) {
-            parts.push('p.BirthDate = ?');
-            vals.push(BirthDate);
-        }
-
-        if (BirthPlace) {
-            parts.push('p.BirthPlace LIKE ?');
-            vals.push(`%${BirthPlace}%`);
-        }
-
-        if (MaidenName) {
-            parts.push('p.MaidenName LIKE ?');
-            vals.push(`${MaidenName}%`);
-        }
-
-        if (DeathDate) {
-            parts.push('p.DeathDate = ?');
-            vals.push(DeathDate);
-        }
-
-        const [rows] = await pool.query(
-            personSelectSql('WHERE ' + parts.join(' AND ')) +
-                ' ORDER BY p.LastName,p.FirstName LIMIT 20',
-            vals
-        );
-
-        res.json({ matches: rows });
     } catch (e) {
         res.status(500).json({ message: e.message });
     }
@@ -1780,6 +2479,8 @@ router.post('/persons', auth, async (req, res) => {
 
     try {
         const result = await withTx(async c => {
+            await requireDuplicateReviewOrContinue(c, b);
+
             let tree;
             let code = b.familyTreeCode || null;
 
@@ -1897,7 +2598,11 @@ router.post('/persons', auth, async (req, res) => {
 
         res.status(201).json(result);
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({
+            code: e.responseCode || undefined,
+            message: e.message,
+            matches: e.matches || undefined
+        });
     }
 });
 
@@ -2661,6 +3366,8 @@ router.post('/related-person', auth, async (req, res) => {
 
     try {
         const result = await withTx(async c => {
+            await requireDuplicateReviewOrContinue(c, b);
+
             const tree = await requireTree(c, b.familyTreeCode, userID);
             const tid = tree.FamilyTreeID;
 
@@ -2744,7 +3451,7 @@ router.post('/related-person', auth, async (req, res) => {
 
         res.status(201).json(result);
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ code: e.responseCode || undefined, message: e.message, matches: e.matches || undefined });
     }
 });
 
@@ -4349,6 +5056,203 @@ router.delete('/persons/:id', auth, async (req, res) => {
         res.json(result);
     } catch (e) {
         res.status(e.status || 500).json({
+            message: e.message
+        });
+    }
+});
+
+router.get('/persons/:id/duplicate-view', auth, async (req, res) => {
+    const personID = Number(req.params.id);
+    if (!personID) return res.status(400).json({ message: 'PersonID is required.' });
+
+    try {
+        const c = await pool.getConnection();
+        try {
+            const tree = await getPersonTree(c, personID);
+            if (!tree) return res.status(404).json({ message: 'Person was not found in an active Family Tree.' });
+
+            const [[person]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1', [personID]);
+            if (!person) return res.status(404).json({ message: 'Person was not found.' });
+
+            const context = await personContext(c, personID, tree.FamilyTreeID);
+            const [images] = await c.query(
+                `SELECT ImageID,ImageType,ApproxAge,ImageDate,StorageKey,OriginalFileName,Caption,SortOrder
+                 FROM FTImageT WHERE PersonID=?
+                 ORDER BY CASE WHEN ImageType='Profile' THEN 0 ELSE 1 END,SortOrder,ImageID`,
+                [personID]
+            );
+            const signedImages = [];
+            for (const image of images) {
+                let url = null;
+                try { url = await publicImageUrl(image.StorageKey); } catch (_) {}
+                signedImages.push({ ...image, ImageDate: dateOnly(image.ImageDate), url });
+            }
+
+            res.json({
+                person: {
+                    ...person,
+                    BirthDate: dateOnly(person.BirthDate),
+                    DeathDate: dateOnly(person.DeathDate)
+                },
+                FamilyTreeCode: tree.FamilyTreeCode,
+                ...context,
+                images: signedImages
+            });
+        } finally {
+            c.release();
+        }
+    } catch (e) {
+        res.status(e.status || 500).json({ message: e.message });
+    }
+});
+
+router.get('/one-tree/review', auth, async (req, res) => {
+    const sourceCode = String(req.query.sourceFamilyTreeCode || '').trim();
+    const targetPersonID = Number(req.query.targetPersonID || 0);
+
+    if (!sourceCode || !targetPersonID) {
+        return res.status(400).json({ message: 'Source FamilyTreeCode and target PersonID are required.' });
+    }
+
+    try {
+        const c = await pool.getConnection();
+        try {
+            const sourceTree = await requireTree(c, sourceCode, req.user.userId);
+            const targetTree = await getPersonTree(c, targetPersonID);
+            if (!targetTree) {
+                return res.status(404).json({ message: 'The selected existing Person is not associated with an active Family Tree.' });
+            }
+            if (Number(sourceTree.FamilyTreeID) === Number(targetTree.FamilyTreeID)) {
+                return res.json({
+                    alreadySameTree: true,
+                    FamilyTreeID: sourceTree.FamilyTreeID,
+                    FamilyTreeCode: sourceTree.FamilyTreeCode,
+                    candidateGroups: []
+                });
+            }
+
+            const review = await buildOneTreeReview(c, sourceTree, targetTree);
+            res.json({
+                ...review,
+                sourceTree,
+                targetTree,
+                targetPersonID
+            });
+        } finally {
+            c.release();
+        }
+    } catch (e) {
+        res.status(e.status || 500).json({ message: e.message });
+    }
+});
+
+router.post('/one-tree/merge', auth, async (req, res) => {
+    const b = req.body || {};
+    const sourceCode = String(b.sourceFamilyTreeCode || '').trim();
+    const targetPersonID = Number(b.targetPersonID || 0);
+    const decisions = Array.isArray(b.decisions) ? b.decisions : [];
+    const bridge = b.bridge || {};
+
+    if (!sourceCode || !targetPersonID) {
+        return res.status(400).json({ message: 'Source FamilyTreeCode and target PersonID are required.' });
+    }
+
+    const r2Plan = { newKeys: [], oldKeys: [] };
+
+    try {
+        const result = await withTx(async c => {
+            const sourceTree = await requireTree(c, sourceCode, req.user.userId);
+            const targetTree = await getPersonTree(c, targetPersonID);
+            if (!targetTree) {
+                const err = new Error('The selected existing Person is not associated with an active Family Tree.');
+                err.status = 404;
+                throw err;
+            }
+
+            if (Number(sourceTree.FamilyTreeID) === Number(targetTree.FamilyTreeID)) {
+                let focalPersonID = Number(bridge.focalPersonID || 0);
+                let relatedPersonID = Number(bridge.relatedPersonID || targetPersonID);
+                const kind = String(bridge.relationshipKind || '').toLowerCase();
+                if (focalPersonID && relatedPersonID && kind) {
+                    await addRelationshipInTree(c, sourceTree.FamilyTreeID, req.user.userId, focalPersonID, relatedPersonID, kind);
+                }
+                return {
+                    FamilyTreeID: sourceTree.FamilyTreeID,
+                    FamilyTreeCode: sourceTree.FamilyTreeCode,
+                    focalPersonID: focalPersonID || null,
+                    relatedPersonID: relatedPersonID || null,
+                    mergedPersonCount: 0
+                };
+            }
+
+            const review = await buildOneTreeReview(c, sourceTree, targetTree);
+            const groupsByNewer = new Map(
+                review.groups.map(group => [Number(group.newerPerson.PersonID), group])
+            );
+            const decisionsByNewer = new Map(
+                decisions
+                    .filter(Boolean)
+                    .map(decision => [Number(decision.newerPersonID), decision])
+            );
+
+            const selectedOlder = new Set();
+            for (const [newerPersonID, group] of groupsByNewer.entries()) {
+                const decision = decisionsByNewer.get(newerPersonID);
+                if (!decision || !['same', 'different'].includes(decision.decision)) {
+                    const err = new Error(`PersonID ${newerPersonID} has possible duplicates that still require a Same Person / Different Person decision.`);
+                    err.status = 409;
+                    err.responseCode = 'ONE_TREE_REVIEW_INCOMPLETE';
+                    throw err;
+                }
+
+                if (decision.decision === 'same') {
+                    const olderPersonID = Number(decision.olderPersonID || 0);
+                    const allowed = group.candidates.some(candidate => Number(candidate.PersonID) === olderPersonID);
+                    if (!allowed) {
+                        const err = new Error(`The selected match for PersonID ${newerPersonID} is no longer a current duplicate candidate. Reload the review.`);
+                        err.status = 409;
+                        throw err;
+                    }
+                    if (selectedOlder.has(olderPersonID)) {
+                        const err = new Error(`Two newer Person records cannot both be merged into PersonID ${olderPersonID} in the same operation.`);
+                        err.status = 409;
+                        throw err;
+                    }
+                    selectedOlder.add(olderPersonID);
+                }
+            }
+
+            return mergeTreesOneTree(
+                c,
+                review.olderTree,
+                review.newerTree,
+                decisions,
+                req.user.userId,
+                {
+                    focalPersonID: Number(bridge.focalPersonID || 0) || null,
+                    relatedPersonID: Number(bridge.relatedPersonID || targetPersonID) || null,
+                    relationshipKind: String(bridge.relationshipKind || '').toLowerCase() || null
+                },
+                r2Plan
+            );
+        });
+
+        for (const key of [...new Set(r2Plan.oldKeys)]) {
+            await safelyDeleteImage(key);
+        }
+
+        res.json({
+            ...result,
+            message: result.mergedTreeCode
+                ? `Family Tree ${result.mergedTreeCode} was combined with older Family Tree ${result.FamilyTreeCode}.`
+                : 'Family Trees are already combined.'
+        });
+    } catch (e) {
+        for (const key of [...new Set(r2Plan.newKeys)]) {
+            await safelyDeleteImage(key);
+        }
+        res.status(e.status || 500).json({
+            code: e.responseCode || undefined,
             message: e.message
         });
     }

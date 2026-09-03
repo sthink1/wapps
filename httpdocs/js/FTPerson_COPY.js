@@ -31,7 +31,6 @@ let currentPerson = null;
 let currentProfile = null;
 let currentLifeImages = [];
 let contextImageID = null;
-let relatedDifferent = new Set();
 
 function ageOf(person) {
     if (!person || !person.BirthDate) return '';
@@ -77,8 +76,6 @@ function nameOf(person) {
 
     return name || `Person ${person.PersonID}`;
 }
-
-const shortNames = list => (list || []).map(nameOf).filter(Boolean).join('; ') || 'None';
 
 function dateUS(value) {
     if (!value) return '';
@@ -627,73 +624,22 @@ function clearRelatedForm() {
     $('rDupWrap').classList.add('hidden');
     $('rDupBody').innerHTML = '';
     $('rStatus').textContent = '';
-    relatedDifferent = new Set();
-}
-
-function oneTreeRedirect(relatedPersonID) {
-    const query = new URLSearchParams({
-        sourceFamilyTreeCode: familyTreeCode,
-        targetPersonID: String(relatedPersonID),
-        returnTo: 'related',
-        focalPersonID: String(personID),
-        relationshipKind: activeRelationship
-    });
-    window.location.href = `FTOneTreeMerge.html?${query.toString()}`;
-}
-
-function renderRelatedDuplicates(matches) {
-    $('rDupWrap').classList.toggle('hidden', !matches.length);
-    $('rDupBody').innerHTML = matches.map(person => `
-        <tr data-dup-id="${person.PersonID}">
-            <td>${person.ProfileImageUrl ? `<img class="dup-photo" src="${person.ProfileImageUrl}" alt="">` : ''}</td>
-            <td><button type="button" class="view-existing" data-id="${person.PersonID}">${person.PersonID}</button></td>
-            <td>${nameOf(person)}</td>
-            <td>${dateUS(person.BirthDate)}</td>
-            <td>${person.BirthPlace || ''}</td>
-            <td>${shortNames(person.parents)}</td>
-            <td>${shortNames(person.partners)}</td>
-            <td>${shortNames(person.children)}</td>
-            <td>${person.FamilyTreeCode || person.OldestFamilyTreeCode || ''}</td>
-            <td>${(person.MatchReasons || []).join(', ')}</td>
-            <td>
-                <button type="button" class="use-existing" data-id="${person.PersonID}">USE THIS PERSON</button>
-                <button type="button" class="different-person" data-id="${person.PersonID}">${relatedDifferent.has(Number(person.PersonID)) ? 'MARKED DIFFERENT' : 'THIS IS A DIFFERENT PERSON'}</button>
-            </td>
-        </tr>
-    `).join('');
-
-    $('rStatus').textContent = matches.length
-        ? `${matches.length} possible duplicate(s) found. Review each match before creating a new Person.`
-        : 'No possible duplicates found.';
-
-    $('rDupBody').querySelectorAll('.view-existing').forEach(button => {
-        button.onclick = () => window.open(
-            `FTPersonDuplicate.html?PersonID=${encodeURIComponent(button.dataset.id)}`,
-            '_blank'
-        );
-    });
-
-    $('rDupBody').querySelectorAll('.use-existing').forEach(button => {
-        button.onclick = () => useExistingRelationship(Number(button.dataset.id))
-            .catch(error => { $('rStatus').textContent = error.message; });
-    });
-
-    $('rDupBody').querySelectorAll('.different-person').forEach(button => {
-        button.onclick = () => {
-            relatedDifferent.add(Number(button.dataset.id));
-            button.textContent = 'MARKED DIFFERENT';
-            button.disabled = true;
-            $('rStatus').textContent = 'Marked as a different person. Press SAVE NEW PERSON again after reviewing all possible duplicates.';
-        };
-    });
 }
 
 async function checkRelatedDuplicates() {
     const person = relatedPersonData();
     const query = new URLSearchParams();
 
-    ['FirstName','MiddleName','LastName','BirthDate','BirthPlace','MaidenName','Gender'].forEach(key => {
-        if (person[key]) query.set(key, person[key]);
+    [
+        'FirstName',
+        'LastName',
+        'BirthDate',
+        'BirthPlace',
+        'MaidenName'
+    ].forEach(key => {
+        if (person[key]) {
+            query.set(key, person[key]);
+        }
     });
 
     if (!person.FirstName && !person.LastName && !person.BirthDate) {
@@ -703,38 +649,68 @@ async function checkRelatedDuplicates() {
 
     const response = await fetch(
         `${BASE_URL}/familytree/persons/duplicates?${query.toString()}`,
-        { headers: authHeaders(false) }
+        {
+            headers: authHeaders(false)
+        }
     );
+
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Duplicate check failed.');
-    renderRelatedDuplicates(data.matches || []);
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Duplicate check failed.');
+    }
+
+    const matches = data.matches || [];
+
+    $('rDupWrap').classList.toggle('hidden', !matches.length);
+
+    $('rDupBody').innerHTML = matches.map(person => `
+        <tr>
+            <td>${person.PersonID}</td>
+            <td>${nameOf(person)}</td>
+            <td>${dateUS(person.BirthDate)}</td>
+            <td>${person.BirthPlace || ''}</td>
+            <td>${person.OldestFamilyTreeCode || ''}</td>
+            <td>
+                <button
+                    class="use-existing"
+                    data-id="${person.PersonID}"
+                >USE EXISTING</button>
+            </td>
+        </tr>
+    `).join('');
+
+    $('rStatus').textContent = matches.length
+        ? `${matches.length} possible duplicate(s) found.`
+        : 'No possible duplicates found.';
+
+    document.querySelectorAll('.use-existing').forEach(button => {
+        button.onclick = () =>
+            useExistingRelationship(Number(button.dataset.id));
+    });
 }
 
 async function useExistingRelationship(relatedPersonID) {
     const response = await fetch(
-        `${BASE_URL}/familytree/use-existing-person`,
+        `${BASE_URL}/familytree/relationships`,
         {
             method: 'POST',
             headers: authHeaders(),
             body: JSON.stringify({
-                personID: relatedPersonID,
                 familyTreeCode,
                 focalPersonID: personID,
-                relationshipKind: activeRelationship,
-                confirmedDifferentPersonIDs: [...relatedDifferent]
+                relatedPersonID,
+                relationshipKind: activeRelationship
             })
         }
     );
 
     const data = await response.json();
-    if (response.status === 409 && data.code === 'ONE_TREE_REVIEW_REQUIRED') {
-        oneTreeRedirect(relatedPersonID);
-        return;
-    }
-    if (!response.ok) throw new Error(data.message || 'Unable to create relationship.');
 
-    familyTreeCode = data.FamilyTreeCode || familyTreeCode;
-    sessionStorage.setItem('familyTreeCode', familyTreeCode);
+    if (!response.ok) {
+        throw new Error(data.message || 'Unable to create relationship.');
+    }
+
     $('relatedModal').classList.remove('show');
     setPageStatus(`${activeRelationship} saved.`);
     await loadRelationships();
@@ -758,18 +734,12 @@ async function saveRelatedPerson() {
                 ...person,
                 familyTreeCode,
                 focalPersonID: personID,
-                relationshipKind: activeRelationship,
-                confirmedDifferentPersonIDs: [...relatedDifferent]
+                relationshipKind: activeRelationship
             })
         }
     );
 
     const data = await response.json();
-
-    if (response.status === 409 && data.code === 'DUPLICATE_REVIEW_REQUIRED') {
-        renderRelatedDuplicates(data.matches || []);
-        return;
-    }
 
     if (!response.ok) {
         throw new Error(data.message || 'Unable to save related person.');
