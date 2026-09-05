@@ -1724,10 +1724,19 @@ async function personContext(c, personID, treeID) {
         [personID]
     );
 
+    const [contactRows] = await c.query(
+        `SELECT ContactID,ContactType,ContactValue,ContactNote,IsPrimary
+         FROM FTContactT
+         WHERE PersonID=?
+         ORDER BY ContactType,IsPrimary DESC,ContactID`,
+        [personID]
+    );
+
     return {
         parents: parentRows,
         partners: partnerRows,
         children: childRows,
+        contacts: contactRows,
         events: eventRows.map(event => ({
             ...event,
             EventDate: dateOnly(event.EventDate)
@@ -5336,8 +5345,11 @@ router.post('/one-tree/merge', auth, async (req, res) => {
             );
         });
 
+        const newKeySet = new Set(r2Plan.newKeys);
         for (const key of [...new Set(r2Plan.oldKeys)]) {
-            await safelyDeleteImage(key);
+            if (!newKeySet.has(key)) {
+                await safelyDeleteImage(key);
+            }
         }
 
         res.json({

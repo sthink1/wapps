@@ -22,4 +22,5 @@ $('uploadProfileBtn').onclick=async()=>{const f=$('profileImage').files[0];if(!f
 $('addEventBtn').onclick=()=>{['EventType','EventDate','EventPlace','EventDescription'].forEach(id=>$(id).value='');$('eventModalStatus').textContent='';$('eventModal').classList.add('show')};
 $('closeEventBtn').onclick=()=>$('eventModal').classList.remove('show');
 $('saveEventBtn').onclick=async()=>{const r=await fetch(`${BASE_URL}/familytree/persons/${personID}/events`,{method:'POST',headers:ah(),body:JSON.stringify({familyTreeCode:code,eventType:nv($('EventType').value)||'Other',eventDate:nv($('EventDate').value),eventPlace:nv($('EventPlace').value),eventDescription:nv($('EventDescription').value)})}),d=await r.json();if(!r.ok){$('eventModalStatus').textContent=d.message||'Event save failed.';return}$('eventModal').classList.remove('show');$('eventStatus').textContent='Event saved.';await loadEvents()};
+$('finishedBtn').onclick=()=>{if(!personID)return;location.href=`FTPerson.html?PersonID=${encodeURIComponent(personID)}&familyTreeCode=${encodeURIComponent(code)}`};
 });

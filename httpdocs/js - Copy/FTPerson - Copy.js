@@ -137,18 +137,6 @@ function wirePersonLinks() {
     });
 }
 
-async function loadContactEventCounts() {
-    const [contactResponse, eventResponse] = await Promise.all([
-        fetch(`${BASE_URL}/familytree/persons/${personID}/contacts?familyTreeCode=${encodeURIComponent(familyTreeCode)}`, { headers: authHeaders(false) }),
-        fetch(`${BASE_URL}/familytree/persons/${personID}/events?familyTreeCode=${encodeURIComponent(familyTreeCode)}`, { headers: authHeaders(false) })
-    ]);
-    const [contactData, eventData] = await Promise.all([contactResponse.json(), eventResponse.json()]);
-    if (!contactResponse.ok) throw new Error(contactData.message || 'Unable to load contacts.');
-    if (!eventResponse.ok) throw new Error(eventData.message || 'Unable to load events.');
-    $('contactBtn').textContent = `CONTACT (${(contactData.contacts || []).length})`;
-    $('eventBtn').textContent = `EVENT (${(eventData.events || []).length})`;
-}
-
 async function loadPerson() {
     const response = await fetch(
         `${BASE_URL}/familytree/persons/${personID}` +
@@ -897,8 +885,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadPerson();
         await Promise.all([
             loadRelationships(),
-            loadImages(),
-            loadContactEventCounts()
+            loadImages()
         ]);
         const coParentChildID = Number(params.get('askPartnerParentChildID') || 0);
         if (coParentChildID) {

@@ -15,6 +15,7 @@
 <div class="box"><h3>Children</h3><div id="childList">None</div><button data-addrel="child">ADD CHILD</button></div></div></div>
 <div class="card"><h3>Profile Picture</h3><input id="profileImage" type="file" accept="image/jpeg,image/png,image/webp"> <button id="uploadProfileBtn">SAVE PROFILE PICTURE</button><div id="profileStatus" class="status"></div></div>
 <div class="card"><h3>Life Events</h3><div id="eventList">None</div><button id="addEventBtn" type="button">ADD EVENT</button><div id="eventStatus" class="status"></div></div>
+<div class="card" style="text-align:center"><button id="finishedBtn" type="button" class="green">FINISHED</button></div>
 </div></div></div>
 
 <div id="relatedModal" class="modal"><div class="modalbox"><h2 id="relatedTitle">ADD RELATIVE</h2><div class="form">
@@ -22,4 +23,4 @@
 <p><button id="rCheckBtn">CHECK DUPLICATES</button> <button id="rSaveBtn" class="green">SAVE NEW PERSON</button> <button id="rCloseBtn">CLOSE</button></p><div id="rStatus" class="status"></div><div id="rDupWrap" class="hidden"><p>Possible duplicates were found in the FamilyTree database. Review each match before creating a new relative.</p><table><thead><tr><th>Picture</th><th>PersonID</th><th>Name</th><th>Birth Date</th><th>Birth Place</th><th>Parents</th><th>Partners</th><th>Children</th><th>FamilyTreeCode</th><th>Why Matched</th><th>Decision</th></tr></thead><tbody id="rDupBody"></tbody></table></div></div></div>
 
 <div id="eventModal" class="modal"><div class="modalbox"><h2>ADD LIFE EVENT</h2><div class="form"><div class="field"><label>Event Type</label><input id="EventType"></div><div class="field"><label>Event Date</label><input id="EventDate" type="date"></div><div class="field full"><label>Place</label><input id="EventPlace"></div><div class="field full"><label>Description</label><input id="EventDescription"></div></div><p><button id="saveEventBtn" class="green">SAVE EVENT</button> <button id="closeEventBtn">CLOSE</button></p><div id="eventModalStatus" class="status"></div></div></div>
-<script src="js/FTPersonNew.js?v=20260904-1"></script></body></html>
+<script src="js/FTPersonNew.js?v=20260905-2"></script></body></html>
