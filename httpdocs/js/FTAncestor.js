@@ -337,9 +337,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     $('backBtn').onclick = () => {
-        window.location.href =
-            `FTPerson.html?PersonID=${encodeURIComponent(personID)}` +
-            `&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
+        if (history.length > 1) history.back();
+        else window.location.href = `FTPerson.html?PersonID=${encodeURIComponent(personID)}&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
     };
 
     $('bloodLineSelect').value =

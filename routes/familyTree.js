@@ -833,6 +833,45 @@ async function adoptTreeForUser(c, userID, targetTree) {
     return targetTree;
 }
 
+async function inferredParentSide(c, personID) {
+    const [rows] = await c.query(
+        `SELECT Gender FROM FTPersonT WHERE PersonID=? LIMIT 1`,
+        [personID]
+    );
+    const gender = String(rows[0] && rows[0].Gender || '').trim().toLowerCase();
+    if (gender === 'female') return 'Mother';
+    if (gender === 'male') return 'Father';
+    return null;
+}
+
+async function availableParentSide(c, treeID, childID, parentID) {
+    const side = await inferredParentSide(c, parentID);
+    if (!side) return null;
+    const [rows] = await c.query(
+        `SELECT ParentPersonID FROM FTParentT
+         WHERE FamilyTreeID=? AND PersonID=? AND AncestrySide=? AND ParentPersonID<>?
+         LIMIT 1`,
+        [treeID, childID, side, parentID]
+    );
+    return rows.length ? null : side;
+}
+
+async function addParentLink(c, treeID, userID, childID, parentID) {
+    const side = await availableParentSide(c, treeID, childID, parentID);
+    await c.query(
+        `INSERT INTO FTParentT
+         (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
+          CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+         VALUES (?,?,?,'Parent',?,NULL,?,NOW(),NULL,NULL)
+         ON DUPLICATE KEY UPDATE
+            ParentType=COALESCE(ParentType,VALUES(ParentType)),
+            AncestrySide=COALESCE(AncestrySide,VALUES(AncestrySide)),
+            UpdatedByUserID=VALUES(CreatedByUserID),
+            UpdatedAt=NOW()`,
+        [treeID, childID, parentID, side, userID]
+    );
+}
+
 async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
     await c.query(
         `INSERT IGNORE INTO FTFamilyTreePersonT
@@ -863,13 +902,7 @@ async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
             [treeID, focal, related, side, userID]
         );
     } else if (kind === 'child') {
-        await c.query(
-            `INSERT INTO FTParentT
-             (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
-              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-             VALUES (?,?,?,NULL,NULL,NULL,?,NOW(),NULL,NULL)`,
-            [treeID, related, focal, userID]
-        );
+        await addParentLink(c, treeID, userID, related, focal);
     } else if (kind === 'partner') {
         const a = Math.min(focal, related);
         const z = Math.max(focal, related);
@@ -2881,9 +2914,19 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
             }
 
             const [parentEdges] = await c.query(
-                `SELECT PersonID, ParentPersonID, AncestrySide
-                   FROM FTParentT
-                  WHERE FamilyTreeID=?`,
+                `SELECT r.PersonID,
+                        r.ParentPersonID,
+                        COALESCE(
+                            r.AncestrySide,
+                            CASE
+                                WHEN LOWER(TRIM(p.Gender))='female' THEN 'Mother'
+                                WHEN LOWER(TRIM(p.Gender))='male' THEN 'Father'
+                                ELSE NULL
+                            END
+                        ) AS AncestrySide
+                   FROM FTParentT r
+                   JOIN FTPersonT p ON p.PersonID=r.ParentPersonID
+                  WHERE r.FamilyTreeID=?`,
                 [tree.FamilyTreeID]
             );
 
@@ -3159,14 +3202,21 @@ router.get('/persons/:id/relationships', auth, async (req, res) => {
 
             const [parents] = await c.query(
                 `SELECT ${base},
-                        r.AncestrySide,
+                        COALESCE(
+                            r.AncestrySide,
+                            CASE
+                                WHEN LOWER(TRIM(p.Gender))='female' THEN 'Mother'
+                                WHEN LOWER(TRIM(p.Gender))='male' THEN 'Father'
+                                ELSE NULL
+                            END
+                        ) AS AncestrySide,
                         r.ParentType
                  FROM FTParentT r
                  JOIN FTPersonT p
                    ON p.PersonID = r.ParentPersonID
                  WHERE r.FamilyTreeID=?
                    AND r.PersonID=?
-                 ORDER BY r.AncestrySide,p.LastName,p.FirstName`,
+                 ORDER BY AncestrySide,p.LastName,p.FirstName`,
                 [tid, id]
             );
 
@@ -3279,23 +3329,7 @@ router.post('/relationships', auth, async (req, res) => {
                     [tid, focal, related, side, userID]
                 );
             } else if (kind === 'child') {
-                await c.query(
-                    `INSERT INTO FTParentT
-                     (
-                        FamilyTreeID,
-                        PersonID,
-                        ParentPersonID,
-                        ParentType,
-                        AncestrySide,
-                        Notes,
-                        CreatedByUserID,
-                        CreatedAt,
-                        UpdatedByUserID,
-                        UpdatedAt
-                     )
-                     VALUES (?,?,?,NULL,NULL,NULL,?,NOW(),NULL,NULL)`,
-                    [tid, related, focal, userID]
-                );
+                await addParentLink(c, tid, userID, related, focal);
             } else if (kind === 'partner') {
                 const a = Math.min(focal, related);
                 const z = Math.max(focal, related);
@@ -3375,7 +3409,7 @@ router.post('/related-person', auth, async (req, res) => {
                 `INSERT INTO FTPersonT
                  (FirstName,MiddleName,LastName,SuffixName,NickName,MaidenName,Gender,BirthDate,BirthPlace,Died,DeathDate,
                   CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-                 VALUES (?,?,?,?,?,?,?,?,?,0,NULL,?,NOW(),NULL,NULL)`,
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NULL,NULL)`,
                 [
                     b.FirstName || null,
                     b.MiddleName || null,
@@ -3386,6 +3420,8 @@ router.post('/related-person', auth, async (req, res) => {
                     b.Gender || null,
                     b.BirthDate || null,
                     b.BirthPlace || null,
+                    b.Died ? 1 : 0,
+                    b.Died ? (b.DeathDate || null) : null,
                     userID
                 ]
             );
@@ -3420,12 +3456,7 @@ router.post('/related-person', auth, async (req, res) => {
                     [tid, focal, related, side, userID]
                 );
             } else if (kind === 'child') {
-                await c.query(
-                    `INSERT INTO FTParentT
-                     (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-                     VALUES (?,?,?,NULL,NULL,NULL,?,NOW(),NULL,NULL)`,
-                    [tid, related, focal, userID]
-                );
+                await addParentLink(c, tid, userID, related, focal);
             } else if (kind === 'partner') {
                 const a = Math.min(focal, related);
                 const z = Math.max(focal, related);
@@ -3455,6 +3486,61 @@ router.post('/related-person', auth, async (req, res) => {
     }
 });
 
+
+router.post('/children/:childID/partner-parent', auth, async (req, res) => {
+    const childID = Number(req.params.childID);
+    const userID = req.user.userId;
+    const b = req.body || {};
+    const focalPersonID = Number(b.focalPersonID);
+    const partnerPersonID = Number(b.partnerPersonID);
+
+    if (!childID || !focalPersonID || !partnerPersonID) {
+        return res.status(400).json({ message: 'Child, focal person, and partner are required.' });
+    }
+
+    try {
+        const result = await withTx(async c => {
+            const tree = await requireTree(c, b.familyTreeCode, userID);
+            const tid = tree.FamilyTreeID;
+            const a = Math.min(focalPersonID, partnerPersonID);
+            const z = Math.max(focalPersonID, partnerPersonID);
+
+            const [partnerRows] = await c.query(
+                `SELECT 1 FROM FTPartnerT
+                 WHERE FamilyTreeID=? AND PersonID=? AND PartnerPersonID=?
+                 LIMIT 1`,
+                [tid, a, z]
+            );
+            if (!partnerRows.length) {
+                const err = new Error("The selected person is not recorded as this Person's partner.");
+                err.status = 400;
+                throw err;
+            }
+
+            const [members] = await c.query(
+                `SELECT PersonID FROM FTFamilyTreePersonT
+                 WHERE FamilyTreeID=? AND PersonID IN (?,?)`,
+                [tid, childID, partnerPersonID]
+            );
+            if (members.length !== 2) {
+                const err = new Error('Child or partner is not in this Family Tree.');
+                err.status = 404;
+                throw err;
+            }
+
+            await addParentLink(c, tid, userID, childID, partnerPersonID);
+            await logActivity(
+                c, tid, userID, 'ADD_RELATIONSHIP', 'parent', null, childID,
+                `Added Partner PersonID ${partnerPersonID} as a parent of Child PersonID ${childID}`
+            );
+
+            return { message: 'Partner added as a parent of the child.' };
+        });
+        res.status(201).json(result);
+    } catch (e) {
+        res.status(e.status || 500).json({ message: e.message });
+    }
+});
 
 /* ============================================================================
    CONTACTS

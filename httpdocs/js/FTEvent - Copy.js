@@ -164,7 +164,7 @@ async function deleteEvent(eventID) {
 document.addEventListener('DOMContentLoaded', async () => {
     if (!token()) return window.location.href = 'login.html';
     if (!personID || !familyTreeCode) return $('formStatus').textContent = 'PersonID and FamilyTreeCode are required.';
-    $('backBtn').onclick = () => history.length > 1 ? history.back() : window.location.href = `FTPerson.html?PersonID=${encodeURIComponent(personID)}&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
+    $('backBtn').onclick = () => window.location.href = `FTPerson.html?PersonID=${encodeURIComponent(personID)}&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
     $('saveEventBtn').onclick = () => saveEvent().catch(error => $('formStatus').textContent = error.message);
     $('clearBtn').onclick = clearForm;
     $('cancelEditBtn').onclick = clearForm;

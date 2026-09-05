@@ -27,6 +27,7 @@ let familyTreeCode =
     '';
 
 let activeRelationship = '';
+let currentPartners = [];
 let currentPerson = null;
 let currentProfile = null;
 let currentLifeImages = [];
@@ -208,8 +209,10 @@ async function loadRelationships() {
             .join('')
         : '<tr><td colspan="11">None entered</td></tr>';
 
-    $('partnerBody').innerHTML = (data.partners || []).length
-        ? data.partners.map(person => personRow(person)).join('')
+    currentPartners = data.partners || [];
+
+    $('partnerBody').innerHTML = currentPartners.length
+        ? currentPartners.map(person => personRow(person)).join('')
         : '<tr><td colspan="9">None entered</td></tr>';
 
     $('childBody').innerHTML = (data.children || []).length
@@ -605,7 +608,9 @@ function relatedPersonData() {
         MaidenName: nullable($('rMaidenName').value),
         Gender: nullable($('rGender').value),
         BirthDate: nullable($('rBirthDate').value),
-        BirthPlace: nullable($('rBirthPlace').value)
+        BirthPlace: nullable($('rBirthPlace').value),
+        Died: $('rDied').checked ? 1 : 0,
+        DeathDate: $('rDied').checked ? nullable($('rDeathDate').value) : null
     };
 }
 
@@ -618,12 +623,15 @@ function clearRelatedForm() {
         'rNickName',
         'rMaidenName',
         'rBirthDate',
-        'rBirthPlace'
+        'rBirthPlace',
+        'rDeathDate'
     ].forEach(id => {
         $(id).value = '';
     });
 
     $('rGender').value = '';
+    $('rDied').checked = false;
+    $('rDeathDate').disabled = true;
     $('rDupWrap').classList.add('hidden');
     $('rDupBody').innerHTML = '';
     $('rStatus').textContent = '';
@@ -710,6 +718,36 @@ async function checkRelatedDuplicates() {
     renderRelatedDuplicates(data.matches || []);
 }
 
+async function askPartnerParent(childID) {
+    if (activeRelationship !== 'child' || !currentPartners.length || !childID) return;
+    let partner = null;
+    if (currentPartners.length === 1) {
+        if (window.confirm(`Is ${nameOf(currentPartners[0])} also a Parent of this Child?`)) {
+            partner = currentPartners[0];
+        }
+    } else {
+        const choices = currentPartners.map((person, index) => `${index + 1}. ${nameOf(person)}`).join('\n');
+        const answer = window.prompt(
+            `Is one of the existing Partners also a Parent of this Child?\nEnter the number, or 0 for none:\n${choices}`,
+            '0'
+        );
+        const number = Number(answer);
+        if (number >= 1 && number <= currentPartners.length) partner = currentPartners[number - 1];
+    }
+    if (!partner) return;
+    const response = await fetch(
+        `${BASE_URL}/familytree/children/${childID}/partner-parent`,
+        {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ familyTreeCode, focalPersonID: personID, partnerPersonID: partner.PersonID })
+        }
+    );
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to add Partner as Parent.');
+    setPageStatus(data.message || 'Partner added as Parent of Child.');
+}
+
 async function useExistingRelationship(relatedPersonID) {
     const response = await fetch(
         `${BASE_URL}/familytree/use-existing-person`,
@@ -737,6 +775,8 @@ async function useExistingRelationship(relatedPersonID) {
     sessionStorage.setItem('familyTreeCode', familyTreeCode);
     $('relatedModal').classList.remove('show');
     setPageStatus(`${activeRelationship} saved.`);
+    await loadRelationships();
+    await askPartnerParent(data.PersonID || relatedPersonID);
     await loadRelationships();
 }
 
@@ -777,6 +817,8 @@ async function saveRelatedPerson() {
 
     $('relatedModal').classList.remove('show');
     setPageStatus(`${activeRelationship} saved.`);
+    await loadRelationships();
+    await askPartnerParent(data.PersonID);
     await loadRelationships();
 }
 
@@ -845,9 +887,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadRelationships(),
             loadImages()
         ]);
+        const coParentChildID = Number(params.get('askPartnerParentChildID') || 0);
+        if (coParentChildID) {
+            await askPartnerParent(coParentChildID);
+            params.delete('askPartnerParentChildID');
+            const clean = `${window.location.pathname}?${params.toString()}`;
+            window.history.replaceState({}, '', clean);
+            await loadRelationships();
+        }
     } catch (error) {
         setPageStatus(error.message);
     }
+
+    $('backBtn').onclick = () => {
+        if (history.length > 1) history.back();
+        else window.location.href = 'FamilyTree.html';
+    };
+
+    $('rDied').onchange = () => {
+        $('rDeathDate').disabled = !$('rDied').checked;
+        if (!$('rDied').checked) $('rDeathDate').value = '';
+    };
 
     document.querySelectorAll('[data-addrel]').forEach(button => {
         button.onclick = () => {
