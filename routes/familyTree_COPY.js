@@ -1715,23 +1715,10 @@ async function personContext(c, personID, treeID) {
         [treeID, personID]
     );
 
-    const [eventRows] = await c.query(
-        `SELECT e.EventID,e.EventType,e.EventDate,e.EventPlace,e.EventDescription,ep.PersonRole
-         FROM FTEventPersonT ep
-         JOIN FTEventT e ON e.EventID=ep.EventID
-         WHERE ep.PersonID=?
-         ORDER BY e.EventDate,e.EventID`,
-        [personID]
-    );
-
     return {
         parents: parentRows,
         partners: partnerRows,
-        children: childRows,
-        events: eventRows.map(event => ({
-            ...event,
-            EventDate: dateOnly(event.EventDate)
-        }))
+        children: childRows
     };
 }
 
