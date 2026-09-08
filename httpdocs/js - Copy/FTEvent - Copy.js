@@ -71,7 +71,7 @@ function fillEdit(eventID) {
     $('eventDate').value = dateInputValue(event.EventDate);
     $('eventPlace').value = event.EventPlace || '';
     $('eventDescription').value = event.EventDescription || '';
-    $('formTitle').textContent = 'EDIT EVENT';
+    $('formTitle').textContent = `EDIT EVENT ${event.EventID}`;
     $('saveEventBtn').textContent = 'SAVE CHANGES';
     $('cancelEditBtn').style.display = 'inline-block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -100,21 +100,11 @@ async function loadEvents() {
     );
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Unable to load events.');
-    events = (data.events || []).sort((a, b) => {
-        const typeCompare = String(a.EventType || '').localeCompare(
-            String(b.EventType || ''),
-            undefined,
-            { sensitivity: 'base' }
-        );
-        if (typeCompare) return typeCompare;
-        const aDate = a.EventDate ? String(a.EventDate).slice(0, 10) : '9999-12-31';
-        const bDate = b.EventDate ? String(b.EventDate).slice(0, 10) : '9999-12-31';
-        return aDate.localeCompare(bDate) || Number(a.EventID) - Number(b.EventID);
-    });
+    events = data.events || [];
     $('eventBody').innerHTML = events.length
-        ? events.map((event, index) => `
+        ? events.map(event => `
             <tr>
-                <td>${index + 1}</td>
+                <td>${event.EventID}</td>
                 <td>${event.EventType || ''}</td>
                 <td>${dateUS(event.EventDate)}</td>
                 <td>${ageAtEvent(event.EventDate)}</td>

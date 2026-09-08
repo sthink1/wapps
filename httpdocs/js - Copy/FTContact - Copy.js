@@ -37,8 +37,6 @@ function clearForm() {
     $('contactValue').value = '';
     $('contactNote').value = '';
     $('isPrimary').checked = false;
-    $('contactType').classList.remove('field-error');
-    $('contactValue').classList.remove('field-error');
     $('formTitle').textContent = 'ADD CONTACT';
     $('saveContactBtn').textContent = 'SAVE CONTACT';
     $('cancelEditBtn').style.display = 'none';
@@ -53,7 +51,7 @@ function fillEdit(contactID) {
     $('contactValue').value = contact.ContactValue || '';
     $('contactNote').value = contact.ContactNote || '';
     $('isPrimary').checked = Number(contact.IsPrimary) === 1;
-    $('formTitle').textContent = 'EDIT CONTACT';
+    $('formTitle').textContent = `EDIT CONTACT ${contact.ContactID}`;
     $('saveContactBtn').textContent = 'SAVE CHANGES';
     $('cancelEditBtn').style.display = 'inline-block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -80,15 +78,11 @@ async function loadContacts() {
     );
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Unable to load contacts.');
-    contacts = (data.contacts || []).sort((a, b) =>
-        String(a.ContactType || '').localeCompare(String(b.ContactType || ''), undefined, { sensitivity: 'base' }) ||
-        String(a.ContactValue || '').localeCompare(String(b.ContactValue || ''), undefined, { sensitivity: 'base' }) ||
-        Number(a.ContactID) - Number(b.ContactID)
-    );
+    contacts = data.contacts || [];
     $('contactBody').innerHTML = contacts.length
-        ? contacts.map((contact, index) => `
+        ? contacts.map(contact => `
             <tr>
-                <td>${index + 1}</td>
+                <td>${contact.ContactID}</td>
                 <td>${contact.ContactType || ''}</td>
                 <td>${contact.ContactValue || ''}</td>
                 <td>${contact.ContactNote || ''}</td>
@@ -117,21 +111,8 @@ async function saveContact() {
         ContactNote: nullable($('contactNote').value),
         IsPrimary: $('isPrimary').checked ? 1 : 0
     };
-    const missingType = !body.ContactType;
-    const missingValue = !body.ContactValue;
-    $('contactType').classList.toggle('field-error', missingType);
-    $('contactValue').classList.toggle('field-error', missingValue);
-    if (missingType || missingValue) {
-        $('formStatus').textContent =
-            missingType && missingValue
-                ? 'Contact Type and Contact Value are required.'
-                : missingType
-                    ? 'Contact Type is required.'
-                    : 'Contact Value is required.';
-        if (missingType) $('contactType').focus();
-        else $('contactValue').focus();
-        return;
-    }
+    if (!body.ContactType) return $('formStatus').textContent = 'Contact Type is required.';
+    if (!body.ContactValue) return $('formStatus').textContent = 'Contact Value is required.';
     const url = editContactID
         ? `${BASE_URL}/familytree/persons/${personID}/contacts/${editContactID}`
         : `${BASE_URL}/familytree/persons/${personID}/contacts`;
@@ -166,12 +147,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!token()) return window.location.href = 'login.html';
     if (!personID || !familyTreeCode) return $('formStatus').textContent = 'PersonID and FamilyTreeCode are required.';
     $('backBtn').onclick = () => history.length > 1 ? history.back() : window.location.href = `FTPerson.html?PersonID=${encodeURIComponent(personID)}&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
-    $('contactType').addEventListener('change', () => {
-        if (nullable($('contactType').value)) $('contactType').classList.remove('field-error');
-    });
-    $('contactValue').addEventListener('input', () => {
-        if (nullable($('contactValue').value)) $('contactValue').classList.remove('field-error');
-    });
     $('saveContactBtn').onclick = () => saveContact().catch(error => $('formStatus').textContent = error.message);
     $('clearBtn').onclick = clearForm;
     $('cancelEditBtn').onclick = clearForm;

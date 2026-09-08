@@ -228,8 +228,8 @@ async function loadRelationships() {
         : '<tr><td colspan="9">None entered</td></tr>';
 
     $('childBody').innerHTML = (data.children || []).length
-        ? data.children.map(person => personRow(person, [person.ParentType || 'Parent'])).join('')
-        : '<tr><td colspan="10">None entered</td></tr>';
+        ? data.children.map(person => personRow(person)).join('')
+        : '<tr><td colspan="9">None entered</td></tr>';
 
     wirePersonLinks();
 }
@@ -343,12 +343,12 @@ async function loadImages() {
 
             const label = document.createElement('div');
             label.className = 'picture-label';
-            label.textContent = `Picture ${slot + 1} — Picture of YOU at various stages of your life.`;
+            label.textContent = `Picture ${slot + 1}`;
 
             card.append(img, caption, details, label);
         } else {
             card.innerHTML =
-                `<div class="small">Picture ${slot + 1} — Picture of YOU at various stages of your life.<br>Not entered</div>`;
+                `<div class="small">Picture ${slot + 1}<br>Not entered</div>`;
         }
 
         host.appendChild(card);
@@ -443,10 +443,6 @@ async function saveNewPicture() {
         return;
     }
 
-    $('addPictureStatus').textContent = 'Please wait — preparing and uploading picture...';
-    $('savePictureBtn').disabled = true;
-    $('cancelPictureBtn').disabled = true;
-
     const formData = new FormData();
     formData.append('picture', file);
     formData.append('familyTreeCode', familyTreeCode);
@@ -468,15 +464,11 @@ async function saveNewPicture() {
     const data = await response.json();
 
     if (!response.ok) {
-        $('savePictureBtn').disabled = false;
-        $('cancelPictureBtn').disabled = false;
         throw new Error(data.message || 'Unable to save picture.');
     }
 
     $('addPictureModal').classList.remove('show');
     $('pictureStatus').textContent = 'Picture Was Saved';
-    $('savePictureBtn').disabled = false;
-    $('cancelPictureBtn').disabled = false;
 
     await loadImages();
 }
@@ -618,12 +610,6 @@ async function makeProfilePicture() {
     await loadImages();
 }
 
-function relatedParentType() {
-    return activeRelationship === 'child' && $('rAdopted').checked
-        ? 'Adopted'
-        : 'Parent';
-}
-
 function relatedPersonData() {
     return {
         FirstName: nullable($('rFirstName').value),
@@ -658,7 +644,6 @@ function clearRelatedForm() {
     $('rGender').value = '';
     $('rDied').checked = false;
     $('rDeathDate').disabled = true;
-    $('rAdopted').checked = false;
     $('rDupWrap').classList.add('hidden');
     $('rDupBody').innerHTML = '';
     $('rStatus').textContent = '';
@@ -671,8 +656,7 @@ function oneTreeRedirect(relatedPersonID) {
         targetPersonID: String(relatedPersonID),
         returnTo: 'related',
         focalPersonID: String(personID),
-        relationshipKind: activeRelationship,
-        parentType: relatedParentType()
+        relationshipKind: activeRelationship
     });
     window.location.href = `FTOneTreeMerge.html?${query.toString()}`;
 }
@@ -747,79 +731,33 @@ async function checkRelatedDuplicates() {
 }
 
 async function askPartnerParent(childID) {
-    if (!currentPartners.length || !childID) return;
-
-    const modal = $('partnerParentModal');
-    const question = $('partnerParentQuestion');
-    const choices = $('partnerParentChoices');
-    const singleActions = $('partnerParentSingleActions');
-    const multiActions = $('partnerParentMultiActions');
-    $('partnerParentStatus').textContent = '';
-
-    const selectedPartnerIDs = await new Promise(resolve => {
-        if (currentPartners.length === 1) {
-            const partner = currentPartners[0];
-            question.textContent = `Is ${nameOf(partner)} also a parent of this child?`;
-            choices.innerHTML = '';
-            singleActions.classList.remove('hidden');
-            multiActions.classList.add('hidden');
-            $('partnerParentYesBtn').onclick = () => {
-                modal.classList.remove('show');
-                resolve([Number(partner.PersonID)]);
-            };
-            $('partnerParentNoBtn').onclick = () => {
-                modal.classList.remove('show');
-                resolve([]);
-            };
-        } else {
-            question.textContent = 'Which Partner(s) are also a parent of this child?';
-            choices.innerHTML = currentPartners.map(partner => `
-                <label style="display:block;margin:8px 0">
-                    <input class="partner-parent-choice" type="checkbox" value="${partner.PersonID}" style="width:auto">
-                    ${nameOf(partner)}
-                </label>
-            `).join('');
-            singleActions.classList.add('hidden');
-            multiActions.classList.remove('hidden');
-            $('partnerParentAddBtn').onclick = () => {
-                const ids = Array.from(
-                    document.querySelectorAll('.partner-parent-choice:checked')
-                ).map(input => Number(input.value));
-                modal.classList.remove('show');
-                resolve(ids);
-            };
-            $('partnerParentNoneBtn').onclick = () => {
-                modal.classList.remove('show');
-                resolve([]);
-            };
+    if (activeRelationship !== 'child' || !currentPartners.length || !childID) return;
+    let partner = null;
+    if (currentPartners.length === 1) {
+        if (window.confirm(`Is ${nameOf(currentPartners[0])} also a Parent of this Child?`)) {
+            partner = currentPartners[0];
         }
-        modal.classList.add('show');
-    });
-
-    for (const partnerPersonID of selectedPartnerIDs) {
-        const response = await fetch(
-            `${BASE_URL}/familytree/children/${childID}/partner-parent`,
-            {
-                method: 'POST',
-                headers: authHeaders(),
-                body: JSON.stringify({
-                    familyTreeCode,
-                    focalPersonID: personID,
-                    partnerPersonID
-                })
-            }
+    } else {
+        const choices = currentPartners.map((person, index) => `${index + 1}. ${nameOf(person)}`).join('\n');
+        const answer = window.prompt(
+            `Is one of the existing Partners also a Parent of this Child?\nEnter the number, or 0 for none:\n${choices}`,
+            '0'
         );
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || 'Unable to add Partner as Parent.');
+        const number = Number(answer);
+        if (number >= 1 && number <= currentPartners.length) partner = currentPartners[number - 1];
+    }
+    if (!partner) return;
+    const response = await fetch(
+        `${BASE_URL}/familytree/children/${childID}/partner-parent`,
+        {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ familyTreeCode, focalPersonID: personID, partnerPersonID: partner.PersonID })
         }
-    }
-
-    if (selectedPartnerIDs.length) {
-        setPageStatus(
-            `${selectedPartnerIDs.length} Partner${selectedPartnerIDs.length === 1 ? '' : 's'} added as parent${selectedPartnerIDs.length === 1 ? '' : 's'} of the child.`
-        );
-    }
+    );
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to add Partner as Parent.');
+    setPageStatus(data.message || 'Partner added as Parent of Child.');
 }
 
 async function useExistingRelationship(relatedPersonID) {
@@ -833,7 +771,6 @@ async function useExistingRelationship(relatedPersonID) {
                 familyTreeCode,
                 focalPersonID: personID,
                 relationshipKind: activeRelationship,
-                parentType: relatedParentType(),
                 confirmedDifferentPersonIDs: [...relatedDifferent]
             })
         }
@@ -851,10 +788,8 @@ async function useExistingRelationship(relatedPersonID) {
     $('relatedModal').classList.remove('show');
     setPageStatus(`${activeRelationship} saved.`);
     await loadRelationships();
-    if (activeRelationship === 'child') {
-        await askPartnerParent(data.PersonID || relatedPersonID);
-        await loadRelationships();
-    }
+    await askPartnerParent(data.PersonID || relatedPersonID);
+    await loadRelationships();
 }
 
 async function saveRelatedPerson() {
@@ -876,7 +811,6 @@ async function saveRelatedPerson() {
                 familyTreeCode,
                 focalPersonID: personID,
                 relationshipKind: activeRelationship,
-                parentType: relatedParentType(),
                 confirmedDifferentPersonIDs: [...relatedDifferent]
             })
         }
@@ -896,10 +830,8 @@ async function saveRelatedPerson() {
     $('relatedModal').classList.remove('show');
     setPageStatus(`${activeRelationship} saved.`);
     await loadRelationships();
-    if (activeRelationship === 'child') {
-        await askPartnerParent(data.PersonID);
-        await loadRelationships();
-    }
+    await askPartnerParent(data.PersonID);
+    await loadRelationships();
 }
 
 function navigateTo(fileName) {
@@ -950,19 +882,6 @@ async function deletePerson() {
     window.location.href = 'FTPersonList.html';
 }
 
-
-window.addEventListener('pageshow', event => {
-    if (
-        event.persisted &&
-        token() &&
-        personID &&
-        familyTreeCode
-    ) {
-        loadContactEventCounts()
-            .catch(error => setPageStatus(error.message));
-    }
-});
-
 document.addEventListener('DOMContentLoaded', async () => {
     if (!token()) {
         window.location.href = 'login.html';
@@ -1009,7 +928,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             clearRelatedForm();
             $('relatedTitle').textContent =
                 `ADD ${activeRelationship.toUpperCase()}`;
-            $('rAdoptedWrap').classList.toggle('hidden', activeRelationship !== 'child');
             $('relatedModal').classList.add('show');
         };
     });
@@ -1069,17 +987,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('addPictureBtn').onclick = () => {
         clearPictureForm();
         $('addPictureModal').classList.add('show');
-    };
-
-    $('newPictureFile').onclick = () => {
-        $('addPictureStatus').textContent = 'Please wait — choose a picture...';
-    };
-
-    $('newPictureFile').onchange = () => {
-        const file = $('newPictureFile').files[0];
-        $('addPictureStatus').textContent = file
-            ? `Picture selected: ${file.name}. Ready to save.`
-            : '';
     };
 
     $('deletePictureBtn').onclick = () =>
