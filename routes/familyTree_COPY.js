@@ -856,23 +856,27 @@ async function availableParentSide(c, treeID, childID, parentID) {
     return rows.length ? null : side;
 }
 
-async function addParentLink(c, treeID, userID, childID, parentID) {
+async function addParentLink(c, treeID, userID, childID, parentID, parentType = 'Parent') {
     const side = await availableParentSide(c, treeID, childID, parentID);
+    const normalizedParentType = parentType === 'Adopted' ? 'Adopted' : 'Parent';
     await c.query(
         `INSERT INTO FTParentT
          (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
           CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-         VALUES (?,?,?,'Parent',?,NULL,?,NOW(),NULL,NULL)
+         VALUES (?,?,?,?,?,NULL,?,NOW(),NULL,NULL)
          ON DUPLICATE KEY UPDATE
-            ParentType='Parent',
+            ParentType=CASE
+                WHEN VALUES(ParentType)='Adopted' THEN 'Adopted'
+                ELSE COALESCE(ParentType,VALUES(ParentType))
+            END,
             AncestrySide=COALESCE(AncestrySide,VALUES(AncestrySide)),
             UpdatedByUserID=VALUES(CreatedByUserID),
             UpdatedAt=NOW()`,
-        [treeID, childID, parentID, side, userID]
+        [treeID, childID, parentID, normalizedParentType, side, userID]
     );
 }
 
-async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
+async function addRelationshipInTree(c, treeID, userID, focal, related, kind, parentType = 'Parent') {
     await c.query(
         `INSERT IGNORE INTO FTFamilyTreePersonT
          (
@@ -898,11 +902,11 @@ async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
             `INSERT INTO FTParentT
              (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
               CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-             VALUES (?,?,?,'Parent',?,NULL,?,NOW(),NULL,NULL)`,
+             VALUES (?,?,?,NULL,?,NULL,?,NOW(),NULL,NULL)`,
             [treeID, focal, related, side, userID]
         );
     } else if (kind === 'child') {
-        await addParentLink(c, treeID, userID, related, focal);
+        await addParentLink(c, treeID, userID, related, focal, parentType);
     } else if (kind === 'partner') {
         const a = Math.min(focal, related);
         const z = Math.max(focal, related);
@@ -980,8 +984,7 @@ async function loadTreeComponents(c, treeID) {
     const [parentEdges] = await c.query(
         `SELECT PersonID, ParentPersonID
          FROM FTParentT
-         WHERE FamilyTreeID=?
-           AND COALESCE(ParentType,'Parent')<>'Adopted'`,
+         WHERE FamilyTreeID=?`,
         [treeID]
     );
 
@@ -1737,7 +1740,6 @@ async function personContext(c, personID, treeID) {
          FROM FTParentT r
          JOIN FTPersonT p ON p.PersonID=r.ParentPersonID
          WHERE r.FamilyTreeID=? AND r.PersonID=?
-           AND COALESCE(r.ParentType,'Parent')<>'Adopted'
          ORDER BY r.AncestrySide,p.LastName,p.FirstName`,
         [treeID, personID]
     );
@@ -1758,7 +1760,6 @@ async function personContext(c, personID, treeID) {
          FROM FTParentT r
          JOIN FTPersonT p ON p.PersonID=r.PersonID
          WHERE r.FamilyTreeID=? AND r.ParentPersonID=?
-           AND COALESCE(r.ParentType,'Parent')<>'Adopted'
          ORDER BY p.LastName,p.FirstName`,
         [treeID, personID]
     );
@@ -2263,7 +2264,7 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
         );
     }
 
-    const [parentRows] = await c.query("SELECT * FROM FTParentT WHERE FamilyTreeID=? AND COALESCE(ParentType,'Parent')<>'Adopted' ORDER BY ParentRelationshipID", [newerTree.FamilyTreeID]);
+    const [parentRows] = await c.query('SELECT * FROM FTParentT WHERE FamilyTreeID=? ORDER BY ParentRelationshipID', [newerTree.FamilyTreeID]);
     for (const rel of parentRows) {
         const childID = mapID(rel.PersonID);
         const parentID = mapID(rel.ParentPersonID);
@@ -2337,6 +2338,10 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
     let focalPersonID = bridge && bridge.focalPersonID ? mapID(bridge.focalPersonID) : null;
     let relatedPersonID = bridge && bridge.relatedPersonID ? mapID(bridge.relatedPersonID) : null;
     const kind = bridge ? String(bridge.relationshipKind || '').toLowerCase() : '';
+    const parentType =
+        bridge && bridge.parentType === 'Adopted'
+            ? 'Adopted'
+            : 'Parent';
 
     if (focalPersonID && relatedPersonID && kind && focalPersonID !== relatedPersonID) {
         await addRelationshipInTree(
@@ -2345,7 +2350,8 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
             userID,
             focalPersonID,
             relatedPersonID,
-            kind
+            kind,
+            parentType
         );
     }
 
@@ -2402,6 +2408,10 @@ router.post('/use-existing-person', auth, async (req, res) => {
 
             const focal = Number(b.focalPersonID || 0);
             const kind = String(b.relationshipKind || '').toLowerCase();
+            const parentType =
+                kind === 'child' && b.parentType === 'Adopted'
+                    ? 'Adopted'
+                    : 'Parent';
             let sourceTree = null;
 
             if (b.familyTreeCode) {
@@ -2451,7 +2461,8 @@ router.post('/use-existing-person', auth, async (req, res) => {
                         bridge: {
                             focalPersonID: focal || null,
                             relatedPersonID: existingPersonID,
-                            relationshipKind: kind || null
+                            relationshipKind: kind || null,
+                            parentType
                         }
                     }
                 );
@@ -2469,7 +2480,8 @@ router.post('/use-existing-person', auth, async (req, res) => {
                     req.user.userId,
                     focal,
                     existingPersonID,
-                    kind
+                    kind,
+                    parentType
                 );
             }
 
@@ -3003,8 +3015,7 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                         ) AS AncestrySide
                    FROM FTParentT r
                    JOIN FTPersonT p ON p.PersonID=r.ParentPersonID
-                  WHERE r.FamilyTreeID=?
-                    AND COALESCE(r.ParentType,'Parent')<>'Adopted'`,
+                  WHERE r.FamilyTreeID=?`,
                 [tree.FamilyTreeID]
             );
 
@@ -3208,7 +3219,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 signedMaternalGrandfather,
                 signedPaternalGrandmother,
                 signedPaternalGrandfather,
-                signedSiblings,
                 signedPartners,
                 signedChildren,
                 signedGrandchildren,
@@ -3222,7 +3232,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 signedPerson(personByID.get(maternalGrandfatherID)),
                 signedPerson(personByID.get(paternalGrandmotherID)),
                 signedPerson(personByID.get(paternalGrandfatherID)),
-                signedPeople(peopleForIDs([...siblingIDs])),
                 signedPeople(peopleForIDs(partnerIDs)),
                 signedPeople(peopleForIDs(childIDs)),
                 signedPeople(peopleForIDs(grandchildIDs)),
@@ -3240,7 +3249,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 maternalGrandfather: signedMaternalGrandfather,
                 paternalGrandmother: signedPaternalGrandmother,
                 paternalGrandfather: signedPaternalGrandfather,
-                siblings: signedSiblings,
                 partners: signedPartners,
                 children: signedChildren,
                 grandchildren: signedGrandchildren,
@@ -3297,7 +3305,6 @@ router.get('/persons/:id/relationships', auth, async (req, res) => {
                    ON p.PersonID = r.ParentPersonID
                  WHERE r.FamilyTreeID=?
                    AND r.PersonID=?
-                   AND COALESCE(r.ParentType,'Parent')<>'Adopted'
                  ORDER BY AncestrySide,p.LastName,p.FirstName`,
                 [tid, id]
             );
@@ -3310,30 +3317,8 @@ router.get('/persons/:id/relationships', auth, async (req, res) => {
                    ON p.PersonID = r.PersonID
                  WHERE r.FamilyTreeID=?
                    AND r.ParentPersonID=?
-                   AND COALESCE(r.ParentType,'Parent')<>'Adopted'
                  ORDER BY p.LastName,p.FirstName`,
                 [tid, id]
-            );
-
-            const [siblings] = await c.query(
-                `SELECT DISTINCT ${base}
-                 FROM FTParentT focalParent
-                 JOIN FTParentT siblingParent
-                   ON siblingParent.FamilyTreeID=focalParent.FamilyTreeID
-                  AND siblingParent.ParentPersonID=focalParent.ParentPersonID
-                  AND siblingParent.PersonID<>focalParent.PersonID
-                 JOIN FTPersonT p
-                   ON p.PersonID=siblingParent.PersonID
-                 WHERE focalParent.FamilyTreeID=?
-                   AND focalParent.PersonID=?
-                   AND COALESCE(focalParent.ParentType,'Parent')<>'Adopted'
-                   AND COALESCE(siblingParent.ParentType,'Parent')<>'Adopted'
-                 ORDER BY p.LastName,p.FirstName,p.PersonID`,
-                [tid, id]
-            );
-
-            const signedSiblings = await Promise.all(
-                siblings.map(person => withSignedProfileImage(person))
             );
 
             const [partners] = await c.query(
@@ -3351,7 +3336,6 @@ router.get('/persons/:id/relationships', auth, async (req, res) => {
                 mother: parents.filter(x => x.AncestrySide === 'Mother'),
                 father: parents.filter(x => x.AncestrySide === 'Father'),
                 parents,
-                siblings: signedSiblings,
                 children,
                 partners
             });
@@ -3431,7 +3415,7 @@ router.post('/relationships', auth, async (req, res) => {
                         UpdatedByUserID,
                         UpdatedAt
                      )
-                     VALUES (?,?,?,'Parent',?,NULL,?,NOW(),NULL,NULL)`,
+                     VALUES (?,?,?,NULL,?,NULL,?,NOW(),NULL,NULL)`,
                     [tid, focal, related, side, userID]
                 );
             } else if (kind === 'child') {
@@ -3440,7 +3424,8 @@ router.post('/relationships', auth, async (req, res) => {
                     tid,
                     userID,
                     related,
-                    focal
+                    focal,
+                    b.parentType === 'Adopted' ? 'Adopted' : 'Parent'
                 );
             } else if (kind === 'partner') {
                 const a = Math.min(focal, related);
@@ -3564,7 +3549,7 @@ router.post('/related-person', auth, async (req, res) => {
                 await c.query(
                     `INSERT INTO FTParentT
                      (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-                     VALUES (?,?,?,'Parent',?,NULL,?,NOW(),NULL,NULL)`,
+                     VALUES (?,?,?,NULL,?,NULL,?,NOW(),NULL,NULL)`,
                     [tid, focal, related, side, userID]
                 );
             } else if (kind === 'child') {
@@ -3573,7 +3558,8 @@ router.post('/related-person', auth, async (req, res) => {
                     tid,
                     userID,
                     related,
-                    focal
+                    focal,
+                    b.parentType === 'Adopted' ? 'Adopted' : 'Parent'
                 );
             } else if (kind === 'partner') {
                 const a = Math.min(focal, related);
@@ -3649,10 +3635,10 @@ router.post('/children/:childID/partner-parent', auth, async (req, res) => {
             await addParentLink(c, tid, userID, childID, partnerPersonID);
             await logActivity(
                 c, tid, userID, 'ADD_RELATIONSHIP', 'parent', null, childID,
-                `Added Partner PersonID ${partnerPersonID} as a biological parent of Child PersonID ${childID}`
+                `Added Partner PersonID ${partnerPersonID} as a parent of Child PersonID ${childID}`
             );
 
-            return { message: 'Partner added as a biological parent of the child.' };
+            return { message: 'Partner added as a parent of the child.' };
         });
         res.status(201).json(result);
     } catch (e) {
@@ -5377,8 +5363,9 @@ router.post('/one-tree/merge', auth, async (req, res) => {
                 let focalPersonID = Number(bridge.focalPersonID || 0);
                 let relatedPersonID = Number(bridge.relatedPersonID || targetPersonID);
                 const kind = String(bridge.relationshipKind || '').toLowerCase();
+                const parentType = bridge.parentType === 'Adopted' ? 'Adopted' : 'Parent';
                 if (focalPersonID && relatedPersonID && kind) {
-                    await addRelationshipInTree(c, sourceTree.FamilyTreeID, req.user.userId, focalPersonID, relatedPersonID, kind);
+                    await addRelationshipInTree(c, sourceTree.FamilyTreeID, req.user.userId, focalPersonID, relatedPersonID, kind, parentType);
                 }
                 return {
                     FamilyTreeID: sourceTree.FamilyTreeID,
@@ -5435,7 +5422,8 @@ router.post('/one-tree/merge', auth, async (req, res) => {
                 {
                     focalPersonID: Number(bridge.focalPersonID || 0) || null,
                     relatedPersonID: Number(bridge.relatedPersonID || targetPersonID) || null,
-                    relationshipKind: String(bridge.relationshipKind || '').toLowerCase() || null
+                    relationshipKind: String(bridge.relationshipKind || '').toLowerCase() || null,
+                    parentType: bridge.parentType === 'Adopted' ? 'Adopted' : 'Parent'
                 },
                 r2Plan
             );
