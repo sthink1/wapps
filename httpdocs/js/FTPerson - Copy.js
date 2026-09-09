@@ -127,28 +127,6 @@ function personRow(person, extraCells = []) {
     `;
 }
 
-function familyCompactRow(person) {
-    const photo = person.ProfileImageUrl
-        ? `<img src="${person.ProfileImageUrl}" alt="${nameOf(person)}" style="width:52px;height:62px;object-fit:contain;background:#fafafa">`
-        : '';
-
-    return `
-        <tr>
-            <td>${photo}</td>
-            <td>
-                <button
-                    class="person-link"
-                    data-id="${person.PersonID}"
-                    title="Open PersonID ${person.PersonID}"
-                >P</button>
-            </td>
-            <td>${person.Gender || ''}</td>
-            <td>${ageOf(person)}</td>
-            <td>${nameOf(person)}</td>
-        </tr>
-    `;
-}
-
 function wirePersonLinks() {
     document.querySelectorAll('.person-link').forEach(button => {
         button.onclick = () => {
@@ -237,17 +215,11 @@ async function loadRelationships() {
             .map(person =>
                 personRow(
                     person,
-                    [person.AncestrySide]
+                    [person.ParentType, person.AncestrySide]
                 )
             )
             .join('')
-        : '<tr><td colspan="10">None entered</td></tr>';
-
-    const siblings = data.siblings || [];
-    $('siblingTitle').textContent = `BIOLOGICAL SIBLINGS (${siblings.length})`;
-    $('siblingBody').innerHTML = siblings.length
-        ? siblings.map(person => familyCompactRow(person)).join('')
-        : '<tr><td colspan="5">None entered</td></tr>';
+        : '<tr><td colspan="11">None entered</td></tr>';
 
     currentPartners = data.partners || [];
 
@@ -256,8 +228,8 @@ async function loadRelationships() {
         : '<tr><td colspan="9">None entered</td></tr>';
 
     $('childBody').innerHTML = (data.children || []).length
-        ? data.children.map(person => personRow(person)).join('')
-        : '<tr><td colspan="9">None entered</td></tr>';
+        ? data.children.map(person => personRow(person, [person.ParentType || 'Parent'])).join('')
+        : '<tr><td colspan="10">None entered</td></tr>';
 
     wirePersonLinks();
 }
@@ -646,6 +618,12 @@ async function makeProfilePicture() {
     await loadImages();
 }
 
+function relatedParentType() {
+    return activeRelationship === 'child' && $('rAdopted').checked
+        ? 'Adopted'
+        : 'Parent';
+}
+
 function relatedPersonData() {
     return {
         FirstName: nullable($('rFirstName').value),
@@ -680,6 +658,7 @@ function clearRelatedForm() {
     $('rGender').value = '';
     $('rDied').checked = false;
     $('rDeathDate').disabled = true;
+    $('rAdopted').checked = false;
     $('rDupWrap').classList.add('hidden');
     $('rDupBody').innerHTML = '';
     $('rStatus').textContent = '';
@@ -692,7 +671,8 @@ function oneTreeRedirect(relatedPersonID) {
         targetPersonID: String(relatedPersonID),
         returnTo: 'related',
         focalPersonID: String(personID),
-        relationshipKind: activeRelationship
+        relationshipKind: activeRelationship,
+        parentType: relatedParentType()
     });
     window.location.href = `FTOneTreeMerge.html?${query.toString()}`;
 }
@@ -779,7 +759,7 @@ async function askPartnerParent(childID) {
     const selectedPartnerIDs = await new Promise(resolve => {
         if (currentPartners.length === 1) {
             const partner = currentPartners[0];
-            question.textContent = `Is ${nameOf(partner)} also a biological parent of this child?`;
+            question.textContent = `Is ${nameOf(partner)} also a parent of this child?`;
             choices.innerHTML = '';
             singleActions.classList.remove('hidden');
             multiActions.classList.add('hidden');
@@ -792,7 +772,7 @@ async function askPartnerParent(childID) {
                 resolve([]);
             };
         } else {
-            question.textContent = 'Which Partner(s), if any, are biological parents of this child?';
+            question.textContent = 'Which Partner(s) are also a parent of this child?';
             choices.innerHTML = currentPartners.map(partner => `
                 <label style="display:block;margin:8px 0">
                     <input class="partner-parent-choice" type="checkbox" value="${partner.PersonID}" style="width:auto">
@@ -831,13 +811,13 @@ async function askPartnerParent(childID) {
         );
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || 'Unable to add Partner as biological parent.');
+            throw new Error(data.message || 'Unable to add Partner as Parent.');
         }
     }
 
     if (selectedPartnerIDs.length) {
         setPageStatus(
-            `${selectedPartnerIDs.length} Partner${selectedPartnerIDs.length === 1 ? '' : 's'} added as biological parent${selectedPartnerIDs.length === 1 ? '' : 's'} of the child.`
+            `${selectedPartnerIDs.length} Partner${selectedPartnerIDs.length === 1 ? '' : 's'} added as parent${selectedPartnerIDs.length === 1 ? '' : 's'} of the child.`
         );
     }
 }
@@ -853,6 +833,7 @@ async function useExistingRelationship(relatedPersonID) {
                 familyTreeCode,
                 focalPersonID: personID,
                 relationshipKind: activeRelationship,
+                parentType: relatedParentType(),
                 confirmedDifferentPersonIDs: [...relatedDifferent]
             })
         }
@@ -895,6 +876,7 @@ async function saveRelatedPerson() {
                 familyTreeCode,
                 focalPersonID: personID,
                 relationshipKind: activeRelationship,
+                parentType: relatedParentType(),
                 confirmedDifferentPersonIDs: [...relatedDifferent]
             })
         }
@@ -1025,15 +1007,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         button.onclick = () => {
             activeRelationship = button.dataset.addrel;
             clearRelatedForm();
-            const relationshipLabel =
-                activeRelationship === 'mother'
-                    ? 'BIOLOGICAL MOTHER'
-                    : activeRelationship === 'father'
-                        ? 'BIOLOGICAL FATHER'
-                        : activeRelationship === 'child'
-                            ? 'BIOLOGICAL CHILD'
-                            : activeRelationship.toUpperCase();
-            $('relatedTitle').textContent = `ADD ${relationshipLabel}`;
+            $('relatedTitle').textContent =
+                `ADD ${activeRelationship.toUpperCase()}`;
+            $('rAdoptedWrap').classList.toggle('hidden', activeRelationship !== 'child');
             $('relatedModal').classList.add('show');
         };
     });

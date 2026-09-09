@@ -64,3 +64,21 @@ No SQL, `.env`, or npm changes are required.
 6. Clicking the sibling P button opens FTPerson; on FTAncestor, clicking the sibling name makes that sibling the focal person.
 7. Adding a child creates only a biological Parent relationship; there is no Adopted Child option.
 8. Partner question explicitly asks whether the Partner is also a biological parent.
+
+
+## Restored `httpdocs/js` folder verification
+
+This replacement package was rechecked after the current `/Google Drive/wonderfulApp/httpdocs/js`
+folder was restored on 2026-09-09.
+
+The restored current Drive copies of:
+
+- `FTPerson.js`
+- `FTPersonNew.js`
+- `FTAncestor.js`
+- `FTOneTreeMerge.js`
+
+were compared byte-for-byte (SHA-256) with the current-source copies used to build the prior
+biological-only/siblings revision. All four matched exactly. Therefore no additional functional
+changes were required because of the restored folder; this package is a newly verified complete
+replacement for the prior ZIP.
