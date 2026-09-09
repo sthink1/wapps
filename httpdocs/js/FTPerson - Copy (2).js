@@ -128,18 +128,23 @@ function personRow(person, extraCells = []) {
 }
 
 function familyCompactRow(person) {
+    const photo = person.ProfileImageUrl
+        ? `<img src="${person.ProfileImageUrl}" alt="${nameOf(person)}" style="width:52px;height:62px;object-fit:contain;background:#fafafa">`
+        : '';
+
     return `
         <tr>
+            <td>${photo}</td>
             <td>
                 <button
                     class="person-link"
                     data-id="${person.PersonID}"
                     title="Open PersonID ${person.PersonID}"
-                >${person.PersonID}</button>
+                >P</button>
             </td>
             <td>${person.Gender || ''}</td>
             <td>${ageOf(person)}</td>
-            <td style="white-space:normal;min-width:220px">${nameOf(person)}</td>
+            <td>${nameOf(person)}</td>
         </tr>
     `;
 }
@@ -242,7 +247,7 @@ async function loadRelationships() {
     $('siblingTitle').textContent = `BIOLOGICAL SIBLINGS (${siblings.length})`;
     $('siblingBody').innerHTML = siblings.length
         ? siblings.map(person => familyCompactRow(person)).join('')
-        : '<tr><td colspan="4">None entered</td></tr>';
+        : '<tr><td colspan="5">None entered</td></tr>';
 
     currentPartners = data.partners || [];
 
