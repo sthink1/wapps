@@ -62,17 +62,6 @@ function ageOf(person) {
     return age >= 0 ? age : '';
 }
 
-function isDeceased(person) {
-    return Boolean(
-        person &&
-        (Number(person.Died) === 1 || person.DeathDate)
-    );
-}
-
-function ageClass(person) {
-    return isDeceased(person) ? 'deceased-age' : '';
-}
-
 function openPerson(id) {
     window.location.href =
         `FTPerson.html?PersonID=${encodeURIComponent(id)}` +
@@ -95,7 +84,7 @@ async function load() {
     if (!response.ok) {
         throw new Error(
             data.message ||
-            'Unable to load children.'
+            'Unable to load partners.'
         );
     }
 
@@ -121,10 +110,10 @@ async function load() {
     $('personNameDisplay').textContent =
         nameOf(personData.person);
 
-    const children = data.children || [];
+    const partners = data.partners || [];
 
-    $('rows').innerHTML = children.length
-        ? children.map(person => `
+    $('rows').innerHTML = partners.length
+        ? partners.map(person => `
             <tr>
                 <td class="p-cell">
                     <button
@@ -135,11 +124,11 @@ async function load() {
                     >P</button>
                 </td>
                 <td>${person.Gender || ''}</td>
-                <td class="${ageClass(person)}">${ageOf(person)}</td>
+                <td>${ageOf(person)}</td>
                 <td>${nameOf(person)}</td>
             </tr>
         `).join('')
-        : '<tr><td colspan="4">No children entered.</td></tr>';
+        : '<tr><td colspan="4">No partners entered.</td></tr>';
 
     document.querySelectorAll('.p-btn').forEach(button => {
         button.onclick = () =>

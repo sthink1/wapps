@@ -62,6 +62,17 @@ function ageOf(person) {
     return age >= 0 ? age : '';
 }
 
+function isDeceased(person) {
+    return Boolean(
+        person &&
+        (Number(person.Died) === 1 || person.DeathDate)
+    );
+}
+
+function ageClass(person) {
+    return isDeceased(person) ? 'deceased-age' : '';
+}
+
 function openPerson(id) {
     window.location.href =
         `FTPerson.html?PersonID=${encodeURIComponent(id)}` +
@@ -124,7 +135,7 @@ async function load() {
                     >P</button>
                 </td>
                 <td>${person.Gender || ''}</td>
-                <td>${ageOf(person)}</td>
+                <td class="${ageClass(person)}">${ageOf(person)}</td>
                 <td>${nameOf(person)}</td>
             </tr>
         `).join('')

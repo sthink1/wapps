@@ -314,12 +314,14 @@ async function loadAncestor() {
         $('currentPhoto').style.visibility = 'hidden';
     }
 
+    $('siblingTitle').textContent = `BIOLOGICAL SIBLINGS (${(data.siblings || []).length})`;
     $('partnerTitle').textContent = `PARTNERS (${(data.partners || []).length})`;
-    $('childTitle').textContent = `CHILDREN (${(data.children || []).length})`;
+    $('childTitle').textContent = `BIOLOGICAL CHILDREN (${(data.children || []).length})`;
     $('grandchildTitle').textContent = `GRANDCHILDREN (${(data.grandchildren || []).length})`;
     $('nephewNieceTitle').textContent = `NEPHEWS AND NIECES (${(data.nephewsNieces || []).length})`;
     $('cousinTitle').textContent = `COUSINS (${(data.cousins || []).length})`;
 
+    fillFamilyTable('siblingBody', data.siblings);
     fillFamilyTable('partnerBody', data.partners);
     fillFamilyTable('childBody', data.children);
     fillFamilyTable('grandchildBody', data.grandchildren);

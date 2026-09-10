@@ -51,17 +51,6 @@ function ageAtEvent(eventDate) {
     return age >= 0 ? age : '';
 }
 
-function isDeceased(person) {
-    return Boolean(
-        person &&
-        (Number(person.Died) === 1 || person.DeathDate)
-    );
-}
-
-function ageClass(person) {
-    return isDeceased(person) ? 'deceased-age' : '';
-}
-
 function clearForm() {
     editEventID = null;
     $('eventType').value = '';
@@ -128,7 +117,7 @@ async function loadEvents() {
                 <td>${index + 1}</td>
                 <td>${event.EventType || ''}</td>
                 <td>${dateUS(event.EventDate)}</td>
-                <td class="${ageClass(currentPerson)}">${ageAtEvent(event.EventDate)}</td>
+                <td>${ageAtEvent(event.EventDate)}</td>
                 <td>${event.EventPlace || ''}</td>
                 <td>${event.EventDescription || ''}</td>
                 <td><button class="edit-event" data-id="${event.EventID}" type="button">EDIT</button></td>

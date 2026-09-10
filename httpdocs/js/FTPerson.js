@@ -55,6 +55,17 @@ function ageOf(person) {
     return age >= 0 ? age : '';
 }
 
+function isDeceased(person) {
+    return Boolean(
+        person &&
+        (Number(person.Died) === 1 || person.DeathDate)
+    );
+}
+
+function ageClass(person) {
+    return isDeceased(person) ? 'deceased-age' : '';
+}
+
 function nameOf(person) {
     const firstPart = [
         person.FirstName,
@@ -115,7 +126,7 @@ function personRow(person, extraCells = []) {
                 >P</button>
             </td>
             <td>${person.Gender || ''}</td>
-            <td>${ageOf(person)}</td>
+            <td class="${ageClass(person)}">${ageOf(person)}</td>
             <td>${person.FirstName || ''}</td>
             <td>${person.MiddleName || ''}</td>
             <td>${person.LastName || ''}</td>
@@ -138,7 +149,7 @@ function familyCompactRow(person) {
                 >${person.PersonID}</button>
             </td>
             <td>${person.Gender || ''}</td>
-            <td>${ageOf(person)}</td>
+            <td class="${ageClass(person)}">${ageOf(person)}</td>
             <td style="white-space:normal;min-width:220px">${nameOf(person)}</td>
         </tr>
     `;
@@ -203,6 +214,7 @@ async function loadPerson() {
     $('BirthDate').textContent = dateUS(currentPerson.BirthDate);
     $('DeathDate').textContent = dateUS(currentPerson.DeathDate);
     $('Age').textContent = ageOf(currentPerson);
+    $('Age').classList.toggle('deceased-age', isDeceased(currentPerson));
     $('Died').textContent = Number(currentPerson.Died) ? 'Yes' : 'No';
     $('FamilyTreeCode').textContent = familyTreeCode;
 }

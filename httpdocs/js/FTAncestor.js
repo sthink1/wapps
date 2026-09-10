@@ -84,6 +84,17 @@ function ageOf(person) {
     return age >= 0 ? age : '';
 }
 
+function isDeceased(person) {
+    return Boolean(
+        person &&
+        (Number(person.Died) === 1 || person.DeathDate)
+    );
+}
+
+function ageClass(person) {
+    return isDeceased(person) ? 'deceased-age' : '';
+}
+
 function openPerson(id) {
     if (!id) return;
 
@@ -151,7 +162,7 @@ function personTableRow(person) {
                 >P</button>
             </td>
             <td>${person.Gender || ''}</td>
-            <td>${ageOf(person)}</td>
+            <td class="${ageClass(person)}">${ageOf(person)}</td>
             <td class="table-name" data-id="${person.PersonID}" title="Make ${nameOf(person)} the focal person">${nameOf(person)}</td>
         </tr>
     `;
