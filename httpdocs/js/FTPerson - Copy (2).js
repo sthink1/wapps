@@ -234,12 +234,10 @@ async function loadRelationships() {
         throw new Error(data.message || 'Unable to load relationships.');
     }
 
-    const parents = Array.isArray(data.parents)
-        ? data.parents
-        : [
-            ...(data.mother || []),
-            ...(data.father || [])
-        ];
+    const parents = [
+        ...(data.mother || []),
+        ...(data.father || [])
+    ];
 
     $('parentBody').innerHTML = parents.length
         ? parents
