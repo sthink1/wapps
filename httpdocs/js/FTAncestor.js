@@ -189,46 +189,6 @@ function wireTableButtons() {
     });
 }
 
-function applyBloodLineHighlight() {
-    const selected = $('bloodLineSelect').value;
-
-    [
-        'maternalGrandmotherRow',
-        'maternalGrandfatherRow',
-        'motherRow',
-        'paternalGrandmotherRow',
-        'paternalGrandfatherRow',
-        'fatherRow'
-    ].forEach(id => {
-        $(id).classList.remove('blood-line');
-    });
-
-    if (selected === 'Mother') {
-        [
-            'maternalGrandmotherRow',
-            'maternalGrandfatherRow',
-            'motherRow'
-        ].forEach(id => {
-            $(id).classList.add('blood-line');
-        });
-    }
-
-    if (selected === 'Father') {
-        [
-            'paternalGrandmotherRow',
-            'paternalGrandfatherRow',
-            'fatherRow'
-        ].forEach(id => {
-            $(id).classList.add('blood-line');
-        });
-    }
-
-    sessionStorage.setItem(
-        'familyTreeBloodLine',
-        selected
-    );
-}
-
 async function loadAncestor() {
     const response = await fetch(
         `${BASE_URL}/familytree/persons/${personID}/ancestor` +
@@ -340,7 +300,6 @@ async function loadAncestor() {
     fillFamilyTable('cousinBody', data.cousins);
 
     wireTableButtons();
-    applyBloodLineHighlight();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -359,13 +318,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (history.length > 1) history.back();
         else window.location.href = `FTPerson.html?PersonID=${encodeURIComponent(personID)}&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
     };
-
-    $('bloodLineSelect').value =
-        sessionStorage.getItem('familyTreeBloodLine') ||
-        'None';
-
-    $('bloodLineSelect').onchange =
-        applyBloodLineHighlight;
 
     $('cousinGenerationSelect').value = String(cousinGeneration);
     $('cousinGenerationSelect').onchange = async () => {

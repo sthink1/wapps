@@ -15,7 +15,6 @@
             --header-blue: #d6dde8;
             --orange: #ffc000;
             --border: #a5a5a5;
-            --blood-line: #fce6d4;
         }
 
         * { box-sizing: border-box; }
@@ -54,7 +53,6 @@
 
         .page-nav button { cursor: pointer; }
 
-        .blood-control,
         .section-control {
             display: flex;
             align-items: center;
@@ -113,10 +111,6 @@
             border: 1px solid #aab6c2;
             background: var(--name-blue);
             overflow: hidden;
-        }
-
-        .relative-row.blood-line .relative-name {
-            background: var(--blood-line);
         }
 
         .person-button {
@@ -296,14 +290,6 @@
         <button id="backBtn" type="button">BACK</button>
         <button type="button" onclick="window.location.href='FamilyTree.html'">FAMILY TREE</button>
 
-        <div class="blood-control">
-            <label for="bloodLineSelect"><strong>Highlight Blood Line:</strong></label>
-            <select id="bloodLineSelect">
-                <option value="None">None</option>
-                <option value="Mother">Mother</option>
-                <option value="Father">Father</option>
-            </select>
-        </div>
     </div>
 
     <main class="access-form" aria-label="Family Tree Ancestor and Family Relationships">
@@ -378,6 +364,6 @@
 
     <footer>Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr</footer>
 
-    <script src="js/FTAncestor.js?v=20260909-age1"></script>
+    <script src="js/FTAncestor.js?v=20260911-1"></script>
 </body>
 </html>
