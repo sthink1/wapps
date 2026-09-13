@@ -726,108 +726,6 @@ async function activity(userId,range){
   return a;
 }
 
-
-function balanceValue(v){
-  if(v===undefined||v===null||v==='') return null;
-  const n=Number(v);
-  if(!Number.isFinite(n)||n<0) return null;
-  return Number(n.toFixed(2));
-}
-
-async function myMoneyTotal(userId){
-  const [rows]=await pool.query(
-    'SELECT COALESCE(SUM(BalanceCurrent),0) AS Total FROM BudgetMyMoneyT WHERE UserID=?',
-    [userId]);
-  return Number(Number(rows[0].Total||0).toFixed(2));
-}
-
-function registerBalanceSource(config){
-  const base=`/${config.path}`;
-
-  router.get(base,auth,async(req,res)=>{
-    try{
-      const [rows]=await pool.query(
-        `SELECT ${config.pk},${config.userKey},${config.nameField},BalanceCurrent
-         FROM ${config.table}
-         WHERE UserID=?
-         ORDER BY ${config.userKey}`,
-        [req.user.userId]);
-      const total=Number(rows.reduce((sum,row)=>sum+Number(row.BalanceCurrent||0),0).toFixed(2));
-      res.json({records:rows,total});
-    }catch(e){ handleDbError(e,res,`Error fetching ${config.path}`); }
-  });
-
-  router.post(base,auth,async(req,res)=>{
-    const name=text(req.body[config.nameField]);
-    const balance=balanceValue(req.body.BalanceCurrent);
-    if(!name) return bad(res,`${config.label} is required`);
-    if(balance===null) return bad(res,'Balance Current must be zero or a positive number');
-    const userId=req.user.userId;
-    try{
-      const userSpecificId=await getNextUserSpecificID(userId,config.table,config.userKey);
-      const [ins]=await pool.query(
-        `INSERT INTO ${config.table} (UserID,${config.userKey},${config.nameField},BalanceCurrent)
-         VALUES (?,?,?,?)`,
-        [userId,userSpecificId,name,balance]);
-      res.status(201).json({
-        message:`${config.label} added(be)`,
-        data:{id:ins.insertId,userSpecificId}
-      });
-    }catch(e){ handleDbError(e,res,`Error adding ${config.path} record`); }
-  });
-
-  router.put(`${base}/:${config.userKey}`,auth,
-    param(config.userKey).isInt({min:1}).withMessage(`${config.userKey} must be a positive integer`),
-    async(req,res)=>{
-      if(!validExpress(req,res)) return;
-      const name=text(req.body[config.nameField]);
-      const balance=balanceValue(req.body.BalanceCurrent);
-      if(!name) return bad(res,`${config.label} is required`);
-      if(balance===null) return bad(res,'Balance Current must be zero or a positive number');
-      try{
-        const [result]=await pool.query(
-          `UPDATE ${config.table}
-           SET ${config.nameField}=?,BalanceCurrent=?,UpdatedAt=NOW()
-           WHERE ${config.userKey}=? AND UserID=?`,
-          [name,balance,Number(req.params[config.userKey]),req.user.userId]);
-        if(!result.affectedRows) return res.status(404).json({error:`${config.label} record not found(be)`});
-        res.json({message:`${config.label} updated(be)`});
-      }catch(e){ handleDbError(e,res,`Error updating ${config.path} record`); }
-    });
-
-  router.delete(`${base}/:${config.userKey}`,auth,
-    param(config.userKey).isInt({min:1}).withMessage(`${config.userKey} must be a positive integer`),
-    async(req,res)=>{
-      if(!validExpress(req,res)) return;
-      try{
-        const [result]=await pool.query(
-          `DELETE FROM ${config.table} WHERE ${config.userKey}=? AND UserID=?`,
-          [Number(req.params[config.userKey]),req.user.userId]);
-        if(!result.affectedRows) return res.status(404).json({error:`${config.label} record not found(be)`});
-        res.json({message:`${config.label} deleted(be)`});
-      }catch(e){ handleDbError(e,res,`Error deleting ${config.path} record`); }
-    });
-}
-
-registerBalanceSource({
-  path:'money',
-  table:'BudgetMyMoneyT',
-  pk:'MoneyID',
-  userKey:'UserMoneyID',
-  nameField:'AccountPocket',
-  label:'Account / Pocket'
-});
-
-registerBalanceSource({
-  path:'investments',
-  table:'BudgetMyInvestmentT',
-  pk:'InvestmentID',
-  userKey:'UserInvestmentID',
-  nameField:'Account',
-  label:'Investment account'
-});
-
-
 router.get('/monthly/summary',auth,async(req,res)=>{
   const r=monthRange(req.query.from,req.query.to); if(r.error) return bad(res,r.error);
   try{
@@ -841,27 +739,9 @@ router.get('/monthly/summary',auth,async(req,res)=>{
       const k=x.Date.slice(0,7),row=rows.get(k); if(!row) continue;
       if(x.Direction==='In') row.In+=x.Amount; else row.Out+=x.Amount;
     }
-    const currentMyMoney=await myMoneyTotal(req.user.userId);
-    let projected=currentMyMoney;
-    const summary=[...rows.values()].map(x=>{
-      const net=Number((x.In-x.Out).toFixed(2));
-      projected=Number((projected+net).toFixed(2));
-      return {
-        ...x,
-        In:Number(x.In.toFixed(2)),
-        Out:Number(x.Out.toFixed(2)),
-        Net:net,
-        Deficit:net<0,
-        ProjectedMyMoney:projected,
-        MyMoneyShortage:projected<0
-      };
-    });
-    res.json({
-      from:r.from,
-      to:r.to,
-      MyMoneyCurrentBalance:currentMyMoney,
-      summary
-    });
+    const summary=[...rows.values()].map(x=>({...x,In:Number(x.In.toFixed(2)),Out:Number(x.Out.toFixed(2)),
+      Net:Number((x.In-x.Out).toFixed(2)),Deficit:(x.In-x.Out)<0}));
+    res.json({from:r.from,to:r.to,summary});
   }catch(e){ handleDbError(e,res,'Error calculating Monthly Budget'); }
 });
 
