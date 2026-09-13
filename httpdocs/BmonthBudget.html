@@ -367,7 +367,7 @@
         <section class="section section-records">
             <h2>Monthly Summary</h2>
             <div class="table-shell">
-                <table class="summary-table" aria-hidden="true">
+                <table class="summary-table">
                     <thead>
                         <tr class="money-balance-row">
                             <th colspan="3">MY MONEY current balance</th>
@@ -380,12 +380,8 @@
                             <th>Net</th>
                         </tr>
                     </thead>
+                    <tbody id="summaryBody"></tbody>
                 </table>
-                <div class="scroll-body" style="max-height:470px;">
-                    <table class="summary-table">
-                        <tbody id="summaryBody"></tbody>
-                    </table>
-                </div>
             </div>
             <p class="totals-note">Click a month to open its Monthly Detail report.</p>
         </section>
