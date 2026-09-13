@@ -66,15 +66,7 @@
         #budgetApplications {
             margin-bottom: 20px;
             background-color: aqua;
-            padding: 10px 0;
-        }
-        .budget-section { padding: 10px 12px; }
-        .budget-section + .budget-section { border-top: 3px solid black; }
-        .budget-section-title {
-            text-align: left;
-            font-weight: bold;
-            font-size: 18px;
-            margin: 0 0 6px 4px;
+            padding-bottom: 10px;
         }
 
         #budgetApplications h3 {
@@ -145,32 +137,18 @@
             <button id="homeBtn">Home</button>
         </div>
 
-        <div class="app-description">Manage My Money and build a monthly budget of money coming In and going Out. Record income and expenses, subscriptions, loans, lease or rent payments, estimates and allowances, credit cards, and review budget reports.</div>
-
         <div id="budgetApplications">
-            <div class="budget-section">
-                <div class="app-buttons">
-                    <button class="budget-btn nav-budget-btn" data-page="MyMoney.html">My Money</button>
-                    <button class="budget-btn nav-budget-btn" data-page="BmonthBudget.html">My Monthly Budget</button>
-                    <button class="budget-btn nav-budget-btn" data-page="Breports.html">Review My Current In's &amp; Out's</button>
-                </div>
-            </div>
-            <div class="budget-section">
-                <div class="budget-section-title">In's</div>
-                <div class="app-buttons">
-                    <button class="budget-btn in-budget-btn" data-page="BinForm.html">In</button>
-                </div>
-            </div>
-            <div class="budget-section">
-                <div class="budget-section-title">Out's</div>
-                <div class="app-buttons">
-                    <button class="budget-btn out-budget-btn" data-page="BoutForm.html">Out</button>
-                    <button class="budget-btn out-budget-btn" data-page="BsubscriptionForm.html">Subscription</button>
-                    <button class="budget-btn out-budget-btn" data-page="BloanForm.html">Loan</button>
-                    <button class="budget-btn out-budget-btn" data-page="BleaseRentForm.html">Lease/Rent</button>
-                    <button class="budget-btn out-budget-btn" data-page="BestimateAllowanceForm.html">Estimate/Allowance</button>
-                    <button class="budget-btn out-budget-btn" data-page="BcardForm.html">Credit Card</button>
-                </div>
+            <div class="app-description">Manage My Money and build a monthly budget of money coming In and going Out. Record income and expenses, subscriptions, loans, lease or rent payments, estimates and allowances, credit cards, and review budget reports.</div>
+            <div class="app-buttons">
+                <button class="budget-btn nav-budget-btn" data-page="BmonthBudget.html">Monthly Budget</button>
+                <button class="budget-btn in-budget-btn" data-page="BinForm.html">In</button>
+                <button class="budget-btn out-budget-btn" data-page="BoutForm.html">Out</button>
+                <button class="budget-btn out-budget-btn" data-page="BsubscriptionForm.html">Subscription</button>
+                <button class="budget-btn out-budget-btn" data-page="BloanForm.html">Loan</button>
+                <button class="budget-btn out-budget-btn" data-page="BleaseRentForm.html">Lease/Rent</button>
+                <button class="budget-btn out-budget-btn" data-page="BestimateAllowanceForm.html">Estimate/Allowance</button>
+                <button class="budget-btn out-budget-btn" data-page="BcardForm.html">Credit Card</button>
+                <button class="budget-btn nav-budget-btn" data-page="Breports.html">Reports</button>
             </div>
         </div>
     </div>

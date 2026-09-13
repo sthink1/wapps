@@ -19,55 +19,15 @@
             margin: 0 auto 14px;
             max-width: 100%;
         }
-
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f4f4f4;
-            padding-bottom: 45px;
-        }
-        .container {
-            text-align: center;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 460px;
-            max-width: calc(100% - 40px);
-            box-sizing: border-box;
-        }
-        .button-group { display: flex; justify-content: center; margin-bottom: 15px; }
-        .button-group button, .town-content button {
-            background-color: #4CAF50; color: white; border: none;
-            padding: 10px 20px; font-size: 16px; margin: 5px;
-            cursor: pointer; border-radius: 4px;
-        }
-        .button-group button:hover, .town-content button:hover { background-color: #45a049; }
-        .town-content { background-color: aqua; padding: 10px; }
-        footer {
-            background-color: lightgray; min-height: 30px; padding-top: 5px;
-            position: fixed; bottom: 0; width: 100%; text-align: center; z-index: 10;
-        }
 </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Verbal Town Notification</h1>
-        <div class="button-group">
-            <a href="home.html"><button>Home</button></a>
-        </div>
-        <div class="app-description">Receive a spoken notification when you cross into a different town or city. Especially useful while biking or traveling, the app uses your device location to announce the town you have entered.</div>
-        <div class="town-content">
-            <p>When you change towns, an audio notification will be triggered.</p>
-            <h3 style="background-color: yellow;">Click "Enable Location Alerts" to start!</h3>
-            <button onclick="startGeolocation()">Enable Location Alerts</button>
-            <p id="status">Status: Waiting for location access...</p>
-        </div>
-    </div>
+    <h1>Verbal Town Notification<a class="buttons" href="home.html"><button>Home</button></a></h1>
+    <div class="app-description">Receive a spoken notification when you cross into a different town or city. Especially useful while biking or traveling, the app uses your device location to announce the town you have entered.</div>
+    <p>When you change towns, an audio notification will be triggered.</p>
+    <h3 style="background-color: yellow;">Click "Enable Location Alerts" to start!</h3>
+    <button onclick="startGeolocation()">Enable Location Alerts</button>
+    <p id="status">Status: Waiting for location access...</p>
 
     <footer>
     <table style="width: 100%; border-collapse: collapse;">

@@ -10,39 +10,7 @@
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      min-height: 100vh;
-      background-color: #f4f4f4;
-      padding-bottom: 45px;
-    }
-    .container {
-      width: 460px;
-      max-width: calc(100% - 40px);
-      margin: 0 auto;
-      background-color: white;
       padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      box-sizing: border-box;
-    }
-    .page-header { text-align: center; }
-    .button-group { display: flex; justify-content: center; margin-bottom: 15px; }
-    .input-area { text-align: left; }
-    .calculate-row { text-align: center; margin-top: 5px; }
-    #output {
-      width: min(1100px, calc(100vw - 40px));
-      margin: 20px auto 0;
-      overflow-x: auto;
-      background-color: white;
-    }
-    footer {
-      background-color: lightgray;
-      min-height: 30px;
-      padding-top: 5px;
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      text-align: center;
-      z-index: 10;
     }
     label {
       display: block;
@@ -98,28 +66,19 @@
 </head>
 <body>
   <main>
-    <div class="container">
-      <div class="page-header">
-        <h2>Loan Payment Calculator</h2>
-        <div class="button-group">
-          <a href="home.html"><button>Home</button></a>
-        </div>
-      </div>
-      <div class="app-description">Calculate a loan payment and review the complete amortization schedule. Enter the principal, interest rate, first payment date and loan term to see each payment, interest paid, principal paid and remaining balance.</div>
-      <div class="input-area">
-        <label for="principal">Principal Amount:</label>
-        <input type="text" id="principal" placeholder="Enter Principal Amount">
-        <label for="paymentDate">Date of First Payment:<br><span style="color: red; font-weight: 900;">DO NOT USE DAYS 29, 30 or 31</span></label>
-        <input type="date" id="paymentDate" onchange="validateDate()">
-        <label for="interestRate">Interest Rate (%):</label>
-        <input type="text" id="interestRate" placeholder="Enter Interest Rate">
-        <label for="term">Term (in months):</label>
-        <input type="text" id="term" placeholder="Enter Term in Months">
-        <div class="calculate-row"><button onclick="calculate()">Calculate</button></div>
-      </div>
-    </div>
-    <div id="output"></div>
-  </main>
+  <h2>Loan Payment Calculator<a class="buttons" href="home.html"><button>Home</button></a></h2>
+  <div class="app-description">Calculate a loan payment and review the complete amortization schedule. Enter the principal, interest rate, first payment date and loan term to see each payment, interest paid, principal paid and remaining balance.</div>
+  <label for="principal">Principal Amount:</label>
+  <input type="text" id="principal" placeholder="Enter Principal Amount">
+  <label for="paymentDate">Date of First Payment:<br><span style="color: red; font-weight: 900;">DO NOT USE DAYS 29, 30 or 31</span></label>
+  <input type="date" id="paymentDate" onchange="validateDate()">
+  <label for="interestRate">Interest Rate (%):</label>
+  <input type="text" id="interestRate" placeholder="Enter Interest Rate">
+  <label for="term">Term (in months):</label>
+  <input type="text" id="term" placeholder="Enter Term in Months">
+  <button onclick="calculate()">Calculate</button>
+  <div id="output"></div>
+</main>
   <footer>
     <table style="width: 100%; border-collapse: collapse;">
         <tr>
