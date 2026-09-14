@@ -1,345 +1,428 @@
 # CLAUDE.md – WonderfulApps Developer Onboarding Guide
 
-## Tech Stack & Versions
-
-### Runtime & Framework
-- **Node.js**: v18+ (recommended)
-- **Express.js**: ^4.18.2 (actual: 4.18.2+)
-- **Runtime**: JavaScript (ES6+)
-
-### Database
-- **Primary**: MySQL 5.5.x (Remote Host) / MySQL 8.0 (Local Dev)
-- **Driver**: mysql2/promise ^3.6.5
-- **Connection Pool**: 50 connections max, queue unlimited
-- **Charset**: utf8mb4
-- **Date Handling**: DATE fields returned as YYYY-MM-DD strings
-
-### Authentication & Security
-- **JWT Library**: jsonwebtoken ^9.0.2
-- **Password Hashing**: bcrypt ^5.1.1
-- **Authorization**: Bearer token in `Authorization` header
-- **Token Expiry**: 8 hours
-- **Secret Storage**: `process.env.JWT_SECRET` (environment variable only)
-
-### Validation & Middleware
-- **Input Validation**: express-validator ^7.3.1 (actual installed)
-- **CORS**: cors ^2.8.5
-- **File Upload**: multer ^1.4.5-lts.1
-- **HTTP Logging**: morgan ^1.10.0
-- **Logging Framework**: winston ^3.11.0
-
-### Frontend & PWA
-- **PWA Service Worker**: Registered via `/sw.js`
-- **Caching Strategy**: Cache-first for static assets, no-cache for service worker
-- **Confetti Animation**: canvas-confetti @1.9.3 (CDN)
-- **Input Sanitization**: DOMPurify 2.3.10 (CDN)
-
-### HTTP Client & External APIs
-- **HTTP Client**: axios ^1.x (for external API calls)
-- **ETF Data APIs**: Tiingo, Finnhub, Polygon (price & reference data via axios)
-
-### Development & Email
-- **Environment Variables**: dotenv ^16.3.1
-- **Email Service**: Custom `send_email.js` (Resend HTTP-based)
-- **Reverse Geocoding**: Nominatim (OSM API proxy via `/routes/geocode.js`)
+**Last updated:** September 14, 2026  
+**Project:** WonderfulApps (WA)  
+**Database ground truth:** `wappsDumps.sql`
 
 ---
 
-## Core Commands
+## 1. Purpose of This File
 
-### Development
-```bash
-# Start development server (nodemon recommended)
-npm start
+This file is the primary development guide for WonderfulApps. Before making code changes, use this document together with the current source files and `wappsDumps.sql`.
 
-# Start with explicit port
-PORT=8080 npm start
+When documentation conflicts with current executable code or the current SQL dump:
 
-# Run with verbose logging
-NODE_ENV=development npm start
-```
+1. `wappsDumps.sql` is authoritative for the current database schema.
+2. Current source files are authoritative for application behavior.
+3. This document should then be corrected to match the implementation.
 
-### Testing
-```bash
-# Test database connection
-node testConnection.js
-
-# Hash a password (one-off utility)
-node hash.js
-```
-
-### Production
-```bash
-# Set environment to production
-NODE_ENV=production npm start
-
-# Run on non-standard port
-PORT=3000 NODE_ENV=production npm start
-```
-
-### Database
-- **Restore Schema**: Import `wappsDump.sql` into your MySQL instance
-- **Connection String**: Built from `.env` variables (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`)
+Do not design from an older description when a current file is available.
 
 ---
 
-## Database Rules & Architecture
+## 2. Current Architecture
 
-### Critical Constraints
-1. **Foreign Key Constraints with Cascading Deletes**: All tables with parent references use `ON DELETE CASCADE ON UPDATE CASCADE`.
-   - Tables with FKs: ActivitiesT, etfCategoryT, etfSymbolT, InterestEarnedT, TrackUsageT, UserSequenceT, WeightActivitiesT, WeightsT
-   - All cascade to UsersT (or intermediate tables)
-   - Implication: Deleting a user automatically deletes child records at the database level; no app-level cascade code needed.
+WonderfulApps is a multi-application web/PWA project built with:
 
-2. **MySQL 5.5 Compatibility**:
-   - No `JSON` data type (avoid storing JSON columns)
-   - No `GENERATED` columns
-   - Limited window functions (use application-level grouping)
-   - Date strings must be in `YYYY-MM-DD` format
+- **Frontend:** HTML, CSS, and vanilla JavaScript in `httpdocs/`
+- **Backend:** Node.js with Express
+- **Database:** MySQL, with the production/remote schema maintained for MySQL 5.5 compatibility
+- **Authentication:** JWT bearer tokens and bcrypt password hashing
+- **Database driver:** `mysql2`
+- **Validation:** `express-validator`
+- **Logging:** Morgan + Winston
+- **Email:** Resend
+- **External data/API support:** Axios, Yahoo Finance, geocoding and other feature-specific APIs
+- **Object/image storage support:** AWS S3-compatible SDK through `r2Storage.js`
+- **Image processing:** `sharp`
+- **PWA:** service worker and manifest under `httpdocs/`
 
-3. **Dual-Key Architecture**: `AUTO_INCREMENT` primary keys + user-scoped secondary keys
-   - Global PKs (WeightID, ActivityID, IntErndID, etc.) ensure app-wide uniqueness
-   - User-scoped IDs (UserWeightID, UserActivityID, UserIntErndID, etc.) via `UserSequenceT` table provide per-user sequences (1,2,3...)
-   - Both are actively used: PKs for joins, user-scoped IDs for user-friendly URLs and API parameters
-   - Managed via `dbConnection.js::getNextUserSpecificID(userId, tableName)` — generates and increments UserSequenceT entries
-   - FK to UsersT: `ON DELETE CASCADE` removes sequence data when user is deleted
-
-### Key Tables & Relationships
-
-| Table | Purpose | Parent | Child Seq |
-|-------|---------|--------|-----------|
-| `UsersT` | User accounts | — | UserSequenceT |
-| `WeightsT` | Weight entries | UsersT | UserWeightID |
-| `ActivitiesT` | Activity definitions | UsersT | UserActivityID |
-| `WeightActivitiesT` | Weight-Activity mapping | WeightsT, ActivitiesT | (none) |
-| `InterestEarnedT` | Interest contracts | UsersT | UserIntErndID |
-| `TrackUsageT` | Page views & time spent | UsersT | (none) |
-| `etfCategoryT` | ETF portfolio categories | UsersT | (none) |
-| `etfSymbolT` | ETF symbols & metadata | UsersT, etfCategoryT | (none) |
-| `UserSequenceT` | ID generation (manual) | UsersT (implicit) | (none) |
-
-### Data Flow Pattern
-```
-User Input (Frontend)
-  → Validation (express-validator)
-  → Auth Middleware (JWT check)
-  → Route Handler (routes/*.js)
-  → Transaction Wrapper (withTransaction)
-  → Pool Query (mysql2/promise)
-  → Response JSON
-```
+The application is organized around independent functional areas that share the same user/authentication platform.
 
 ---
 
-## Security & Authentication
+## 3. Current Major Application Areas
 
-### Mechanism
-- **JWT (JSON Web Tokens)** issued upon successful login
-- Token contains: `{ userId, username, expiresIn: '8h' }`
-- Verified in `middleware/auth.js` before protected routes
+The current WA project includes, among other features:
 
-### Token Lifecycle
-1. **Registration** (`/users/register`): Hash password with bcrypt (10 rounds), generate token
-2. **Login** (`/users/login`): Verify credentials, issue token
-3. **Protected Routes**: Extract token from `Authorization: Bearer <token>` header
-4. **Token Expiry**: 8 hours; client must re-login
+- User registration, login, verification, and authentication
+- Weight tracking
+- Activity tracking
+- Weight/activity associations
+- Interest earned calculations and records
+- ETF research, categories, symbols, and activity
+- Usage tracking/analytics
+- Property and geolocation-related tools
+- Amortization tools
+- Contact/email functions
+- **Budget application**
+- **Family Tree application**
 
-### Security Notes
-- **Remote Database**: Development only; no production PII storage
-- **SSL/TLS**: 
-  - Enabled locally (MySQL 8.0)
-  - Disabled on remote host (MySQL 5.5 provider limitation)
-- **Password Storage**: Never stored as plaintext; always bcrypt (10 rounds)
-- **Environment Variables**: All secrets in `.env` file (not in repo)
-
-### CORS Configuration
-```javascript
-// Allowed Origins
-- http://localhost
-- http://localhost:8080
-- https://wapps.helioho.st
-- https://wapps-ypez.onrender.com
-```
+Budget and Family Tree are current implemented WA components, not future placeholder examples.
 
 ---
 
-## Coding Patterns & Conventions
+## 4. Current Backend Route Modules
 
-### Error Handling
-- **Pattern**: `handleDbError(error, res, 'Custom Message')` in `utils.js`
-- **Conventions**:
-  - Database errors → 500 with error message
-  - Duplicate entries → 400 with "Duplicate entry(be)"
-  - Validation errors → 400 with specific field error
-  - Not found → 404 with "Resource not found(be)"
-- **Note**: Error messages end with `(be)` for backend identification
+Current route files include:
 
-### Validation
-- Use `express-validator` chains: `body()`, `param()`, `query()`
-- Always call `validationResult(req)` and return early with 400 if errors
-- Custom messages use `(be)` suffix convention
-
-### Transaction Pattern
-```javascript
-await withTransaction(async (connection) => {
-  // All queries use 'connection' object, not 'pool'
-  const [result] = await connection.query(sql, params);
-  // Auto-rollback on error, auto-commit on success
-});
+```text
+routes/
+├── activities.js
+├── budget.js
+├── etf.js
+├── familyTree.js
+├── geocode.js
+├── interestEarned.js
+├── track.js
+├── users.js
+├── weightActivities.js
+└── weights.js
 ```
 
-### Middleware Stack
-1. CORS
-2. JSON/URL-encoded parsing
-3. Multer (file upload)
-4. Static file serving (with cache headers)
-5. Morgan logging
-6. Route handlers
-7. Auth middleware (per route)
-8. Global error handler
+Current `server.js` mounts the principal API routes as follows:
 
-### Naming Conventions
-- **Tables**: PascalCase + `T` suffix (e.g., `UsersT`, `WeightsT`)
-- **Columns**: PascalCase (e.g., `UserID`, `DateWeight`, `PasswordHash`)
-- **Routes**: Kebab-case URLs (e.g., `/users/login`, `/weights/range`)
-- **Route Files**: camelCase (e.g., `weightActivities.js`)
-- **Error Codes**: All end with `(be)` for backend identification
+| Route prefix | Route module |
+|---|---|
+| `/weights` | `routes/weights.js` |
+| `/activities` | `routes/activities.js` |
+| `/weightActivities` | `routes/weightActivities.js` |
+| `/users` | `routes/users.js` |
+| `/track` | `routes/track.js` |
+| `/interestEarned` | `routes/interestEarned.js` |
+| `/etf` | `routes/etf.js` |
+| `/budget` | `routes/budget.js` |
+| `/familytree` | `routes/familyTree.js` |
+| `/api/geocode` | `routes/geocode.js` |
 
-### Frontend-Backend Contract
-- **Request Format**: JSON with `Content-Type: application/json`
-- **Response Format**: `{ message: string, data?: object, error?: string }`
-- **Auth Header**: `Authorization: Bearer <token>`
-- **Date Format**: YYYY-MM-DD (ISO 8601)
-- **Numbers**: Floats for decimal values (e.g., weight, interest rate)
-
-### Logging
-- Framework: **Winston** (`logger.js`)
-- Levels: `info`, `warn`, `error`
-- Output: Console + File (`logs/combined.log`, `logs/error.log`)
-- Usage: `logger.info('Message')`, `logger.error('Message')`
+`/send-email` is handled directly in `server.js`.
 
 ---
 
-## Environment Configuration
+## 5. Current Database
 
-### Required .env Variables
-```
-# Database
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=<password>
-DB_NAME=wonderfulapps
-DB_PORT=3306
+The September 14, 2026 `wappsDumps.sql` contains **38 tables**.
 
-# Authentication
-JWT_SECRET=<random-long-string>
+### Core user / system tables
 
-# Email (Resend)
-RESEND_API_KEY=<your-api-key>
-MAIL_FROM_ADDRESS=<sender-email>
-MAIL_FROM_NAME=<sender-name>
-MAIL_TO_ADDRESS=<recipient-email>
-
-# ETF External APIs
-TIINGO_API_KEY=<tiingo-api-key>
-FINNHUB_API_KEY=<finnhub-api-key>
-POLYGON_API_KEY=<polygon-api-key>
-
-# Server
-PORT=8080
-NODE_ENV=development
+```text
+UsersT
+LoginVerificationT
+UserSequenceT
+TrackUsageT
 ```
 
-### Local Development Differences
-- **MySQL Version**: 8.0 (supports Performance Schema, SSL)
-- **SSL**: Enabled in connection
-- **Database**: Local instance
+### Weight / activity tables
 
-### Remote Host Differences
-- **MySQL Version**: 5.5.x (legacy provider)
-- **SSL**: Disabled (provider limitation)
-- **Performance Schema**: Disabled
-- **Implication**: Must avoid MySQL 5.5-incompatible features
+```text
+WeightsT
+ActivitiesT
+WeightActivitiesT
+```
+
+### Interest table
+
+```text
+InterestEarnedT
+```
+
+### ETF tables
+
+```text
+etfActivityT
+etfCategoryT
+etfSymbolT
+```
+
+### Budget tables (13)
+
+```text
+BudgetCardT
+BudgetDescriptionT
+BudgetEstimateAllowanceT
+BudgetInT
+BudgetLeaseRentT
+BudgetLoanT
+BudgetMyInvestmentT
+BudgetMyMoneyT
+BudgetOutT
+BudgetRecurrenceMonthlyDayT
+BudgetRecurrenceT
+BudgetRecurrenceWeeklyDayT
+BudgetSubscriptionT
+```
+
+### Family Tree tables (14)
+
+```text
+FamilyTreeT
+FTContactT
+FTEventPersonT
+FTEventT
+FTFamilyTreeActivityT
+FTFamilyTreePersonT
+FTFamilyTreeUserT
+FTImageT
+FTNotificationT
+FTParentT
+FTPartnerT
+FTPersonMergeT
+FTPersonT
+FTRecordArchiveT
+```
+
+### Database rules
+
+- Keep SQL compatible with the production MySQL environment unless the hosting/database platform is intentionally changed.
+- Do not assume modern MySQL-only features are available.
+- Use `utf8mb4`.
+- Respect existing primary keys, unique keys, indexes, and foreign-key rules in `wappsDumps.sql`.
+- Many user-owned tables use `UserID` and database-level cascading deletes to `UsersT`.
+- `UserSequenceT` supports user-scoped identifiers used by several WA modules.
+- Do not invent or rename database columns without checking every route and frontend consumer.
+- Family Tree relationships must be handled according to the actual Family Tree schema and route logic; do not assume every logical Family Tree relationship is enforced by a SQL foreign key.
+- Treat `wappsDumps.sql` as the schema reference before writing SQL.
 
 ---
 
-## Important Notes for Contributors
+## 6. Budget Application
 
-1. **Always use `withTransaction()`** for multi-step operations (INSERT + UPDATE)
-2. **FK constraints are in place with CASCADE rules**; rely on database-level cascading deletes for referential integrity
-3. **Date handling**: Accept YYYY-MM-DD from frontend; store as DATE; return as YYYY-MM-DD string
-4. **User-Specific IDs**: Always use `getNextUserSpecificID(userId, tableName)` to populate User*ID columns (e.g., UserWeightID, UserActivityID); auto-increment PKs are assigned by MySQL
-5. **Validation**: Always validate input with express-validator before DB queries
-6. **Error Messages**: Append `(be)` to backend-generated error messages
-7. **Token Security**: Never log token values; always sanitize in error messages
-8. **CORS**: Review allowed origins before deployment
-9. **ETF Caching**: `/etf/compare` endpoint caches results per (userId, category) for 60 minutes; use `?nocache=true` during testing
-10. **ETF API Keys**: Tiingo, Finnhub, Polygon keys required in `.env`; validate via Polygon in symbol POST request
+The Budget application is implemented through `routes/budget.js`, Budget HTML pages, and the Budget tables in `wappsDumps.sql`.
+
+The current schema covers:
+
+- Money/accounts
+- Investments
+- Income
+- Outgoing items
+- Descriptions
+- Recurrence definitions
+- Weekly recurrence days
+- Monthly recurrence days
+- Loans
+- Credit/debit cards
+- Lease/rent obligations
+- Subscriptions
+- Estimated allowances
+
+Budget changes must preserve:
+
+- Per-user data isolation through `UserID`
+- Existing recurrence behavior
+- Existing handling of active/inactive records
+- Existing credit-card payment policy and related fields
+- Existing date and amount semantics
+- MySQL 5.5 compatibility
+
+Do not replace the existing Budget schema with a generic single `BudgetsT` table.
 
 ---
 
-## File Structure Overview
+## 7. Family Tree Application
 
+The Family Tree application is implemented through `routes/familyTree.js`, Family Tree HTML pages, and the Family Tree tables in `wappsDumps.sql`.
+
+The current schema includes support for:
+
+- Family trees
+- People
+- People associated with trees
+- Users associated with trees
+- Parents
+- Partners
+- Events
+- People associated with events
+- Contacts
+- Images
+- Notifications
+- Family Tree activity
+- Person merge operations
+- Archived records
+
+Family Tree work must preserve existing ownership, relationship, merge, archive, event, notification, and image behavior.
+
+Profile/image uploads use Family Tree-specific multipart handling rather than the general no-file multipart middleware in `server.js`.
+
+---
+
+## 8. Authentication and Security
+
+- JWT tokens are used for authenticated API requests.
+- Protected frontend calls send:
+
+```http
+Authorization: Bearer <token>
 ```
-root/
-├── server.js              # Express app setup, middleware, route mounting
-├── dbConnection.js        # MySQL pool, getNextUserSpecificID()
-├── logger.js              # Winston logger config
-├── utils.js               # handleDbError(), withTransaction()
-├── send_email.js          # Email service
-├── hash.js                # Password hashing utility (one-off)
-├── testConnection.js      # DB connection test
-├── debug_etf_compare.js   # ETF /compare endpoint debugging script
-├── .env                   # Secrets (not in repo)
-├── package.json           # Dependencies
+
+- Passwords must be hashed with bcrypt.
+- Secrets and API credentials belong in environment variables, never committed source files.
+- Never log passwords, JWT tokens, API keys, database passwords, or other secrets.
+- Always enforce `UserID` ownership in routes that read or modify user-specific data.
+- Validate user-controlled input before SQL execution.
+- Use parameterized SQL; do not concatenate untrusted input into queries.
+- Preserve current CORS restrictions unless a deployment change requires an intentional update.
+
+---
+
+## 9. Transactions and Database Access
+
+Use the existing database helpers and patterns in the project.
+
+For operations that must succeed or fail as one unit, use a transaction. Examples include:
+
+- Parent + child inserts
+- Multi-table Budget operations
+- Multi-table Family Tree changes
+- Merge/archive operations
+- Weight entries with activity mappings
+
+Do not partially commit a multi-step operation that would leave inconsistent data.
+
+---
+
+## 10. Frontend Standards
+
+### HTML pretty-formatting requirement
+
+**All HTML files must use pretty formatting.**
+
+When creating or modifying an `.html` file:
+
+- Use consistent indentation throughout the entire file.
+- Prefer **2 spaces** per indentation level unless the file already has another consistent project convention.
+- Put nested elements on separate, logically readable lines.
+- Indent child elements under their parent elements.
+- Keep attributes readable; wrap unusually long attribute sets when useful.
+- Format embedded `<style>` and `<script>` blocks so CSS and JavaScript are readable.
+- Do **not** minify HTML, CSS, or JavaScript in source files.
+- Do **not** collapse a page into long single-line markup.
+- After editing an HTML file, format the **whole file**, not just the newly inserted section.
+- Preserve behavior while formatting; pretty formatting must not change IDs, names, event bindings, URLs, form fields, or JavaScript behavior.
+
+Readable source is a project requirement.
+
+### Frontend conventions
+
+- Preserve the visual design of the page unless a redesign is requested.
+- Reuse existing WA header, navigation, button, panel, and footer patterns where practical.
+- Use `window.location.origin` or the project's existing base-URL pattern rather than hard-coding a deployment host unless required.
+- Keep authenticated API calls consistent with the existing token mechanism.
+- Validate important input in the frontend for usability, but treat backend validation as authoritative.
+- Keep page names and capitalization consistent with existing links.
+
+---
+
+## 11. Backend Coding Standards
+
+- Follow the existing route/module style before introducing a new pattern.
+- Use `async/await`.
+- Use parameterized `mysql2` queries.
+- Validate request parameters and body values.
+- Return suitable HTTP status codes.
+- Keep error handling consistent with the project.
+- Use transactions for multi-step database mutations.
+- Avoid duplicating utilities already provided by shared modules.
+- Keep routes user-scoped where the underlying records are user-owned.
+- Update `server.js` when adding a new route module.
+- Update the SQL dump/documentation when schema changes are made.
+
+---
+
+## 12. Current Package Baseline
+
+Current `package.json` identifies WonderfulApps version `1.0.0`.
+
+Important installed dependencies include:
+
+| Package | Current package.json value |
+|---|---:|
+| Express | `^5.1.0` |
+| mysql2 | `^3.14.1` |
+| jsonwebtoken | `^9.0.2` |
+| bcrypt | `^6.0.0` |
+| express-validator | `^7.2.1` |
+| cors | `^2.8.5` |
+| dotenv | `^16.5.0` |
+| axios | `^1.13.5` |
+| multer | `^2.0.1` |
+| winston | `^3.17.0` |
+| morgan | `^1.10.0` |
+| resend | `^6.4.2` |
+| sharp | `0.33.5` |
+| yahoo-finance2 | `^2.13.4` |
+| @aws-sdk/client-s3 | `3.750.0` |
+
+Do not rely on older documentation for dependency versions; check `package.json`.
+
+---
+
+## 13. File Structure – High-Level
+
+```text
+wonderfulApp/
+├── server.js
+├── dbConnection.js
+├── utils.js
+├── logger.js
+├── morgan.js
+├── send_email.js
+├── r2Storage.js
+├── package.json
+├── package-lock.json
+├── wappsDumps.sql
+├── CLAUDE.md
+├── TechSummary.md
 ├── routes/
-│   ├── users.js           # /users (register, login, logout)
-│   ├── weights.js         # /weights (CRUD + range delete)
-│   ├── activities.js       # /activities (CRUD)
-│   ├── weightActivities.js # /weightActivities (mapping)
-│   ├── interestEarned.js   # /interestEarned (CRUD)
-│   ├── etf.js             # /etf (category, symbol, compare CRUD + Tiingo/Finnhub proxies)
-│   ├── track.js           # /track (analytics)
-│   └── geocode.js         # /geocode (reverse geocoding proxy)
+│   ├── activities.js
+│   ├── budget.js
+│   ├── etf.js
+│   ├── familyTree.js
+│   ├── geocode.js
+│   ├── interestEarned.js
+│   ├── track.js
+│   ├── users.js
+│   ├── weightActivities.js
+│   └── weights.js
 ├── middleware/
-│   ├── auth.js            # JWT verification
-│   └── handleValidationErrors.js
 ├── httpdocs/
-│   ├── index.html         # Splash screen
-│   ├── home.html          # Main app hub
-│   ├── login.html         # Login form
-│   ├── register.html      # Registration form
-│   ├── Weights.html       # Weight tracking UI
-│   ├── Activities.html    # Activity management UI
-│   ├── InterestEarned.html # Interest calculator
-│   ├── amortization.html  # Loan calculator
-│   ├── etf.html           # ETF comparison & analysis hub
-│   ├── etfSymbol.html     # Add/manage ETF symbols
-│   ├── etfCategory.html   # Manage ETF categories
-│   ├── etfCompare.html    # ETF performance comparison table
-│   ├── etfActivity.html   # ETF research & activity log
-│   ├── etfAPItest.html    # ETF API testing & debugging tool
-│   ├── propertyInfo.html  # Property research tools
-│   ├── track.html         # Analytics dashboard
-│   ├── TownNotice.html    # Geolocation alerts
-│   ├── ContactUs.html     # Contact form
-│   ├── sw.js              # Service worker (PWA)
-│   ├── manifest.json      # PWA manifest
-│   └── js/
-│       └── confetti.js    # Celebration animation
+├── docs/
 ├── logs/
-│   ├── error.log          # Error-only logs
-│   └── combined.log       # All logs
-└── wappsDump.sql          # Database schema (ground truth)
+└── skills/
 ```
 
 ---
 
-## Version History
+## 14. Change Procedure
 
-- **Current**: Node 18+, Express 4.18.2, MySQL 5.5–8.0 compatible
-- **Last Updated**: [Current Date]
-- **Maintainers**: MPG Jr and team
+Before changing a feature:
+
+1. Identify the frontend page(s).
+2. Identify the API route(s).
+3. Identify the relevant database table(s).
+4. Check `wappsDumps.sql` for exact names, data types, keys, and constraints.
+5. Check how `UserID` ownership is enforced.
+6. Check whether the operation needs a transaction.
+7. Implement the smallest safe change.
+8. Pretty-format all modified HTML files.
+9. Verify all links, IDs, field names, route names, and API payload names.
+10. Test locally.
+11. Update `wappsDumps.sql` after an intentional schema change.
+12. Update `CLAUDE.md` and `TechSummary.md` when architecture or development standards change.
+
+---
+
+## 15. Important “Do Not” Rules
+
+- Do not invent database table or column names.
+- Do not assume an old example schema is current.
+- Do not remove fields merely because their purpose is not immediately obvious.
+- Do not change URL or API naming casually.
+- Do not weaken authentication or per-user filtering.
+- Do not expose secrets in source code or logs.
+- Do not add MySQL features incompatible with the deployed database without first changing the database platform.
+- Do not minify or poorly format source HTML.
+- Do not replace a multi-table implemented feature with a simplified example design.
+- Do not modify unrelated functionality while completing a focused task.
 
 ---
 

@@ -1,1152 +1,575 @@
-# TechSummary.md – WonderfulApps Architecture & Onboarding Guide
+# TechSummary.md – WonderfulApps Architecture & Technical Summary
+
+**Last updated:** September 14, 2026  
+**Project:** WonderfulApps (WA)  
+**Database reference:** `wappsDumps.sql`
+
+---
 
 ## Executive Summary
 
-**WonderfulApps** is a personal finance and health-tracking PWA built with:
-- **Frontend**: Vanilla JavaScript + HTML/CSS (PWA-ready, service worker, confetti animations)
-- **Backend**: Node.js/Express with JWT auth
-- **Database**: MySQL 5.5–8.0 compatible
-- **Deployment**: Render (remote), Local Docker (dev)
+WonderfulApps is a Node.js/Express web application and PWA containing multiple functional applications behind a shared user and authentication system.
 
-The app tracks weight/activities, calculates loan amortization, verifies interest earned, and researches properties with geolocation alerts.
+The current system includes:
 
----
+- Weight and activity tracking
+- Interest earned records/calculations
+- ETF research and tracking
+- Usage analytics
+- Property/geolocation tools
+- Amortization and utility pages
+- Contact/email functionality
+- **A multi-table Budget application**
+- **A multi-table Family Tree application**
 
-## 1. Core Architecture Pattern
-
-### Pattern: Layered MVC-Adjacent Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│      Frontend (httpdocs/*.html)             │
-│  - Vanilla JS + Canvas/Confetti             │
-│  - LocalStorage (token, settings)           │
-│  - Service Worker (offline-first cache)     │
-└────────────────────┬────────────────────────┘
-                     │ REST API + JWT
-┌────────────────────▼────────────────────────┐
-│   Middleware Layer (middleware/*.js)        │
-│  - CORS, JSON parsing, Auth verification    │
-│  - Error handling, Morgan logging           │
-└────────────────────┬────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────┐
-│   Route Layer (routes/*.js)                 │
-│  - 8 routers: users, weights, activities... │
-│  - Input validation, business logic         │
-└────────────────────┬────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────┐
-│   Data Access Layer (dbConnection.js)       │
-│  - MySQL2/promise pool                      │
-│  - Transaction management (withTransaction) │
-│  - User-specific ID generation              │
-└────────────────────┬────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────┐
-│   Database (MySQL 5.5–8.0)                  │
-│  - 9 core tables (Users, Weights, etc.)     │
-│  - Foreign keys with ON DELETE CASCADE      │
-│  - UserSequenceT for ID generation          │
-└─────────────────────────────────────────────┘
-```
-
-### Why This Pattern?
-- **Separation of concerns**: Each layer has single responsibility
-- **Testability**: Routes and data layer can be mocked
-- **Scalability**: Easy to add new routes without touching core
-- **Security**: Auth middleware sits at entrance to protected routes
+The September 14, 2026 SQL dump contains **38 tables**, including **13 Budget tables** and **14 Family Tree tables**.
 
 ---
 
-## 2. Key Data Flows
+## 1. Technology Stack
 
-### Flow 1: User Authentication (Login)
-```
-User Input (login.html form)
-  ↓
-POST /users/login { username, password }
-  ↓
-Route Handler:
-  1. Validate input (express-validator)
-  2. Query UsersT for username
-  3. bcrypt.compare(password, hash)
-  ↓
-SUCCESS: Sign JWT { userId, username, expiresIn: 8h }
-         Response: { message, token }
-  ↓
-Frontend: localStorage.setItem('token', token)
-          Redirect to home.html
-```
+### Frontend
 
-### Flow 2: Adding a Weight Entry (Typical Data Operation)
-```
-User Input (Weights.html form)
-  ↓
-POST /weights { DateWeight, Weight, Activities[] }
-  ↓
-Middleware:
-  1. CORS check
-  2. JSON parse
-  3. Auth: extract token, verify JWT
-  ↓
-Route Handler (weights.js):
-  1. Validate fields (date format, weight range, activities unique)
-  2. Extract userId from token
-  ↓
-withTransaction():
-  1. BEGIN TRANSACTION
-  2. INSERT WeightsT (DateWeight, Weight, UserID, UserWeightID)
-  3. FOR each Activity in Activities[]:
-     a. SELECT from ActivitiesT (or create if new)
-     b. INSERT WeightActivitiesT (WeightID, ActivityID, UserID)
-  4. COMMIT
-  ↓
-SUCCESS: Response { success: true, WeightID, UserWeightID }
-  ↓
-Frontend: Trigger confetti animation
-          Refresh weight list (fetchAndRenderData)
-```
+- HTML5
+- CSS
+- Vanilla JavaScript
+- PWA service worker and manifest
+- Browser `localStorage` for client-side state such as authentication tokens where currently used
 
-### Flow 3: Fetching Weight Data with Filters
-```
-User selects date range (Weights.html modal)
-  ↓
-GET /weights?startDate=2025-05-01&endDate=2025-06-01
-  ↓
-Route Handler:
-  1. Validate date format
-  2. Extract userId from token
-  3. Query: SELECT WeightsT WHERE UserID=? AND DateWeight BETWEEN ? AND ?
-  4. Parallel fetch: WeightActivitiesT, ActivitiesT
-  ↓
-Response: [
-  { WeightID, DateWeight, Weight, UserWeightID, Activities: [...] }
-]
-  ↓
-Frontend:
-  1. Sort data by DateWeight
-  2. Calculate weight change (delta)
-  3. Color-code: red (decrease), green (increase), blue (no change)
-  4. Render table + SVG chart
-```
+### Backend
 
-### Flow 4: Analytics Tracking
-```
-User navigates to any page
-  ↓
-Frontend DOMContentLoaded:
-  1. POST /track/log/page { page: pathname }
-  ↓
-Route Handler:
-  INSERT TrackUsageT (UserID, Page, Action='View', Timestamp)
-  ↓
-On page unload:
-  1. Calculate duration (Date.now() - startTime)
-  2. POST /track/log/time-spent { page, duration }
-  ↓
-GET /track/stats:
-  1. Aggregate: COUNT views, MAX duration, AVG time spent
-  2. Group by page, by user, by date
-  3. Return tables for dashboard
-```
+- Node.js
+- Express `^5.1.0`
+- `mysql2` `^3.14.1`
+- `express-validator` `^7.2.1`
+- JWT authentication via `jsonwebtoken` `^9.0.2`
+- bcrypt `^6.0.0`
+- Multer `^2.0.1`
+- Morgan `^1.10.0`
+- Winston `^3.17.0`
 
-### Flow 5: ETF Portfolio Comparison (Multi-API Aggregation)
-```
-User navigates to etfCompare.html
-  ↓
-Frontend: GET /etf/category (retrieve user's categories)
-          GET /etf/symbol (retrieve user's ETF symbols)
-  ↓
-User selects category + clicks "Compare"
-  ↓
-Frontend: GET /etf/compare?category=Gold&rows=10&sortBy=YTD
-  ↓
-Route Handler (routes/etf.js):
-  1. Check cache (60-min TTL per userId + category)
-     IF cached & !nocache → return cached data
-  ↓
-  2. Query etfSymbolT filtered by category
-     SELECT symbol, name, listDate FROM etfSymbolT WHERE UserID=? AND category=?
-  ↓
-  3. Fetch TIINGO data for all symbols
-     FOR each symbol:
-       → axios.get(https://api.tiingo.com/tiingo/daily/{symbol}/prices)
-       → Map date → { price, adjPrice }
-  ↓
-  4. Enrich with Finnhub real-time quotes (if today is trading day)
-     FOR each symbol:
-       → axios.get(https://finnhub.io/api/v1/quote?symbol={symbol})
-       → Use current price if available
-  ↓
-  5. Calculate returns for periods: YTD, 1W, 1M, 1Y, 3Y, 5Y
-     CAGR formula for multi-year: (EndPrice / StartPrice)^(1/Years) - 1
-     Simple return for ≤1 year: (EndPrice - StartPrice) / StartPrice
-  ↓
-  6. Sort results by requested metric (default YTD desc)
-     Calculate movement ranking (position change from past to current)
-  ↓
-  7. Cache result for 60 minutes
-  ↓
-Response: {
-  current: [ { symbol, name, price, returns: { YTD, 1Y, 5Y, ... }, movement } ],
-  past:    [ { symbol, name, price, returns: { YTD, 1Y, 5Y, ... } } ]
-}
-  ↓
-Frontend (etfCompare.html):
-  1. Render comparison table (current rankings)
-  2. Highlight movement indicators (↑ gained rank, ↓ lost rank)
-  3. Color-code returns (green positive, red negative)
-  4. Offer sort options (by YTD, 1Y, 3Y, 5Y, etc.)
+### Supporting services/libraries
+
+- Axios `^1.13.5`
+- Resend `^6.4.2`
+- Yahoo Finance 2 `^2.13.4`
+- AWS S3 SDK `3.750.0`
+- S3 request presigner `3.750.0`
+- Sharp `0.33.5`
+- Dotenv `^16.5.0`
+
+### Database
+
+- MySQL
+- Current SQL dump was generated from MySQL **5.5.62**
+- Schema uses InnoDB and `utf8mb4`
+- Development environments may use newer MySQL, but application SQL must remain compatible with the deployed database unless an intentional migration occurs
+
+---
+
+## 2. High-Level Architecture
+
+```text
+Browser / PWA
+    |
+    | HTML + CSS + JavaScript
+    | JSON / multipart HTTP requests
+    | Authorization: Bearer <JWT>
+    v
+Express server (server.js)
+    |
+    +-- middleware
+    |     +-- CORS
+    |     +-- JSON / URL-encoded parsing
+    |     +-- multipart handling
+    |     +-- logging
+    |     +-- authentication as required by routes
+    |
+    +-- routes/
+    |     +-- users
+    |     +-- weights
+    |     +-- activities
+    |     +-- weightActivities
+    |     +-- interestEarned
+    |     +-- etf
+    |     +-- budget
+    |     +-- familyTree
+    |     +-- track
+    |     +-- geocode
+    |
+    +-- shared utilities / database helpers
+    |
+    v
+MySQL
+    |
+    +-- 38 current tables
+
+Family Tree image/file workflow may also use:
+Express -> r2Storage.js -> S3-compatible object storage
 ```
 
 ---
 
-## 3. Important Dependencies
+## 3. Server Routing
 
-### Critical (App Cannot Run Without)
-| Package | Version | Why | Used Where |
-|---------|---------|-----|-----------|
-| `express` | ^4.18.2 | Web framework | server.js, routes/* |
-| `mysql2/promise` | ^3.6.5 | DB driver | dbConnection.js |
-| `jsonwebtoken` | ^9.0.2 | JWT signing | routes/users.js, middleware/auth.js |
-| `bcrypt` | ^5.1.1 | Password hashing | routes/users.js, hash.js |
-| `dotenv` | ^16.3.1 | Env var loading | All files via require() |
+Current `server.js` mounts:
 
-### Important (Core Features Depend On)
-| Package | Version | Why | Used Where |
-|---------|---------|-----|-----------|
-| `express-validator` | ^7.3.1 | Input validation | routes/* |
-| `cors` | ^2.8.5 | Cross-origin requests | server.js |
-| `morgan` | ^1.10.0 | HTTP request logging | server.js |
-| `winston` | ^3.11.0 | Error/info logging | logger.js |
-| `multer` | ^1.4.5-lts.1 | File upload (future) | server.js |
+| API prefix | Module | Functional area |
+|---|---|---|
+| `/users` | `routes/users.js` | Registration/login/user functions |
+| `/weights` | `routes/weights.js` | Weight records |
+| `/activities` | `routes/activities.js` | Activity definitions |
+| `/weightActivities` | `routes/weightActivities.js` | Weight/activity relationships |
+| `/interestEarned` | `routes/interestEarned.js` | Interest records |
+| `/etf` | `routes/etf.js` | ETF features |
+| `/budget` | `routes/budget.js` | Budget application |
+| `/familytree` | `routes/familyTree.js` | Family Tree application |
+| `/track` | `routes/track.js` | Usage analytics |
+| `/api/geocode` | `routes/geocode.js` | Geocoding proxy |
 
-### Supporting (PWA & UX)
-| Package | Version | Why | Used Where |
-|---------|---------|-----|-----------|
-| `canvas-confetti` | @1.9.3 (CDN) | Celebration animation | httpdocs/js/confetti.js |
-| `dompurify` | 2.3.10 (CDN) | Input sanitization | httpdocs/propertyInfo.html |
-| `resend` | ^3.x | Email via HTTP API (replaced nodemailer; Render blocked SMTP Sep 2025) | send_email.js, contact forms |
+`POST /send-email` is defined directly in `server.js`.
 
-### External APIs
-| Service | Purpose | Used Where | Notes |
-|---------|---------|-----------|-------|
-| Tiingo | Historical ETF pricing & OHLC data | routes/etf.js (/etf/compare, /etf/tiingo-proxy) | Requires `TIINGO_API_KEY` in .env |
-| Finnhub | Real-time ETF quotes on trading days | routes/etf.js (enrichData function) | Requires `FINNHUB_API_KEY` in .env |
-| Polygon | ETF metadata, name, list_date validation | routes/etf.js (/etf/symbol POST) | Requires `POLYGON_API_KEY` in .env |
-| Nominatim (OSM) | Reverse geocoding | TownNotice.html, geocode.js | — |
-| NOAA Flood Maps | Property research | propertyInfo.html | — |
-| Zillow | Property info | propertyInfo.html | — |
-| CrimeGrade | Crime statistics | propertyInfo.html | — |
-| Resend | Transactional & contact emails | ContactUs.html, send_email.js | API-based (HTTPS); no SMTP ports required; uses `RESEND_API_KEY` in .env |
+The root `/` serves `httpdocs/home.html`.
+
+HTML responses are configured for revalidation (`no-cache`) so frontend development changes are not hidden by ordinary static caching.
 
 ---
 
-## 4. Feature Extension Path
+## 4. Database Inventory
 
-### Adding a New Page (e.g., "Budget Tracker")
+### 4.1 Core user/system (4)
 
-#### Step 1: Create Frontend (httpdocs/)
-```html
-<!-- httpdocs/Budget.html -->
-<!DOCTYPE html>
-<html>
-<head>...</head>
-<body>
-  <h1>Budget Tracker</h1>
-  <form id="budgetForm">
-    <input type="month" id="month" required>
-    <input type="number" id="amount" required>
-    <button>Save</button>
-  </form>
-  <script>
-    const BASE_URL = window.location.origin;
-    const token = localStorage.getItem('token');
-    document.getElementById('budgetForm').onsubmit = async (e) => {
-      e.preventDefault();
-      const response = await fetch(`${BASE_URL}/budgets`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month, amount })
-      });
-      const data = await response.json();
-      // Handle response
-    };
-  </script>
-</body>
-</html>
+| Table | General purpose |
+|---|---|
+| `UsersT` | User accounts |
+| `LoginVerificationT` | Login/verification workflow data |
+| `UserSequenceT` | Per-user sequence values |
+| `TrackUsageT` | Usage/page tracking |
+
+### 4.2 Weight and activity (3)
+
+| Table | General purpose |
+|---|---|
+| `WeightsT` | Weight entries |
+| `ActivitiesT` | User activities |
+| `WeightActivitiesT` | Links weights to activities |
+
+### 4.3 Interest (1)
+
+| Table | General purpose |
+|---|---|
+| `InterestEarnedT` | Interest-earned data |
+
+### 4.4 ETF (3)
+
+```text
+etfActivityT
+etfCategoryT
+etfSymbolT
 ```
 
-#### Step 2: Create Database Table
-```sql
-CREATE TABLE BudgetsT (
-  BudgetID INT AUTO_INCREMENT PRIMARY KEY,
-  UserID INT NOT NULL,
-  Month VARCHAR(7),        -- YYYY-MM format
-  Amount DECIMAL(10,2),
-  UserBudgetID INT,        -- User-specific sequence
-  CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_user (UserID)
-);
+### 4.5 Budget (13)
 
-INSERT INTO UserSequenceT (UserID, TableName, NextID) VALUES (?, 'BudgetsT', 1);
+```text
+BudgetCardT
+BudgetDescriptionT
+BudgetEstimateAllowanceT
+BudgetInT
+BudgetLeaseRentT
+BudgetLoanT
+BudgetMyInvestmentT
+BudgetMyMoneyT
+BudgetOutT
+BudgetRecurrenceMonthlyDayT
+BudgetRecurrenceT
+BudgetRecurrenceWeeklyDayT
+BudgetSubscriptionT
 ```
 
-#### Step 3: Create Route (routes/budgets.js)
-```javascript
-const express = require('express');
-const { body, validationResult } = require('express-validator');
-const router = express.Router();
-const { pool, getNextUserSpecificID } = require('../dbConnection');
-const auth = require('../middleware/auth');
-const { handleDbError, withTransaction } = require('../utils');
+### 4.6 Family Tree (14)
 
-// GET all budgets for user
-router.get('/', auth, async (req, res) => {
-  const userId = req.user.userId;
-  try {
-    const [budgets] = await pool.query(
-      'SELECT * FROM BudgetsT WHERE UserID = ? ORDER BY Month DESC',
-      [userId]
-    );
-    res.json(budgets);
-  } catch (err) {
-    handleDbError(err, res, 'Error fetching budgets');
-  }
-});
-
-// POST new budget
-router.post('/',
-  auth,
-  [
-    body('month').matches(/^\d{4}-\d{2}$/).withMessage('Month must be YYYY-MM(be)'),
-    body('amount').isFloat({ min: 0 }).withMessage('Amount must be positive(be)')
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ error: errors.array()[0].msg });
-
-    const userId = req.user.userId;
-    const { month, amount } = req.body;
-
-    try {
-      await withTransaction(async (connection) => {
-        const userBudgetId = await getNextUserSpecificID(userId, 'BudgetsT', 'UserBudgetID');
-        const [result] = await connection.query(
-          'INSERT INTO BudgetsT (UserID, Month, Amount, UserBudgetID) VALUES (?, ?, ?, ?)',
-          [userId, month, amount, userBudgetId]
-        );
-        res.status(201).json({ message: 'Budget created', id: result.insertId });
-      });
-    } catch (err) {
-      handleDbError(err, res, 'Error creating budget');
-    }
-  }
-);
-
-module.exports = router;
+```text
+FamilyTreeT
+FTContactT
+FTEventPersonT
+FTEventT
+FTFamilyTreeActivityT
+FTFamilyTreePersonT
+FTFamilyTreeUserT
+FTImageT
+FTNotificationT
+FTParentT
+FTPartnerT
+FTPersonMergeT
+FTPersonT
+FTRecordArchiveT
 ```
 
-#### Step 4: Register Route in server.js
-```javascript
-const budgetsRoutes = require('./routes/budgets');
-app.use('/budgets', budgetsRoutes);
-```
-
-#### Step 5: Add Link to home.html
-```html
-<a href="Budget.html"><button>Budget Tracker</button></a>
-```
+**Total current tables: 38**
 
 ---
 
-## 5. Core Logical Flow: Weight Entry to Database
+## 5. Database Relationship Strategy
 
-### Complete Request Lifecycle
+The SQL dump contains database-enforced foreign keys for many core, Budget, ETF, login, tracking, weight, and activity relationships.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ 1. USER INITIATES (Weights.html)                        │
-├─────────────────────────────────────────────────────────┤
-│ User fills form:                                        │
-│  - DateWeight: "2025-05-15"                             │
-│  - Weight: "175.5"                                       │
-│  - Activities: ["Running", "Yoga"]                       │
-│ Clicks "SAVE" button                                    │
-│ Client-side validation: Check date, weight range       │
-│ Payload construction: { DateWeight, Weight, Activities }│
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│ 2. FRONTEND NETWORK REQUEST                             │
-├─────────────────────────────────────────────────────────┤
-│ fetch(`${BASE_URL}/weights`, {                          │
-│   method: 'POST',                                       │
-│   headers: {                                            │
-│     'Authorization': 'Bearer eyJhbGc...',               │
-│     'Content-Type': 'application/json'                  │
-│   },                                                    │
-│   body: JSON.stringify({...})                           │
-│ })                                                      │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP POST
-┌────────────────────▼────────────────────────────────────┐
-│ 3. SERVER RECEIVES (server.js)                          │
-├─────────────────────────────────────────────────────────┤
-│ Express middleware stack:                               │
-│  a) CORS middleware: Check origin (localhost:8080 OK)  │
-│  b) JSON parser: Parse body                             │
-│  c) Morgan: Log request                                 │
-│  d) Static files: Not applicable                        │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│ 4. ROUTING & MOUNTING (server.js)                       │
-├─────────────────────────────────────────────────────────┤
-│ POST /weights matches route in weights.js              │
-│ app.use('/weights', weightsRoutes)                      │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│ 5. ROUTE HANDLER (routes/weights.js POST /)             │
-├─────────────────────────────────────────────────────────┤
-│ a) Validation Chains:                                   │
-│    - DateWeight: isISO8601() → "must be YYYY-MM-DD"    │
-│    - Weight: isFloat(1,1000) → "must be 1-1000"        │
-│    - Activities: isArray(0,5) → "max 5 activities"     │
-│                                                         │
-│ b) validationResult(req):                               │
-│    IF errors: return 400 { error: "..." }               │
-│                                                         │
-│ c) Extract from req.body:                               │
-│    { DateWeight, Weight, Activities }                   │
-│                                                         │
-│ d) Auth middleware (injected earlier):                  │
-│    - Extract token from Authorization header            │
-│    - Verify JWT signature with process.env.JWT_SECRET  │
-│    - Extract userId: req.user.userId = decoded.userId  │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│ 6. BUSINESS LOGIC (routes/weights.js)                   │
-├─────────────────────────────────────────────────────────┤
-│ a) Check unique activities:                             │
-│    activityNames = Activities.map(a => a.ActivityName)  │
-│    IF duplicates: return 400 { error: "not unique" }   │
-│                                                         │
-│ b) Prepare transaction:                                 │
-│    await withTransaction(async (connection) => {        │
-│      // All DB operations use 'connection', not pool     │
-│      // Auto-commit on success, auto-rollback on error   │
-│    })                                                   │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│ 7. DATABASE TRANSACTION (dbConnection.js)               │
-├─────────────────────────────────────────────────────────┤
-│ Step A: BEGIN TRANSACTION                               │
-│                                                         │
-│ Step B: Generate user-specific ID                       │
-│   userWeightID = await getNextUserSpecificID(            │
-│     userId, 'WeightsT', 'UserWeightID'                  │
-│   )                                                     │
-│   → Executes: UPDATE UserSequenceT SET NextID=NextID+1  │
-│   → Returns: NextID value (e.g., 42)                    │
-│                                                         │
-│ Step C: Insert weight                                   │
-│   INSERT INTO WeightsT                                  │
-│   (DateWeight, Weight, UserID, UserWeightID)            │
-│   VALUES ('2025-05-15', 175.5, 123, 42)                 │
-│   → Returns: WeightID (auto-increment, e.g., 1856)      │
-│                                                         │
-│ Step D: Process activities                              │
-│   FOR each activity in Activities:                      │
-│     D1: Check if activity exists                        │
-│         SELECT ActivityID FROM ActivitiesT              │
-│         WHERE Activity = 'Running' AND UserID = 123     │
-│                                                         │
-│     D2a: IF exists → use ActivityID                     │
-│     D2b: IF not exists → create new:                    │
-│           userActivityID = getNextUserSpecificID(...)   │
-│           INSERT INTO ActivitiesT                       │
-│           (Activity, UserID, UserActivityID)            │
-│           → Returns: ActivityID (e.g., 456)             │
-│                                                         │
-│     D3: Link weight to activity                         │
-│         INSERT INTO WeightActivitiesT                   │
-│         (WeightID, ActivityID, UserID)                  │
-│         VALUES (1856, 456, 123)                         │
-│                                                         │
-│ Step E: COMMIT TRANSACTION                              │
-│   All changes permanent; connection released            │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│ 8. RESPONSE (routes/weights.js)                         │
-├─────────────────────────────────────────────────────────┤
-│ res.status(201).json({                                  │
-│   success: true,                                        │
-│   message: 'Weight added successfully',                 │
-│   WeightID: 1856,                                       │
-│   UserWeightID: 42                                      │
-│ })                                                      │
-│                                                         │
-│ OR on error:                                            │
-│ res.status(400).json({                                  │
-│   error: 'Activities must be unique(be)'                │
-│ })                                                      │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP 201 + JSON
-┌────────────────────▼────────────────────────────────────┐
-│ 9. FRONTEND RESPONSE HANDLING (Weights.html)            │
-├─────────────────────────────────────────────────────────┤
-│ .then(response => response.json())                      │
-│   IF not response.ok:                                   │
-│     return response.json()                              │
-│     .then(errorData => throw new Error(...))            │
-│   ELSE:                                                 │
-│     return response.json()                              │
-│                                                         │
-│ .then(data => {                                         │
-│   IF data.success:                                      │
-│     - triggerConfetti() ✨                              │
-│     - alert('Weight Saved!')                            │
-│     - addWeightModal.style.display = 'none'             │
-│     - fetchAndRenderData() (refresh table)              │
-│ })                                                      │
-│                                                         │
-│ .catch(error => {                                       │
-│   errorMessage.textContent = error.message              │
-│   (Display to user in modal)                            │
-│ })                                                      │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│ 10. UI UPDATE & REFRESH (Weights.html)                  │
-├─────────────────────────────────────────────────────────┤
-│ fetchAndRenderData():                                   │
-│   - Fetch /weights (GET)                                │
-│   - Fetch /weightActivities (parallel)                  │
-│   - Sort data by DateWeight                             │
-│   - Calculate weight delta (change from previous)       │
-│   - Create table rows with color coding:                │
-│     • Decrease → #f3fa92 (yellow)                       │
-│     • Increase → #cdf9d6 (green)                        │
-│     • No change → #abc4f9 (blue)                        │
-│   - Render SVG line chart                               │
-│   - Display "Weight Saved!" summary                     │
-└─────────────────────────────────────────────────────────┘
-```
+Important patterns include:
+
+- Many user-owned tables reference `UsersT.UserID`.
+- Most such relationships use `ON DELETE CASCADE`.
+- `WeightActivitiesT` links `WeightsT` and `ActivitiesT`.
+- Budget recurrence day tables reference `BudgetRecurrenceT`.
+- ETF activity/category/symbol relationships are represented through their current keys and constraints.
+- `UserSequenceT` is deleted with its owning user.
+
+The Family Tree schema contains many logical relationship tables, but not every logical relationship is represented as a SQL foreign-key constraint in the current dump. Therefore:
+
+> Application code must not assume the database alone enforces all Family Tree relationship integrity.
+
+Family Tree mutations should be reviewed against `routes/familyTree.js` and the exact current schema.
 
 ---
 
-## 6. Development Hotspots
+## 6. Budget Subsystem
 
-### Most Central Files (Modify When Adding Features)
+The Budget application is a first-class WA module.
 
-| File | Reason | Frequency |
-|------|--------|-----------|
-| `server.js` | Route mounting, middleware setup | Per new route |
-| `routes/*.js` | Business logic, validation | Every feature |
-| `dbConnection.js` | ID generation, pool config | Rare |
-| `utils.js` | Error handling, transaction logic | Per route |
-| `middleware/auth.js` | JWT verification | Rare (stable) |
-| `httpdocs/home.html` | Navigation hub | Per new page |
-| `.env` | Config secrets | Setup only |
+### Main data domains
 
-### Most Actively Modified Files (During Development)
+- `BudgetMyMoneyT` – money/account records
+- `BudgetMyInvestmentT` – investment records
+- `BudgetInT` – income
+- `BudgetOutT` – outgoing items
+- `BudgetDescriptionT` – descriptions/categories
+- `BudgetRecurrenceT` – recurrence definition
+- `BudgetRecurrenceWeeklyDayT` – selected weekdays
+- `BudgetRecurrenceMonthlyDayT` – selected monthly days
+- `BudgetLoanT` – loans
+- `BudgetCardT` – credit/debit card records
+- `BudgetLeaseRentT` – lease/rent records
+- `BudgetSubscriptionT` – subscriptions
+- `BudgetEstimateAllowanceT` – estimated allowances
 
-| File | Why | Who Touches |
-|------|-----|-----------|
-| `routes/weights.js` | Weight tracking logic | Backend dev |
-| `httpdocs/Weights.html` | Weight UI, forms | Frontend dev |
-| `routes/activities.js` | Activity CRUD | Backend dev |
-| `routes/etf.js` | ETF CRUD, API comparisons | Backend/ETF dev |
-| `httpdocs/etf.html` | ETF hub (nav to other ETF pages) | Frontend dev |
-| `httpdocs/etfCompare.html` | ETF performance comparison UI | Frontend dev |
-| `routes/interestEarned.js` | Interest calculations | Feature dev |
-| `logger.js` | Debugging | Anyone |
-| `.env` | Local config | All devs |
+### Architectural notes
 
-### Testing Hot Zones
-
-### ✅ IMPORTANT: User-Specific ID Pattern (Dual-Key System)
-
-**Why?**
-- Isolate user data (user 1 has IDs 1–50, user 2 has IDs 1–50)
-- Enable user-friendly API routes (e.g., `/weights/:userWeightId`)
-- Prevent ID enumeration attacks
-
-**Active Usage:**
-- `WeightsT`: UserWeightID (populated by `getNextUserSpecificID`)
-- `ActivitiesT`: UserActivityID (populated by `getNextUserSpecificID`)
-- `InterestEarnedT`: UserIntErndID (populated by `getNextUserSpecificID`)
-- **Both** the global PK and user-scoped ID are used:
-  - PKs (WeightID, ActivityID, etc.) for joins and internal references
-  - User-scoped IDs for external API parameters and user-friendly URLs
-
-**Usage Pattern:**
-```javascript
-// When creating a weight entry:
-const userWeightID = await getNextUserSpecificID(userId, 'WeightsT', 'UserWeightID');
-await connection.query(
-  'INSERT INTO WeightsT (DateWeight, Weight, UserID, UserWeightID) VALUES (?,?,?,?)',
-  [dateWeight, weight, userId, userWeightID]  // Store BOTH WeightID (auto) and UserWeightID (manual seq)
-);
-
-// When fetching by user-facing ID:
-await pool.query(
-  'SELECT * FROM WeightsT WHERE UserWeightID = ? AND UserID = ?',
-  [userWeightID, userId]  // Query via user-scoped ID
-);
-
-// ALWAYS use getNextUserSpecificID for user-scoped tables:
-// - WeightsT → UserWeightID
-// - ActivitiesT → UserActivityID
-// - InterestEarnedT → UserIntErndID
-```
+- Budget data is user-scoped.
+- Many Budget tables cascade when the owning user is deleted.
+- Recurrence is normalized into dedicated recurrence tables.
+- The schema supports active/inactive records, dates, notes, and monetary values appropriate to each record type.
+- Credit-card handling has dedicated fields for statement balance, due date, minimum payment, optional alternative payment amount, and related policy choices.
+- New Budget work should extend the existing data model rather than introducing a generic replacement table.
 
 ---
 
-| Area | Test Priority | How |
-|------|----------------|----|
-| Authentication | **Critical** | POST /users/login with valid/invalid creds |
-| Weight operations | **Critical** | POST /weights, GET /weights with filters, DELETE /weights/range |
-| ETF category/symbol CRUD | **High** | POST /etf/category, /etf/symbol; GET, PUT, DELETE |
-| ETF compare query | **High** | GET /etf/compare with various categories, rows; verify caching (60min TTL) |
-| Activity linking | **High** | Verify WeightActivitiesT constraints (max 5) |
-| Transaction rollback | **High** | Simulate DB error mid-transaction |
-| Date format handling | **High** | Test YYYY-MM-DD parsing on MySQL 5.5 |
-| Token expiry | **Medium** | Wait 8+ hours or mock JWT expiry |
+## 7. Family Tree Subsystem
+
+The Family Tree application is also a first-class WA module and currently has a large dedicated backend route module.
+
+### Main data domains
+
+- `FamilyTreeT` – tree-level records
+- `FTPersonT` – people
+- `FTFamilyTreePersonT` – people associated with a tree
+- `FTFamilyTreeUserT` – users associated with a tree
+- `FTParentT` – parent relationships
+- `FTPartnerT` – partner relationships
+- `FTEventT` – events
+- `FTEventPersonT` – people associated with events
+- `FTContactT` – contact records
+- `FTImageT` – image metadata
+- `FTNotificationT` – notifications
+- `FTFamilyTreeActivityT` – activity/audit-style data
+- `FTPersonMergeT` – person-merge data
+- `FTRecordArchiveT` – archived records
+
+### Architectural notes
+
+- Family Tree operations are more relationally complex than the original WA modules.
+- Relationship integrity often depends on route logic in addition to SQL constraints.
+- Merge and archive features should be treated as data-integrity-sensitive operations.
+- Image/profile upload requests use Family Tree-specific multipart handling.
+- `r2Storage.js`, AWS S3-compatible libraries, presigned URLs, and `sharp` are present in the current project and support file/image workflows.
+- Family Tree HTML pages should be maintained consistently with the rest of WA.
 
 ---
 
-## 7. Onboarding Map: Request Flow
+## 8. Authentication Flow
 
-### Visual Request Journey
+Typical authenticated flow:
 
-```
-BROWSER (User Action)
-    │
-    ├─ User Input
-    │  └─ Form submission / Button click
-    │
-    ▼
-HTTP REQUEST (GET/POST/PUT/DELETE)
-    │
-    ├─ Headers: { Authorization: Bearer <token>, Content-Type: application/json }
-    ├─ Body: JSON payload (if POST/PUT)
-    │
-    ▼
-SERVER.JS (Express App)
-    │
-    ├─ Middleware Stack:
-    │  ├─ CORS (Check origin)
-    │  ├─ JSON Parser (Parse body)
-    │  ├─ Morgan (Log request)
-    │  └─ Static Files (Serve if applicable)
-    │
-    ▼
-ROUTE MATCHING
-    │
-    ├─ GET /weights → routes/weights.js GET /
-    ├─ POST /weights → routes/weights.js POST /
-    ├─ POST /users/login → routes/users.js POST /login
-    └─ ... (etc.)
-    │
-    ▼
-MIDDLEWARE/AUTH (Per Route)
-    │
-    ├─ Auth middleware (middleware/auth.js)
-    │  ├─ Extract Authorization header
-    │  ├─ Verify JWT
-    │  └─ Attach userId to req.user
-    │
-    ├─ Validation middleware (express-validator chains)
-    │  ├─ body(), param(), query() validators
-    │  ├─ Check validationResult()
-    │  └─ Return 400 if errors
-    │
-    ▼
-ROUTE HANDLER (routes/*.js)
-    │
-    ├─ Extract userId from req.user.userId
-    ├─ Extract/validate request data
-    ├─ Apply business logic
-    │
-    ▼
-DATABASE TRANSACTION (withTransaction)
-    │
-    ├─ BEGIN TRANSACTION
-    ├─ Execute queries on 'connection' object
-    ├─ Generate user-specific IDs (getNextUserSpecificID)
-    ├─ DB-enforced FK constraints with CASCADE
-    │
-    ├─ ON SUCCESS: COMMIT
-    │  └─ Return response { success: true, data }
-    │
-    ├─ ON ERROR: ROLLBACK
-    │  └─ Return error response { error: "message(be)" }
-    │
-    ▼
-HTTP RESPONSE
-    │
-    ├─ Status Code (200, 201, 400, 401, 404, 500)
-    ├─ JSON Body
-    │
-    ▼
-FRONTEND (Weights.html, Activities.html, etc.)
-    │
-    ├─ Parse response
-    ├─ Check status/error
-    │
-    ├─ ON SUCCESS:
-    │  ├─ triggerConfetti()
-    │  ├─ Update UI (refresh table)
-    │  └─ Clear modal/form
-    │
-    ├─ ON ERROR:
-    │  └─ Display error message in modal
-    │
-    ▼
-ANALYTICS (Optional)
-    │
-    ├─ POST /track/log/page (record page view)
-    ├─ beforeunload event (record time spent)
-    │
-    ▼
-USER SEES RESULT
-    │
-    └─ Confetti animation ✨ + success message
-      OR error toast
-
+```text
+User login
+   |
+   v
+POST /users/login
+   |
+   +-- validate credentials
+   +-- compare password using bcrypt
+   +-- issue JWT
+   |
+   v
+Browser stores token
+   |
+   v
+Protected request
+Authorization: Bearer <token>
+   |
+   v
+Auth middleware / route authorization
+   |
+   +-- establish UserID
+   +-- enforce ownership
+   v
+Database operation
 ```
 
-### Key Decision Points
+Security requirements:
 
-| Condition | Action |
-|-----------|--------|
-| No token? | Redirect to login.html |
-| Invalid token? | Middleware auth.js returns 401 |
-| Validation fails? | Route handler returns 400 with error |
-| DB query fails? | utils.js handleDbError() → 500 |
-| Duplicate activity? | Route handler catches, rollback, return 400 |
-| Success? | Return 200/201 + data |
+- Passwords are never stored in plaintext.
+- JWT secrets and other credentials remain in environment variables.
+- User-owned queries must be filtered/validated by `UserID`.
+- SQL must be parameterized.
+- Sensitive values must not be written to logs.
+- File/image access must respect the corresponding Family Tree/user authorization rules.
 
 ---
 
-## 8. Constraints to Respect
+## 9. Request Processing
 
-### ✅ CRITICAL: Foreign Key Constraints with Cascading Deletes
+A typical API request follows:
 
-**Reality:** All tables with parent references use `ON DELETE CASCADE ON UPDATE CASCADE`
-
-**Tables with FKs:**
-- ActivitiesT → UsersT
-- etfActivityT → UsersT, etfCategoryT, etfSymbolT
-- etfCategoryT → UsersT
-- etfSymbolT → etfCategoryT and UsersT
-- InterestEarnedT → UsersT
-- TrackUsageT → UsersT
-- UserSequenceT → UsersT
-- WeightActivitiesT → WeightsT, ActivitiesT, UsersT
-- WeightsT → UsersT
-
-**Impact:**
-- Deleting a user AUTOMATICALLY cascades to delete their weights, activities, interest records, etc. via database-level constraints
-- The database enforces referential integrity; no need for application-level cascade logic
-
-**Example: Delete Weight with Activities (No Manual Cascade Needed)**
-```javascript
-// ✅ CORRECT: FK constraints handle cascade automatically
-// If you delete a weight, WeightActivitiesT links are automatically removed by FK constraint
-DELETE FROM WeightsT WHERE WeightID = ? AND UserID = ?;
-// The ON DELETE CASCADE rule on WeightActivitiesT.WeightID automatically cleans up links
-
-// ✅ ALSO SAFE:
-// If you delete a user, all their records cascade-delete via FK chain:
-DELETE FROM UsersT WHERE UserID = ?;
-// Cascades → WeightsT, ActivitiesT, WeightActivitiesT, InterestEarnedT, etc.
+```text
+Browser
+  -> CORS
+  -> body parsing
+  -> multipart parsing when applicable
+  -> route
+  -> authentication/authorization
+  -> validation
+  -> database operation / transaction
+  -> JSON response
+  -> logging/error handling
 ```
 
-**When Adding New Tables:**
-```sql
--- ✅ DO THIS (include FK constraint with CASCADE)
-CREATE TABLE MyTable (
-  MyID INT AUTO_INCREMENT PRIMARY KEY,
-  UserID INT NOT NULL,
-  ActivityID INT NOT NULL,
-  INDEX idx_user (UserID),
-  CONSTRAINT fk_mytable_user FOREIGN KEY (UserID) REFERENCES UsersT(UserID) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_mytable_activity FOREIGN KEY (ActivityID) REFERENCES ActivitiesT(ActivityID) ON DELETE CASCADE ON UPDATE CASCADE
-);
+Family Tree multipart uploads are a special case: `server.js` bypasses the general no-file multipart parser for matching `/familytree/` multipart requests so the Family Tree route can use its own upload middleware.
 
--- ❌ DON'T DO THIS (missing cascade rules)
-CREATE TABLE MyTable (
-  MyID INT AUTO_INCREMENT PRIMARY KEY,
-  UserID INT NOT NULL,
-  CONSTRAINT fk_user FOREIGN KEY (UserID) REFERENCES UsersT(UserID)
-  -- Missing ON DELETE CASCADE!
-);
+---
+
+## 10. Transaction Guidance
+
+Transactions should be used whenever multiple writes form one logical operation.
+
+Important candidates include:
+
+- Weight plus activity-link inserts
+- Budget parent/recurrence/detail changes
+- Family Tree person/relationship changes
+- Merge operations
+- Archive operations
+- Multi-table deletes
+- Any operation where a partial write would create inconsistent state
+
+The transaction boundary should cover the complete logical unit of work.
+
+---
+
+## 11. HTML / Frontend Source Standard
+
+### Pretty formatting is mandatory
+
+All `.html` files in WonderfulApps must remain **pretty formatted and human-readable**.
+
+Required standard:
+
+- Consistent indentation throughout the file
+- Prefer 2 spaces per nesting level unless an existing page uses another consistent convention
+- Nested HTML tags on readable separate lines
+- Correct indentation of child elements
+- Readable attribute layout
+- Properly formatted embedded CSS
+- Properly formatted embedded JavaScript
+- No minified source HTML/CSS/JavaScript
+- No long single-line page markup
+- When an HTML page is edited, format the whole file before completion
+
+Pretty formatting is a source-maintenance requirement, not merely a cosmetic preference.
+
+Formatting must never change:
+
+- Element IDs
+- `name` attributes
+- form field values
+- route URLs
+- script behavior
+- event bindings
+- API payload names
+- CSS selectors relied upon by JavaScript
+
+---
+
+## 12. Frontend Design and API Contract
+
+General frontend rules:
+
+- Maintain the existing page appearance unless redesign is requested.
+- Reuse current WA layout and controls where appropriate.
+- Keep API URLs consistent with mounted backend routes.
+- Use JSON for normal API bodies.
+- Use multipart only where file upload requires it.
+- Send JWT bearer tokens on protected requests.
+- Keep dates in formats expected by the current routes/database.
+- Do not rename fields on one side of the API without updating every caller/consumer.
+
+---
+
+## 13. Current Package Baseline
+
+Current `package.json`:
+
+```text
+name: WonderfulApps
+version: 1.0.0
+main: server.js
+```
+
+Key dependency values:
+
+| Dependency | Version/spec |
+|---|---:|
+| `express` | `^5.1.0` |
+| `mysql2` | `^3.14.1` |
+| `jsonwebtoken` | `^9.0.2` |
+| `bcrypt` | `^6.0.0` |
+| `express-validator` | `^7.2.1` |
+| `cors` | `^2.8.5` |
+| `dotenv` | `^16.5.0` |
+| `axios` | `^1.13.5` |
+| `multer` | `^2.0.1` |
+| `morgan` | `^1.10.0` |
+| `winston` | `^3.17.0` |
+| `resend` | `^6.4.2` |
+| `rotating-file-stream` | `^3.2.6` |
+| `sharp` | `0.33.5` |
+| `yahoo-finance2` | `^2.13.4` |
+| `@aws-sdk/client-s3` | `3.750.0` |
+| `@aws-sdk/s3-request-presigner` | `3.750.0` |
+
+The current dependencies differ materially from older WA documentation. In particular, the project now uses Express 5.x, bcrypt 6.x, Multer 2.x, newer mysql2/axios/Resend packages, and AWS S3-compatible storage libraries.
+
+---
+
+## 14. Deployment and Environment
+
+`server.js` currently allows these CORS origins:
+
+```text
+http://localhost
+http://localhost:8080
+https://wapps.helioho.st
+https://wapps-ypez.onrender.com
+```
+
+Environment configuration should continue to hold:
+
+- database credentials
+- JWT secret
+- email/Resend credentials
+- external API credentials
+- object-storage credentials
+- deployment-specific settings
+
+Never place live secrets in committed HTML, JavaScript, Markdown, or SQL files.
+
+---
+
+## 15. Static Files and Caching
+
+`server.js` serves `httpdocs/` as the static frontend.
+
+Current behavior includes:
+
+- ordinary static assets may be cached
+- HTML is sent with `Cache-Control: no-cache`
+- service worker files are sent with no-cache behavior
+- manifest content type is explicitly handled
+
+This is intended to make HTML changes visible on normal refresh while allowing ordinary static asset caching.
+
+---
+
+## 16. Project Structure
+
+```text
+wonderfulApp/
+├── server.js
+├── dbConnection.js
+├── utils.js
+├── logger.js
+├── morgan.js
+├── send_email.js
+├── r2Storage.js
+├── package.json
+├── package-lock.json
+├── wappsDumps.sql
+├── CLAUDE.md
+├── TechSummary.md
+├── routes/
+│   ├── activities.js
+│   ├── budget.js
+│   ├── etf.js
+│   ├── familyTree.js
+│   ├── geocode.js
+│   ├── interestEarned.js
+│   ├── track.js
+│   ├── users.js
+│   ├── weightActivities.js
+│   └── weights.js
+├── middleware/
+├── httpdocs/
+├── docs/
+├── logs/
+└── skills/
 ```
 
 ---
 
-### ⚠️ CRITICAL: MySQL 5.5 Compatibility
+## 17. Development Checklist
 
-**Remote Host Limitation:** Provider uses MySQL 5.5.x with NO Performance Schema
+Before completing a code change:
 
-**Implications:**
-
-| Feature | MySQL 8.0 (Local) | MySQL 5.5 (Remote) | Action |
-|---------|-------------------|-------------------|--------|
-| JSON data type | ✅ | ❌ | Use VARCHAR + manual parsing |
-| GENERATED columns | ✅ | ❌ | Use triggers or app logic |
-| Window functions | ✅ | ❌ | Use application-level grouping |
-| Date/Time literals | ✅ | ✅ | Always use YYYY-MM-DD format |
-| AUTO_INCREMENT | ✅ | ✅ | Still supported |
-| TRANSACTIONS | ✅ | ✅ | Fully supported |
-| SSL/TLS | ✅ | ❌ | Use on local only |
-
-**Date String Handling (Critical for MySQL 5.5):**
-```javascript
-// ✅ CORRECT: Pass as YYYY-MM-DD string
-const dateWeight = '2025-05-15';
-await pool.query('INSERT INTO WeightsT (DateWeight) VALUES (?)', [dateWeight]);
-
-// On fetch, MySQL 5.5 returns as: '2025-05-15' (string)
-const [rows] = await pool.query('SELECT DateWeight FROM WeightsT');
-// rows[0].DateWeight === '2025-05-15' (not a Date object)
-
-// ❌ WRONG: Passing JavaScript Date object
-const date = new Date('2025-05-15');
-// MySQL 5.5 may misinterpret timezone
-
-// ❌ WRONG: Using ISO format without T
-const date = '2025-05-15T00:00:00Z';
-// MySQL 5.5 may fail on timezone parsing
-```
-
-**Never Use in Queries:**
-```sql
--- ❌ JSON operations
-SELECT JSON_EXTRACT(data, '$.field') FROM table;
-
--- ❌ Window functions
-SELECT weight, ROW_NUMBER() OVER (ORDER BY date) FROM weights;
-
--- ❌ GENERATED columns
-ALTER TABLE users ADD updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
--- Use triggers instead on MySQL 5.5
-
--- ❌ CTE (Common Table Expressions)
-WITH ranked_weights AS (...) SELECT * FROM ranked_weights;
+```text
+[ ] Identify every frontend page affected
+[ ] Identify every backend route affected
+[ ] Check exact table/column names in wappsDumps.sql
+[ ] Check UserID ownership rules
+[ ] Check existing validation
+[ ] Check whether a transaction is required
+[ ] Preserve current security behavior
+[ ] Preserve API field names unless intentionally changing the contract
+[ ] Pretty-format every modified HTML file
+[ ] Verify links, IDs, form names and JavaScript selectors
+[ ] Test success cases
+[ ] Test validation/error cases
+[ ] Test unauthorized/wrong-user access where applicable
+[ ] Update wappsDumps.sql for intentional schema changes
+[ ] Update CLAUDE.md / TechSummary.md for architectural changes
 ```
 
 ---
 
-### ✅ IMPORTANT: User-Specific ID Pattern (Dual-Key System)
+## 18. Current Documentation Principles
 
-**Active Usage:** The system uses both global PKs and user-scoped IDs simultaneously
-- Global PKs (WeightID, ActivityID, IntErndID, etc.) for database joins and internal references
-- User-scoped IDs (UserWeightID, UserActivityID, UserIntErndID, etc.) for user-friendly API routes and parameters
-- Both are populated: PKs auto-increment by MySQL, user-scoped IDs via `getNextUserSpecificID()`
+For future WA work:
 
-**Why?**
-- Isolate user data (user 1 has IDs 1–50, user 2 has IDs 1–50)
-- Enable user-friendly URLs: `/weights/:userWeightId` instead of `/weights/:globalWeightId`
-- Prevent ID enumeration attacks
-- Enable portable per-user data exports
-
-**Usage Pattern:**
-```javascript
-// When creating a weight entry - ALWAYS populate BOTH IDs:
-const userWeightID = await getNextUserSpecificID(userId, 'WeightsT', 'UserWeightID');
-const [result] = await connection.query(
-  'INSERT INTO WeightsT (DateWeight, Weight, UserID, UserWeightID) VALUES (?,?,?,?)',
-  [dateWeight, weight, userId, userWeightID]
-  // WeightID auto-increments; UserWeightID manually sequenced
-);
-// Response returns both: { WeightID: result.insertId, UserWeightID: userWeightID }
-
-// When fetching by user-facing API parameter - use user-scoped ID:
-await pool.query(
-  'SELECT * FROM WeightsT WHERE UserWeightID = ? AND UserID = ?',
-  [userWeightId, userId]  // Query via user-scoped ID
-);
-
-// ALWAYS use getNextUserSpecificID for user-scoped tables:
-// - WeightsT → UserWeightID
-// - ActivitiesT → UserActivityID
-// - InterestEarnedT → UserIntErndID
-
-// NEVER use for non-user tables or system tables:
-// - TrackUsageT (global auto-increment is fine)
-// - UserSequenceT itself (manages the sequences)
-```
-
----
-
-### ⚠️ IMPORTANT: Transaction Pattern
-
-**When to Use:**
-- Multi-step operations (INSERT weight + INSERT activities)
-- Atomicity required (all-or-nothing)
-- Cascading deletes (tested via FK constraints, delete weights and verify WeightActivitiesT cleanup)
-
-**Always Use:**
-```javascript
-try {
-  await withTransaction(async (connection) => {
-    // Use 'connection', NOT 'pool'
-    const [result] = await connection.query(sql, params);
-    // Auto-commits on success
-    // Auto-rollbacks on error
-  });
-} catch (err) {
-  handleDbError(err, res, 'Custom message');
-}
-```
-
-**Do NOT Mix:**
-```javascript
-// ❌ WRONG: Using pool instead of connection
-await withTransaction(async (connection) => {
-  const [result] = await pool.query(sql, params);  // WRONG!
-});
-
-// ❌ WRONG: Manual commit/rollback
-await connection.beginTransaction();
-await connection.query(sql);
-// Forgot to commit/rollback!
-```
-
----
-
-### ⚠️ IMPORTANT: Validation & Error Messages
-
-**Convention:** All backend error messages end with `(be)`
-
-```javascript
-// ✅ CORRECT
-return res.status(400).json({ error: 'Weight must be between 1 and 1000(be)' });
-
-// ❌ WRONG
-return res.status(400).json({ error: 'Invalid weight' });
-```
-
-**Why?** Frontend can distinguish backend errors from network errors:
-```javascript
-if (error.message.endsWith('(be)')) {
-  // Display to user (backend validation failed)
-  document.getElementById('error').textContent = error.message;
-} else {
-  // Log (network/client error)
-  console.error('Unexpected error:', error);
-}
-```
-
----
-
-### ⚠️ IMPORTANT: JWT Token Security
-
-**Token Structure:**
-```javascript
-{
-  userId: 123,
-  username: 'johndoe',
-  iat: 1234567890,         // issued at
-  exp: 1234571490          // expires in 8 hours
-}
-```
-
-**Storage:**
-```javascript
-// ✅ CORRECT: Stored in localStorage (client-side)
-localStorage.setItem('token', token);
-
-// ❌ WRONG: Never log token values
-console.log('Token:', token);  // SECURITY BREACH!
-logger.info('User token: ' + token);  // SECURITY BREACH!
-
-// ❌ WRONG: Never send in URL
-fetch(`/api/endpoint?token=${token}`);  // INSECURE!
-```
-
-**Expiry Handling:**
-```javascript
-// Frontend should check expiry before each request
-// If token is missing or expired → redirect to login.html
-const token = localStorage.getItem('token');
-if (!token) {
-  window.location.href = 'login.html';
-}
-```
-
----
-
-## 9. Common Patterns & Anti-Patterns
-
-### ✅ CORRECT: Validating Before DB Query
-
-```javascript
-router.post('/', auth, 
-  [
-    body('weight')
-      .isFloat({ min: 1, max: 1000 })
-      .withMessage('Weight must be 1-1000(be)'),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
-    }
-    // Now safe to use req.body.weight
-  }
-);
-```
-
-### ❌ ANTI-PATTERN: Validating Inside Route Without Early Return
-
-```javascript
-router.post('/', async (req, res) => {
-  if (!req.body.weight) {
-    res.status(400).json({ error: 'Weight required(be)' });
-    // Missing return! Code continues...
-  }
-  // WRONG: Still tries to insert!
-  await pool.query('INSERT INTO WeightsT (Weight) VALUES (?)', [req.body.weight]);
-});
-```
-
-### ✅ CORRECT: Handling Async Errors
-
-```javascript
-try {
-  await pool.query(sql, params);
-  res.status(200).json({ success: true });
-} catch (err) {
-  handleDbError(err, res, 'Error message');
-}
-```
-
-### ❌ ANTI-PATTERN: Swallowing Errors
-
-```javascript
-try {
-  await pool.query(sql, params);
-  res.status(200).json({ success: true });
-} catch (err) {
-  res.status(500).json({ error: 'Server error' });
-  // Didn't log!
-  // Didn't identify root cause!
-}
-```
-
-### ✅ CORRECT: Checking User Ownership
-
-```javascript
-const userId = req.user.userId;  // From JWT
-const [weight] = await pool.query(
-  'SELECT * FROM WeightsT WHERE WeightID = ? AND UserID = ?',
-  [weightId, userId]
-);
-if (weight.length === 0) {
-  return res.status(404).json({ error: 'Weight not found(be)' });
-}
-```
-
-### ❌ ANTI-PATTERN: Trust User Input for Ownership
-
-```javascript
-// WRONG: User could pass another user's weightId
-const [weight] = await pool.query(
-  'SELECT * FROM WeightsT WHERE WeightID = ?',
-  [req.params.weightId]
-);
-// No check that this belongs to req.user.userId!
-```
-
----
-
-## 10. Quick Reference: File Changes for New Feature
-
-### Checklist for Adding a New Endpoint
-
-```
-☐ Database: Create table in wappsDump.sql (respect MySQL 5.5 limits)
-☐ Database: Add row to UserSequenceT for ID generation (if user-scoped)
-☐ Backend: Create routes/myfeature.js with GET/POST/PUT/DELETE
-☐ Backend: Import + register in server.js: app.use('/myfeature', ...)
-☐ Frontend: Create httpdocs/MyFeature.html with form
-☐ Frontend: Fetch logic with token auth + error handling
-☐ Validation: Add express-validator chains for all inputs
-☐ Security: Verify userId ownership before responding
-☐ Testing: Test with valid/invalid/missing inputs
-☐ Logging: Add logger.info() at key steps
-☐ Error Messages: All backend errors end with (be)
-```
-
----
-
-## Glossary of Key Terms
-
-| Term | Meaning |
-|------|---------|
-| **JWT** | JSON Web Token; stateless auth mechanism |
-| **Bearer Token** | Token sent in `Authorization: Bearer <token>` header |
-| **withTransaction** | Function that wraps DB operations in BEGIN/COMMIT/ROLLBACK |
-| **UserSequenceT** | Table that tracks next available user-specific ID per table |
-| **getNextUserSpecificID** | Function that increments and returns next user-scoped ID |
-| **handleDbError** | Utility function that logs and responds with standardized error format |
-| **express-validator** | Middleware library for input validation chains |
-| **validationResult** | Function that collects validation errors from request |
-| **Pool** | Connection pool managed by mysql2/promise |
-| **PWA** | Progressive Web App; works offline via service worker |
-
----
-
-## Support & Debugging
-
-### Common Issues & Fixes
-
-| Issue | Symptom | Fix |
-|-------|---------|-----|
-| Token expired | 401 Unauthorized | User logs out, then logs back in |
-| MySQL 5.5 date error | DATE parsing fails | Ensure YYYY-MM-DD format in code |
-| Duplicate entry | 400 error with "(be)" | Check unique constraints; may need to delete old entry |
-| Activity limit (5) | Weight save fails | Remove extra activities before saving |
-| FK violation | 1451 error | Don't add FK constraints; handle in code |
-| Pool exhausted | Request timeout | Increase connectionLimit in dbConnection.js |
-
-### Logging for Debugging
-
-```javascript
-// Add to route handlers
-logger.info(`Starting weight creation for userId=${userId}`);
-logger.info(`Weight data: ${JSON.stringify(req.body)}`);
-// Check logs at: logs/combined.log and logs/error.log
-```
-
----
-
-## Deployment Checklist
-
-```
-☐ Set NODE_ENV=production in remote server
-☐ Verify .env is loaded (DB_HOST, JWT_SECRET, etc.)
-☐ Test on remote MySQL 5.5 (date handling, FK cascades, etc.)
-☐ Disable SSL in connection if remote is MySQL 5.5
-☐ Run full test suite (login, weight CRUD, activities, etc.)
-☐ Verify CORS origins are set correctly for production domain
-☐ Monitor logs for errors
-☐ Set up uptime monitoring
-```
+1. Treat current code as the behavioral reference.
+2. Treat `wappsDumps.sql` as the schema reference.
+3. Keep Budget and Family Tree documentation current as they evolve.
+4. Do not copy obsolete dependency versions from older documentation.
+5. Do not use generic example tables when a feature already has an implemented schema.
+6. Preserve MySQL 5.5 compatibility until the deployed database is intentionally upgraded.
+7. Keep HTML source pretty formatted.
+8. Record major architecture changes in both `CLAUDE.md` and `TechSummary.md`.
 
 ---
 
 *End of TechSummary.md*
-
-Last Updated: [Current Date]
-Maintained by: MPG Jr and Development Team
