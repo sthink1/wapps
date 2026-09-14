@@ -301,6 +301,35 @@ When creating or modifying an `.html` file:
 
 Readable source is a project requirement.
 
+### Light-mode browser compatibility requirement
+
+WonderfulApps currently uses an intentionally **light visual design**. All current and future `.html` pages must opt out of browser-generated or algorithmic dark-mode recoloring unless WA intentionally adopts a supported dark theme in the future.
+
+Every HTML page should include this declaration in `<head>`:
+
+```html
+<meta name="color-scheme" content="only light">
+```
+
+Each page must also declare the same policy in CSS:
+
+```css
+:root {
+  color-scheme: only light;
+}
+```
+
+These declarations are a project-wide browser-compatibility requirement. They prevent browsers that apply automatic darkening from changing WA's intended text, background, table, button, and form colors.
+
+Implementation rules:
+
+- Preserve each page's existing WA colors; do not redesign pages merely to address browser dark mode.
+- Do not remove the `only light` declarations because a page appears correct in desktop Chrome, Edge, Firefox, or DuckDuckGo.
+- The original issue was observed on Android DuckDuckGo with browser dark mode enabled, where black text and table/background colors were automatically altered.
+- The `color-scheme: only light` fix was tested successfully on Android DuckDuckGo on September 14, 2026.
+- When creating a new WA HTML page, include both declarations from the beginning.
+- If WA later introduces a true application-controlled dark theme, revise this rule deliberately across the project rather than removing it page by page.
+
 ### Frontend conventions
 
 - Preserve the visual design of the page unless a redesign is requested.
@@ -404,10 +433,11 @@ Before changing a feature:
 6. Check whether the operation needs a transaction.
 7. Implement the smallest safe change.
 8. Pretty-format all modified HTML files.
-9. Verify all links, IDs, field names, route names, and API payload names.
-10. Test locally.
-11. Update `wappsDumps.sql` after an intentional schema change.
-12. Update `CLAUDE.md` and `TechSummary.md` when architecture or development standards change.
+9. Verify every modified or new HTML page includes the required `only light` color-scheme declarations.
+10. Verify all links, IDs, field names, route names, and API payload names.
+11. Test locally.
+12. Update `wappsDumps.sql` after an intentional schema change.
+13. Update `CLAUDE.md` and `TechSummary.md` when architecture or development standards change.
 
 ---
 
@@ -421,6 +451,7 @@ Before changing a feature:
 - Do not expose secrets in source code or logs.
 - Do not add MySQL features incompatible with the deployed database without first changing the database platform.
 - Do not minify or poorly format source HTML.
+- Do not remove the required `color-scheme: only light` compatibility declarations from WA HTML pages unless the project intentionally adopts a supported dark-theme design.
 - Do not replace a multi-table implemented feature with a simplified example design.
 - Do not modify unrelated functionality while completing a focused task.
 

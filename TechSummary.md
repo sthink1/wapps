@@ -405,6 +405,35 @@ Formatting must never change:
 - API payload names
 - CSS selectors relied upon by JavaScript
 
+### Light-mode compatibility standard
+
+WonderfulApps currently has an intentionally **light visual design**. Some mobile browsers can apply automatic or algorithmic darkening when the browser itself is set to dark mode, which can override author-defined colors even though the page renders correctly in desktop browsers.
+
+WA prevents this browser-generated recoloring by requiring every HTML page to include both of the following:
+
+```html
+<meta name="color-scheme" content="only light">
+```
+
+```css
+:root {
+  color-scheme: only light;
+}
+```
+
+This is a compatibility control, not a redesign. Existing page colors remain authoritative.
+
+The issue was reproduced on an Android phone using the DuckDuckGo browser with dark-mode page display enabled. Symptoms included black text rendering as white and table/background colors being changed from their designed values. Desktop DuckDuckGo, Chrome, Edge, and Firefox displayed the site normally.
+
+The project-wide `only light` change was tested successfully on Android DuckDuckGo on **September 14, 2026**, and the WA pages then displayed with the intended colors.
+
+Accordingly:
+
+- New HTML pages must include both declarations.
+- Existing declarations must be retained during future edits.
+- Desktop-only testing is not sufficient reason to remove the rule.
+- If WA later implements a true application-controlled dark theme, this standard should be revisited intentionally across the full frontend.
+
 ---
 
 ## 12. Frontend Design and API Contract
@@ -547,6 +576,7 @@ Before completing a code change:
 [ ] Preserve current security behavior
 [ ] Preserve API field names unless intentionally changing the contract
 [ ] Pretty-format every modified HTML file
+[ ] Verify every new or modified HTML page retains the required `only light` color-scheme declarations
 [ ] Verify links, IDs, form names and JavaScript selectors
 [ ] Test success cases
 [ ] Test validation/error cases
@@ -568,7 +598,8 @@ For future WA work:
 5. Do not use generic example tables when a feature already has an implemented schema.
 6. Preserve MySQL 5.5 compatibility until the deployed database is intentionally upgraded.
 7. Keep HTML source pretty formatted.
-8. Record major architecture changes in both `CLAUDE.md` and `TechSummary.md`.
+8. Keep the required `only light` browser-compatibility declarations in all HTML pages unless WA intentionally adopts a supported dark theme.
+9. Record major architecture changes in both `CLAUDE.md` and `TechSummary.md`.
 
 ---
 
