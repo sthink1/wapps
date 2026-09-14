@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
 <title>ETF Categories</title>
 
@@ -117,6 +118,13 @@ footer {
 
 <script>
 
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[ch]);
+        }
+
+
 const token = localStorage.getItem("token");
 
 /* ===========================
@@ -201,7 +209,7 @@ async function loadCategories(){
 
         row.innerHTML = `
             <td>
-                <input type="text" value="${cat.category}" id="cat-${cat.etfCategoryID}">
+                <input type="text" value="${escapeHtml(cat.category)}" id="cat-${cat.etfCategoryID}">
             </td>
             <td>
                 <input type="checkbox" onchange="updateCategory(${cat.etfCategoryID})">

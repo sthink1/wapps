@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
     <title>Activity Tracking Dashboard</title>
     <link rel="manifest" href="/manifest.json">
@@ -46,6 +47,13 @@
     <div class="stat-block" id="lastActive"></div>
 
     <script>
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[ch]);
+        }
+
         if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -102,7 +110,7 @@
                     const title = key.replace(/([A-Z])/g, ' $1').trim();
                     if (data[key] && Array.isArray(data[key]) && data[key].length > 0) {
                         let tableHTML = `<h2>${title}</h2><table><tr>`;
-                        Object.keys(data[key][0]).forEach(header => tableHTML += `<th>${header}</th>`);
+                        Object.keys(data[key][0]).forEach(header => tableHTML += `<th>${escapeHtml(header)}</th>`);
                         tableHTML += '</tr>';
                         data[key].forEach(row => {
                             tableHTML += '<tr>';
@@ -110,7 +118,7 @@
                                 const formattedVal = typeof val === 'string' && val.includes('T') 
                                     ? new Date(val).toISOString().replace('T', ' ').split('.')[0] 
                                     : (val !== null ? val : 'N/A');
-                                tableHTML += `<td>${formattedVal}</td>`;
+                                tableHTML += `<td>${escapeHtml(formattedVal)}</td>`;
                             });
                             tableHTML += '</tr>';
                         });

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
     <title>Interest Earned Verification</title>
     <link rel="manifest" href="/manifest.json">
@@ -434,6 +435,13 @@
 </footer>
     
     <script>
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[ch]);
+        }
+
         if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -508,7 +516,7 @@
                     records.forEach(record => {
                         const option = document.createElement('option');
                         option.value = record.UserIntErndID;
-                        option.textContent = `${record.CompanyName} - ${record.ContractNumber}`;
+                        option.textContent = `${escapeHtml(record.CompanyName)} - ${escapeHtml(record.ContractNumber)}`;
                         dropdown.appendChild(option);
                     });
                 })
@@ -531,15 +539,15 @@
             makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${userIntErndId}`)
                 .then(record => {
                     tableBody.innerHTML = `
-                        <tr><td>Company Name</td><td>${record.CompanyName}</td></tr>
-                        <tr><td>Contract Number</td><td>${record.ContractNumber}</td></tr>
+                        <tr><td>Company Name</td><td>${escapeHtml(record.CompanyName)}</td></tr>
+                        <tr><td>Contract Number</td><td>${escapeHtml(record.ContractNumber)}</td></tr>
                         <tr><td>Date Opened</td><td>${record.DateOpened.split('T')[0]}</td></tr>
                         <tr><td>Rate (%)</td><td>${formatNumber(record.Rate)}</td></tr>
-                        <tr><td>Notes</td><td>${record.Notes || 'N/A'}</td></tr>
+                        <tr><td>Notes</td><td>${escapeHtml(record.Notes || 'N/A')}</td></tr>
                     `;
                 })
                 .catch(error => {
-                    tableBody.innerHTML = `<tr><td colspan="2">${error.message}</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="2">${escapeHtml(error.message)}</td></tr>`;
                 });
         }
 

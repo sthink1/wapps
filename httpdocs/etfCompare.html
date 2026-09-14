@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
   <title>ETF Compare</title>
   <style>
@@ -212,6 +213,13 @@
 
 <script src="js/holidays.js"></script>
 <script>
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[ch]);
+        }
+
 // ─────────────────────────────────────────────
 // JWT token (unchanged)
 const token = localStorage.getItem('token') || '';
@@ -409,10 +417,13 @@ function renderTable(tableId, data, isCurrent) {
       // Modified Name cell (Change #2)
       const nameCell = row.insertCell();
       nameCell.className = 'name-cell';
-      nameCell.innerHTML = `
-        ${item.name || '—'}
-        ${item.listDate ? `<span class="listed-date">LISTED: ${formatListedDate(item.listDate)}</span>` : ''}
-      `;
+      nameCell.textContent = item.name || '—';
+      if (item.listDate) {
+        const listedDate = document.createElement('span');
+        listedDate.className = 'listed-date';
+        listedDate.textContent = `LISTED: ${formatListedDate(item.listDate)}`;
+        nameCell.appendChild(listedDate);
+      }
 
       const chkCell = row.insertCell();
       const chk = document.createElement('input');
@@ -544,7 +555,7 @@ function printModal() {
   printWindow.document.write('</head><body>');
   printWindow.document.write('<h2>Investment Allocation - ' + new Date().toLocaleDateString() + '</h2>');
   printWindow.document.write(modalContent.innerHTML);
-  printWindow.document.write('<footer>
+  printWindow.document.write(`<footer>
     <table style="width: 100%; border-collapse: collapse;">
         <tr>
             <td>Copyright © 2026 Wonderful Apps Company - All Rights Reserved</td>
@@ -552,7 +563,7 @@ function printModal() {
         </tr>
     </table>
 </footer>
-</body></html>');
+</body></html>`);
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
@@ -648,7 +659,7 @@ function printSummary() {
   printWindow.document.write('<style>body{font-family:monospace;margin:20px;white-space:pre-wrap;}</style>');
   printWindow.document.write('</head><body>');
   printWindow.document.write('<h2>ETF Comparison Summary</h2>');
-  printWindow.document.write(summary.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+  printWindow.document.write(escapeHtml(summary));
   printWindow.document.write('</body></html>');
   printWindow.document.close();
   printWindow.focus();

@@ -1,7 +1,23 @@
 const BASE_URL=window.location.hostname==='localhost'&&window.location.port!=='8080'?'http://localhost:8080':window.location.origin;
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+}
+
+function safeImageUrl(value) {
+    if (!value) return '';
+    try {
+        const url = new URL(String(value), window.location.origin);
+        return ['http:', 'https:', 'blob:'].includes(url.protocol) ? url.href : '';
+    } catch {
+        return '';
+    }
+}
 const token=()=>localStorage.getItem('token');let persons=[],code=sessionStorage.getItem('familyTreeCode')||'';
 const nameOf=p=>{const g=[p.FirstName,p.MiddleName,p.SuffixName].filter(Boolean).join(' ');let n=[p.LastName?p.LastName+',':'',g].filter(Boolean).join(' ');const x=[p.NickName,p.MaidenName].filter(Boolean).join(' ');return n+(x?` (${x})`:'')};
 const dateUS=v=>{if(!v)return'';const p=String(v).slice(0,10).split('-');return p.length===3?`${p[1]}/${p[2]}/${p[0]}`:v};
-function render(rows){const b=document.getElementById('personTableBody');b.innerHTML=rows.map(p=>`<tr><td><button class="pid" data-id="${p.PersonID}">${p.PersonID}</button></td><td>${nameOf(p)}</td><td>${dateUS(p.BirthDate)}</td><td>${p.BirthPlace||''}</td><td>${dateUS(p.DeathDate)}</td><td>${code}</td></tr>`).join('')||'<tr><td colspan="6">No persons found.</td></tr>';document.querySelectorAll('.pid').forEach(x=>x.onclick=()=>location.href=`FTPerson.html?PersonID=${x.dataset.id}&familyTreeCode=${encodeURIComponent(code)}`)}
+function render(rows){const b=document.getElementById('personTableBody');b.innerHTML=rows.map(p=>`<tr><td><button class="pid" data-id="${escapeHtml(p.PersonID)}">${escapeHtml(p.PersonID)}</button></td><td>${escapeHtml(nameOf(p))}</td><td>${escapeHtml(dateUS(p.BirthDate))}</td><td>${escapeHtml(p.BirthPlace||'')}</td><td>${escapeHtml(dateUS(p.DeathDate))}</td><td>${escapeHtml(code)}</td></tr>`).join('')||'<tr><td colspan="6">No persons found.</td></tr>';document.querySelectorAll('.pid').forEach(x=>x.onclick=()=>location.href=`FTPerson.html?PersonID=${x.dataset.id}&familyTreeCode=${encodeURIComponent(code)}`)}
 async function load(){if(!code){location.href='FamilyTree.html';return}document.getElementById('codeDisplay').textContent=code;const r=await fetch(`${BASE_URL}/familytree/persons?familyTreeCode=${encodeURIComponent(code)}`,{headers:{Authorization:`Bearer ${token()}`}}),d=await r.json();if(!r.ok){document.getElementById('statusMessage').textContent=d.message||'Unable to load persons';return}persons=d.persons||[];render(persons);document.getElementById('statusMessage').textContent=`${persons.length} person${persons.length===1?'':'s'} in ${code}.`}
 document.addEventListener('DOMContentLoaded',()=>{if(!token()){location.href='login.html';return}document.getElementById('backBtn').onclick=()=>history.length>1?history.back():location.href='FamilyTree.html';document.getElementById('refreshBtn').onclick=load;document.getElementById('filterInput').oninput=e=>{const q=e.target.value.toLowerCase();render(persons.filter(p=>[p.PersonID,nameOf(p),p.BirthDate,p.BirthPlace,p.DeathDate].filter(Boolean).join(' ').toLowerCase().includes(q)))};load()});

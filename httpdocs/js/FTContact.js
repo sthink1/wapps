@@ -3,6 +3,22 @@ const BASE_URL =
         ? 'http://localhost:8080'
         : window.location.origin;
 
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+}
+
+function safeImageUrl(value) {
+    if (!value) return '';
+    try {
+        const url = new URL(String(value), window.location.origin);
+        return ['http:', 'https:', 'blob:'].includes(url.protocol) ? url.href : '';
+    } catch {
+        return '';
+    }
+}
 const $ = id => document.getElementById(id);
 const token = () => localStorage.getItem('token');
 
@@ -89,9 +105,9 @@ async function loadContacts() {
         ? contacts.map((contact, index) => `
             <tr>
                 <td>${index + 1}</td>
-                <td>${contact.ContactType || ''}</td>
-                <td>${contact.ContactValue || ''}</td>
-                <td>${contact.ContactNote || ''}</td>
+                <td>${escapeHtml(contact.ContactType || '')}</td>
+                <td>${escapeHtml(contact.ContactValue || '')}</td>
+                <td>${escapeHtml(contact.ContactNote || '')}</td>
                 <td>${Number(contact.IsPrimary) === 1 ? 'Yes' : ''}</td>
                 <td><button class="edit-contact" data-id="${contact.ContactID}" type="button">EDIT</button></td>
                 <td><button class="delete-contact" data-id="${contact.ContactID}" type="button">DELETE</button></td>

@@ -3,6 +3,22 @@ const BASE_URL =
         ? 'http://localhost:8080'
         : window.location.origin;
 
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+}
+
+function safeImageUrl(value) {
+    if (!value) return '';
+    try {
+        const url = new URL(String(value), window.location.origin);
+        return ['http:', 'https:', 'blob:'].includes(url.protocol) ? url.href : '';
+    } catch {
+        return '';
+    }
+}
 const $ = id => document.getElementById(id);
 const token = () => localStorage.getItem('token');
 
@@ -125,15 +141,15 @@ function personRow(person, extraCells = []) {
                     title="Open PersonID ${person.PersonID}"
                 >P</button>
             </td>
-            <td>${person.Gender || ''}</td>
+            <td>${escapeHtml(person.Gender || '')}</td>
             <td class="${ageClass(person)}">${ageOf(person)}</td>
-            <td>${person.FirstName || ''}</td>
-            <td>${person.MiddleName || ''}</td>
-            <td>${person.LastName || ''}</td>
-            <td>${person.SuffixName || ''}</td>
-            <td>${person.NickName || ''}</td>
-            <td>${person.MaidenName || ''}</td>
-            ${extraCells.map(value => `<td>${value || ''}</td>`).join('')}
+            <td>${escapeHtml(person.FirstName || '')}</td>
+            <td>${escapeHtml(person.MiddleName || '')}</td>
+            <td>${escapeHtml(person.LastName || '')}</td>
+            <td>${escapeHtml(person.SuffixName || '')}</td>
+            <td>${escapeHtml(person.NickName || '')}</td>
+            <td>${escapeHtml(person.MaidenName || '')}</td>
+            ${extraCells.map(value => `<td>${escapeHtml(value || '')}</td>`).join('')}
         </tr>
     `;
 }
@@ -148,9 +164,9 @@ function familyCompactRow(person) {
                     title="Open PersonID ${person.PersonID}"
                 >${person.PersonID}</button>
             </td>
-            <td>${person.Gender || ''}</td>
+            <td>${escapeHtml(person.Gender || '')}</td>
             <td class="${ageClass(person)}">${ageOf(person)}</td>
-            <td style="white-space:normal;min-width:220px">${nameOf(person)}</td>
+            <td style="white-space:normal;min-width:220px">${escapeHtml(nameOf(person))}</td>
         </tr>
     `;
 }
@@ -314,7 +330,7 @@ async function loadImages() {
         const data = await response.json();
 
         currentProfile = data;
-        profileImage.src = data.url;
+        profileImage.src = safeImageUrl(data.url);
         profileImage.dataset.imageId = data.ImageID;
         profileImage.oncontextmenu = event =>
             showImageContextMenu(event, data.ImageID, true);
@@ -353,7 +369,7 @@ async function loadImages() {
 
         if (image) {
             const img = document.createElement('img');
-            img.src = image.url;
+            img.src = safeImageUrl(image.url);
             img.alt = image.Caption || `Picture ${slot + 1}`;
             img.title = 'Right-click for picture options';
             img.dataset.imageId = image.ImageID;
@@ -520,7 +536,7 @@ async function saveNewPicture() {
 
 function deletePictureCard(image, label) {
     const imageID = Number(image.ImageID);
-    const url = image.url || '';
+    const url = safeImageUrl(image.url);
     const caption = image.Caption || '';
 
     return `
@@ -531,9 +547,9 @@ function deletePictureCard(image, label) {
                 value="${imageID}"
                 style="width:auto;margin-bottom:6px"
             >
-            ${url ? `<img src="${url}" alt="${label}" style="cursor:pointer">` : ''}
-            <div class="picture-label">${label}</div>
-            ${caption ? `<div class="small">${caption}</div>` : ''}
+            ${url ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(label)}" style="cursor:pointer">` : ''}
+            <div class="picture-label">${escapeHtml(label)}</div>
+            ${caption ? `<div class="small">${escapeHtml(caption)}</div>` : ''}
         </label>
     `;
 }
@@ -709,17 +725,17 @@ function oneTreeRedirect(relatedPersonID) {
 function renderRelatedDuplicates(matches) {
     $('rDupWrap').classList.toggle('hidden', !matches.length);
     $('rDupBody').innerHTML = matches.map(person => `
-        <tr data-dup-id="${person.PersonID}">
-            <td>${person.ProfileImageUrl ? `<img class="dup-photo" src="${person.ProfileImageUrl}" alt="">` : ''}</td>
-            <td><button type="button" class="view-existing" data-id="${person.PersonID}">${person.PersonID}</button></td>
-            <td>${nameOf(person)}</td>
-            <td>${dateUS(person.BirthDate)}</td>
-            <td>${person.BirthPlace || ''}</td>
-            <td>${shortNames(person.parents)}</td>
-            <td>${shortNames(person.partners)}</td>
-            <td>${shortNames(person.children)}</td>
-            <td>${person.FamilyTreeCode || person.OldestFamilyTreeCode || ''}</td>
-            <td>${(person.MatchReasons || []).join(', ')}</td>
+        <tr data-dup-id="${escapeHtml(person.PersonID)}">
+            <td>${safeImageUrl(person.ProfileImageUrl) ? `<img class="dup-photo" src="${escapeHtml(safeImageUrl(person.ProfileImageUrl))}" alt="">` : ''}</td>
+            <td><button type="button" class="view-existing" data-id="${escapeHtml(person.PersonID)}">${escapeHtml(person.PersonID)}</button></td>
+            <td>${escapeHtml(nameOf(person))}</td>
+            <td>${escapeHtml(dateUS(person.BirthDate))}</td>
+            <td>${escapeHtml(person.BirthPlace || '')}</td>
+            <td>${escapeHtml(shortNames(person.parents))}</td>
+            <td>${escapeHtml(shortNames(person.partners))}</td>
+            <td>${escapeHtml(shortNames(person.children))}</td>
+            <td>${escapeHtml(person.FamilyTreeCode || person.OldestFamilyTreeCode || '')}</td>
+            <td>${escapeHtml((person.MatchReasons || []).join(', '))}</td>
             <td>
                 <button type="button" class="use-existing" data-id="${person.PersonID}">USE THIS PERSON</button>
                 <button type="button" class="different-person" data-id="${person.PersonID}">${relatedDifferent.has(Number(person.PersonID)) ? 'MARKED DIFFERENT' : 'THIS IS A DIFFERENT PERSON'}</button>
@@ -805,7 +821,7 @@ async function askPartnerParent(childID) {
             choices.innerHTML = currentPartners.map(partner => `
                 <label style="display:block;margin:8px 0">
                     <input class="partner-parent-choice" type="checkbox" value="${partner.PersonID}" style="width:auto">
-                    ${nameOf(partner)}
+                    ${escapeHtml(nameOf(partner))}
                 </label>
             `).join('');
             singleActions.classList.add('hidden');

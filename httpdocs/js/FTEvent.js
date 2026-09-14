@@ -3,6 +3,22 @@ const BASE_URL =
         ? 'http://localhost:8080'
         : window.location.origin;
 
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+}
+
+function safeImageUrl(value) {
+    if (!value) return '';
+    try {
+        const url = new URL(String(value), window.location.origin);
+        return ['http:', 'https:', 'blob:'].includes(url.protocol) ? url.href : '';
+    } catch {
+        return '';
+    }
+}
 const $ = id => document.getElementById(id);
 const token = () => localStorage.getItem('token');
 const authHeaders = (json = true) => {
@@ -126,11 +142,11 @@ async function loadEvents() {
         ? events.map((event, index) => `
             <tr>
                 <td>${index + 1}</td>
-                <td>${event.EventType || ''}</td>
+                <td>${escapeHtml(event.EventType || '')}</td>
                 <td>${dateUS(event.EventDate)}</td>
                 <td class="${ageClass(currentPerson)}">${ageAtEvent(event.EventDate)}</td>
-                <td>${event.EventPlace || ''}</td>
-                <td>${event.EventDescription || ''}</td>
+                <td>${escapeHtml(event.EventPlace || '')}</td>
+                <td>${escapeHtml(event.EventDescription || '')}</td>
                 <td><button class="edit-event" data-id="${event.EventID}" type="button">EDIT</button></td>
                 <td><button class="delete-event" data-id="${event.EventID}" type="button">DELETE</button></td>
             </tr>`).join('')

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
 <title>ETF Symbols</title>
 
@@ -130,6 +131,13 @@ footer {
 </footer>
 
 <script>
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[ch]);
+        }
+
 
 const token = localStorage.getItem("token");
 let categories = [];
@@ -280,8 +288,8 @@ function renderTable(symbols){
             <td>
                 <select id="cat-${sym.etfSymbolID}"></select>
             </td>
-            <td>${sym.symbol}</td>
-            <td>${sym.name || ""}</td>
+            <td>${escapeHtml(sym.symbol)}</td>
+            <td>${escapeHtml(sym.name || "")}</td>
             <td>${sym.listDate ? sym.listDate.substring(0,10) : ""}</td>
             <td><input type="checkbox" id="rev-${sym.etfSymbolID}"></td>
             <td><input type="checkbox" id="del-${sym.etfSymbolID}"></td>

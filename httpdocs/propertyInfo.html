@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
     <title>Property Information</title>
     <link rel="manifest" href="/manifest.json">
@@ -474,8 +475,10 @@
                 printContent += cellText + '\n';
             }
             var win = window.open('', '', 'height=500,width=700');
-            win.document.write('<pre>' + printContent + '</pre>');
-            win.document.close();
+            win.document.body.textContent = '';
+            var pre = win.document.createElement('pre');
+            pre.textContent = printContent;
+            win.document.body.appendChild(pre);
             win.print();
             win.close();
         }

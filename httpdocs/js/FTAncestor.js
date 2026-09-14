@@ -3,6 +3,22 @@ const BASE_URL =
         ? 'http://localhost:8080'
         : window.location.origin;
 
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+}
+
+function safeImageUrl(value) {
+    if (!value) return '';
+    try {
+        const url = new URL(String(value), window.location.origin);
+        return ['http:', 'https:', 'blob:'].includes(url.protocol) ? url.href : '';
+    } catch {
+        return '';
+    }
+}
 const $ = id => document.getElementById(id);
 
 const token = () => localStorage.getItem('token');
@@ -137,7 +153,7 @@ function bindRelative(rowID, buttonID, nameID, photoID, person) {
     name.onclick = () => makeAncestorFocalPerson(person.PersonID);
 
     if (person.ProfileImageUrl) {
-        photo.src = person.ProfileImageUrl;
+        photo.src = safeImageUrl(person.ProfileImageUrl);
         photo.style.visibility = 'visible';
     } else {
         photo.removeAttribute('src');
@@ -147,7 +163,7 @@ function bindRelative(rowID, buttonID, nameID, photoID, person) {
 
 function personTableRow(person) {
     const photo = person.ProfileImageUrl
-        ? `<img class="table-photo" src="${person.ProfileImageUrl}" alt="${nameOf(person)}">`
+        ? `<img class="table-photo" src="${escapeHtml(safeImageUrl(person.ProfileImageUrl))}" alt="${escapeHtml(nameOf(person))}">`
         : '';
 
     return `
@@ -161,9 +177,9 @@ function personTableRow(person) {
                     title="PersonID ${person.PersonID}"
                 >P</button>
             </td>
-            <td>${person.Gender || ''}</td>
+            <td>${escapeHtml(person.Gender || '')}</td>
             <td class="${ageClass(person)}">${ageOf(person)}</td>
-            <td class="table-name" data-id="${person.PersonID}" title="Make ${nameOf(person)} the focal person">${nameOf(person)}</td>
+            <td class="table-name" data-id="${person.PersonID}" title="Make ${escapeHtml(nameOf(person))} the focal person">${escapeHtml(nameOf(person))}</td>
         </tr>
     `;
 }
@@ -278,7 +294,7 @@ async function loadAncestor() {
         openPerson(data.person.PersonID);
 
     if (data.person.ProfileImageUrl) {
-        $('currentPhoto').src = data.person.ProfileImageUrl;
+        $('currentPhoto').src = safeImageUrl(data.person.ProfileImageUrl);
         $('currentPhoto').style.visibility = 'visible';
     } else {
         $('currentPhoto').removeAttribute('src');
