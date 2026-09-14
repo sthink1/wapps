@@ -261,6 +261,65 @@ Authorization: Bearer <token>
 - Validate user-controlled input before SQL execution.
 - Use parameterized SQL; do not concatenate untrusted input into queries.
 - Preserve current CORS restrictions unless a deployment change requires an intentional update.
+- Frontend sanitization is a defense-in-depth control and must not be treated as a replacement for backend validation, authorization, ownership checks, or parameterized SQL.
+
+### Frontend input sanitization requirement
+
+WA now uses a shared client-side sanitization layer for pages that accept reusable free-text input.
+
+The shared frontend sanitizer is:
+
+```text
+httpdocs/js/inputSanitizer.js
+```
+
+Applicable HTML pages load DOMPurify together with the shared sanitizer and sanitize reusable user-controlled free-text values before normal save/submission processing.
+
+Rules:
+
+- Sanitize reusable free-text input such as names, descriptions, notes, addresses, usernames, email addresses, telephone numbers, URLs, and textarea content where applicable.
+- Treat sanitized values as **plain text** unless a feature intentionally supports HTML.
+- Do not sanitize password fields. Password values must remain byte-for-byte as entered and must never be altered by the frontend sanitizer.
+- Numeric, date, checkbox, and other strongly typed fields do not need generic text sanitization merely for consistency.
+- Static pages and pages that do not accept reusable user-controlled free text do not need the shared sanitizer.
+- Preserve page-specific validation rules in addition to shared sanitization.
+- The sanitization implementation was tested successfully on September 14, 2026, including attempts to enter HTML-like values such as `<H1>` into protected fields.
+
+### Safe output rendering requirement
+
+WA must also protect the point where data is displayed.
+
+User-controlled, database-derived, and external-API text must not be inserted into executable HTML without safe handling.
+
+Preferred order:
+
+1. Use DOM methods and assign untrusted/plain-text values with `textContent`.
+2. Where existing markup requires template-generated HTML, escape every untrusted value before assigning the markup through `innerHTML`.
+3. Use DOMPurify when actual HTML rendering is intentionally required.
+4. Constrain dynamically assigned URL-bearing attributes such as `src` and `href`; do not blindly trust user/database/API-provided URLs.
+
+Rules:
+
+- Do not place raw user, database, or API strings directly inside `innerHTML`, `outerHTML`, `insertAdjacentHTML`, or `document.write`.
+- `innerHTML` remains acceptable for trusted static markup that does not contain untrusted values.
+- Do not build inline event-handler attributes from user-controlled data.
+- Prefer event listeners and `data-*` attributes over generated `onclick="..."` strings.
+- Rendering a value safely on input does not remove the need to render it safely on output.
+- Safe output handling protects against old database content, external API content, and values that might bypass normal frontend input controls.
+- The project-wide safe-output revisions were tested successfully on September 14, 2026.
+
+### Native-app / WebView security continuity
+
+These frontend security requirements remain in force if WA is packaged as a PWA, Cordova/Capacitor application, WebView-based application, or similar native/mobile wrapper.
+
+Packaging HTML/JavaScript inside a native application does not make browser-style injection risks disappear. The native-app version must retain:
+
+- frontend input sanitization;
+- safe output rendering;
+- backend validation and authorization;
+- parameterized SQL;
+- ownership controls;
+- safe URL handling.
 
 ---
 
@@ -329,6 +388,20 @@ Implementation rules:
 - The `color-scheme: only light` fix was tested successfully on Android DuckDuckGo on September 14, 2026.
 - When creating a new WA HTML page, include both declarations from the beginning.
 - If WA later introduces a true application-controlled dark theme, revise this rule deliberately across the project rather than removing it page by page.
+
+### Frontend security conventions
+
+When creating or modifying a frontend page or JavaScript module:
+
+- If the page accepts reusable user-controlled free text, use the shared sanitization mechanism unless the field type is intentionally excluded.
+- Never sanitize password fields.
+- Prefer `textContent` for displaying untrusted/plain-text data.
+- If `innerHTML` is necessary, escape untrusted interpolated values or sanitize intentionally rendered HTML.
+- Review all data arriving from the database and external APIs as potentially untrusted for rendering purposes.
+- Treat image URLs, links, and other dynamic URL-bearing attributes as security-sensitive.
+- Preserve the shared `inputSanitizer.js` include and DOMPurify include on pages where they are required.
+- Do not remove output escaping merely because input sanitization is present.
+- New native/WebView-facing pages must follow the same rules.
 
 ### Frontend conventions
 
@@ -414,6 +487,8 @@ wonderfulApp/
 │   └── weights.js
 ├── middleware/
 ├── httpdocs/
+│   └── js/
+│       └── inputSanitizer.js
 ├── docs/
 ├── logs/
 └── skills/
@@ -425,7 +500,7 @@ wonderfulApp/
 
 Before changing a feature:
 
-1. Identify the frontend page(s).
+1. Identify the frontend page(s) and any corresponding frontend JavaScript file(s).
 2. Identify the API route(s).
 3. Identify the relevant database table(s).
 4. Check `wappsDumps.sql` for exact names, data types, keys, and constraints.
@@ -434,10 +509,15 @@ Before changing a feature:
 7. Implement the smallest safe change.
 8. Pretty-format all modified HTML files.
 9. Verify every modified or new HTML page includes the required `only light` color-scheme declarations.
-10. Verify all links, IDs, field names, route names, and API payload names.
-11. Test locally.
-12. Update `wappsDumps.sql` after an intentional schema change.
-13. Update `CLAUDE.md` and `TechSummary.md` when architecture or development standards change.
+10. For reusable free-text input, verify the shared input sanitizer is present and that passwords remain excluded.
+11. Review output rendering for user-, database-, and API-derived values; prefer `textContent`, escaping, or DOMPurify as appropriate.
+12. Review dynamic `src`, `href`, and similar URL-bearing attributes.
+13. Verify all links, IDs, field names, route names, JavaScript selectors, and API payload names.
+14. Test success cases and validation/error cases.
+15. Test security-sensitive input/output behavior when a feature handles reusable text.
+16. Test locally.
+17. Update `wappsDumps.sql` after an intentional schema change.
+18. Update `CLAUDE.md` and `TechSummary.md` when architecture or development standards change.
 
 ---
 
@@ -452,6 +532,12 @@ Before changing a feature:
 - Do not add MySQL features incompatible with the deployed database without first changing the database platform.
 - Do not minify or poorly format source HTML.
 - Do not remove the required `color-scheme: only light` compatibility declarations from WA HTML pages unless the project intentionally adopts a supported dark-theme design.
+- Do not remove required frontend sanitization from pages that accept reusable free-text input.
+- Do not sanitize password fields.
+- Do not insert raw user-, database-, or API-derived strings directly into `innerHTML`, `outerHTML`, `insertAdjacentHTML`, or `document.write`.
+- Do not assume sanitized input is automatically safe for every later output context.
+- Do not trust dynamic image/link URLs without appropriate validation or constraint.
+- Do not weaken these frontend security controls when packaging WA as a native/WebView application.
 - Do not replace a multi-table implemented feature with a simplified example design.
 - Do not modify unrelated functionality while completing a focused task.
 
