@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: sql9.freesqldatabase.com
--- Generation Time: Aug 10, 2026 at 11:41 AM
+-- Generation Time: Sep 14, 2026 at 02:43 PM
 -- Server version: 5.5.62-0ubuntu0.14.04.1
 -- PHP Version: 7.0.33-0ubuntu0.16.04.16
 
@@ -173,6 +173,38 @@ CREATE TABLE `BudgetLoanT` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `BudgetMyInvestmentT`
+--
+
+CREATE TABLE `BudgetMyInvestmentT` (
+  `InvestmentID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `UserInvestmentID` int(11) NOT NULL,
+  `Account` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `BalanceCurrent` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `CreatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedAt` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `BudgetMyMoneyT`
+--
+
+CREATE TABLE `BudgetMyMoneyT` (
+  `MoneyID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `UserMoneyID` int(11) NOT NULL,
+  `AccountPocket` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `BalanceCurrent` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `CreatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedAt` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `BudgetOutT`
 --
 
@@ -313,6 +345,283 @@ CREATE TABLE `etfSymbolT` (
   `TimeStamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `listDate` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FamilyTreeT`
+--
+
+CREATE TABLE `FamilyTreeT` (
+  `FamilyTreeID` int(11) NOT NULL,
+  `FamilyTreeCode` varchar(20) NOT NULL,
+  `CreatedByUserID` int(11) NOT NULL,
+  `CreatedAt` datetime NOT NULL,
+  `LastActivityAt` datetime NOT NULL,
+  `LastActivityByUserID` int(11) NOT NULL,
+  `Status` varchar(30) NOT NULL,
+  `MergedIntoFamilyTreeID` int(11) DEFAULT NULL,
+  `MergedAt` datetime DEFAULT NULL,
+  `MergedByUserID` int(11) DEFAULT NULL,
+  `WarningSentAt` datetime DEFAULT NULL,
+  `RetentionExtendedUntil` datetime DEFAULT NULL,
+  `PendingDeletionAt` datetime DEFAULT NULL,
+  `ScheduledDeletionAt` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTContactT`
+--
+
+CREATE TABLE `FTContactT` (
+  `ContactID` int(11) NOT NULL,
+  `PersonID` int(11) NOT NULL,
+  `ContactType` varchar(50) NOT NULL,
+  `ContactValue` varchar(255) NOT NULL,
+  `ContactNote` text,
+  `IsPrimary` tinyint(1) NOT NULL DEFAULT '0',
+  `CreatedByUserID` int(11) NOT NULL,
+  `CreatedAt` datetime NOT NULL,
+  `UpdatedByUserID` int(11) DEFAULT NULL,
+  `UpdatedAt` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTEventPersonT`
+--
+
+CREATE TABLE `FTEventPersonT` (
+  `EventPersonID` int(11) NOT NULL,
+  `EventID` int(11) NOT NULL,
+  `PersonID` int(11) NOT NULL,
+  `PersonRole` varchar(50) DEFAULT NULL,
+  `AddedByUserID` int(11) NOT NULL,
+  `AddedAt` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTEventT`
+--
+
+CREATE TABLE `FTEventT` (
+  `EventID` int(11) NOT NULL,
+  `EventType` varchar(100) NOT NULL,
+  `EventDate` date DEFAULT NULL,
+  `EventPlace` varchar(255) DEFAULT NULL,
+  `EventDescription` text,
+  `CreatedByUserID` int(11) NOT NULL,
+  `CreatedAt` datetime NOT NULL,
+  `UpdatedByUserID` int(11) DEFAULT NULL,
+  `UpdatedAt` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTFamilyTreeActivityT`
+--
+
+CREATE TABLE `FTFamilyTreeActivityT` (
+  `ActivityID` bigint(20) NOT NULL,
+  `FamilyTreeID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `ActivityType` varchar(30) NOT NULL,
+  `EntityType` varchar(50) DEFAULT NULL,
+  `EntityID` int(11) DEFAULT NULL,
+  `AffectedPersonID` int(11) DEFAULT NULL,
+  `TargetCreatedByUserID` int(11) DEFAULT NULL,
+  `ActivityAt` datetime NOT NULL,
+  `ActivityDescription` text
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTFamilyTreePersonT`
+--
+
+CREATE TABLE `FTFamilyTreePersonT` (
+  `FamilyTreePersonID` int(11) NOT NULL,
+  `FamilyTreeID` int(11) NOT NULL,
+  `PersonID` int(11) NOT NULL,
+  `OriginFamilyTreeID` int(11) DEFAULT NULL,
+  `AddedByUserID` int(11) NOT NULL,
+  `AddedAt` datetime NOT NULL,
+  `Notes` text
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTFamilyTreeUserT`
+--
+
+CREATE TABLE `FTFamilyTreeUserT` (
+  `FamilyTreeUserID` int(11) NOT NULL,
+  `FamilyTreeID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `JoinedAt` datetime NOT NULL,
+  `LastActivityAt` datetime DEFAULT NULL,
+  `IsActive` tinyint(1) NOT NULL DEFAULT '1',
+  `AddedByUserID` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTImageT`
+--
+
+CREATE TABLE `FTImageT` (
+  `ImageID` int(11) NOT NULL,
+  `PersonID` int(11) NOT NULL,
+  `ImageType` varchar(20) NOT NULL,
+  `ApproxAge` int(11) DEFAULT NULL,
+  `ImageDate` date DEFAULT NULL,
+  `StorageKey` varchar(500) NOT NULL,
+  `OriginalFileName` varchar(255) DEFAULT NULL,
+  `Caption` varchar(500) DEFAULT NULL,
+  `SortOrder` int(11) NOT NULL DEFAULT '0',
+  `CreatedByUserID` int(11) NOT NULL,
+  `CreatedAt` datetime NOT NULL,
+  `UpdatedByUserID` int(11) DEFAULT NULL,
+  `UpdatedAt` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTNotificationT`
+--
+
+CREATE TABLE `FTNotificationT` (
+  `NotificationID` bigint(20) NOT NULL,
+  `FamilyTreeID` int(11) NOT NULL,
+  `ActivityID` bigint(20) DEFAULT NULL,
+  `RecipientPersonID` int(11) DEFAULT NULL,
+  `RecipientUserID` int(11) DEFAULT NULL,
+  `ContactID` int(11) DEFAULT NULL,
+  `NotificationType` varchar(50) NOT NULL,
+  `DeliveryMethod` varchar(20) NOT NULL,
+  `NotificationText` text NOT NULL,
+  `Status` varchar(20) NOT NULL,
+  `CreatedAt` datetime NOT NULL,
+  `SentAt` datetime DEFAULT NULL,
+  `FailureReason` varchar(500) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTParentT`
+--
+
+CREATE TABLE `FTParentT` (
+  `ParentRelationshipID` int(11) NOT NULL,
+  `FamilyTreeID` int(11) NOT NULL,
+  `PersonID` int(11) NOT NULL,
+  `ParentPersonID` int(11) NOT NULL,
+  `ParentType` varchar(30) DEFAULT NULL,
+  `AncestrySide` varchar(20) DEFAULT NULL,
+  `Notes` text,
+  `CreatedByUserID` int(11) NOT NULL,
+  `CreatedAt` datetime NOT NULL,
+  `UpdatedByUserID` int(11) DEFAULT NULL,
+  `UpdatedAt` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTPartnerT`
+--
+
+CREATE TABLE `FTPartnerT` (
+  `PartnerRelationshipID` int(11) NOT NULL,
+  `FamilyTreeID` int(11) NOT NULL,
+  `PersonID` int(11) NOT NULL,
+  `PartnerPersonID` int(11) NOT NULL,
+  `RelationshipType` varchar(30) DEFAULT NULL,
+  `Notes` text,
+  `CreatedByUserID` int(11) NOT NULL,
+  `CreatedAt` datetime NOT NULL,
+  `UpdatedByUserID` int(11) DEFAULT NULL,
+  `UpdatedAt` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTPersonMergeT`
+--
+
+CREATE TABLE `FTPersonMergeT` (
+  `PersonMergeID` bigint(20) NOT NULL,
+  `SourcePersonID` int(11) NOT NULL,
+  `SurvivingPersonID` int(11) NOT NULL,
+  `SourceFamilyTreeID` int(11) DEFAULT NULL,
+  `SurvivingFamilyTreeID` int(11) DEFAULT NULL,
+  `MergedByUserID` int(11) NOT NULL,
+  `MergedAt` datetime NOT NULL,
+  `MergeReason` varchar(100) NOT NULL DEFAULT 'OneTreeMethod',
+  `ConflictResolutionJSON` longtext,
+  `SourcePersonSnapshot` longtext NOT NULL,
+  `SurvivingPersonSnapshotBefore` longtext NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTPersonT`
+--
+
+CREATE TABLE `FTPersonT` (
+  `PersonID` int(11) NOT NULL,
+  `FirstName` varchar(100) DEFAULT NULL,
+  `MiddleName` varchar(100) DEFAULT NULL,
+  `LastName` varchar(100) DEFAULT NULL,
+  `SuffixName` varchar(50) DEFAULT NULL,
+  `NickName` varchar(100) DEFAULT NULL,
+  `MaidenName` varchar(100) DEFAULT NULL,
+  `Gender` varchar(20) DEFAULT NULL,
+  `BirthDate` date DEFAULT NULL,
+  `BirthPlace` varchar(255) DEFAULT NULL,
+  `Died` tinyint(1) NOT NULL DEFAULT '0',
+  `DeathDate` date DEFAULT NULL,
+  `CreatedByUserID` int(11) NOT NULL,
+  `CreatedAt` datetime NOT NULL,
+  `UpdatedByUserID` int(11) DEFAULT NULL,
+  `UpdatedAt` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `FTRecordArchiveT`
+--
+
+CREATE TABLE `FTRecordArchiveT` (
+  `ArchiveID` bigint(20) NOT NULL,
+  `FamilyTreeID` int(11) NOT NULL,
+  `EntityType` varchar(50) NOT NULL,
+  `EntityID` int(11) NOT NULL,
+  `AffectedPersonID` int(11) DEFAULT NULL,
+  `OriginalCreatedByUserID` int(11) DEFAULT NULL,
+  `ChangedByUserID` int(11) NOT NULL,
+  `ChangeType` varchar(20) NOT NULL,
+  `BeforeData` longtext NOT NULL,
+  `AfterData` longtext,
+  `ArchivedAt` datetime NOT NULL,
+  `ExpiresAt` datetime NOT NULL,
+  `RestoredAt` datetime DEFAULT NULL,
+  `RestoredByUserID` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------
 
@@ -494,6 +803,22 @@ ALTER TABLE `BudgetLoanT`
   ADD KEY `fk_loan_recurrence_user` (`RecurrenceID`,`UserID`);
 
 --
+-- Indexes for table `BudgetMyInvestmentT`
+--
+ALTER TABLE `BudgetMyInvestmentT`
+  ADD PRIMARY KEY (`InvestmentID`),
+  ADD UNIQUE KEY `UQ_BudgetMyInvestmentT_User_UserInvestmentID` (`UserID`,`UserInvestmentID`),
+  ADD KEY `IX_BudgetMyInvestmentT_UserID` (`UserID`);
+
+--
+-- Indexes for table `BudgetMyMoneyT`
+--
+ALTER TABLE `BudgetMyMoneyT`
+  ADD PRIMARY KEY (`MoneyID`),
+  ADD UNIQUE KEY `UQ_BudgetMyMoneyT_User_UserMoneyID` (`UserID`,`UserMoneyID`),
+  ADD KEY `IX_BudgetMyMoneyT_UserID` (`UserID`);
+
+--
 -- Indexes for table `BudgetOutT`
 --
 ALTER TABLE `BudgetOutT`
@@ -568,6 +893,153 @@ ALTER TABLE `etfSymbolT`
   ADD KEY `fk_etfSymbol_user` (`UserID`);
 
 --
+-- Indexes for table `FamilyTreeT`
+--
+ALTER TABLE `FamilyTreeT`
+  ADD PRIMARY KEY (`FamilyTreeID`),
+  ADD UNIQUE KEY `UQ_FamilyTreeT_FamilyTreeCode` (`FamilyTreeCode`),
+  ADD KEY `IX_FamilyTreeT_CreatedByUserID` (`CreatedByUserID`),
+  ADD KEY `IX_FamilyTreeT_LastActivityAt` (`LastActivityAt`),
+  ADD KEY `IX_FamilyTreeT_Status` (`Status`),
+  ADD KEY `IX_FamilyTreeT_MergedIntoFamilyTreeID` (`MergedIntoFamilyTreeID`);
+
+--
+-- Indexes for table `FTContactT`
+--
+ALTER TABLE `FTContactT`
+  ADD PRIMARY KEY (`ContactID`),
+  ADD KEY `IX_FTContactT_PersonID` (`PersonID`),
+  ADD KEY `IX_FTContactT_Person_ContactType` (`PersonID`,`ContactType`),
+  ADD KEY `IX_FTContactT_CreatedByUserID` (`CreatedByUserID`);
+
+--
+-- Indexes for table `FTEventPersonT`
+--
+ALTER TABLE `FTEventPersonT`
+  ADD PRIMARY KEY (`EventPersonID`),
+  ADD UNIQUE KEY `UQ_FTEventPersonT_Event_Person` (`EventID`,`PersonID`),
+  ADD KEY `IX_FTEventPersonT_PersonID` (`PersonID`),
+  ADD KEY `IX_FTEventPersonT_EventID` (`EventID`),
+  ADD KEY `IX_FTEventPersonT_AddedByUserID` (`AddedByUserID`);
+
+--
+-- Indexes for table `FTEventT`
+--
+ALTER TABLE `FTEventT`
+  ADD PRIMARY KEY (`EventID`),
+  ADD KEY `IX_FTEventT_EventDate` (`EventDate`),
+  ADD KEY `IX_FTEventT_EventType` (`EventType`),
+  ADD KEY `IX_FTEventT_CreatedByUserID` (`CreatedByUserID`);
+
+--
+-- Indexes for table `FTFamilyTreeActivityT`
+--
+ALTER TABLE `FTFamilyTreeActivityT`
+  ADD PRIMARY KEY (`ActivityID`),
+  ADD KEY `IX_FTFamilyTreeActivityT_Tree_ActivityAt` (`FamilyTreeID`,`ActivityAt`),
+  ADD KEY `IX_FTFamilyTreeActivityT_User_ActivityAt` (`UserID`,`ActivityAt`),
+  ADD KEY `IX_FTFamilyTreeActivityT_AffectedPersonID` (`AffectedPersonID`),
+  ADD KEY `IX_FTFamilyTreeActivityT_Entity` (`EntityType`,`EntityID`);
+
+--
+-- Indexes for table `FTFamilyTreePersonT`
+--
+ALTER TABLE `FTFamilyTreePersonT`
+  ADD PRIMARY KEY (`FamilyTreePersonID`),
+  ADD UNIQUE KEY `UQ_FTFamilyTreePersonT_Tree_Person` (`FamilyTreeID`,`PersonID`),
+  ADD KEY `IX_FTFamilyTreePersonT_PersonID` (`PersonID`),
+  ADD KEY `IX_FTFamilyTreePersonT_FamilyTreeID` (`FamilyTreeID`),
+  ADD KEY `IX_FTFamilyTreePersonT_AddedByUserID` (`AddedByUserID`),
+  ADD KEY `IX_FTFamilyTreePersonT_OriginFamilyTreeID` (`OriginFamilyTreeID`);
+
+--
+-- Indexes for table `FTFamilyTreeUserT`
+--
+ALTER TABLE `FTFamilyTreeUserT`
+  ADD PRIMARY KEY (`FamilyTreeUserID`),
+  ADD UNIQUE KEY `UQ_FTFamilyTreeUserT_Tree_User` (`FamilyTreeID`,`UserID`),
+  ADD KEY `IX_FTFamilyTreeUserT_UserID` (`UserID`),
+  ADD KEY `IX_FTFamilyTreeUserT_FamilyTreeID` (`FamilyTreeID`),
+  ADD KEY `IX_FTFamilyTreeUserT_IsActive` (`IsActive`);
+
+--
+-- Indexes for table `FTImageT`
+--
+ALTER TABLE `FTImageT`
+  ADD PRIMARY KEY (`ImageID`),
+  ADD KEY `IX_FTImageT_PersonID` (`PersonID`),
+  ADD KEY `IX_FTImageT_Person_ImageType` (`PersonID`,`ImageType`),
+  ADD KEY `IX_FTImageT_CreatedByUserID` (`CreatedByUserID`);
+
+--
+-- Indexes for table `FTNotificationT`
+--
+ALTER TABLE `FTNotificationT`
+  ADD PRIMARY KEY (`NotificationID`),
+  ADD KEY `IX_FTNotificationT_FamilyTreeID` (`FamilyTreeID`),
+  ADD KEY `IX_FTNotificationT_ActivityID` (`ActivityID`),
+  ADD KEY `IX_FTNotificationT_RecipientPersonID` (`RecipientPersonID`),
+  ADD KEY `IX_FTNotificationT_RecipientUserID` (`RecipientUserID`),
+  ADD KEY `IX_FTNotificationT_Status` (`Status`),
+  ADD KEY `IX_FTNotificationT_CreatedAt` (`CreatedAt`);
+
+--
+-- Indexes for table `FTParentT`
+--
+ALTER TABLE `FTParentT`
+  ADD PRIMARY KEY (`ParentRelationshipID`),
+  ADD UNIQUE KEY `UQ_FTParentT_Tree_Child_Parent` (`FamilyTreeID`,`PersonID`,`ParentPersonID`),
+  ADD UNIQUE KEY `UQ_FTParentT_Tree_Child_AncestrySide` (`FamilyTreeID`,`PersonID`,`AncestrySide`),
+  ADD KEY `IX_FTParentT_ParentPersonID` (`ParentPersonID`),
+  ADD KEY `IX_FTParentT_PersonID` (`PersonID`),
+  ADD KEY `IX_FTParentT_FamilyTreeID` (`FamilyTreeID`),
+  ADD KEY `IX_FTParentT_CreatedByUserID` (`CreatedByUserID`);
+
+--
+-- Indexes for table `FTPartnerT`
+--
+ALTER TABLE `FTPartnerT`
+  ADD PRIMARY KEY (`PartnerRelationshipID`),
+  ADD UNIQUE KEY `UQ_FTPartnerT_Tree_Pair` (`FamilyTreeID`,`PersonID`,`PartnerPersonID`),
+  ADD KEY `IX_FTPartnerT_PersonID` (`PersonID`),
+  ADD KEY `IX_FTPartnerT_PartnerPersonID` (`PartnerPersonID`),
+  ADD KEY `IX_FTPartnerT_FamilyTreeID` (`FamilyTreeID`),
+  ADD KEY `IX_FTPartnerT_CreatedByUserID` (`CreatedByUserID`);
+
+--
+-- Indexes for table `FTPersonMergeT`
+--
+ALTER TABLE `FTPersonMergeT`
+  ADD PRIMARY KEY (`PersonMergeID`),
+  ADD UNIQUE KEY `UQ_FTPersonMergeT_SourcePersonID` (`SourcePersonID`),
+  ADD KEY `IX_FTPersonMergeT_SurvivingPersonID` (`SurvivingPersonID`),
+  ADD KEY `IX_FTPersonMergeT_SourceFamilyTreeID` (`SourceFamilyTreeID`),
+  ADD KEY `IX_FTPersonMergeT_SurvivingFamilyTreeID` (`SurvivingFamilyTreeID`),
+  ADD KEY `IX_FTPersonMergeT_MergedAt` (`MergedAt`),
+  ADD KEY `IX_FTPersonMergeT_MergedByUserID` (`MergedByUserID`);
+
+--
+-- Indexes for table `FTPersonT`
+--
+ALTER TABLE `FTPersonT`
+  ADD PRIMARY KEY (`PersonID`),
+  ADD KEY `IX_FTPersonT_Last_First` (`LastName`,`FirstName`),
+  ADD KEY `IX_FTPersonT_BirthDate` (`BirthDate`),
+  ADD KEY `IX_FTPersonT_Last_First_BirthDate` (`LastName`,`FirstName`,`BirthDate`),
+  ADD KEY `IX_FTPersonT_MaidenName` (`MaidenName`),
+  ADD KEY `IX_FTPersonT_CreatedByUserID` (`CreatedByUserID`);
+
+--
+-- Indexes for table `FTRecordArchiveT`
+--
+ALTER TABLE `FTRecordArchiveT`
+  ADD PRIMARY KEY (`ArchiveID`),
+  ADD KEY `IX_FTRecordArchiveT_FamilyTreeID` (`FamilyTreeID`),
+  ADD KEY `IX_FTRecordArchiveT_Entity` (`EntityType`,`EntityID`),
+  ADD KEY `IX_FTRecordArchiveT_AffectedPersonID` (`AffectedPersonID`),
+  ADD KEY `IX_FTRecordArchiveT_ExpiresAt` (`ExpiresAt`);
+
+--
 -- Indexes for table `InterestEarnedT`
 --
 ALTER TABLE `InterestEarnedT`
@@ -629,62 +1101,72 @@ ALTER TABLE `WeightsT`
 -- AUTO_INCREMENT for table `ActivitiesT`
 --
 ALTER TABLE `ActivitiesT`
-  MODIFY `ActivityID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=118;
+  MODIFY `ActivityID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=119;
 --
 -- AUTO_INCREMENT for table `BudgetCardT`
 --
 ALTER TABLE `BudgetCardT`
-  MODIFY `CardID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `CardID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 --
 -- AUTO_INCREMENT for table `BudgetDescriptionT`
 --
 ALTER TABLE `BudgetDescriptionT`
-  MODIFY `DescriptionID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `DescriptionID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 --
 -- AUTO_INCREMENT for table `BudgetEstimateAllowanceT`
 --
 ALTER TABLE `BudgetEstimateAllowanceT`
-  MODIFY `EstimateID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `EstimateID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 --
 -- AUTO_INCREMENT for table `BudgetInT`
 --
 ALTER TABLE `BudgetInT`
-  MODIFY `InID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `InID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 --
 -- AUTO_INCREMENT for table `BudgetLeaseRentT`
 --
 ALTER TABLE `BudgetLeaseRentT`
-  MODIFY `LeaseRentID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `LeaseRentID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 --
 -- AUTO_INCREMENT for table `BudgetLoanT`
 --
 ALTER TABLE `BudgetLoanT`
-  MODIFY `LoanID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `LoanID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+--
+-- AUTO_INCREMENT for table `BudgetMyInvestmentT`
+--
+ALTER TABLE `BudgetMyInvestmentT`
+  MODIFY `InvestmentID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+--
+-- AUTO_INCREMENT for table `BudgetMyMoneyT`
+--
+ALTER TABLE `BudgetMyMoneyT`
+  MODIFY `MoneyID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 --
 -- AUTO_INCREMENT for table `BudgetOutT`
 --
 ALTER TABLE `BudgetOutT`
-  MODIFY `OutID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `OutID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 --
 -- AUTO_INCREMENT for table `BudgetRecurrenceMonthlyDayT`
 --
 ALTER TABLE `BudgetRecurrenceMonthlyDayT`
-  MODIFY `RecurrenceMonthlyDayID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `RecurrenceMonthlyDayID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 --
 -- AUTO_INCREMENT for table `BudgetRecurrenceT`
 --
 ALTER TABLE `BudgetRecurrenceT`
-  MODIFY `RecurrenceID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `RecurrenceID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 --
 -- AUTO_INCREMENT for table `BudgetRecurrenceWeeklyDayT`
 --
 ALTER TABLE `BudgetRecurrenceWeeklyDayT`
-  MODIFY `RecurrenceWeeklyDayID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `RecurrenceWeeklyDayID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 --
 -- AUTO_INCREMENT for table `BudgetSubscriptionT`
 --
 ALTER TABLE `BudgetSubscriptionT`
-  MODIFY `SubscriptionID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `SubscriptionID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 --
 -- AUTO_INCREMENT for table `etfActivityT`
 --
@@ -701,6 +1183,76 @@ ALTER TABLE `etfCategoryT`
 ALTER TABLE `etfSymbolT`
   MODIFY `etfSymbolID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=215;
 --
+-- AUTO_INCREMENT for table `FamilyTreeT`
+--
+ALTER TABLE `FamilyTreeT`
+  MODIFY `FamilyTreeID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+--
+-- AUTO_INCREMENT for table `FTContactT`
+--
+ALTER TABLE `FTContactT`
+  MODIFY `ContactID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+--
+-- AUTO_INCREMENT for table `FTEventPersonT`
+--
+ALTER TABLE `FTEventPersonT`
+  MODIFY `EventPersonID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+--
+-- AUTO_INCREMENT for table `FTEventT`
+--
+ALTER TABLE `FTEventT`
+  MODIFY `EventID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+--
+-- AUTO_INCREMENT for table `FTFamilyTreeActivityT`
+--
+ALTER TABLE `FTFamilyTreeActivityT`
+  MODIFY `ActivityID` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=372;
+--
+-- AUTO_INCREMENT for table `FTFamilyTreePersonT`
+--
+ALTER TABLE `FTFamilyTreePersonT`
+  MODIFY `FamilyTreePersonID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=158;
+--
+-- AUTO_INCREMENT for table `FTFamilyTreeUserT`
+--
+ALTER TABLE `FTFamilyTreeUserT`
+  MODIFY `FamilyTreeUserID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+--
+-- AUTO_INCREMENT for table `FTImageT`
+--
+ALTER TABLE `FTImageT`
+  MODIFY `ImageID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
+--
+-- AUTO_INCREMENT for table `FTNotificationT`
+--
+ALTER TABLE `FTNotificationT`
+  MODIFY `NotificationID` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+--
+-- AUTO_INCREMENT for table `FTParentT`
+--
+ALTER TABLE `FTParentT`
+  MODIFY `ParentRelationshipID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=165;
+--
+-- AUTO_INCREMENT for table `FTPartnerT`
+--
+ALTER TABLE `FTPartnerT`
+  MODIFY `PartnerRelationshipID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+--
+-- AUTO_INCREMENT for table `FTPersonMergeT`
+--
+ALTER TABLE `FTPersonMergeT`
+  MODIFY `PersonMergeID` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+--
+-- AUTO_INCREMENT for table `FTPersonT`
+--
+ALTER TABLE `FTPersonT`
+  MODIFY `PersonID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=122;
+--
+-- AUTO_INCREMENT for table `FTRecordArchiveT`
+--
+ALTER TABLE `FTRecordArchiveT`
+  MODIFY `ArchiveID` bigint(20) NOT NULL AUTO_INCREMENT;
+--
 -- AUTO_INCREMENT for table `InterestEarnedT`
 --
 ALTER TABLE `InterestEarnedT`
@@ -709,27 +1261,27 @@ ALTER TABLE `InterestEarnedT`
 -- AUTO_INCREMENT for table `LoginVerificationT`
 --
 ALTER TABLE `LoginVerificationT`
-  MODIFY `VerificationID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=80;
+  MODIFY `VerificationID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=216;
 --
 -- AUTO_INCREMENT for table `TrackUsageT`
 --
 ALTER TABLE `TrackUsageT`
-  MODIFY `ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10593;
+  MODIFY `ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12528;
 --
 -- AUTO_INCREMENT for table `UsersT`
 --
 ALTER TABLE `UsersT`
-  MODIFY `UserID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
+  MODIFY `UserID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 --
 -- AUTO_INCREMENT for table `WeightActivitiesT`
 --
 ALTER TABLE `WeightActivitiesT`
-  MODIFY `WeightActivityID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=411;
+  MODIFY `WeightActivityID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=429;
 --
 -- AUTO_INCREMENT for table `WeightsT`
 --
 ALTER TABLE `WeightsT`
-  MODIFY `WeightID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=808;
+  MODIFY `WeightID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=860;
 --
 -- Constraints for dumped tables
 --
@@ -779,6 +1331,18 @@ ALTER TABLE `BudgetLeaseRentT`
 ALTER TABLE `BudgetLoanT`
   ADD CONSTRAINT `fk_loan_user` FOREIGN KEY (`UserID`) REFERENCES `UsersT` (`UserID`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_loan_recurrence_user` FOREIGN KEY (`RecurrenceID`,`UserID`) REFERENCES `BudgetRecurrenceT` (`RecurrenceID`, `UserID`) ON UPDATE CASCADE;
+
+--
+-- Constraints for table `BudgetMyInvestmentT`
+--
+ALTER TABLE `BudgetMyInvestmentT`
+  ADD CONSTRAINT `FK_BudgetMyInvestmentT_UsersT` FOREIGN KEY (`UserID`) REFERENCES `UsersT` (`UserID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `BudgetMyMoneyT`
+--
+ALTER TABLE `BudgetMyMoneyT`
+  ADD CONSTRAINT `FK_BudgetMyMoneyT_UsersT` FOREIGN KEY (`UserID`) REFERENCES `UsersT` (`UserID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `BudgetOutT`
