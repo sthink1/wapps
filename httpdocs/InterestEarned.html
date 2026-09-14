@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="js/confetti.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.14/purify.min.js"></script>
-        <script src="js/inputSanitizer.js?v=20260914-1"></script>
+    <script src="js/inputSanitizer.js?v=20260914-1"></script>
     <style>
         :root {
             color-scheme: only light;
@@ -140,15 +140,21 @@
             top: 0;
             width: 100%;
             height: 100%;
+            padding: 20px 0;
+            box-sizing: border-box;
+            overflow-y: auto;
             background-color: rgba(0,0,0,0.4);
         }
         .modal-content {
             background-color: #fefefe;
-            margin: 15% auto;
+            margin: 0 auto;
             padding: 20px;
             border: 1px solid #888;
             width: 80%;
             max-width: 500px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            box-sizing: border-box;
             border-radius: 10px;
         }
         .close {
@@ -194,6 +200,75 @@
             overflow-y: auto;
         }
     
+
+        .contract-actions {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 0 auto 20px;
+        }
+        .contract-actions button {
+            padding: 10px 18px;
+            font-size: 16px;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .contract-actions .add-btn,
+        .contract-actions .reset-btn {
+            background-color: #007bff;
+        }
+        .contract-actions .edit-btn {
+            background-color: #d98200;
+        }
+        .contract-actions .delete-btn {
+            background-color: #c62828;
+        }
+        .contract-actions button:hover {
+            filter: brightness(0.9);
+        }
+        .contract-management-select {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto 12px;
+            display: block;
+        }
+        .contract-management-table {
+            margin: 12px 0;
+        }
+        .contract-management-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .contract-management-actions button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .contract-management-actions .save-btn {
+            background-color: #007bff;
+        }
+        .contract-management-actions .delete-btn {
+            background-color: #c62828;
+        }
+        .contract-management-actions button:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+        .modal form textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 90px;
+            resize: vertical;
+        }
+
         .app-description {
             box-sizing: border-box;
             background-color: #ffffff;
@@ -216,12 +291,17 @@
             <h1>Interest Earned Verification</h1>
             <div class="buttons">
                 <a href="home.html"><button>Home</button></a>
-                <button id="btnAddContract">ADD CONTRACT</button>
-                <button onclick="location.reload()">RESET</button>
             </div>
         </div>
 
         <div class="app-description">Verify the interest credited on an annuity or similar account statement. Enter the contract information, beginning and ending values, additions, withdrawals and reported interest to check the statement's interest calculation.</div>
+
+        <div class="contract-actions" aria-label="Contract management">
+            <button id="btnAddContract" class="add-btn" type="button">ADD CONTRACT</button>
+            <button id="btnDeleteContract" class="delete-btn" type="button">DELETE CONTRACT</button>
+            <button id="btnEditContract" class="edit-btn" type="button">EDIT CONTRACT</button>
+            <button class="reset-btn" type="button" onclick="location.reload()">RESET</button>
+        </div>
 
         <!-- Section 2: Contract Info -->
         <div class="section-contract">
@@ -398,6 +478,76 @@
             </div>
         </div>
 
+        <!-- Modal for Deleting an Existing Contract -->
+        <div id="deleteModal" class="modal">
+            <div class="modal-content">
+                <span class="close">×</span>
+                <h2>DELETE CONTRACT</h2>
+                <p>Select the contract to delete.</p>
+                <select id="deleteContractDropdown" class="contract-management-select">
+                    <option value="">Select a Contract</option>
+                </select>
+                <table id="deleteContractTable" class="contract-management-table">
+                    <tbody>
+                        <tr>
+                            <td colspan="2">Select a contract to display its information.</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="contract-management-actions">
+                    <button id="confirmDeleteContract" class="delete-btn" type="button" disabled>
+                        DELETE SELECTED CONTRACT
+                    </button>
+                </div>
+                <div id="deleteError" class="error"></div>
+            </div>
+        </div>
+
+        <!-- Modal for Editing an Existing Contract -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <span class="close">×</span>
+                <h2>EDIT CONTRACT</h2>
+                <p>Select the contract to edit.</p>
+                <select id="editContractDropdown" class="contract-management-select">
+                    <option value="">Select a Contract</option>
+                </select>
+                <table id="editContractTable" class="contract-management-table">
+                    <tbody>
+                        <tr>
+                            <td colspan="2">Select a contract to display its information.</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <form id="editInterestForm" style="display: none;">
+                    <label>
+                        Company Name:
+                        <input type="text" id="editCompanyName" maxlength="50" required>
+                    </label>
+                    <label>
+                        Contract Number:
+                        <input type="text" id="editContractNumber" maxlength="20" required>
+                    </label>
+                    <label>
+                        Date Opened:
+                        <input type="date" id="editDateOpened" required>
+                    </label>
+                    <label>
+                        Rate (%):
+                        <input type="number" id="editRate" step="0.01" min="0" max="100" required>
+                    </label>
+                    <label>
+                        Notes:
+                        <textarea id="editNotes" maxlength="2000"></textarea>
+                    </label>
+                    <div class="contract-management-actions">
+                        <button class="save-btn" type="submit">SAVE CHANGES</button>
+                    </div>
+                    <div id="editError" class="error"></div>
+                </form>
+            </div>
+        </div>
+
         <!-- Modal for Principal Input -->
         <div id="principalModal" class="modal">
             <div class="modal-content">
@@ -506,23 +656,99 @@
             .catch(error => console.error(`Error logging action ${action}:`, error.message));
         }
 
-        // Populate contract dropdown
-        function populateContractDropdown() {
+        // Current contract records are cached for the management dropdowns.
+        let contractRecords = [];
+
+        function formatContractDate(value) {
+            if (!value) return '';
+            return String(value).split('T')[0];
+        }
+
+        function populateOneContractDropdown(dropdown, placeholder, selectedId = '') {
+            dropdown.textContent = '';
+
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = placeholder;
+            dropdown.appendChild(placeholderOption);
+
+            contractRecords.forEach(record => {
+                const option = document.createElement('option');
+                option.value = record.UserIntErndID;
+                option.textContent = `${record.CompanyName || ''} - ${record.ContractNumber || ''}`;
+                dropdown.appendChild(option);
+            });
+
+            if (selectedId) {
+                dropdown.value = String(selectedId);
+            }
+        }
+
+        function populateContractDropdown(selectedId = '') {
             const dropdown = document.getElementById('contractDropdown');
-            makeAuthenticatedRequest(`${BASE_URL}/interestEarned`)
+
+            return makeAuthenticatedRequest(`${BASE_URL}/interestEarned`)
                 .then(records => {
-                    dropdown.innerHTML = '<option value="">Select a Contract</option>';
-                    records.sort((a, b) => (`${a.CompanyName} - ${a.ContractNumber}`).localeCompare(`${b.CompanyName} - ${b.ContractNumber}`));
-                    records.forEach(record => {
-                        const option = document.createElement('option');
-                        option.value = record.UserIntErndID;
-                        option.textContent = `${escapeHtml(record.CompanyName)} - ${escapeHtml(record.ContractNumber)}`;
-                        dropdown.appendChild(option);
-                    });
+                    contractRecords = [...records].sort((a, b) =>
+                        (`${a.CompanyName} - ${a.ContractNumber}`)
+                            .localeCompare(`${b.CompanyName} - ${b.ContractNumber}`)
+                    );
+
+                    populateOneContractDropdown(dropdown, 'Select a Contract', selectedId);
+                    populateOneContractDropdown(
+                        document.getElementById('deleteContractDropdown'),
+                        'Select a Contract'
+                    );
+                    populateOneContractDropdown(
+                        document.getElementById('editContractDropdown'),
+                        'Select a Contract'
+                    );
                 })
                 .catch(error => {
-                    dropdown.innerHTML = '<option value="">Error loading contracts</option>';
+                    dropdown.textContent = '';
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Error loading contracts';
+                    dropdown.appendChild(option);
+                    throw error;
                 });
+        }
+
+        function renderContractDetails(tableBody, record, emptyMessage = 'Select a contract to display its information.') {
+            tableBody.textContent = '';
+
+            if (!record) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 2;
+                cell.textContent = emptyMessage;
+                row.appendChild(cell);
+                tableBody.appendChild(row);
+                return;
+            }
+
+            const details = [
+                ['Company Name', record.CompanyName || ''],
+                ['Contract Number', record.ContractNumber || ''],
+                ['Date Opened', formatContractDate(record.DateOpened)],
+                ['Rate (%)', formatNumber(record.Rate)],
+                ['Notes', record.Notes || 'N/A']
+            ];
+
+            details.forEach(([label, value]) => {
+                const row = document.createElement('tr');
+                const labelCell = document.createElement('td');
+                const valueCell = document.createElement('td');
+                labelCell.textContent = label;
+                valueCell.textContent = value;
+                row.appendChild(labelCell);
+                row.appendChild(valueCell);
+                tableBody.appendChild(row);
+            });
+        }
+
+        function fetchContract(userIntErndId) {
+            return makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${userIntErndId}`);
         }
 
         // Display selected contract details
@@ -532,22 +758,20 @@
             const userIntErndId = dropdown.value;
 
             if (!userIntErndId) {
-                tableBody.innerHTML = '<tr><td colspan="2">This data is required to do the interest verification.</td></tr>';
+                renderContractDetails(
+                    tableBody,
+                    null,
+                    'This data is required to do the interest verification.'
+                );
                 return;
             }
 
-            makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${userIntErndId}`)
+            fetchContract(userIntErndId)
                 .then(record => {
-                    tableBody.innerHTML = `
-                        <tr><td>Company Name</td><td>${escapeHtml(record.CompanyName)}</td></tr>
-                        <tr><td>Contract Number</td><td>${escapeHtml(record.ContractNumber)}</td></tr>
-                        <tr><td>Date Opened</td><td>${record.DateOpened.split('T')[0]}</td></tr>
-                        <tr><td>Rate (%)</td><td>${formatNumber(record.Rate)}</td></tr>
-                        <tr><td>Notes</td><td>${escapeHtml(record.Notes || 'N/A')}</td></tr>
-                    `;
+                    renderContractDetails(tableBody, record);
                 })
                 .catch(error => {
-                    tableBody.innerHTML = `<tr><td colspan="2">${escapeHtml(error.message)}</td></tr>`;
+                    renderContractDetails(tableBody, null, error.message);
                 });
         }
 
@@ -1037,10 +1261,41 @@
                 });
         }
 
-        // Modal handling for addModal
+        // Contract-management modal handling
         const addModal = document.getElementById('addModal');
+        const deleteModal = document.getElementById('deleteModal');
+        const editModal = document.getElementById('editModal');
+
         const btnAddContract = document.getElementById('btnAddContract');
+        const btnDeleteContract = document.getElementById('btnDeleteContract');
+        const btnEditContract = document.getElementById('btnEditContract');
+
         const spanCloseAdd = addModal.querySelector('.close');
+        const spanCloseDelete = deleteModal.querySelector('.close');
+        const spanCloseEdit = editModal.querySelector('.close');
+
+        function resetDeleteModal() {
+            const dropdown = document.getElementById('deleteContractDropdown');
+            dropdown.value = '';
+            renderContractDetails(
+                document.querySelector('#deleteContractTable tbody'),
+                null
+            );
+            document.getElementById('confirmDeleteContract').disabled = true;
+            document.getElementById('deleteError').textContent = '';
+        }
+
+        function resetEditModal() {
+            const dropdown = document.getElementById('editContractDropdown');
+            dropdown.value = '';
+            renderContractDetails(
+                document.querySelector('#editContractTable tbody'),
+                null
+            );
+            document.getElementById('editInterestForm').reset();
+            document.getElementById('editInterestForm').style.display = 'none';
+            document.getElementById('editError').textContent = '';
+        }
 
         btnAddContract.onclick = function() {
             addModal.style.display = 'block';
@@ -1048,9 +1303,206 @@
             document.getElementById('addError').textContent = '';
         };
 
+        btnDeleteContract.onclick = function() {
+            populateContractDropdown()
+                .then(() => {
+                    resetDeleteModal();
+                    deleteModal.style.display = 'block';
+                })
+                .catch(error => {
+                    alert(`Unable to load contracts: ${error.message}`);
+                });
+        };
+
+        btnEditContract.onclick = function() {
+            populateContractDropdown()
+                .then(() => {
+                    resetEditModal();
+                    editModal.style.display = 'block';
+                })
+                .catch(error => {
+                    alert(`Unable to load contracts: ${error.message}`);
+                });
+        };
+
         spanCloseAdd.onclick = function() {
             addModal.style.display = 'none';
         };
+
+        spanCloseDelete.onclick = function() {
+            deleteModal.style.display = 'none';
+        };
+
+        spanCloseEdit.onclick = function() {
+            editModal.style.display = 'none';
+        };
+
+        window.addEventListener('click', event => {
+            [addModal, deleteModal, editModal, principalModal].forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+
+        document.getElementById('deleteContractDropdown').addEventListener('change', function() {
+            const id = this.value;
+            const tableBody = document.querySelector('#deleteContractTable tbody');
+            const deleteButton = document.getElementById('confirmDeleteContract');
+            const errorDiv = document.getElementById('deleteError');
+
+            errorDiv.textContent = '';
+            deleteButton.disabled = true;
+
+            if (!id) {
+                renderContractDetails(tableBody, null);
+                return;
+            }
+
+            fetchContract(id)
+                .then(record => {
+                    renderContractDetails(tableBody, record);
+                    deleteButton.disabled = false;
+                })
+                .catch(error => {
+                    renderContractDetails(tableBody, null, error.message);
+                });
+        });
+
+        document.getElementById('confirmDeleteContract').addEventListener('click', function() {
+            const id = document.getElementById('deleteContractDropdown').value;
+            const errorDiv = document.getElementById('deleteError');
+
+            if (!id) return;
+
+            const record = contractRecords.find(item =>
+                String(item.UserIntErndID) === String(id)
+            );
+            const contractLabel = record
+                ? `${record.CompanyName} - ${record.ContractNumber}`
+                : 'this contract';
+
+            if (!confirm(`Delete ${contractLabel}? This action cannot be undone.`)) {
+                return;
+            }
+
+            this.disabled = true;
+            errorDiv.textContent = '';
+
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${id}`, {
+                method: 'DELETE'
+            })
+                .then(() => {
+                    deleteModal.style.display = 'none';
+                    const mainDropdown = document.getElementById('contractDropdown');
+                    const wasSelected = String(mainDropdown.value) === String(id);
+
+                    return populateContractDropdown().then(() => {
+                        if (wasSelected) {
+                            renderContractDetails(
+                                document.querySelector('#contractTable tbody'),
+                                null,
+                                'This data is required to do the interest verification.'
+                            );
+                        }
+                        alert('Contract deleted successfully');
+                        logAction('Delete Contract');
+                    });
+                })
+                .catch(error => {
+                    errorDiv.textContent = error.message;
+                    this.disabled = false;
+                });
+        });
+
+        document.getElementById('editContractDropdown').addEventListener('change', function() {
+            const id = this.value;
+            const tableBody = document.querySelector('#editContractTable tbody');
+            const editForm = document.getElementById('editInterestForm');
+            const errorDiv = document.getElementById('editError');
+
+            errorDiv.textContent = '';
+            editForm.style.display = 'none';
+
+            if (!id) {
+                renderContractDetails(tableBody, null);
+                editForm.reset();
+                return;
+            }
+
+            fetchContract(id)
+                .then(record => {
+                    renderContractDetails(tableBody, record);
+                    document.getElementById('editCompanyName').value = record.CompanyName || '';
+                    document.getElementById('editContractNumber').value = record.ContractNumber || '';
+                    document.getElementById('editDateOpened').value = formatContractDate(record.DateOpened);
+                    document.getElementById('editRate').value = record.Rate ?? '';
+                    document.getElementById('editNotes').value = record.Notes || '';
+                    editForm.style.display = 'flex';
+                })
+                .catch(error => {
+                    renderContractDetails(tableBody, null, error.message);
+                });
+        });
+
+        document.getElementById('editInterestForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('editContractDropdown').value;
+            const companyName = document.getElementById('editCompanyName').value.trim();
+            const contractNumber = document.getElementById('editContractNumber').value.trim();
+            const dateOpened = document.getElementById('editDateOpened').value;
+            const rate = document.getElementById('editRate').value;
+            const notes = document.getElementById('editNotes').value.trim();
+            const errorDiv = document.getElementById('editError');
+
+            errorDiv.textContent = '';
+
+            if (!id) {
+                errorDiv.textContent = 'Please select a contract.';
+                return;
+            }
+            if (!companyName) {
+                errorDiv.textContent = 'Company name cannot be empty.';
+                return;
+            }
+            if (!contractNumber) {
+                errorDiv.textContent = 'Contract number cannot be empty.';
+                return;
+            }
+            if (!dateOpened) {
+                errorDiv.textContent = 'Date opened cannot be empty.';
+                return;
+            }
+            if (!rate || Number(rate) < 0 || Number(rate) > 100) {
+                errorDiv.textContent = 'Rate must be between 0 and 100.';
+                return;
+            }
+
+            const data = {
+                CompanyName: companyName,
+                ContractNumber: contractNumber,
+                DateOpened: dateOpened,
+                Rate: parseFloat(rate),
+                Notes: notes || null
+            };
+
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            })
+                .then(() => {
+                    editModal.style.display = 'none';
+                    return populateContractDropdown(id).then(() => {
+                        displayContractDetails();
+                        alert('Contract updated successfully');
+                        logAction('Edit Contract');
+                    });
+                })
+                .catch(error => {
+                    errorDiv.textContent = error.message;
+                });
+        });
 
         // Principal modal handling (modified for new validation)
         const principalModal = document.getElementById('principalModal');
@@ -1199,12 +1651,13 @@
                 body: JSON.stringify(data)
             })
             .then(response => {
-                // Show confetti and alert on success
                 triggerConfetti();
-                alert('Contract added successfully');
                 addModal.style.display = 'none';
-                populateContractDropdown();
-                logAction('Add Contract');
+                return populateContractDropdown(response.UserIntErndID).then(() => {
+                    displayContractDetails();
+                    alert('Contract added successfully');
+                    logAction('Add Contract');
+                });
             })
             .catch(error => {
                 errorMessage.textContent = error.message;
