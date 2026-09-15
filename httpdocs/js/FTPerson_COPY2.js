@@ -50,7 +50,6 @@ let currentLifeImages = [];
 let contextImageID = null;
 let currentParents = [];
 let currentSiblings = [];
-let currentChildren = [];
 let relatedDifferent = new Set();
 
 function ageOf(person) {
@@ -285,9 +284,8 @@ async function loadRelationships() {
         ? currentPartners.map(person => personRow(person)).join('')
         : '<tr><td colspan="9">None entered</td></tr>';
 
-    currentChildren = data.children || [];
-    $('childBody').innerHTML = currentChildren.length
-        ? currentChildren.map(person => personRow(person)).join('')
+    $('childBody').innerHTML = (data.children || []).length
+        ? data.children.map(person => personRow(person)).join('')
         : '<tr><td colspan="9">None entered</td></tr>';
 
     wirePersonLinks();
@@ -979,124 +977,11 @@ async function askWhichSiblingsShareParent(parentID) {
     setPageStatus('Biological parent added to the selected sibling(s).');
 }
 
-
-async function eligibleChildrenForPartner(partnerID) {
-    if (!partnerID || !currentChildren.length) return [];
-
-    const results = await Promise.all(
-        currentChildren.map(async child => {
-            const response = await fetch(
-                `${BASE_URL}/familytree/persons/${child.PersonID}/relationships` +
-                `?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,
-                { headers: authHeaders(false) }
-            );
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(
-                    data.message ||
-                    `Unable to review biological parents for ${nameOf(child)}.`
-                );
-            }
-
-            const parents = Array.isArray(data.parents)
-                ? data.parents
-                : [
-                    ...(data.mother || []),
-                    ...(data.father || [])
-                ];
-
-            const parentIDs = new Set(
-                parents.map(parent => Number(parent.PersonID))
-            );
-
-            /*
-             * Do not ask about a child when:
-             * - the newly added Partner is already a biological parent; or
-             * - both biological parent positions are already represented.
-             *
-             * The second check includes both the normal Mother/Father case
-             * and older rows where ancestry side may be blank.
-             */
-            if (parentIDs.has(Number(partnerID))) return null;
-
-            const hasMother = (data.mother || []).length > 0;
-            const hasFather = (data.father || []).length > 0;
-
-            if ((hasMother && hasFather) || parents.length >= 2) {
-                return null;
-            }
-
-            return child;
-        })
-    );
-
-    return results.filter(Boolean);
-}
-
-async function askWhichChildrenSharePartner(partnerID) {
-    if (!partnerID || !currentChildren.length) return;
-
-    const partner = currentPartners.find(
-        person => Number(person.PersonID) === Number(partnerID)
-    );
-    const partnerName = partner
-        ? nameOf(partner)
-        : `PersonID ${partnerID}`;
-
-    const eligibleChildren = await eligibleChildrenForPartner(partnerID);
-    if (!eligibleChildren.length) return;
-
-    const childIDs = await chooseSharedParentPeople(
-        `Which of these children, if any, are also biological children of ${partnerName}?`,
-        eligibleChildren,
-        'partner-child-choice'
-    );
-
-    if (!childIDs.length) return;
-
-    let added = 0;
-
-    for (const childID of childIDs) {
-        const response = await fetch(
-            `${BASE_URL}/familytree/children/${childID}/partner-parent`,
-            {
-                method: 'POST',
-                headers: authHeaders(),
-                body: JSON.stringify({
-                    familyTreeCode,
-                    focalPersonID: personID,
-                    partnerPersonID: partnerID
-                })
-            }
-        );
-
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(
-                data.message ||
-                'Unable to add the Partner as a biological parent of the selected child.'
-            );
-        }
-
-        added++;
-    }
-
-    if (added) {
-        setPageStatus(
-            `${partnerName} added as a biological parent of ` +
-            `${added} selected child${added === 1 ? '' : 'ren'}.`
-        );
-    }
-}
-
 async function runPostRelationshipQuestions(relationshipKind, relatedPersonID) {
     await loadRelationships();
 
     if (relationshipKind === 'child') {
         await askPartnerParent(relatedPersonID);
-    } else if (relationshipKind === 'partner') {
-        await askWhichChildrenSharePartner(relatedPersonID);
     } else if (relationshipKind === 'sibling') {
         await askWhichParentsApplyToSibling(relatedPersonID);
     } else if (relationshipKind === 'mother' || relationshipKind === 'father') {
@@ -1265,13 +1150,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (coParentChildID) {
             await askPartnerParent(coParentChildID);
             params.delete('askPartnerParentChildID');
-            await loadRelationships();
-        }
-
-        const partnerChildrenPersonID = Number(params.get('askPartnerChildrenPersonID') || 0);
-        if (partnerChildrenPersonID) {
-            await askWhichChildrenSharePartner(partnerChildrenPersonID);
-            params.delete('askPartnerChildrenPersonID');
             await loadRelationships();
         }
 

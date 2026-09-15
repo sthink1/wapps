@@ -743,32 +743,6 @@ async function adoptTreeForUser(c, userID, targetTree) {
         );
 
         await c.query(
-            `INSERT IGNORE INTO FTSiblingT
-             (
-                FamilyTreeID,
-                PersonID,
-                SiblingPersonID,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             )
-             SELECT
-                ?,
-                PersonID,
-                SiblingPersonID,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             FROM FTSiblingT
-             WHERE FamilyTreeID=?`,
-            [targetTree.FamilyTreeID, sourceID]
-        );
-
-        await c.query(
             `DELETE FROM FTParentT
              WHERE FamilyTreeID=?`,
             [sourceID]
@@ -776,12 +750,6 @@ async function adoptTreeForUser(c, userID, targetTree) {
 
         await c.query(
             `DELETE FROM FTPartnerT
-             WHERE FamilyTreeID=?`,
-            [sourceID]
-        );
-
-        await c.query(
-            `DELETE FROM FTSiblingT
              WHERE FamilyTreeID=?`,
             [sourceID]
         );
@@ -904,98 +872,6 @@ async function addParentLink(c, treeID, userID, childID, parentID) {
     );
 }
 
-
-async function addSiblingLink(c, treeID, userID, personID, siblingPersonID) {
-    const a = Math.min(Number(personID), Number(siblingPersonID));
-    const z = Math.max(Number(personID), Number(siblingPersonID));
-
-    if (!a || !z || a === z) {
-        const err = new Error('Two different people are required for a sibling relationship.');
-        err.status = 400;
-        throw err;
-    }
-
-    await c.query(
-        `INSERT INTO FTSiblingT
-         (FamilyTreeID,PersonID,SiblingPersonID,Notes,
-          CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-         VALUES (?,?,?,NULL,?,NOW(),NULL,NULL)
-         ON DUPLICATE KEY UPDATE
-            UpdatedByUserID=VALUES(CreatedByUserID),
-            UpdatedAt=NOW()`,
-        [treeID, a, z, userID]
-    );
-}
-
-async function biologicalSiblingIDs(c, treeID, personID) {
-    const ids = new Set();
-
-    const [derived] = await c.query(
-        `SELECT DISTINCT siblingParent.PersonID AS SiblingPersonID
-         FROM FTParentT focalParent
-         JOIN FTParentT siblingParent
-           ON siblingParent.FamilyTreeID=focalParent.FamilyTreeID
-          AND siblingParent.ParentPersonID=focalParent.ParentPersonID
-          AND siblingParent.PersonID<>focalParent.PersonID
-         WHERE focalParent.FamilyTreeID=?
-           AND focalParent.PersonID=?
-           AND COALESCE(focalParent.ParentType,'Parent')<>'Adopted'
-           AND COALESCE(siblingParent.ParentType,'Parent')<>'Adopted'`,
-        [treeID, personID]
-    );
-
-    derived.forEach(row => ids.add(Number(row.SiblingPersonID)));
-
-    const [explicit] = await c.query(
-        `SELECT
-            IF(PersonID=?,SiblingPersonID,PersonID) AS SiblingPersonID
-         FROM FTSiblingT
-         WHERE FamilyTreeID=?
-           AND (PersonID=? OR SiblingPersonID=?)`,
-        [personID, treeID, personID, personID]
-    );
-
-    explicit.forEach(row => ids.add(Number(row.SiblingPersonID)));
-    ids.delete(Number(personID));
-
-    return [...ids].filter(Boolean);
-}
-
-async function addConfirmedParentLink(
-    c,
-    treeID,
-    userID,
-    childID,
-    parentID,
-    sideHint = null
-) {
-    const side = sideHint || await inferredParentSide(c, parentID);
-
-    if (side) {
-        const [conflicts] = await c.query(
-            `SELECT ParentPersonID
-             FROM FTParentT
-             WHERE FamilyTreeID=?
-               AND PersonID=?
-               AND AncestrySide=?
-               AND ParentPersonID<>?
-               AND COALESCE(ParentType,'Parent')<>'Adopted'
-             LIMIT 1`,
-            [treeID, childID, side, parentID]
-        );
-
-        if (conflicts.length) {
-            const err = new Error(
-                `That Person already has a different biological ${String(side).toLowerCase()}.`
-            );
-            err.status = 409;
-            throw err;
-        }
-    }
-
-    await addParentLink(c, treeID, userID, childID, parentID);
-}
-
 async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
     await c.query(
         `INSERT IGNORE INTO FTFamilyTreePersonT
@@ -1027,8 +903,6 @@ async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
         );
     } else if (kind === 'child') {
         await addParentLink(c, treeID, userID, related, focal);
-    } else if (kind === 'sibling') {
-        await addSiblingLink(c, treeID, userID, focal, related);
     } else if (kind === 'partner') {
         const a = Math.min(focal, related);
         const z = Math.max(focal, related);
@@ -1129,20 +1003,6 @@ async function loadTreeComponents(c, treeID) {
         union(
             Number(edge.PersonID),
             Number(edge.PartnerPersonID)
-        );
-    }
-
-    const [siblingEdges] = await c.query(
-        `SELECT PersonID, SiblingPersonID
-         FROM FTSiblingT
-         WHERE FamilyTreeID=?`,
-        [treeID]
-    );
-
-    for (const edge of siblingEdges) {
-        union(
-            Number(edge.PersonID),
-            Number(edge.SiblingPersonID)
         );
     }
 
@@ -1321,39 +1181,6 @@ async function moveComponentToTree(
     );
 
     await c.query(
-        `INSERT IGNORE INTO FTSiblingT
-         (
-            FamilyTreeID,
-            PersonID,
-            SiblingPersonID,
-            Notes,
-            CreatedByUserID,
-            CreatedAt,
-            UpdatedByUserID,
-            UpdatedAt
-         )
-         SELECT
-            ?,
-            PersonID,
-            SiblingPersonID,
-            Notes,
-            CreatedByUserID,
-            CreatedAt,
-            UpdatedByUserID,
-            UpdatedAt
-         FROM FTSiblingT
-         WHERE FamilyTreeID=?
-           AND PersonID IN (${placeholders})
-           AND SiblingPersonID IN (${placeholders})`,
-        [
-            destinationTreeID,
-            sourceTreeID,
-            ...personIDs,
-            ...personIDs
-        ]
-    );
-
-    await c.query(
         `DELETE FROM FTParentT
          WHERE FamilyTreeID=?
            AND PersonID IN (${placeholders})
@@ -1366,14 +1193,6 @@ async function moveComponentToTree(
          WHERE FamilyTreeID=?
            AND PersonID IN (${placeholders})
            AND PartnerPersonID IN (${placeholders})`,
-        [sourceTreeID, ...personIDs, ...personIDs]
-    );
-
-    await c.query(
-        `DELETE FROM FTSiblingT
-         WHERE FamilyTreeID=?
-           AND PersonID IN (${placeholders})
-           AND SiblingPersonID IN (${placeholders})`,
         [sourceTreeID, ...personIDs, ...personIDs]
     );
 
@@ -2488,39 +2307,8 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
         );
     }
 
-    const [siblingRows] = await c.query(
-        'SELECT * FROM FTSiblingT WHERE FamilyTreeID=? ORDER BY SiblingRelationshipID',
-        [newerTree.FamilyTreeID]
-    );
-    for (const rel of siblingRows) {
-        const personA = mapID(rel.PersonID);
-        const personB = mapID(rel.SiblingPersonID);
-        if (!personA || !personB || personA === personB) continue;
-
-        const a = Math.min(personA, personB);
-        const z = Math.max(personA, personB);
-
-        await c.query(
-            `INSERT IGNORE INTO FTSiblingT
-             (FamilyTreeID,PersonID,SiblingPersonID,Notes,
-              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-             VALUES (?,?,?,?,?,?,?,?)`,
-            [
-                olderTree.FamilyTreeID,
-                a,
-                z,
-                rel.Notes,
-                rel.CreatedByUserID,
-                rel.CreatedAt,
-                rel.UpdatedByUserID,
-                rel.UpdatedAt
-            ]
-        );
-    }
-
     await c.query('DELETE FROM FTParentT WHERE FamilyTreeID=?', [newerTree.FamilyTreeID]);
     await c.query('DELETE FROM FTPartnerT WHERE FamilyTreeID=?', [newerTree.FamilyTreeID]);
-    await c.query('DELETE FROM FTSiblingT WHERE FamilyTreeID=?', [newerTree.FamilyTreeID]);
     await c.query('DELETE FROM FTFamilyTreePersonT WHERE FamilyTreeID=?', [newerTree.FamilyTreeID]);
     await c.query('UPDATE FTFamilyTreeUserT SET IsActive=0,LastActivityAt=NOW() WHERE FamilyTreeID=?', [newerTree.FamilyTreeID]);
 
@@ -3227,13 +3015,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 [tree.FamilyTreeID]
             );
 
-            const [explicitSiblingEdges] = await c.query(
-                `SELECT PersonID, SiblingPersonID
-                   FROM FTSiblingT
-                  WHERE FamilyTreeID=?`,
-                [tree.FamilyTreeID]
-            );
-
             const parentByChild = new Map();
             const childrenByParent = new Map();
 
@@ -3324,11 +3105,8 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
             }
 
             /*
-             * Biological siblings come from either:
-             * 1) a shared recorded biological parent; or
-             * 2) an explicit biological sibling relationship in FTSiblingT.
-             * This allows siblings to be recorded even when their parents
-             * are not yet known.
+             * A sibling shares at least one recorded parent with the focal person.
+             * This intentionally includes full and half siblings.
              */
             const siblingIDs = new Set();
             for (const parent of parentByChild.get(id) || []) {
@@ -3337,13 +3115,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                         siblingIDs.add(Number(siblingID));
                     }
                 }
-            }
-
-            for (const edge of explicitSiblingEdges) {
-                const a = Number(edge.PersonID);
-                const b = Number(edge.SiblingPersonID);
-                if (a === id && b !== id) siblingIDs.add(b);
-                if (b === id && a !== id) siblingIDs.add(a);
             }
 
             const nephewNieceIDs = [];
@@ -3544,7 +3315,7 @@ router.get('/persons/:id/relationships', auth, async (req, res) => {
                 [tid, id]
             );
 
-            const [derivedSiblings] = await c.query(
+            const [siblings] = await c.query(
                 `SELECT DISTINCT ${base}
                  FROM FTParentT focalParent
                  JOIN FTParentT siblingParent
@@ -3559,28 +3330,6 @@ router.get('/persons/:id/relationships', auth, async (req, res) => {
                    AND COALESCE(siblingParent.ParentType,'Parent')<>'Adopted'
                  ORDER BY p.LastName,p.FirstName,p.PersonID`,
                 [tid, id]
-            );
-
-            const [explicitSiblings] = await c.query(
-                `SELECT ${base}
-                 FROM FTSiblingT r
-                 JOIN FTPersonT p
-                   ON p.PersonID=IF(r.PersonID=?,r.SiblingPersonID,r.PersonID)
-                 WHERE r.FamilyTreeID=?
-                   AND (r.PersonID=? OR r.SiblingPersonID=?)
-                 ORDER BY p.LastName,p.FirstName,p.PersonID`,
-                [id, tid, id, id]
-            );
-
-            const siblingMap = new Map();
-            [...derivedSiblings, ...explicitSiblings].forEach(person => {
-                siblingMap.set(Number(person.PersonID), person);
-            });
-
-            const siblings = [...siblingMap.values()].sort((a, b) =>
-                String(a.LastName || '').localeCompare(String(b.LastName || '')) ||
-                String(a.FirstName || '').localeCompare(String(b.FirstName || '')) ||
-                Number(a.PersonID) - Number(b.PersonID)
             );
 
             const signedSiblings = await Promise.all(
@@ -3692,14 +3441,6 @@ router.post('/relationships', auth, async (req, res) => {
                     userID,
                     related,
                     focal
-                );
-            } else if (kind === 'sibling') {
-                await addSiblingLink(
-                    c,
-                    tid,
-                    userID,
-                    focal,
-                    related
                 );
             } else if (kind === 'partner') {
                 const a = Math.min(focal, related);
@@ -3834,14 +3575,6 @@ router.post('/related-person', auth, async (req, res) => {
                     related,
                     focal
                 );
-            } else if (kind === 'sibling') {
-                await addSiblingLink(
-                    c,
-                    tid,
-                    userID,
-                    focal,
-                    related
-                );
             } else if (kind === 'partner') {
                 const a = Math.min(focal, related);
                 const z = Math.max(focal, related);
@@ -3871,161 +3604,6 @@ router.post('/related-person', auth, async (req, res) => {
     }
 });
 
-
-
-router.post('/siblings/:siblingID/shared-parents', auth, async (req, res) => {
-    const siblingID = Number(req.params.siblingID);
-    const userID = req.user.userId;
-    const b = req.body || {};
-    const focalPersonID = Number(b.focalPersonID);
-    const parentPersonIDs = [...new Set(
-        (Array.isArray(b.parentPersonIDs) ? b.parentPersonIDs : [])
-            .map(Number)
-            .filter(Boolean)
-    )];
-
-    if (!siblingID || !focalPersonID) {
-        return res.status(400).json({ message: 'Sibling and focal Person are required.' });
-    }
-
-    try {
-        await withTx(async c => {
-            const tree = await requireTree(c, b.familyTreeCode, userID);
-            const tid = tree.FamilyTreeID;
-            const siblingIDs = new Set(await biologicalSiblingIDs(c, tid, focalPersonID));
-
-            if (!siblingIDs.has(siblingID)) {
-                const err = new Error('The selected Person is not a biological sibling of the focal Person.');
-                err.status = 409;
-                throw err;
-            }
-
-            const [focalParents] = await c.query(
-                `SELECT ParentPersonID,AncestrySide
-                 FROM FTParentT
-                 WHERE FamilyTreeID=?
-                   AND PersonID=?
-                   AND COALESCE(ParentType,'Parent')<>'Adopted'`,
-                [tid, focalPersonID]
-            );
-
-            const allowed = new Map(
-                focalParents.map(row => [
-                    Number(row.ParentPersonID),
-                    row.AncestrySide || null
-                ])
-            );
-
-            for (const parentPersonID of parentPersonIDs) {
-                if (!allowed.has(parentPersonID)) {
-                    const err = new Error('A selected Person is not a recorded biological parent of the focal Person.');
-                    err.status = 409;
-                    throw err;
-                }
-
-                await addConfirmedParentLink(
-                    c,
-                    tid,
-                    userID,
-                    siblingID,
-                    parentPersonID,
-                    allowed.get(parentPersonID)
-                );
-            }
-
-            await logActivity(
-                c,
-                tid,
-                userID,
-                'ADD_RELATIONSHIP',
-                'shared-parent',
-                null,
-                siblingID,
-                `Confirmed ${parentPersonIDs.length} shared biological parent relationship(s) for sibling PersonID ${siblingID}`
-            );
-        });
-
-        res.json({ message: 'Selected biological parent relationship(s) saved.' });
-    } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
-    }
-});
-
-router.post('/parents/:parentID/shared-siblings', auth, async (req, res) => {
-    const parentID = Number(req.params.parentID);
-    const userID = req.user.userId;
-    const b = req.body || {};
-    const focalPersonID = Number(b.focalPersonID);
-    const siblingPersonIDs = [...new Set(
-        (Array.isArray(b.siblingPersonIDs) ? b.siblingPersonIDs : [])
-            .map(Number)
-            .filter(Boolean)
-    )];
-
-    if (!parentID || !focalPersonID) {
-        return res.status(400).json({ message: 'Parent and focal Person are required.' });
-    }
-
-    try {
-        await withTx(async c => {
-            const tree = await requireTree(c, b.familyTreeCode, userID);
-            const tid = tree.FamilyTreeID;
-
-            const [parentRows] = await c.query(
-                `SELECT ParentPersonID,AncestrySide
-                 FROM FTParentT
-                 WHERE FamilyTreeID=?
-                   AND PersonID=?
-                   AND ParentPersonID=?
-                   AND COALESCE(ParentType,'Parent')<>'Adopted'
-                 LIMIT 1`,
-                [tid, focalPersonID, parentID]
-            );
-
-            if (!parentRows.length) {
-                const err = new Error('That Person is not a recorded biological parent of the focal Person.');
-                err.status = 409;
-                throw err;
-            }
-
-            const validSiblings = new Set(
-                await biologicalSiblingIDs(c, tid, focalPersonID)
-            );
-
-            for (const siblingPersonID of siblingPersonIDs) {
-                if (!validSiblings.has(siblingPersonID)) {
-                    const err = new Error('A selected Person is not a biological sibling of the focal Person.');
-                    err.status = 409;
-                    throw err;
-                }
-
-                await addConfirmedParentLink(
-                    c,
-                    tid,
-                    userID,
-                    siblingPersonID,
-                    parentID,
-                    parentRows[0].AncestrySide || null
-                );
-            }
-
-            await logActivity(
-                c,
-                tid,
-                userID,
-                'ADD_RELATIONSHIP',
-                'parent-to-siblings',
-                null,
-                focalPersonID,
-                `Confirmed biological parent PersonID ${parentID} for ${siblingPersonIDs.length} sibling(s)`
-            );
-        });
-
-        res.json({ message: 'Selected sibling parent relationship(s) saved.' });
-    } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
-    }
-});
 
 router.post('/children/:childID/partner-parent', auth, async (req, res) => {
     const childID = Number(req.params.childID);
@@ -5467,16 +5045,6 @@ router.delete('/persons/:id', auth, async (req, res) => {
             );
 
             await c.query(
-                `DELETE FROM FTSiblingT
-                  WHERE FamilyTreeID=?
-                    AND (
-                        PersonID=? OR
-                        SiblingPersonID=?
-                    )`,
-                [treeID, id, id]
-            );
-
-            await c.query(
                 `DELETE FROM FTFamilyTreePersonT
                   WHERE FamilyTreeID=?
                     AND PersonID=?`,
@@ -5612,12 +5180,6 @@ router.delete('/persons/:id', auth, async (req, res) => {
 
                 await c.query(
                     `DELETE FROM FTPartnerT
-                      WHERE FamilyTreeID=?`,
-                    [treeID]
-                );
-
-                await c.query(
-                    `DELETE FROM FTSiblingT
                       WHERE FamilyTreeID=?`,
                     [treeID]
                 );
