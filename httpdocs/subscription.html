@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="only light">
+    <title>Wonderful Apps - Subscription</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <style>
+        :root {
+            color-scheme: only light;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 24px 12px 60px;
+            background-color: #f4f4f4;
+            color: #222;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+        }
+
+        .development-note {
+            text-align: center;
+            font-weight: bold;
+            padding: 12px;
+            background-color: #e8f4ff;
+            border: 1px solid #8bc6ff;
+            border-radius: 6px;
+            margin-bottom: 18px;
+        }
+
+        .status-card,
+        .promo-card,
+        .plans-card {
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 8px;
+        }
+
+        .status-label {
+            font-weight: bold;
+        }
+
+        .promo-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .promo-row input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 18px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .home-button {
+            display: block;
+            margin: 20px auto 0;
+        }
+
+        .message {
+            min-height: 22px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #b00020;
+        }
+
+        .success {
+            color: #1b6b20;
+        }
+
+        .plan {
+            margin-bottom: 18px;
+        }
+
+        .plan h3 {
+            margin-bottom: 6px;
+        }
+
+        .plan ul {
+            margin-top: 6px;
+        }
+
+        .bottom-note {
+            text-align: center;
+            font-weight: bold;
+            margin-top: 24px;
+        }
+
+        footer {
+            background-color: lightgray;
+            min-height: 30px;
+            padding: 5px 8px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>Wonderful Apps Subscription</h1>
+
+        <div class="development-note">
+            During development, new users receive 30 days of free Platinum access.
+        </div>
+
+        <section class="status-card" aria-labelledby="statusHeading">
+            <h2 id="statusHeading">Current Access</h2>
+            <div class="status-grid">
+                <div class="status-label">Current Plan:</div>
+                <div id="currentPlan">Loading...</div>
+
+                <div class="status-label">Access Type:</div>
+                <div id="accessType">Loading...</div>
+
+                <div class="status-label">Access Expires:</div>
+                <div id="accessExpires">Loading...</div>
+
+                <div class="status-label">Status:</div>
+                <div id="accessStatus">Loading...</div>
+            </div>
+        </section>
+
+        <section class="promo-card" aria-labelledby="promoHeading">
+            <h2 id="promoHeading">Promotional Code</h2>
+            <p>Have a promotional code?</p>
+            <div class="promo-row">
+                <input id="promoCode" type="text" autocomplete="off" aria-label="Promotional code">
+                <button id="applyPromoBtn" type="button">Apply</button>
+            </div>
+            <div id="promoMessage" class="message" aria-live="polite"></div>
+        </section>
+
+        <p style="text-align: center;"><strong>Payment subscriptions will be available later.</strong></p>
+
+        <section class="plans-card" aria-labelledby="plansHeading">
+            <h2 id="plansHeading">Subscription Levels</h2>
+
+            <div class="plan">
+                <h3>Standard</h3>
+                <ul>
+                    <li>Loan Payment</li>
+                    <li>Property Info</li>
+                    <li>Town Notice</li>
+                </ul>
+            </div>
+
+            <div class="plan">
+                <h3>Premium</h3>
+                <ul>
+                    <li>Everything in Standard</li>
+                    <li>Weigh In</li>
+                    <li>Interest Earned</li>
+                    <li>My Money My Budget</li>
+                </ul>
+            </div>
+
+            <div class="plan">
+                <h3>Platinum</h3>
+                <ul>
+                    <li>Everything in Premium</li>
+                    <li>Family Tree</li>
+                </ul>
+            </div>
+
+            <div class="plan">
+                <h3>Diamond</h3>
+                <ul>
+                    <li>Everything in Platinum</li>
+                    <li>ETF Investing</li>
+                </ul>
+                <p><strong>Diamond / ETF Investing is not available during development.</strong></p>
+            </div>
+        </section>
+
+        <p class="bottom-note">After development, all free development entitlements expire.</p>
+
+        <button id="homeBtn" class="home-button" type="button">Home</button>
+    </main>
+
+    <footer>
+        Copyright © 2026 Wonderful Apps Company - All Rights Reserved
+    </footer>
+
+    <script>
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080'
+            ? 'http://localhost:8080'
+            : window.location.origin;
+
+        const token = localStorage.getItem('token');
+
+        function friendlyAccessType(value) {
+            const names = {
+                DEVELOPMENT_TRIAL: 'Development Trial',
+                PROMO: 'Promotional Access',
+                PAID: 'Paid Subscription',
+                ADMIN: 'Administrator'
+            };
+            return names[value] || value || 'None';
+        }
+
+        async function loadStatus() {
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BASE_URL}/subscriptions/status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (!response.ok) throw new Error('Unable to load subscription status.');
+
+                const data = await response.json();
+                const subscription = data.subscription;
+
+                document.getElementById('currentPlan').textContent = subscription.planName || 'None';
+                document.getElementById('accessType').textContent = friendlyAccessType(subscription.accessType);
+                document.getElementById('accessExpires').textContent = subscription.effectiveEndDate || 'None';
+                document.getElementById('accessStatus').textContent = subscription.active ? 'Active' : 'Expired';
+            } catch (error) {
+                document.getElementById('promoMessage').textContent = error.message;
+                document.getElementById('promoMessage').className = 'message error';
+            }
+        }
+
+        document.getElementById('applyPromoBtn').addEventListener('click', async () => {
+            const code = document.getElementById('promoCode').value.trim();
+            const message = document.getElementById('promoMessage');
+            message.textContent = '';
+            message.className = 'message';
+
+            if (!code) {
+                message.textContent = 'Please enter a promotional code.';
+                message.classList.add('error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BASE_URL}/subscriptions/promo`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Unable to apply promotional code.');
+
+                message.textContent = data.message;
+                message.classList.add('success');
+                document.getElementById('promoCode').value = '';
+                await loadStatus();
+            } catch (error) {
+                message.textContent = error.message;
+                message.classList.add('error');
+            }
+        });
+
+        document.getElementById('homeBtn').addEventListener('click', () => {
+            window.location.href = 'home.html';
+        });
+
+        loadStatus();
+    </script>
+</body>
+</html>

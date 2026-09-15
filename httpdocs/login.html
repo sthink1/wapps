@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
     <title>Wonderful Apps</title>
     <link rel="manifest" href="/manifest.json">
@@ -190,7 +191,7 @@
                     alert('Login successful! Redirecting...');
                     // Delay redirect to allow confetti animation to complete
                     setTimeout(() => {
-                        window.location.href = 'home.html'; // Redirect on successful login
+                        window.location.href = data.redirectTo || 'home.html'; // Subscription-aware redirect
                     }, 1500); // 1.5-second delay
                 } else {
                     throw new Error('Unexpected response from server');

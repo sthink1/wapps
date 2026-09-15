@@ -19,8 +19,6 @@ const interestEarnedRoutes = require('./routes/interestEarned');
 const etfRoutes = require('./routes/etf');
 const budgetRoutes = require('./routes/budget');
 const familyTreeRoutes = require('./routes/familyTree');
-const subscriptionRoutes = require('./routes/subscriptions');
-const { authenticateToken, requireAppAccess } = require('./middleware/subscriptionAccess');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -87,22 +85,15 @@ app.get('/', (req, res) => {
 });
 
 // API routes
+app.use('/weights', weightsRoutes);
+app.use('/activities', activitiesRoutes);
+app.use('/weightActivities', weightActivitiesRoutes);
 app.use('/users', userRoutes);
-app.use('/subscriptions', subscriptionRoutes);
 app.use('/track', trackRoutes);
-
-// Subscription-protected data/API applications.  The browser UI also disables
-// unavailable buttons, but these server checks are the actual cost/security gate.
-app.use('/weights', authenticateToken, requireAppAccess('weigh_in'), weightsRoutes);
-app.use('/activities', authenticateToken, requireAppAccess('weigh_in'), activitiesRoutes);
-app.use('/weightActivities', authenticateToken, requireAppAccess('weigh_in'), weightActivitiesRoutes);
-app.use('/interestEarned', authenticateToken, requireAppAccess('interest_earned'), interestEarnedRoutes);
-app.use('/budget', authenticateToken, requireAppAccess('budget'), budgetRoutes);
-app.use('/familytree', authenticateToken, requireAppAccess('family_tree'), familyTreeRoutes);
-app.use('/etf', authenticateToken, requireAppAccess('etf_investing'), etfRoutes);
-
-// Property Info is currently classified as Standard/local-low-cost.
-// Keep its existing geocode route behavior unchanged until its external cost model is finalized.
+app.use('/interestEarned', interestEarnedRoutes);
+app.use('/etf', etfRoutes);
+app.use('/budget', budgetRoutes);
+app.use('/familytree', familyTreeRoutes);
 app.use('/api/geocode', require('./routes/geocode'));
 
 // Catch-all route for undefined endpoints

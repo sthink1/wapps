@@ -8,7 +8,6 @@ const jwt = require('jsonwebtoken');
 const { handleDbError } = require('../utils');
 const { sendVerificationCode } = require('../send_email');
 const crypto = require('crypto');
-const { getOrCreateDevelopmentTrial } = require('../services/subscriptionService');
 
 require('dotenv').config();
 
@@ -83,9 +82,15 @@ router.post('/register', [
             { UserName: username, PasswordHash: hash, Email: email, Phone1: phone1, Phone2: phone2 || null }
         );
 
-        // Registration does not log the user in.  The user must complete the
-        // normal login + email verification flow before receiving a final JWT.
-        res.status(201).json({ message: 'User registered successfully' });
+        // Generate JWT with 8-hour expiration
+        const userId = (await pool.query('SELECT UserID FROM UsersT WHERE UserName = ?', [username]))[0][0].UserID;
+        const token = jwt.sign(
+            { userId, username },
+            process.env.JWT_SECRET,
+            { expiresIn: '8h' }
+        );
+
+        res.status(201).json({ message: 'User registered successfully', token });
     } catch (error) {
         handleDbError(error, res, 'Error registering user');
     }
@@ -194,10 +199,6 @@ router.post('/verify-code', async (req, res) => {
 
         const user = users[0];
 
-        // On the first successful login only, create the user's 30-day
-        // Platinum development entitlement. Existing subscriptions are never reset.
-        const entitlement = await getOrCreateDevelopmentTrial(user.UserID);
-
         // Generate final JWT token with 8-hour expiration
         const token = jwt.sign(
             { userId: user.UserID, username: user.UserName },
@@ -205,18 +206,7 @@ router.post('/verify-code', async (req, res) => {
             { expiresIn: '8h' }
         );
 
-        // First-time users see the subscription page so the development entitlement
-        // is explained. Expired users also go there so they can enter a promo code.
-        const redirectTo = entitlement.created || !entitlement.status.active
-            ? 'subscription.html'
-            : 'home.html';
-
-        res.status(200).json({
-            message: 'Login successful',
-            token,
-            redirectTo,
-            subscription: entitlement.status
-        });
+        res.status(200).json({ message: 'Login successful', token });
     } catch (error) {
         handleDbError(error, res, 'Error during code verification');
     }

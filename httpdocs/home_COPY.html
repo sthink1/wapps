@@ -51,15 +51,6 @@
         .button-group button:hover, .app-buttons button:hover {
             background-color: #45a049;
         }
-        .app-buttons button:disabled {
-            background-color: #999;
-            color: #eee;
-            cursor: not-allowed;
-        }
-        #subscriptionStatus {
-            margin: 8px 0 16px;
-            font-weight: bold;
-        }
         #applications {
             margin-bottom: 20px;
             background-color: aqua;
@@ -167,25 +158,23 @@
             <button id="logoutBtn">Logout</button>
         </div>
         <div id="userDisplay"></div>
-        <div id="subscriptionStatus"></div>
         <div id="applications">
             <h3>Applications</h3>
             <div class="app-buttons">
-                <button class="restricted-btn" data-app-key="weigh_in" data-page="weighIn.html">Weigh In</button>
-                <button class="restricted-btn" data-app-key="loan_payment" data-page="amortization.html">Loan Payment</button>
-                <button class="restricted-btn" data-app-key="property_info" data-page="propertyInfo.html">Property Info</button>
-                <button class="restricted-btn" data-app-key="interest_earned" data-page="InterestEarned.html">Interest Earned</button>
-                <button class="restricted-btn" data-app-key="town_notice" data-page="TownNotice.html">Town Notice</button>
-                <button class="restricted-btn" data-app-key="etf_investing" data-page="etf.html">ETF Investing</button>
-                <button class="restricted-btn" data-app-key="budget" data-page="budget.html">My Money My Budget</button>
-                <button class="restricted-btn" data-app-key="family_tree" data-page="FamilyTree.html">Family Tree</button>
+                <button class="restricted-btn" data-page="weighIn.html">Weigh In</button>
+                <button class="restricted-btn" data-page="amortization.html">Loan Payment</button>
+                <button class="restricted-btn" data-page="propertyInfo.html">Property Info</button>
+                <button class="restricted-btn" data-page="InterestEarned.html">Interest Earned</button>
+                <button class="restricted-btn" data-page="TownNotice.html">Town Notice</button>
+                <button class="restricted-btn" data-page="etf.html">ETF Investing</button>
+                <button class="restricted-btn" data-page="budget.html">My Money My Budget</button>
+                <button class="restricted-btn" data-page="FamilyTree.html">Family Tree</button>
             </div>
         </div>
         <div id="statistics">
             <h3>Other</h3>
             <div class="button-group">
                 <button id="trackActivityBtn" class="admin-only-btn" data-page="track.html">Track Activity</button>
-                <button id="subscriptionBtn" data-page="subscription.html">Subscription</button>
                 <button class="restricted-btn" data-page="ContactUs.html">Contact Us</button>
             </div>
         </div>
@@ -309,72 +298,12 @@
             }
         });
 
-        async function loadSubscriptionAccess() {
-            const token = localStorage.getItem('token');
-            const statusDisplay = document.getElementById('subscriptionStatus');
-            if (!token) {
-                statusDisplay.textContent = '';
-                return;
-            }
-
-            try {
-                const response = await fetch(`${BASE_URL}/subscriptions/status`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!response.ok) throw new Error('Unable to load subscription status.');
-                const data = await response.json();
-                const subscription = data.subscription;
-
-                if (subscription && subscription.exists) {
-                    const expires = subscription.effectiveEndDate || 'No expiration';
-                    statusDisplay.textContent = `Plan: ${subscription.planName} | Access Expires: ${expires}`;
-                }
-
-                data.apps.forEach(app => {
-                    const button = document.querySelector(`[data-app-key="${app.appKey}"]`);
-                    if (!button) return;
-                    button.disabled = !app.allowed;
-                    if (!app.allowed) {
-                        if (app.reason === 'NOT_AVAILABLE_DURING_DEVELOPMENT') {
-                            button.title = `${app.appName} is not available during development.`;
-                        } else if (app.reason === 'SUBSCRIPTION_EXPIRED') {
-                            button.title = 'Subscription access has expired.';
-                        } else if (app.reason === 'PLAN_TOO_LOW') {
-                            button.title = `${app.minimumPlanName} plan required.`;
-                        } else {
-                            button.title = 'Application is not currently available.';
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Subscription status error:', error);
-            }
-        }
-
-        async function recordAppOpen(appKey) {
-            const token = localStorage.getItem('token');
-            if (!token || !appKey) return;
-            try {
-                await fetch(`${BASE_URL}/subscriptions/usage`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ appKey, eventType: 'APP_OPEN', quantity: 1 })
-                });
-            } catch (error) {
-                console.error('Usage tracking error:', error);
-            }
-        }
-
         // Handle restricted button clicks (login required)
-        document.addEventListener('DOMContentLoaded', async function() {
-            await loadSubscriptionAccess();
+        document.addEventListener('DOMContentLoaded', function() {
             // Handler for restricted buttons (login required)
             const restrictedButtons = document.querySelectorAll('.restricted-btn');
             restrictedButtons.forEach(button => {
-                button.addEventListener('click', async function() {
+                button.addEventListener('click', function() {
                     if (!isUserLoggedIn()) {
                         showAccessDeniedModal(
                             'Login Required',
@@ -382,26 +311,11 @@
                             true,  // show login button
                             true   // show register button
                         );
-                    } else if (this.disabled) {
-                        window.location.href = 'subscription.html';
                     } else {
-                        await recordAppOpen(this.dataset.appKey);
+                        // User is logged in, navigate to the page
                         window.location.href = this.dataset.page;
                     }
                 });
-            });
-
-            document.getElementById('subscriptionBtn').addEventListener('click', function() {
-                if (!isUserLoggedIn()) {
-                    showAccessDeniedModal(
-                        'Login Required',
-                        'You must be logged in to view subscription information.',
-                        true,
-                        true
-                    );
-                } else {
-                    window.location.href = this.dataset.page;
-                }
             });
 
             // Handler for admin-only buttons

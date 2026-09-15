@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
     <title>Wonderful Apps - Register</title>
     <link rel="manifest" href="/manifest.json">
@@ -194,7 +195,7 @@
                 alert('Registration successful! Redirecting...');
                 // Delay redirect to allow confetti animation to complete
                 setTimeout(() => {
-                    window.location.href = 'home.html';
+                    window.location.href = 'login.html';
                 }, 1500); // 1.5-second delay
             } else {
                 throw new Error('Unexpected response from server');
