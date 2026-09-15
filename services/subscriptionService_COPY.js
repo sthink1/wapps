@@ -112,7 +112,7 @@ async function getOrCreateDevelopmentTrial(userId) {
     return { created: true, subscription, status: await buildSubscriptionStatus(subscription) };
 }
 
-async function getAppAccess(userId, appKey, adminOverride = false) {
+async function getAppAccess(userId, appKey) {
     const [apps] = await pool.query(
         `SELECT a.AppID, a.AppKey, a.AppName, a.CostCategory, a.Active,
                 a.DevelopmentAvailable, p.PlanName AS MinimumPlanName,
@@ -131,25 +131,6 @@ async function getAppAccess(userId, appKey, adminOverride = false) {
     const app = apps[0];
     if (!app.Active) {
         return { allowed: false, reason: 'APP_INACTIVE', app };
-    }
-
-    if (adminOverride) {
-        return {
-            allowed: true,
-            reason: 'ADMIN_OVERRIDE',
-            app,
-            subscription: {
-                exists: true,
-                active: true,
-                expired: false,
-                planName: 'Diamond',
-                planLevel: 4,
-                accessType: 'ADMIN',
-                startDate: null,
-                endDate: null,
-                effectiveEndDate: null
-            }
-        };
     }
 
     const developmentMode = String(await getSetting('DevelopmentMode')) === '1';
@@ -171,21 +152,9 @@ async function getAppAccess(userId, appKey, adminOverride = false) {
     return { allowed: true, reason: null, app, subscription: status };
 }
 
-async function getStatusWithApps(userId, adminOverride = false) {
+async function getStatusWithApps(userId) {
     const subscription = await getCurrentSubscription(userId);
-    const status = adminOverride
-        ? {
-            exists: true,
-            active: true,
-            expired: false,
-            planName: 'Diamond',
-            planLevel: 4,
-            accessType: 'ADMIN',
-            startDate: null,
-            endDate: null,
-            effectiveEndDate: null
-        }
-        : await buildSubscriptionStatus(subscription);
+    const status = await buildSubscriptionStatus(subscription);
     const developmentMode = String(await getSetting('DevelopmentMode')) === '1';
 
     const [apps] = await pool.query(
@@ -204,9 +173,6 @@ async function getStatusWithApps(userId, adminOverride = false) {
         if (!app.Active) {
             allowed = false;
             reason = 'APP_INACTIVE';
-        } else if (adminOverride) {
-            allowed = true;
-            reason = 'ADMIN_OVERRIDE';
         } else if (developmentMode && !app.DevelopmentAvailable) {
             allowed = false;
             reason = 'NOT_AVAILABLE_DURING_DEVELOPMENT';
@@ -230,7 +196,7 @@ async function getStatusWithApps(userId, adminOverride = false) {
         };
     });
 
-    return { subscription: status, developmentMode, adminOverride, apps: appAccess };
+    return { subscription: status, developmentMode, apps: appAccess };
 }
 
 async function redeemPromoCode(userId, rawCode) {

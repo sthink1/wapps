@@ -1,13 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { getAppAccess } = require('../services/subscriptionService');
 
-function isAdminUser(user) {
-    if (!user) return false;
-    const adminUsername = String(process.env.ADMIN_USERNAME || '').trim().toLowerCase();
-    const username = String(user.username || '').trim().toLowerCase();
-    return Number(user.userId) === 1 || (adminUsername && username === adminUsername);
-}
-
 function authenticateToken(req, res, next) {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'Access denied. No token provided.' });
@@ -23,11 +16,6 @@ function authenticateToken(req, res, next) {
 function requireAppAccess(appKey) {
     return async (req, res, next) => {
         try {
-            if (isAdminUser(req.user)) {
-                req.subscriptionAccess = { allowed: true, reason: 'ADMIN_OVERRIDE', adminOverride: true };
-                return next();
-            }
-
             const access = await getAppAccess(req.user.userId, appKey);
             if (!access.allowed) {
                 return res.status(403).json({
@@ -44,4 +32,4 @@ function requireAppAccess(appKey) {
     };
 }
 
-module.exports = { authenticateToken, requireAppAccess, isAdminUser };
+module.exports = { authenticateToken, requireAppAccess };

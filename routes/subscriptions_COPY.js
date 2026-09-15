@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, isAdminUser } = require('../middleware/subscriptionAccess');
+const { authenticateToken } = require('../middleware/subscriptionAccess');
 const {
     getStatusWithApps,
     redeemPromoCode,
@@ -12,7 +12,7 @@ router.use(authenticateToken);
 
 router.get('/status', async (req, res, next) => {
     try {
-        res.json(await getStatusWithApps(req.user.userId, isAdminUser(req.user)));
+        res.json(await getStatusWithApps(req.user.userId));
     } catch (error) {
         next(error);
     }
@@ -20,7 +20,7 @@ router.get('/status', async (req, res, next) => {
 
 router.get('/access/:appKey', async (req, res, next) => {
     try {
-        const result = await getAppAccess(req.user.userId, req.params.appKey, isAdminUser(req.user));
+        const result = await getAppAccess(req.user.userId, req.params.appKey);
         res.status(result.allowed ? 200 : 403).json(result);
     } catch (error) {
         next(error);

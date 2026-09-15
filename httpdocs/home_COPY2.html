@@ -326,12 +326,8 @@
                 const subscription = data.subscription;
 
                 if (subscription && subscription.exists) {
-                    if (subscription.accessType === 'ADMIN') {
-                        statusDisplay.textContent = 'Administrator | All applications available';
-                    } else {
-                        const expires = subscription.effectiveEndDate || 'No expiration';
-                        statusDisplay.textContent = `Plan: ${subscription.planName} | Access Expires: ${expires}`;
-                    }
+                    const expires = subscription.effectiveEndDate || 'No expiration';
+                    statusDisplay.textContent = `Plan: ${subscription.planName} | Access Expires: ${expires}`;
                 }
 
                 data.apps.forEach(app => {

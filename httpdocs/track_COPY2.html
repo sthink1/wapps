@@ -136,18 +136,9 @@
                         data[key].forEach(row => {
                             tableHTML += '<tr>';
                             Object.values(row).forEach(val => {
-                                let formattedVal = val !== null ? val : 'N/A';
-
-                                // Format only real ISO-style date/time values.
-                                // Do not treat ordinary text containing the letter "T"
-                                // (for example, "ETF Investing") as a date.
-                                if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
-                                    const parsedDate = new Date(val);
-                                    if (!Number.isNaN(parsedDate.getTime())) {
-                                        formattedVal = parsedDate.toISOString().replace('T', ' ').split('.')[0];
-                                    }
-                                }
-
+                                const formattedVal = typeof val === 'string' && val.includes('T') 
+                                    ? new Date(val).toISOString().replace('T', ' ').split('.')[0] 
+                                    : (val !== null ? val : 'N/A');
                                 tableHTML += `<td>${escapeHtml(formattedVal)}</td>`;
                             });
                             tableHTML += '</tr>';

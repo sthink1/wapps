@@ -4,20 +4,6 @@ const router = express.Router();
 const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
 
-function isAdminUser(user) {
-    if (!user) return false;
-    const adminUsername = String(process.env.ADMIN_USERNAME || '').trim().toLowerCase();
-    const username = String(user.username || '').trim().toLowerCase();
-    return Number(user.userId) === 1 || (adminUsername && username === adminUsername);
-}
-
-function requireAdmin(req, res, next) {
-    if (!isAdminUser(req.user)) {
-        return res.status(403).json({ error: 'Administrator access required.' });
-    }
-    next();
-}
-
 // Track page view
 router.post('/log/page', auth, async (req, res) => {
     const { page } = req.body || {};
@@ -54,7 +40,7 @@ router.post('/log/time-spent', auth, async (req, res) => {
 });
 
 // Fetch aggregated stats
-router.get('/stats', auth, requireAdmin, async (req, res) => {
+router.get('/stats', auth, async (req, res) => {
     const queries = [
         'SELECT UserID, COUNT(*) as TotalViews FROM TrackUsageT WHERE Action = "View" GROUP BY UserID',
         // Normalize Page in the query for mostVisited
@@ -71,22 +57,7 @@ router.get('/stats', auth, requireAdmin, async (req, res) => {
          GROUP BY SUBSTRING_INDEX(Page, '/', -1) 
          ORDER BY TotalTimeSpent DESC`,
         'SELECT DATE(Timestamp) as Date, COUNT(*) as ActivityCount FROM TrackUsageT GROUP BY DATE(Timestamp)',
-        'SELECT UserID, MAX(Timestamp) as LastActive FROM TrackUsageT GROUP BY UserID',
-        `SELECT uu.UserID,
-                u.UserName,
-                COALESCE(a.AppName, 'Unassigned') AS AppName,
-                SUM(CASE WHEN uu.EventType = 'APP_OPEN' THEN uu.Quantity ELSE 0 END) AS AppOpens,
-                SUM(CASE WHEN uu.EventType = 'RECORD_CREATE' THEN uu.Quantity ELSE 0 END) AS RecordCreates,
-                SUM(CASE WHEN uu.EventType = 'RECORD_UPDATE' THEN uu.Quantity ELSE 0 END) AS RecordUpdates,
-                SUM(CASE WHEN uu.EventType = 'API_CALL' THEN uu.Quantity ELSE 0 END) AS ApiCalls,
-                SUM(CASE WHEN uu.EventType = 'EMAIL_SENT' THEN uu.Quantity ELSE 0 END) AS EmailsSent,
-                SUM(CASE WHEN uu.EventType = 'FILE_UPLOAD' THEN uu.Quantity ELSE 0 END) AS FileUploads,
-                SUM(uu.Quantity) AS TotalUsage
-           FROM UserUsageT uu
-           JOIN UsersT u ON u.UserID = uu.UserID
-           LEFT JOIN AppT a ON a.AppID = uu.AppID
-          GROUP BY uu.UserID, u.UserName, a.AppID, a.AppName
-          ORDER BY uu.UserID, AppName`
+        'SELECT UserID, MAX(Timestamp) as LastActive FROM TrackUsageT GROUP BY UserID'
     ];
 
     try {
@@ -96,7 +67,7 @@ router.get('/stats', auth, requireAdmin, async (req, res) => {
                 return rows;
             })
         );
-        let [totalViews, mostVisited, avgTimeSpent, totalTimeSpent, activityOverTime, lastActive, userUsage] = results;
+        let [totalViews, mostVisited, avgTimeSpent, totalTimeSpent, activityOverTime, lastActive] = results;
 
         // Round avgTimeSpent to 2 decimal places
         avgTimeSpent = avgTimeSpent.map(row => ({
@@ -104,7 +75,7 @@ router.get('/stats', auth, requireAdmin, async (req, res) => {
             AvgTimeSpent: row.AvgTimeSpent !== null ? Number(row.AvgTimeSpent).toFixed(2) : '0.00'
         }));
 
-        const responseData = { totalViews, mostVisited, avgTimeSpent, totalTimeSpent, activityOverTime, lastActive, userUsage };
+        const responseData = { totalViews, mostVisited, avgTimeSpent, totalTimeSpent, activityOverTime, lastActive };
 
         res.json(responseData);
     } catch (error) {

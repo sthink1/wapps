@@ -35,16 +35,6 @@
         th {
             background-color: #f2f2f2;
         }
-
-        footer {
-            background-color: lightgray;
-            min-height: 30px;
-            padding: 5px 8px;
-            margin-top: 30px;
-            width: 100%;
-            box-sizing: border-box;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -55,7 +45,6 @@
     <div class="stat-block" id="totalTimeSpent"></div>
     <div class="stat-block" id="activityOverTime"></div>
     <div class="stat-block" id="lastActive"></div>
-    <div class="stat-block" id="userUsage"></div>
 
     <script>
 
@@ -116,19 +105,9 @@
             })
             .then(data => {
                 console.log('Stats data received:', data);
-                const titles = {
-                    totalViews: 'Total Views',
-                    mostVisited: 'Most Visited',
-                    avgTimeSpent: 'Average Time Spent',
-                    totalTimeSpent: 'Total Time Spent',
-                    activityOverTime: 'Activity Over Time',
-                    lastActive: 'Last Active',
-                    userUsage: 'User Usage'
-                };
-
-                ['totalViews', 'mostVisited', 'avgTimeSpent', 'totalTimeSpent', 'activityOverTime', 'lastActive', 'userUsage'].forEach(key => {
+                ['totalViews', 'mostVisited', 'avgTimeSpent', 'totalTimeSpent', 'activityOverTime', 'lastActive'].forEach(key => {
                     const div = document.getElementById(key);
-                    const title = titles[key] || key;
+                    const title = key.replace(/([A-Z])/g, ' $1').trim();
                     if (data[key] && Array.isArray(data[key]) && data[key].length > 0) {
                         let tableHTML = `<h2>${title}</h2><table><tr>`;
                         Object.keys(data[key][0]).forEach(header => tableHTML += `<th>${escapeHtml(header)}</th>`);
@@ -136,18 +115,9 @@
                         data[key].forEach(row => {
                             tableHTML += '<tr>';
                             Object.values(row).forEach(val => {
-                                let formattedVal = val !== null ? val : 'N/A';
-
-                                // Format only real ISO-style date/time values.
-                                // Do not treat ordinary text containing the letter "T"
-                                // (for example, "ETF Investing") as a date.
-                                if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
-                                    const parsedDate = new Date(val);
-                                    if (!Number.isNaN(parsedDate.getTime())) {
-                                        formattedVal = parsedDate.toISOString().replace('T', ' ').split('.')[0];
-                                    }
-                                }
-
+                                const formattedVal = typeof val === 'string' && val.includes('T') 
+                                    ? new Date(val).toISOString().replace('T', ' ').split('.')[0] 
+                                    : (val !== null ? val : 'N/A');
                                 tableHTML += `<td>${escapeHtml(formattedVal)}</td>`;
                             });
                             tableHTML += '</tr>';
