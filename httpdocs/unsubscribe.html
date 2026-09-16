@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="only light">
+    <title>Wonderful Apps - Stop Notifications</title>
+    <style>
+        :root { color-scheme: only light; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; color: #222; }
+        .card { max-width: 600px; margin: 50px auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.1); }
+        button { background: #b42318; color: white; border: 0; border-radius: 4px; padding: 12px 18px; cursor: pointer; }
+        #status { margin-top: 16px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1 id="title">Notification Preferences</h1>
+        <p id="description">Checking this unsubscribe link...</p>
+        <button type="button" id="stopButton" hidden>Stop Notifications</button>
+        <p id="status" role="status"></p>
+    </main>
+
+    <script>
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080'
+            ? 'http://localhost:8080'
+            : window.location.origin;
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const title = document.getElementById('title');
+        const description = document.getElementById('description');
+        const stopButton = document.getElementById('stopButton');
+        const status = document.getElementById('status');
+        let info = null;
+
+        function categoryLabel(category) {
+            if (category === 'FAMILY_TREE') return 'Family Tree Notifications';
+            if (category === 'MARKETING') return 'Wonderful Apps Marketing Emails';
+            if (category === 'APP_NOTICE') return 'Application Notifications';
+            return 'Notifications';
+        }
+
+        async function loadInfo() {
+            if (!token) throw new Error('This unsubscribe link is incomplete.');
+            const response = await fetch(`${BASE_URL}/notifications/unsubscribe/${encodeURIComponent(token)}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'This unsubscribe link is not valid.');
+            info = data;
+            title.textContent = categoryLabel(data.category);
+            description.textContent = `Stop ${categoryLabel(data.category).toLowerCase()} to ${data.destination}.`;
+            stopButton.textContent = data.category === 'FAMILY_TREE'
+                ? 'Stop Family Tree Notifications'
+                : 'Stop These Notifications';
+            stopButton.hidden = false;
+        }
+
+        stopButton.addEventListener('click', async () => {
+            stopButton.disabled = true;
+            status.textContent = '';
+            try {
+                const response = await fetch(`${BASE_URL}/notifications/unsubscribe/${encodeURIComponent(token)}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Unable to stop notifications.');
+                stopButton.hidden = true;
+                description.textContent = '';
+                status.textContent = info && info.category === 'FAMILY_TREE'
+                    ? 'Family Tree notifications have been stopped for this email address.'
+                    : 'These notifications have been stopped.';
+            } catch (error) {
+                stopButton.disabled = false;
+                status.textContent = error.message;
+            }
+        });
+
+        loadInfo().catch(error => {
+            description.textContent = '';
+            status.textContent = error.message;
+        });
+    </script>
+</body>
+</html>

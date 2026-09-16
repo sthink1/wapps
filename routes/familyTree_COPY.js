@@ -5,7 +5,7 @@ const router = express.Router();
 
 const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
-const { sendNotification } = require('../services/notificationService');
+const { sendFamilyTreeNotification } = require('../send_email');
 const {
     optimizeFamilyTreeImage,
     putImage,
@@ -262,58 +262,6 @@ function familyTreePersonName(person) {
         `PersonID ${person.PersonID}`;
 }
 
-
-const PERSON_EDIT_FIELDS = [
-    ['FirstName', 'First Name'],
-    ['MiddleName', 'Middle Name'],
-    ['LastName', 'Last Name'],
-    ['SuffixName', 'Suffix'],
-    ['NickName', 'Nickname'],
-    ['MaidenName', 'Maiden Name'],
-    ['Gender', 'Gender'],
-    ['BirthDate', 'Birth Date'],
-    ['BirthPlace', 'Birth Place'],
-    ['Died', 'Died'],
-    ['DeathDate', 'Death Date']
-];
-
-function normalizedPersonValue(field, value) {
-    if (field === 'Died') return value ? 1 : 0;
-    if (value === undefined || value === null || value === '') return null;
-    if (field === 'BirthDate' || field === 'DeathDate') {
-        if (value instanceof Date && !Number.isNaN(value.getTime())) {
-            return value.toISOString().slice(0, 10);
-        }
-        const text = String(value);
-        return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : text;
-    }
-    return String(value).trim();
-}
-
-function incomingPersonValue(field, body) {
-    if (field === 'Died') return body.Died ? 1 : 0;
-    if (field === 'DeathDate') return body.Died ? (body.DeathDate || null) : null;
-    return body[field] || null;
-}
-
-function displayPersonValue(field, value) {
-    const normalized = normalizedPersonValue(field, value);
-    if (field === 'Died') return normalized ? 'Yes' : 'No';
-    return normalized === null ? '(blank)' : String(normalized);
-}
-
-function describePersonChanges(before, body) {
-    const changes = [];
-    for (const [field, label] of PERSON_EDIT_FIELDS) {
-        const oldValue = normalizedPersonValue(field, before[field]);
-        const newValue = normalizedPersonValue(field, incomingPersonValue(field, body));
-        if (String(oldValue) !== String(newValue)) {
-            changes.push(`${label}: ${displayPersonValue(field, oldValue)} -> ${displayPersonValue(field, newValue)}`);
-        }
-    }
-    return changes;
-}
-
 async function getNotificationUser(c, userID) {
     if (!userID) return null;
 
@@ -361,25 +309,20 @@ function addNotificationRecipient(map, recipient) {
 
 async function getEditNotificationRecipients(
     c,
-    personID,
     originalCreatorUserID,
     actingUserID
 ) {
     const recipients = new Map();
 
-    const personEmail = await getPersonEmail(c, personID);
-    addNotificationRecipient(recipients, {
-        recipientPersonID: personID,
-        recipientUserID: null,
-        contactID: personEmail ? personEmail.ContactID : null,
-        email: personEmail ? personEmail.ContactValue : null
-    });
-
     if (
         originalCreatorUserID &&
         Number(originalCreatorUserID) !== Number(actingUserID)
     ) {
-        const creator = await getNotificationUser(c, originalCreatorUserID);
+        const creator = await getNotificationUser(
+            c,
+            originalCreatorUserID
+        );
+
         addNotificationRecipient(recipients, {
             recipientPersonID: null,
             recipientUserID: originalCreatorUserID,
@@ -399,14 +342,6 @@ async function getDeleteNotificationRecipients(
     actingUserID
 ) {
     const recipients = new Map();
-
-    const deletedPersonEmail = await getPersonEmail(c, personID);
-    addNotificationRecipient(recipients, {
-        recipientPersonID: personID,
-        recipientUserID: null,
-        contactID: deletedPersonEmail ? deletedPersonEmail.ContactID : null,
-        email: deletedPersonEmail ? deletedPersonEmail.ContactValue : null
-    });
 
     if (
         originalCreatorUserID &&
@@ -484,8 +419,7 @@ async function createNotificationRecords(
         notificationType,
         subject,
         message,
-        recipients,
-        relatedRecordID = null
+        recipients
     }
 ) {
     const pendingEmails = [];
@@ -530,15 +464,9 @@ async function createNotificationRecords(
         if (hasEmail) {
             pendingEmails.push({
                 NotificationID: notification.insertId,
-                recipientUserID: recipient.recipientUserID || null,
-                recipientPersonID: recipient.recipientPersonID || null,
                 email,
                 subject,
-                message,
-                treeID,
-                activityID: activityID || null,
-                notificationType,
-                relatedRecordID
+                message
             });
         }
     }
@@ -549,47 +477,31 @@ async function createNotificationRecords(
 async function sendPendingFamilyTreeNotifications(pendingEmails) {
     for (const pending of pendingEmails || []) {
         try {
-            const delivery = await sendNotification({
-                userID: pending.recipientUserID,
-                recipientEmail: pending.email,
-                category: 'FAMILY_TREE',
-                channel: 'EMAIL',
+            await sendFamilyTreeNotification({
+                email: pending.email,
                 subject: pending.subject,
-                message: pending.message,
-                templateName: pending.notificationType,
-                relatedApp: 'FAMILY_TREE',
-                relatedRecordID: pending.relatedRecordID,
-                explainFamilyTreeRecipient: true
+                message: pending.message
             });
-
-            const ftStatus = delivery.status === 'SENT'
-                ? 'Sent'
-                : delivery.status === 'SUPPRESSED'
-                    ? 'Suppressed'
-                    : delivery.status;
 
             await pool.query(
                 `UPDATE FTNotificationT
-                 SET Status=?,
-                     SentAt=CASE WHEN ?='Sent' THEN NOW() ELSE SentAt END,
-                     FailureReason=?
+                 SET Status='Sent',
+                     SentAt=NOW(),
+                     FailureReason=NULL
                  WHERE NotificationID=?`,
-                [
-                    ftStatus,
-                    ftStatus,
-                    delivery.status === 'SUPPRESSED'
-                        ? 'Recipient stopped Family Tree notifications.'
-                        : null,
-                    pending.NotificationID
-                ]
+                [pending.NotificationID]
             );
         } catch (error) {
             try {
                 await pool.query(
                     `UPDATE FTNotificationT
-                     SET Status='Failed', FailureReason=?
+                     SET Status='Failed',
+                         FailureReason=?
                      WHERE NotificationID=?`,
-                    [String(error.message || error).slice(0, 500), pending.NotificationID]
+                    [
+                        String(error.message || error).slice(0, 500),
+                        pending.NotificationID
+                    ]
                 );
             } catch (_) {
                 /* Do not undo a successful FamilyTree edit/delete. */
@@ -3124,14 +3036,6 @@ router.put('/persons/:id', auth, async (req, res) => {
             const originalCreatorUserID =
                 before.CreatedByUserID;
 
-            const changes = describePersonChanges(before, b);
-            if (!changes.length) {
-                return {
-                    message: 'No person changes were detected.',
-                    pendingEmails: []
-                };
-            }
-
             await c.query(
                 `UPDATE FTPersonT
                  SET FirstName=?,
@@ -3182,7 +3086,6 @@ router.put('/persons/:id', auth, async (req, res) => {
             const recipients =
                 await getEditNotificationRecipients(
                     c,
-                    id,
                     originalCreatorUserID,
                     userID
                 );
@@ -3202,7 +3105,6 @@ router.put('/persons/:id', auth, async (req, res) => {
 
             const message =
                 `${personName} was edited.\n\n` +
-                `What changed:\n- ${changes.join('\n- ')}\n\n` +
                 `Changed by: ${actorName}\n` +
                 `Date/Time: ${new Date().toISOString()}\n` +
                 `FamilyTreeCode: ${tree.FamilyTreeCode}`;
@@ -3216,8 +3118,7 @@ router.put('/persons/:id', auth, async (req, res) => {
                         notificationType: 'Person Edited',
                         subject,
                         message,
-                        recipients,
-                        relatedRecordID: id
+                        recipients
                     }
                 );
 
@@ -5538,8 +5439,7 @@ router.delete('/persons/:id', auth, async (req, res) => {
                         notificationType: 'Person Deleted',
                         subject: notificationSubject,
                         message: notificationMessage,
-                        recipients: deleteRecipients,
-                        relatedRecordID: id
+                        recipients: deleteRecipients
                     }
                 );
 

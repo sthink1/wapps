@@ -4,16 +4,6 @@ const logger = require('./logger');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-function escapeHtml(value) {
-  return String(value == null ? '' : value).replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  }[ch]));
-}
-
 // Function to send email
 const sendEmail = async ({ name, email, phone, subject, message }) => {
   // Validate required fields
@@ -124,57 +114,21 @@ If you did not attempt to log in, please ignore this email.
 
 
 
-// General outbound notification email used by the central notification service.
-// Optional categories receive an unsubscribe link. Account/security and required
-// subscription messages do not use an unsubscribe link.
-const sendNotificationEmail = async ({
-  email,
-  subject,
-  message,
-  category,
-  unsubscribeUrl = null,
-  explainFamilyTreeRecipient = false,
-}) => {
-  if (!email || !subject || !message || !category) {
-    throw new Error('Email, subject, message, and category are required.');
+// Function to send a FamilyTree notification to a specific email recipient
+const sendFamilyTreeNotification = async ({ email, subject, message }) => {
+  if (!email || !subject || !message) {
+    throw new Error('Email, subject, and message are required.');
   }
 
   const safeMessage = String(message);
-  const escapedMessage = escapeHtml(safeMessage).replace(/\n/g, '<br>');
-  const safeUnsubscribeUrl = unsubscribeUrl ? escapeHtml(unsubscribeUrl) : null;
 
-  let textFooter = '';
-  let htmlFooter = '';
-
-  if (category === 'FAMILY_TREE' && explainFamilyTreeRecipient) {
-    textFooter += `\n\nWhy did I receive this email?\nYour email address is associated with a person profile in a Wonderful Apps Family Tree. You do not need to have a Wonderful Apps account to receive this notification.`;
-    htmlFooter += `
-      <p style="margin-top: 20px;"><strong>Why did I receive this email?</strong><br>
-      Your email address is associated with a person profile in a Wonderful Apps Family Tree.
-      You do not need to have a Wonderful Apps account to receive this notification.</p>`;
-  }
-
-  if (safeUnsubscribeUrl) {
-    const label = category === 'FAMILY_TREE'
-      ? 'Stop Family Tree Notifications'
-      : 'Unsubscribe';
-
-    textFooter += `\n\n${label}: ${unsubscribeUrl}`;
-    htmlFooter += `
-      <p style="margin-top: 20px;">
-        <a href="${safeUnsubscribeUrl}">${escapeHtml(label)}</a>
-      </p>`;
-  }
-
-  const textBody = `${safeMessage}${textFooter}`;
   const htmlBody = `
-<div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; line-height: 1.45;">
-  <h2 style="color: #333;">Wonderful Apps Notification</h2>
-  <p>${escapedMessage}</p>
-  ${htmlFooter}
+<div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto;">
+  <h2 style="color: #333;">Wonderful Apps - FamilyTree Notification</h2>
+  <p>${safeMessage.replace(/\n/g, '<br>')}</p>
   <hr style="border: none; border-top: 1px solid #ddd; margin-top: 20px;">
   <p style="color: #777; font-size: 12px;">
-    This is an automated Wonderful Apps notification.
+    This is an automated FamilyTree notification from Wonderful Apps.
   </p>
 </div>
   `.trim();
@@ -184,33 +138,22 @@ const sendNotificationEmail = async ({
       from: `${process.env.MAIL_FROM_NAME} <${process.env.MAIL_FROM_ADDRESS}>`,
       to: email,
       subject,
-      text: textBody,
+      text: safeMessage,
       html: htmlBody,
     });
 
-    logger.info(`Notification email sent to ${email} (${category})`);
-    return { status: 'success', message: 'Notification sent.' };
+    logger.info(`FamilyTree notification sent to ${email}`);
+
+    return {
+      status: 'success',
+      message: 'FamilyTree notification sent.',
+    };
   } catch (error) {
-    logger.error(`Failed to send notification to ${email}: ${error.message}`);
-    throw new Error('Unable to send notification at this time.');
+    logger.error(
+      `Failed to send FamilyTree notification to ${email}: ${error.message}`
+    );
+    throw new Error('Unable to send FamilyTree notification.');
   }
 };
 
-// Backward-compatible wrapper. New application code should use notificationService.
-const sendFamilyTreeNotification = async ({ email, subject, message, unsubscribeUrl = null }) => {
-  return sendNotificationEmail({
-    email,
-    subject,
-    message,
-    category: 'FAMILY_TREE',
-    unsubscribeUrl,
-    explainFamilyTreeRecipient: false,
-  });
-};
-
-module.exports = {
-  sendEmail,
-  sendVerificationCode,
-  sendNotificationEmail,
-  sendFamilyTreeNotification,
-};
+module.exports = { sendEmail, sendVerificationCode, sendFamilyTreeNotification };

@@ -9,7 +9,6 @@ const { handleDbError } = require('../utils');
 const { sendVerificationCode } = require('../send_email');
 const crypto = require('crypto');
 const { getOrCreateDevelopmentTrial } = require('../services/subscriptionService');
-const { getActiveConsentVersion, logConsent } = require('../services/notificationService');
 
 require('dotenv').config();
 
@@ -49,37 +48,14 @@ router.post('/register', [
             }
             return true;
         }),
-    body('marketingEmail')
-        .optional()
-        .isBoolean().withMessage('Marketing email preference must be true or false.(be)'),
-    body('marketingSMS')
-        .optional()
-        .isBoolean().withMessage('Marketing text preference must be true or false.(be)'),
-    body('termsAccepted')
-        .custom(value => {
-            if (value !== true) {
-                throw new Error('You must agree to the Terms of Use and Privacy Policy to register.(be)');
-            }
-            return true;
-        }),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ error: errors.array()[0].msg });
     }
 
-    let {
-        username,
-        password,
-        email,
-        phone1,
-        phone2,
-        marketingEmail = false,
-        marketingSMS = false
-    } = req.body;
-
+    let { username, password, email, phone1, phone2 } = req.body;
     username = username.toLowerCase();
-    email = email.trim().toLowerCase();
 
     const formatPhone = (phone) => {
         const cleaned = phone.replace(/[^\d]/g, '');
@@ -88,105 +64,30 @@ router.post('/register', [
     phone1 = formatPhone(phone1);
     phone2 = phone2 && phone2.trim() !== '' ? formatPhone(phone2) : null;
 
-    const c = await pool.getConnection();
-
     try {
-        await c.beginTransaction();
-
-        const [usernameResults] = await c.query(
-            'SELECT UserID FROM UsersT WHERE LOWER(UserName) = ? LIMIT 1',
-            [username]
-        );
+        const [usernameResults] = await pool.query('SELECT * FROM UsersT WHERE LOWER(UserName) = ?', [username]);
         if (usernameResults.length > 0) {
-            await c.rollback();
             return res.status(400).json({ error: 'User already exists. (be)' });
         }
 
-        const [emailResults] = await c.query(
-            'SELECT UserID FROM UsersT WHERE LOWER(Email) = LOWER(?) LIMIT 1',
-            [email]
-        );
+        const [emailResults] = await pool.query('SELECT * FROM UsersT WHERE Email = ?', [email]);
         if (emailResults.length > 0) {
-            await c.rollback();
             return res.status(400).json({ error: 'Email already exists. (be)' });
         }
 
         const saltRounds = 10;
         const hash = await bcrypt.hash(password, saltRounds);
 
-        const [insertUser] = await c.query(
+        await pool.query(
             'INSERT INTO UsersT SET ?',
-            {
-                UserName: username,
-                PasswordHash: hash,
-                Email: email,
-                Phone1: phone1,
-                Phone2: phone2 || null
-            }
+            { UserName: username, PasswordHash: hash, Email: email, Phone1: phone1, Phone2: phone2 || null }
         );
 
-        const userID = insertUser.insertId;
-
-        await c.query(
-            `INSERT INTO NotificationPreferencesT
-             (UserID, MarketingEmail, MarketingSMS, FamilyTreeEmail, AppNoticeEmail, CreatedAt, UpdatedAt)
-             VALUES (?,?,?,?,?,NOW(),NULL)`,
-            [userID, marketingEmail ? 1 : 0, marketingSMS ? 1 : 0, 1, 1]
-        );
-
-        const marketingEmailVersionID = await getActiveConsentVersion(c, 'MARKETING_EMAIL');
-        const marketingSMSVersionID = await getActiveConsentVersion(c, 'MARKETING_SMS');
-        const termsVersionID = await getActiveConsentVersion(c, 'TERMS');
-        const privacyVersionID = await getActiveConsentVersion(c, 'PRIVACY');
-
-        if (!termsVersionID || !privacyVersionID) {
-            throw new Error('Terms/Privacy consent versions are not configured. Run notification_schema.sql.');
-        }
-
-        // Record the user's explicit selection, including an OPT_OUT when the
-        // optional marketing box was left unchecked at registration.
-        await logConsent(c, {
-            userID,
-            email,
-            phone: null,
-            category: 'MARKETING',
-            channel: 'EMAIL',
-            action: marketingEmail ? 'OPT_IN' : 'OPT_OUT',
-            consentTextVersionID: marketingEmailVersionID,
-            source: 'REGISTER'
-        });
-
-        await logConsent(c, {
-            userID,
-            email,
-            phone: phone1,
-            category: 'MARKETING',
-            channel: 'SMS',
-            action: marketingSMS ? 'OPT_IN' : 'OPT_OUT',
-            consentTextVersionID: marketingSMSVersionID,
-            source: 'REGISTER'
-        });
-
-        await c.query(
-            `INSERT INTO UserAgreementHistoryT
-             (UserID, AgreementType, ConsentTextVersionID, AcceptedAt)
-             VALUES (?,?,?,NOW()), (?,?,?,NOW())`,
-            [
-                userID, 'TERMS', termsVersionID,
-                userID, 'PRIVACY', privacyVersionID
-            ]
-        );
-
-        await c.commit();
-
-        // Registration does not log the user in. The user must complete the
+        // Registration does not log the user in.  The user must complete the
         // normal login + email verification flow before receiving a final JWT.
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
-        try { await c.rollback(); } catch (_) {}
         handleDbError(error, res, 'Error registering user');
-    } finally {
-        c.release();
     }
 });
 

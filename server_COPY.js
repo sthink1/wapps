@@ -20,7 +20,6 @@ const etfRoutes = require('./routes/etf');
 const budgetRoutes = require('./routes/budget');
 const familyTreeRoutes = require('./routes/familyTree');
 const subscriptionRoutes = require('./routes/subscriptions');
-const notificationRoutes = require('./routes/notifications');
 const { authenticateToken, requireAppAccess } = require('./middleware/subscriptionAccess');
 
 const app = express();
@@ -90,7 +89,6 @@ app.get('/', (req, res) => {
 // API routes
 app.use('/users', userRoutes);
 app.use('/subscriptions', subscriptionRoutes);
-app.use('/notifications', notificationRoutes);
 app.use('/track', trackRoutes);
 
 // Subscription-protected data/API applications.  The browser UI also disables
