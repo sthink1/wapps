@@ -1,18 +1,18 @@
 # CLAUDE.md – WonderfulApps Developer Onboarding Guide
 
-**Last updated:** September 14, 2026  
+**Last updated:** September 16, 2026  
 **Project:** WonderfulApps (WA)  
-**Database ground truth:** `wappsDumps.sql`
+**Database ground truth:** `wappsDump.sql`
 
 ---
 
 ## 1. Purpose of This File
 
-This file is the primary development guide for WonderfulApps. Before making code changes, use this document together with the current source files and `wappsDumps.sql`.
+This file is the primary development guide for WonderfulApps. Before making code changes, use this document together with the current source files and `wappsDump.sql`.
 
 When documentation conflicts with current executable code or the current SQL dump:
 
-1. `wappsDumps.sql` is authoritative for the current database schema.
+1. `wappsDump.sql` is authoritative for the current database schema.
 2. Current source files are authoritative for application behavior.
 3. This document should then be corrected to match the implementation.
 
@@ -26,8 +26,9 @@ WonderfulApps is a multi-application web/PWA project built with:
 
 - **Frontend:** HTML, CSS, and vanilla JavaScript in `httpdocs/`
 - **Backend:** Node.js with Express
-- **Database:** MySQL, with the production/remote schema maintained for MySQL 5.5 compatibility
-- **Authentication:** JWT bearer tokens and bcrypt password hashing
+- **Database:** MySQL, with production SQL maintained for MySQL 5.5 compatibility
+- **Authentication:** JWT bearer tokens, email verification, and bcrypt password hashing
+- **Subscription / entitlement system:** hierarchical plans, per-application access rules, development entitlements, promo codes, and usage tracking
 - **Database driver:** `mysql2`
 - **Validation:** `express-validator`
 - **Logging:** Morgan + Winston
@@ -37,28 +38,32 @@ WonderfulApps is a multi-application web/PWA project built with:
 - **Image processing:** `sharp`
 - **PWA:** service worker and manifest under `httpdocs/`
 
-The application is organized around independent functional areas that share the same user/authentication platform.
+The application is organized around independent functional areas that share the same user, authentication, and subscription platform.
 
 ---
 
 ## 3. Current Major Application Areas
 
-The current WA project includes, among other features:
+The current WA project includes:
 
-- User registration, login, verification, and authentication
+- User registration, login, email verification, and JWT authentication
+- Subscription / entitlement management
+- Promotional-code processing
+- Per-application subscription access enforcement
+- Subscription usage tracking
 - Weight tracking
 - Activity tracking
 - Weight/activity associations
 - Interest earned calculations and records
 - ETF research, categories, symbols, and activity
-- Usage tracking/analytics
+- General usage tracking/analytics
 - Property and geolocation-related tools
-- Amortization tools
+- Amortization / loan-payment tools
 - Contact/email functions
 - **Budget application**
 - **Family Tree application**
 
-Budget and Family Tree are current implemented WA components, not future placeholder examples.
+Budget, Family Tree, and Subscription are implemented WA components, not future placeholders.
 
 ---
 
@@ -74,34 +79,49 @@ routes/
 ├── familyTree.js
 ├── geocode.js
 ├── interestEarned.js
+├── subscriptions.js
 ├── track.js
 ├── users.js
 ├── weightActivities.js
 └── weights.js
 ```
 
-Current `server.js` mounts the principal API routes as follows:
+Current `server.js` mounts the principal routes as follows:
 
-| Route prefix | Route module |
-|---|---|
-| `/weights` | `routes/weights.js` |
-| `/activities` | `routes/activities.js` |
-| `/weightActivities` | `routes/weightActivities.js` |
-| `/users` | `routes/users.js` |
-| `/track` | `routes/track.js` |
-| `/interestEarned` | `routes/interestEarned.js` |
-| `/etf` | `routes/etf.js` |
-| `/budget` | `routes/budget.js` |
-| `/familytree` | `routes/familyTree.js` |
-| `/api/geocode` | `routes/geocode.js` |
+| Route prefix | Route module | Subscription handling |
+|---|---|---|
+| `/users` | `routes/users.js` | Authentication / user flow |
+| `/subscriptions` | `routes/subscriptions.js` | Authenticated subscription APIs |
+| `/track` | `routes/track.js` | Existing general usage tracking |
+| `/weights` | `routes/weights.js` | `weigh_in` access required |
+| `/activities` | `routes/activities.js` | `weigh_in` access required |
+| `/weightActivities` | `routes/weightActivities.js` | `weigh_in` access required |
+| `/interestEarned` | `routes/interestEarned.js` | `interest_earned` access required |
+| `/budget` | `routes/budget.js` | `budget` access required |
+| `/familytree` | `routes/familyTree.js` | `family_tree` access required |
+| `/etf` | `routes/etf.js` | `etf_investing` access required |
+| `/api/geocode` | `routes/geocode.js` | Currently not wrapped by subscription middleware |
 
 `/send-email` is handled directly in `server.js`.
+
+### Subscription APIs
+
+`routes/subscriptions.js` currently provides:
+
+```text
+GET  /subscriptions/status
+GET  /subscriptions/access/:appKey
+POST /subscriptions/promo
+POST /subscriptions/usage
+```
+
+All four subscription routes require a valid JWT.
 
 ---
 
 ## 5. Current Database
 
-The September 14, 2026 `wappsDumps.sql` contains **38 tables**.
+The September 15/16, 2026 `wappsDump.sql` contains **46 tables**.
 
 ### Core user / system tables
 
@@ -110,6 +130,18 @@ UsersT
 LoginVerificationT
 UserSequenceT
 TrackUsageT
+```
+
+### Subscription / entitlement tables (7)
+
+```text
+AppT
+PromoCodeT
+PromoRedemptionT
+SubscriptionPlanT
+SystemSettingsT
+UserSubscriptionT
+UserUsageT
 ```
 
 ### Weight / activity tables
@@ -152,7 +184,7 @@ BudgetRecurrenceWeeklyDayT
 BudgetSubscriptionT
 ```
 
-### Family Tree tables (14)
+### Family Tree tables (15)
 
 ```text
 FamilyTreeT
@@ -169,25 +201,182 @@ FTPartnerT
 FTPersonMergeT
 FTPersonT
 FTRecordArchiveT
+FTSiblingT
 ```
 
 ### Database rules
 
-- Keep SQL compatible with the production MySQL environment unless the hosting/database platform is intentionally changed.
-- Do not assume modern MySQL-only features are available.
+- Keep SQL compatible with the deployed MySQL 5.5 environment unless the database platform is intentionally changed.
 - Use `utf8mb4`.
-- Respect existing primary keys, unique keys, indexes, and foreign-key rules in `wappsDumps.sql`.
+- Respect existing primary keys, unique keys, indexes, and foreign-key rules in `wappsDump.sql`.
 - Many user-owned tables use `UserID` and database-level cascading deletes to `UsersT`.
 - `UserSequenceT` supports user-scoped identifiers used by several WA modules.
 - Do not invent or rename database columns without checking every route and frontend consumer.
-- Family Tree relationships must be handled according to the actual Family Tree schema and route logic; do not assume every logical Family Tree relationship is enforced by a SQL foreign key.
-- Treat `wappsDumps.sql` as the schema reference before writing SQL.
+- Family Tree relationships must be handled according to the actual Family Tree schema and route logic; do not assume every logical relationship is enforced only by SQL foreign keys.
+- Treat `wappsDump.sql` as the schema reference before writing SQL.
+- `subscription_schema.sql` is the implementation script used to establish the subscription subsystem, but the current full-database authority remains `wappsDump.sql`.
 
 ---
 
-## 6. Budget Application
+## 6. Subscription / Entitlement System
 
-The Budget application is implemented through `routes/budget.js`, Budget HTML pages, and the Budget tables in `wappsDumps.sql`.
+The Subscription function is now part of the merged `main` branch.
+
+### 6.1 Plan hierarchy
+
+Plans are hierarchical. A higher `PlanLevel` includes lower plan levels.
+
+Current plan seed values are:
+
+| Plan | Level |
+|---|---:|
+| Standard | 1 |
+| Premium | 2 |
+| Platinum | 3 |
+| Diamond | 4 |
+
+Do not hard-code plan meaning from display text alone. The database `PlanLevel` is the hierarchy authority.
+
+### 6.2 Application catalog
+
+`AppT` defines the subscription-controlled applications.
+
+Current development classifications in `subscription_schema.sql` are:
+
+| AppKey | Application | Minimum plan | Cost category | Development available |
+|---|---|---|---|---|
+| `loan_payment` | Loan Payment | Standard | A | Yes |
+| `property_info` | Property Info | Standard | A | Yes |
+| `town_notice` | Town Notice | Standard | A | Yes |
+| `weigh_in` | Weigh In | Premium | B | Yes |
+| `interest_earned` | Interest Earned | Premium | B | Yes |
+| `budget` | My Money My Budget | Premium | B | Yes |
+| `family_tree` | Family Tree | Platinum | C | Yes |
+| `etf_investing` | ETF Investing | Diamond | D | No during current development mode |
+
+`server.js` currently enforces subscription access on the major data/API routes listed in Section 4.
+
+The frontend may disable unavailable buttons for usability, but **server-side middleware is the actual access/security gate**.
+
+### 6.3 Development entitlement
+
+The current first-successful-login workflow is implemented in `routes/users.js` and `services/subscriptionService.js`.
+
+After the user successfully completes email verification:
+
+1. `getOrCreateDevelopmentTrial(UserID)` checks whether a `UserSubscriptionT` row already exists.
+2. If one exists, it is not reset.
+3. If none exists and `AllowNewDevelopmentTrials = 1`, a development entitlement is created.
+4. The entitlement currently uses the **Platinum** plan.
+5. `DevelopmentTrialDays` controls its normal duration and currently defaults to 30 days.
+6. `DevelopmentEntitlementEndDate`, when populated, acts as an earlier global cutoff for `DEVELOPMENT_TRIAL` access.
+7. A newly created entitlement redirects the user to `subscription.html`.
+8. An expired user is also directed to `subscription.html`.
+9. An active returning user normally proceeds to `home.html`.
+
+Important rule:
+
+> **After development, all free development entitlements expire.**
+
+This is implemented through the development settings rather than by recreating or silently extending existing subscriptions.
+
+### 6.4 Development settings
+
+Current `SystemSettingsT` seed keys are:
+
+```text
+DevelopmentMode
+AllowNewDevelopmentTrials
+DevelopmentTrialDays
+DevelopmentEntitlementEndDate
+```
+
+Do not bypass these settings with hard-coded development dates in frontend pages.
+
+### 6.5 Promotional codes
+
+Promo-code processing is implemented transactionally in `redeemPromoCode()`.
+
+`PromoCodeT` includes:
+
+```text
+Code
+PlanID
+StartDate
+EndDate
+Active
+MaxUses
+Uses
+CreatedDate
+```
+
+Rules currently enforced include:
+
+- Code must exist and be active.
+- Current date must be within the code's date range.
+- `MaxUses`, when non-null, limits total redemptions.
+- `Uses` is incremented after successful redemption.
+- A user may redeem a particular code only once; `PromoRedemptionT` enforces this.
+- A promo may upgrade plan level and/or extend the user's end date.
+- A promo cannot reduce an existing better entitlement.
+- Redemption, subscription update, redemption record, and use-count update are handled in one transaction.
+
+The current development seed promo should be treated as configurable database data, not application logic.
+
+### 6.6 Subscription access middleware
+
+`middleware/subscriptionAccess.js` contains:
+
+```text
+authenticateToken()
+requireAppAccess(appKey)
+isAdminUser()
+```
+
+`requireAppAccess()` calls `getAppAccess()` in `services/subscriptionService.js`.
+
+Possible access-denial conditions include:
+
+```text
+APP_NOT_CONFIGURED
+APP_INACTIVE
+NOT_AVAILABLE_DURING_DEVELOPMENT
+SUBSCRIPTION_EXPIRED
+PLAN_TOO_LOW
+```
+
+The current admin override recognizes UserID 1 or the configured `ADMIN_USERNAME` value.
+
+Do not rely on a frontend-only subscription check.
+
+### 6.7 Usage tracking
+
+Subscription-related usage is stored in `UserUsageT`.
+
+Allowed event types currently include:
+
+```text
+APP_OPEN
+RECORD_CREATE
+RECORD_UPDATE
+API_CALL
+EMAIL_SENT
+FILE_UPLOAD
+```
+
+This is separate from the pre-existing `TrackUsageT` / `/track` functionality. Do not merge the two concepts casually; review their current purposes first.
+
+### 6.8 Payment status
+
+Payment subscription processing is **not yet implemented**. `subscription.html` currently states that payment subscriptions will be available later.
+
+Do not create `payment.html`, payment-provider logic, or recurring billing behavior unless that work is specifically requested.
+
+---
+
+## 7. Budget Application
+
+The Budget application is implemented through `routes/budget.js`, Budget HTML pages, and the Budget tables in `wappsDump.sql`.
 
 The current schema covers:
 
@@ -213,14 +402,15 @@ Budget changes must preserve:
 - Existing credit-card payment policy and related fields
 - Existing date and amount semantics
 - MySQL 5.5 compatibility
+- Subscription middleware protection through the `budget` app key
 
 Do not replace the existing Budget schema with a generic single `BudgetsT` table.
 
 ---
 
-## 7. Family Tree Application
+## 8. Family Tree Application
 
-The Family Tree application is implemented through `routes/familyTree.js`, Family Tree HTML pages, and the Family Tree tables in `wappsDumps.sql`.
+The Family Tree application is implemented through `routes/familyTree.js`, Family Tree HTML pages, companion `httpdocs/js/FT*.js` modules, and the Family Tree tables in `wappsDump.sql`.
 
 The current schema includes support for:
 
@@ -230,6 +420,7 @@ The current schema includes support for:
 - Users associated with trees
 - Parents
 - Partners
+- **Explicit sibling relationships**
 - Events
 - People associated with events
 - Contacts
@@ -239,15 +430,32 @@ The current schema includes support for:
 - Person merge operations
 - Archived records
 
-Family Tree work must preserve existing ownership, relationship, merge, archive, event, notification, and image behavior.
+### FTSiblingT
+
+`FTSiblingT` is now part of the current schema. It supports explicit biological sibling relationships, including cases where parents are not yet known.
+
+Important behavior in `routes/familyTree.js`:
+
+- Biological siblings may be derived from a shared recorded biological parent.
+- Biological siblings may also come from explicit `FTSiblingT` relationships.
+- Explicit sibling links are normalized so the lower PersonID is stored first.
+- Duplicate tree/person/sibling relationships are prevented by the table's unique key.
+- Family Tree merge and move logic must preserve, remap, and clean up sibling relationships along with parent and partner relationships.
+- Ancestor/relationship calculations use explicit sibling edges as well as parent-derived sibling relationships.
+
+Family Tree work must preserve existing ownership, relationship, sibling, merge, archive, event, notification, and image behavior.
 
 Profile/image uploads use Family Tree-specific multipart handling rather than the general no-file multipart middleware in `server.js`.
 
+The entire Family Tree API is currently protected through the `family_tree` subscription app key.
+
 ---
 
-## 8. Authentication and Security
+## 9. Authentication and Security
 
 - JWT tokens are used for authenticated API requests.
+- Final JWTs are currently issued after successful email-code verification.
+- Final JWT expiration is currently 8 hours.
 - Protected frontend calls send:
 
 ```http
@@ -256,16 +464,17 @@ Authorization: Bearer <token>
 
 - Passwords must be hashed with bcrypt.
 - Secrets and API credentials belong in environment variables, never committed source files.
-- Never log passwords, JWT tokens, API keys, database passwords, or other secrets.
+- Never log passwords, JWT tokens, API keys, database passwords, promo-code administration secrets, or other sensitive credentials.
 - Always enforce `UserID` ownership in routes that read or modify user-specific data.
 - Validate user-controlled input before SQL execution.
 - Use parameterized SQL; do not concatenate untrusted input into queries.
 - Preserve current CORS restrictions unless a deployment change requires an intentional update.
-- Frontend sanitization is a defense-in-depth control and must not be treated as a replacement for backend validation, authorization, ownership checks, or parameterized SQL.
+- Subscription checks do not replace ownership/authorization checks inside an application.
+- Frontend sanitization is a defense-in-depth control and must not be treated as a replacement for backend validation, authorization, ownership checks, subscription access checks, or parameterized SQL.
 
 ### Frontend input sanitization requirement
 
-WA now uses a shared client-side sanitization layer for pages that accept reusable free-text input.
+WA uses a shared client-side sanitization layer for pages that accept reusable free-text input.
 
 The shared frontend sanitizer is:
 
@@ -279,67 +488,48 @@ Rules:
 
 - Sanitize reusable free-text input such as names, descriptions, notes, addresses, usernames, email addresses, telephone numbers, URLs, and textarea content where applicable.
 - Treat sanitized values as **plain text** unless a feature intentionally supports HTML.
-- Do not sanitize password fields. Password values must remain byte-for-byte as entered and must never be altered by the frontend sanitizer.
+- Do not sanitize password fields. Password values must remain byte-for-byte as entered.
 - Numeric, date, checkbox, and other strongly typed fields do not need generic text sanitization merely for consistency.
 - Static pages and pages that do not accept reusable user-controlled free text do not need the shared sanitizer.
 - Preserve page-specific validation rules in addition to shared sanitization.
-- The sanitization implementation was tested successfully on September 14, 2026, including attempts to enter HTML-like values such as `<H1>` into protected fields.
 
 ### Safe output rendering requirement
-
-WA must also protect the point where data is displayed.
 
 User-controlled, database-derived, and external-API text must not be inserted into executable HTML without safe handling.
 
 Preferred order:
 
 1. Use DOM methods and assign untrusted/plain-text values with `textContent`.
-2. Where existing markup requires template-generated HTML, escape every untrusted value before assigning the markup through `innerHTML`.
+2. Where existing markup requires template-generated HTML, escape every untrusted value before assigning markup through `innerHTML`.
 3. Use DOMPurify when actual HTML rendering is intentionally required.
-4. Constrain dynamically assigned URL-bearing attributes such as `src` and `href`; do not blindly trust user/database/API-provided URLs.
+4. Constrain dynamically assigned URL-bearing attributes such as `src` and `href`.
 
-Rules:
-
-- Do not place raw user, database, or API strings directly inside `innerHTML`, `outerHTML`, `insertAdjacentHTML`, or `document.write`.
-- `innerHTML` remains acceptable for trusted static markup that does not contain untrusted values.
-- Do not build inline event-handler attributes from user-controlled data.
-- Prefer event listeners and `data-*` attributes over generated `onclick="..."` strings.
-- Rendering a value safely on input does not remove the need to render it safely on output.
-- Safe output handling protects against old database content, external API content, and values that might bypass normal frontend input controls.
-- The project-wide safe-output revisions were tested successfully on September 14, 2026.
+Do not place raw user, database, or API strings directly inside `innerHTML`, `outerHTML`, `insertAdjacentHTML`, or `document.write`.
 
 ### Native-app / WebView security continuity
 
 These frontend security requirements remain in force if WA is packaged as a PWA, Cordova/Capacitor application, WebView-based application, or similar native/mobile wrapper.
 
-Packaging HTML/JavaScript inside a native application does not make browser-style injection risks disappear. The native-app version must retain:
-
-- frontend input sanitization;
-- safe output rendering;
-- backend validation and authorization;
-- parameterized SQL;
-- ownership controls;
-- safe URL handling.
-
 ---
 
-## 9. Transactions and Database Access
+## 10. Transactions and Database Access
 
 Use the existing database helpers and patterns in the project.
 
 For operations that must succeed or fail as one unit, use a transaction. Examples include:
 
+- Promo-code redemption
 - Parent + child inserts
 - Multi-table Budget operations
 - Multi-table Family Tree changes
-- Merge/archive operations
+- Family Tree merge/archive/move operations
 - Weight entries with activity mappings
 
 Do not partially commit a multi-step operation that would leave inconsistent data.
 
 ---
 
-## 10. Frontend Standards
+## 11. Frontend Standards
 
 ### HTML pretty-formatting requirement
 
@@ -362,15 +552,15 @@ Readable source is a project requirement.
 
 ### Light-mode browser compatibility requirement
 
-WonderfulApps currently uses an intentionally **light visual design**. All current and future `.html` pages must opt out of browser-generated or algorithmic dark-mode recoloring unless WA intentionally adopts a supported dark theme in the future.
+WonderfulApps currently uses an intentionally **light visual design**.
 
-Every HTML page should include this declaration in `<head>`:
+Every HTML page should include:
 
 ```html
 <meta name="color-scheme" content="only light">
 ```
 
-Each page must also declare the same policy in CSS:
+and CSS:
 
 ```css
 :root {
@@ -378,43 +568,22 @@ Each page must also declare the same policy in CSS:
 }
 ```
 
-These declarations are a project-wide browser-compatibility requirement. They prevent browsers that apply automatic darkening from changing WA's intended text, background, table, button, and form colors.
-
-Implementation rules:
-
-- Preserve each page's existing WA colors; do not redesign pages merely to address browser dark mode.
-- Do not remove the `only light` declarations because a page appears correct in desktop Chrome, Edge, Firefox, or DuckDuckGo.
-- The original issue was observed on Android DuckDuckGo with browser dark mode enabled, where black text and table/background colors were automatically altered.
-- The `color-scheme: only light` fix was tested successfully on Android DuckDuckGo on September 14, 2026.
-- When creating a new WA HTML page, include both declarations from the beginning.
-- If WA later introduces a true application-controlled dark theme, revise this rule deliberately across the project rather than removing it page by page.
-
-### Frontend security conventions
-
-When creating or modifying a frontend page or JavaScript module:
-
-- If the page accepts reusable user-controlled free text, use the shared sanitization mechanism unless the field type is intentionally excluded.
-- Never sanitize password fields.
-- Prefer `textContent` for displaying untrusted/plain-text data.
-- If `innerHTML` is necessary, escape untrusted interpolated values or sanitize intentionally rendered HTML.
-- Review all data arriving from the database and external APIs as potentially untrusted for rendering purposes.
-- Treat image URLs, links, and other dynamic URL-bearing attributes as security-sensitive.
-- Preserve the shared `inputSanitizer.js` include and DOMPurify include on pages where they are required.
-- Do not remove output escaping merely because input sanitization is present.
-- New native/WebView-facing pages must follow the same rules.
+These declarations prevent browser-generated dark-mode recoloring from changing WA's intended colors.
 
 ### Frontend conventions
 
-- Preserve the visual design of the page unless a redesign is requested.
+- Preserve the visual design of a page unless a redesign is requested.
 - Reuse existing WA header, navigation, button, panel, and footer patterns where practical.
 - Use `window.location.origin` or the project's existing base-URL pattern rather than hard-coding a deployment host unless required.
 - Keep authenticated API calls consistent with the existing token mechanism.
+- Subscription-aware pages should obtain current access from the server rather than duplicating plan logic independently in every page.
+- UI-disabled buttons are a convenience only; the backend must remain authoritative.
 - Validate important input in the frontend for usability, but treat backend validation as authoritative.
 - Keep page names and capitalization consistent with existing links.
 
 ---
 
-## 11. Backend Coding Standards
+## 12. Backend Coding Standards
 
 - Follow the existing route/module style before introducing a new pattern.
 - Use `async/await`.
@@ -425,12 +594,15 @@ When creating or modifying a frontend page or JavaScript module:
 - Use transactions for multi-step database mutations.
 - Avoid duplicating utilities already provided by shared modules.
 - Keep routes user-scoped where the underlying records are user-owned.
+- Do not bypass `requireAppAccess()` for subscription-controlled application routes.
+- When adding a subscription-controlled application, update the database app catalog and server-side route mapping together.
 - Update `server.js` when adding a new route module.
-- Update the SQL dump/documentation when schema changes are made.
+- Update `wappsDump.sql` after intentional schema changes.
+- Update `CLAUDE.md` and `TechSummary.md` when architecture or standards change.
 
 ---
 
-## 12. Current Package Baseline
+## 13. Current Package Baseline
 
 Current `package.json` identifies WonderfulApps version `1.0.0`.
 
@@ -458,7 +630,7 @@ Do not rely on older documentation for dependency versions; check `package.json`
 
 ---
 
-## 13. File Structure – High-Level
+## 14. File Structure – High-Level
 
 ```text
 wonderfulApp/
@@ -471,7 +643,8 @@ wonderfulApp/
 ├── r2Storage.js
 ├── package.json
 ├── package-lock.json
-├── wappsDumps.sql
+├── wappsDump.sql
+├── subscription_schema.sql
 ├── CLAUDE.md
 ├── TechSummary.md
 ├── routes/
@@ -481,64 +654,76 @@ wonderfulApp/
 │   ├── familyTree.js
 │   ├── geocode.js
 │   ├── interestEarned.js
+│   ├── subscriptions.js
 │   ├── track.js
 │   ├── users.js
 │   ├── weightActivities.js
 │   └── weights.js
+├── services/
+│   └── subscriptionService.js
 ├── middleware/
+│   ├── auth.js
+│   ├── handleValidationErrors.js
+│   └── subscriptionAccess.js
 ├── httpdocs/
+│   ├── home.html
+│   ├── login.html
+│   ├── register.html
+│   ├── subscription.html
+│   ├── FTAncestor.html
+│   ├── FTPerson.html
 │   └── js/
-│       └── inputSanitizer.js
+│       ├── inputSanitizer.js
+│       ├── FTPerson.js
+│       └── FTOneTreeMerge.js
 ├── docs/
 ├── logs/
 └── skills/
 ```
 
----
-
-## 14. Change Procedure
-
-Before changing a feature:
-
-1. Identify the frontend page(s) and any corresponding frontend JavaScript file(s).
-2. Identify the API route(s).
-3. Identify the relevant database table(s).
-4. Check `wappsDumps.sql` for exact names, data types, keys, and constraints.
-5. Check how `UserID` ownership is enforced.
-6. Check whether the operation needs a transaction.
-7. Implement the smallest safe change.
-8. Pretty-format all modified HTML files.
-9. Verify every modified or new HTML page includes the required `only light` color-scheme declarations.
-10. For reusable free-text input, verify the shared input sanitizer is present and that passwords remain excluded.
-11. Review output rendering for user-, database-, and API-derived values; prefer `textContent`, escaping, or DOMPurify as appropriate.
-12. Review dynamic `src`, `href`, and similar URL-bearing attributes.
-13. Verify all links, IDs, field names, route names, JavaScript selectors, and API payload names.
-14. Test success cases and validation/error cases.
-15. Test security-sensitive input/output behavior when a feature handles reusable text.
-16. Test locally.
-17. Update `wappsDumps.sql` after an intentional schema change.
-18. Update `CLAUDE.md` and `TechSummary.md` when architecture or development standards change.
+This is a high-level guide, not an exhaustive file listing.
 
 ---
 
-## 15. Important “Do Not” Rules
+## 15. Change Procedure
 
-- Do not invent database table or column names.
-- Do not assume an old example schema is current.
-- Do not remove fields merely because their purpose is not immediately obvious.
-- Do not change URL or API naming casually.
-- Do not weaken authentication or per-user filtering.
-- Do not expose secrets in source code or logs.
-- Do not add MySQL features incompatible with the deployed database without first changing the database platform.
-- Do not minify or poorly format source HTML.
-- Do not remove the required `color-scheme: only light` compatibility declarations from WA HTML pages unless the project intentionally adopts a supported dark-theme design.
-- Do not remove required frontend sanitization from pages that accept reusable free-text input.
-- Do not sanitize password fields.
-- Do not insert raw user-, database-, or API-derived strings directly into `innerHTML`, `outerHTML`, `insertAdjacentHTML`, or `document.write`.
-- Do not assume sanitized input is automatically safe for every later output context.
-- Do not trust dynamic image/link URLs without appropriate validation or constraint.
-- Do not weaken these frontend security controls when packaging WA as a native/WebView application.
-- Do not replace a multi-table implemented feature with a simplified example design.
+Before changing an existing feature:
+
+1. Read the current frontend file.
+2. Read its backend route(s).
+3. Check the exact current table and column names in `wappsDump.sql`.
+4. If subscription-controlled, identify the correct `AppT.AppKey` and current minimum plan.
+5. Check `UserID` ownership rules.
+6. Check backend validation and transaction boundaries.
+7. Check frontend sanitization and safe-output behavior.
+8. Check whether the change affects Family Tree relationship integrity, including `FTSiblingT`.
+9. Preserve MySQL 5.5 compatibility.
+10. Preserve pretty formatting across any edited HTML file.
+11. Preserve the `only light` color-scheme declarations.
+12. Test both an allowed and denied subscription path when subscription logic is involved.
+13. Test merge/archive behavior when Family Tree relationship structures are involved.
+14. Update `wappsDump.sql` for intentional schema changes.
+15. Update `CLAUDE.md` and `TechSummary.md` for architectural changes.
+
+---
+
+## 16. Important “Do Not” Rules
+
+- Do not design from an old schema when `wappsDump.sql` is available.
+- Do not rename or remove fields without tracing all consumers.
+- Do not assume frontend-disabled controls enforce subscription security.
+- Do not hard-code entitlement expiration dates into pages.
+- Do not silently reset a user's development entitlement on later logins.
+- Do not create payment-provider functionality unless specifically requested.
+- Do not collapse the Budget schema into a generic replacement table.
+- Do not treat explicit Family Tree siblings as if they can always be reconstructed from known parents.
+- Do not lose `FTSiblingT` relationships during Family Tree merge/move/archive work.
+- Do not insert raw untrusted strings into executable HTML.
+- Do not sanitize passwords.
+- Do not remove the light-mode compatibility declarations.
+- Do not minify source HTML.
+- Do not commit secrets.
+- Do not weaken `UserID` ownership controls.
 - Do not modify unrelated functionality while completing a focused task.
 
 ---
