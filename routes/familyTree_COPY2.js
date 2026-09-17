@@ -1303,7 +1303,7 @@ async function moveComponentToTree(
         personIDs.map(() => '?').join(',');
 
     await c.query(
-        `INSERT INTO FTFamilyTreePersonT
+        `INSERT IGNORE INTO FTFamilyTreePersonT
          (
             FamilyTreeID,
             PersonID,
@@ -1321,17 +1321,24 @@ async function moveComponentToTree(
             Notes
          FROM FTFamilyTreePersonT
          WHERE FamilyTreeID=?
-           AND PersonID IN (${placeholders})
-         ON DUPLICATE KEY UPDATE
-            OriginFamilyTreeID=
-                COALESCE(
-                    FTFamilyTreePersonT.OriginFamilyTreeID,
-                    VALUES(OriginFamilyTreeID)
-                )`,
+           AND PersonID IN (${placeholders})`,
         [
             destinationTreeID,
             sourceTreeID,
             sourceTreeID,
+            ...personIDs
+        ]
+    );
+
+    await c.query(
+        `UPDATE FTFamilyTreePersonT
+         SET OriginFamilyTreeID=?
+         WHERE FamilyTreeID=?
+           AND PersonID IN (${placeholders})
+           AND OriginFamilyTreeID IS NULL`,
+        [
+            sourceTreeID,
+            destinationTreeID,
             ...personIDs
         ]
     );
@@ -2297,843 +2304,7 @@ async function oneTreeReviewNeededResponse(c, sourceTree, targetTree, extras = {
     };
 }
 
-function mysqlDateTimeValue(value) {
-    if (!value) return null;
-    if (value instanceof Date) {
-        return value.toISOString().slice(0, 19).replace('T', ' ');
-    }
-    const text = String(value);
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(text)) {
-        return text.slice(0, 19).replace('T', ' ');
-    }
-    return text;
-}
-
-function relationshipKey(...parts) {
-    return parts.map(value => String(value ?? '')).join('|');
-}
-
-async function captureOneTreeMergeSnapshot(c, olderTree, newerTree, decisions, bridge) {
-    const [sourceMemberships] = await c.query(
-        'SELECT * FROM FTFamilyTreePersonT WHERE FamilyTreeID=? ORDER BY FamilyTreePersonID',
-        [newerTree.FamilyTreeID]
-    );
-    const sourcePersonIDs = sourceMemberships.map(row => Number(row.PersonID)).filter(Boolean);
-    let sourcePeople = [];
-    if (sourcePersonIDs.length) {
-        const placeholders = sourcePersonIDs.map(() => '?').join(',');
-        [sourcePeople] = await c.query(
-            `SELECT * FROM FTPersonT WHERE PersonID IN (${placeholders}) ORDER BY PersonID`,
-            sourcePersonIDs
-        );
-    }
-
-    const [sourceParents] = await c.query(
-        'SELECT * FROM FTParentT WHERE FamilyTreeID=? ORDER BY ParentRelationshipID',
-        [newerTree.FamilyTreeID]
-    );
-    const [sourcePartners] = await c.query(
-        'SELECT * FROM FTPartnerT WHERE FamilyTreeID=? ORDER BY PartnerRelationshipID',
-        [newerTree.FamilyTreeID]
-    );
-    const [sourceSiblings] = await c.query(
-        'SELECT * FROM FTSiblingT WHERE FamilyTreeID=? ORDER BY SiblingRelationshipID',
-        [newerTree.FamilyTreeID]
-    );
-    const [sourceUsers] = await c.query(
-        'SELECT * FROM FTFamilyTreeUserT WHERE FamilyTreeID=? ORDER BY FamilyTreeUserID',
-        [newerTree.FamilyTreeID]
-    );
-
-    const [olderMemberships] = await c.query(
-        'SELECT * FROM FTFamilyTreePersonT WHERE FamilyTreeID=? ORDER BY FamilyTreePersonID',
-        [olderTree.FamilyTreeID]
-    );
-    const [olderParents] = await c.query(
-        'SELECT * FROM FTParentT WHERE FamilyTreeID=? ORDER BY ParentRelationshipID',
-        [olderTree.FamilyTreeID]
-    );
-    const [olderPartners] = await c.query(
-        'SELECT * FROM FTPartnerT WHERE FamilyTreeID=? ORDER BY PartnerRelationshipID',
-        [olderTree.FamilyTreeID]
-    );
-    const [olderSiblings] = await c.query(
-        'SELECT * FROM FTSiblingT WHERE FamilyTreeID=? ORDER BY SiblingRelationshipID',
-        [olderTree.FamilyTreeID]
-    );
-    const [olderUsers] = await c.query(
-        'SELECT * FROM FTFamilyTreeUserT WHERE FamilyTreeID=? ORDER BY FamilyTreeUserID',
-        [olderTree.FamilyTreeID]
-    );
-
-    const pairs = [];
-    for (const decision of decisions || []) {
-        if (!decision || decision.decision !== 'same') continue;
-        const sourcePersonID = Number(decision.newerPersonID || 0);
-        const survivingPersonID = Number(decision.olderPersonID || 0);
-        if (!sourcePersonID || !survivingPersonID) continue;
-
-        const [[sourcePerson]] = await c.query(
-            'SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1',
-            [sourcePersonID]
-        );
-        const [[survivingPerson]] = await c.query(
-            'SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1',
-            [survivingPersonID]
-        );
-        const [sourceContacts] = await c.query(
-            'SELECT * FROM FTContactT WHERE PersonID=? ORDER BY ContactID',
-            [sourcePersonID]
-        );
-        const [survivingContacts] = await c.query(
-            'SELECT * FROM FTContactT WHERE PersonID=? ORDER BY ContactID',
-            [survivingPersonID]
-        );
-        const [sourceEventLinks] = await c.query(
-            'SELECT * FROM FTEventPersonT WHERE PersonID=? ORDER BY EventPersonID',
-            [sourcePersonID]
-        );
-        const [survivingEventLinks] = await c.query(
-            'SELECT * FROM FTEventPersonT WHERE PersonID=? ORDER BY EventPersonID',
-            [survivingPersonID]
-        );
-        const [sourceImages] = await c.query(
-            'SELECT * FROM FTImageT WHERE PersonID=? ORDER BY ImageID',
-            [sourcePersonID]
-        );
-        const [survivingImages] = await c.query(
-            'SELECT * FROM FTImageT WHERE PersonID=? ORDER BY ImageID',
-            [survivingPersonID]
-        );
-
-        pairs.push({
-            sourcePersonID,
-            survivingPersonID,
-            sourcePerson,
-            survivingPerson,
-            sourceContacts,
-            survivingContacts,
-            sourceEventLinks,
-            survivingEventLinks,
-            sourceImages,
-            survivingImages
-        });
-    }
-
-    return {
-        version: 1,
-        capturedAt: new Date().toISOString(),
-        sourceTree: newerTree,
-        survivingTree: olderTree,
-        sourceMemberships,
-        sourcePeople,
-        sourceParents,
-        sourcePartners,
-        sourceSiblings,
-        sourceUsers,
-        survivingBaseline: {
-            memberships: olderMemberships,
-            parents: olderParents,
-            partners: olderPartners,
-            siblings: olderSiblings,
-            users: olderUsers
-        },
-        pairs,
-        decisions: decisions || [],
-        bridge: bridge || {}
-    };
-}
-
-async function createOneTreeMergeRecord(c, olderTree, newerTree, userID, decisions, bridge) {
-    const snapshot = await captureOneTreeMergeSnapshot(
-        c,
-        olderTree,
-        newerTree,
-        decisions,
-        bridge
-    );
-
-    const [inserted] = await c.query(
-        `INSERT INTO FTTreeMergeT
-         (SourceFamilyTreeID,SurvivingFamilyTreeID,MergedByUserID,MergedAt,Status,
-          BridgeJSON,DecisionsJSON,MergeSnapshot,CreatedR2KeysJSON)
-         VALUES (?,?,?,NOW(),'ACTIVE',?,?,?,?)`,
-        [
-            newerTree.FamilyTreeID,
-            olderTree.FamilyTreeID,
-            userID,
-            JSON.stringify(bridge || {}),
-            JSON.stringify(decisions || []),
-            JSON.stringify(snapshot),
-            JSON.stringify([])
-        ]
-    );
-
-    return {
-        TreeMergeID: inserted.insertId,
-        snapshot
-    };
-}
-
-async function restorePersonFromSnapshot(c, person) {
-    if (!person || !person.PersonID) return;
-    const [[existing]] = await c.query(
-        'SELECT PersonID FROM FTPersonT WHERE PersonID=? LIMIT 1',
-        [person.PersonID]
-    );
-    if (existing) {
-        const err = new Error(
-            `PersonID ${person.PersonID} already exists and cannot be safely restored.`
-        );
-        err.status = 409;
-        throw err;
-    }
-
-    await c.query(
-        `INSERT INTO FTPersonT
-         (PersonID,FirstName,MiddleName,LastName,SuffixName,NickName,MaidenName,Gender,
-          BirthDate,BirthPlace,Died,DeathDate,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [
-            person.PersonID,
-            person.FirstName || null,
-            person.MiddleName || null,
-            person.LastName || null,
-            person.SuffixName || null,
-            person.NickName || null,
-            person.MaidenName || null,
-            person.Gender || null,
-            person.BirthDate ? dateOnly(person.BirthDate) : null,
-            person.BirthPlace || null,
-            Number(person.Died) ? 1 : 0,
-            person.DeathDate ? dateOnly(person.DeathDate) : null,
-            person.CreatedByUserID,
-            mysqlDateTimeValue(person.CreatedAt),
-            person.UpdatedByUserID || null,
-            mysqlDateTimeValue(person.UpdatedAt)
-        ]
-    );
-}
-
-async function restoreSourceContact(c, row, sourcePersonID, survivingPersonID) {
-    const [[existing]] = await c.query(
-        'SELECT * FROM FTContactT WHERE ContactID=? LIMIT 1',
-        [row.ContactID]
-    );
-
-    if (existing && Number(existing.PersonID) === Number(survivingPersonID)) {
-        const unchangedIdentity =
-            String(existing.ContactType || '').trim().toLowerCase() ===
-                String(row.ContactType || '').trim().toLowerCase() &&
-            String(existing.ContactValue || '').trim().toLowerCase() ===
-                String(row.ContactValue || '').trim().toLowerCase();
-
-        if (unchangedIdentity) {
-            await c.query(
-                `UPDATE FTContactT
-                 SET PersonID=?,ContactType=?,ContactValue=?,ContactNote=?,IsPrimary=?,
-                     CreatedByUserID=?,CreatedAt=?,UpdatedByUserID=?,UpdatedAt=?
-                 WHERE ContactID=?`,
-                [
-                    sourcePersonID,
-                    row.ContactType,
-                    row.ContactValue,
-                    existing.ContactNote !== row.ContactNote ? existing.ContactNote : row.ContactNote,
-                    row.IsPrimary,
-                    row.CreatedByUserID,
-                    mysqlDateTimeValue(row.CreatedAt),
-                    existing.UpdatedByUserID || row.UpdatedByUserID || null,
-                    mysqlDateTimeValue(existing.UpdatedAt || row.UpdatedAt),
-                    row.ContactID
-                ]
-            );
-            return;
-        }
-    }
-
-    if (!existing) {
-        try {
-            await c.query(
-                `INSERT INTO FTContactT
-                 (ContactID,PersonID,ContactType,ContactValue,ContactNote,IsPrimary,
-                  CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-                 VALUES (?,?,?,?,?,?,?,?,?,?)`,
-                [
-                    row.ContactID,sourcePersonID,row.ContactType,row.ContactValue,row.ContactNote,
-                    row.IsPrimary,row.CreatedByUserID,mysqlDateTimeValue(row.CreatedAt),
-                    row.UpdatedByUserID || null,mysqlDateTimeValue(row.UpdatedAt)
-                ]
-            );
-            return;
-        } catch (e) {
-            if (e.code !== 'ER_DUP_ENTRY') throw e;
-        }
-    }
-
-    const [dup] = await c.query(
-        `SELECT ContactID FROM FTContactT
-         WHERE PersonID=? AND LOWER(TRIM(ContactType))=LOWER(TRIM(?))
-           AND LOWER(TRIM(ContactValue))=LOWER(TRIM(?)) LIMIT 1`,
-        [sourcePersonID,row.ContactType,row.ContactValue]
-    );
-    if (!dup.length) {
-        await c.query(
-            `INSERT INTO FTContactT
-             (PersonID,ContactType,ContactValue,ContactNote,IsPrimary,
-              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-             VALUES (?,?,?,?,?,?,?,?,?)`,
-            [
-                sourcePersonID,row.ContactType,row.ContactValue,row.ContactNote,row.IsPrimary,
-                row.CreatedByUserID,mysqlDateTimeValue(row.CreatedAt),
-                row.UpdatedByUserID || null,mysqlDateTimeValue(row.UpdatedAt)
-            ]
-        );
-    }
-}
-
-async function restoreSourceEventLink(c, row, sourcePersonID, survivingPersonID) {
-    const [[existing]] = await c.query(
-        'SELECT * FROM FTEventPersonT WHERE EventPersonID=? LIMIT 1',
-        [row.EventPersonID]
-    );
-
-    if (
-        existing &&
-        Number(existing.PersonID) === Number(survivingPersonID) &&
-        Number(existing.EventID) === Number(row.EventID)
-    ) {
-        await c.query(
-            `UPDATE FTEventPersonT
-             SET PersonID=?,PersonRole=?,AddedByUserID=?,AddedAt=?
-             WHERE EventPersonID=?`,
-            [
-                sourcePersonID,
-                existing.PersonRole !== row.PersonRole ? existing.PersonRole : row.PersonRole,
-                row.AddedByUserID,
-                mysqlDateTimeValue(row.AddedAt),
-                row.EventPersonID
-            ]
-        );
-        return;
-    }
-
-    const [dup] = await c.query(
-        'SELECT EventPersonID FROM FTEventPersonT WHERE EventID=? AND PersonID=? LIMIT 1',
-        [row.EventID,sourcePersonID]
-    );
-    if (dup.length) return;
-
-    if (!existing) {
-        try {
-            await c.query(
-                `INSERT INTO FTEventPersonT
-                 (EventPersonID,EventID,PersonID,PersonRole,AddedByUserID,AddedAt)
-                 VALUES (?,?,?,?,?,?)`,
-                [
-                    row.EventPersonID,row.EventID,sourcePersonID,row.PersonRole,
-                    row.AddedByUserID,mysqlDateTimeValue(row.AddedAt)
-                ]
-            );
-            return;
-        } catch (e) {
-            if (e.code !== 'ER_DUP_ENTRY') throw e;
-        }
-    }
-
-    await c.query(
-        `INSERT INTO FTEventPersonT
-         (EventID,PersonID,PersonRole,AddedByUserID,AddedAt)
-         VALUES (?,?,?,?,?)`,
-        [row.EventID,sourcePersonID,row.PersonRole,row.AddedByUserID,mysqlDateTimeValue(row.AddedAt)]
-    );
-}
-
-async function restoreSourceImage(c, row, sourcePersonID, survivingPersonID) {
-    const [[existing]] = await c.query(
-        'SELECT * FROM FTImageT WHERE ImageID=? LIMIT 1',
-        [row.ImageID]
-    );
-
-    if (existing && Number(existing.PersonID) === Number(survivingPersonID)) {
-        await c.query(
-            `UPDATE FTImageT
-             SET PersonID=?,ImageType=?,ApproxAge=?,ImageDate=?,StorageKey=?,OriginalFileName=?,
-                 Caption=?,SortOrder=?,CreatedByUserID=?,CreatedAt=?,UpdatedByUserID=?,UpdatedAt=?
-             WHERE ImageID=?`,
-            [
-                sourcePersonID,row.ImageType,
-                existing.ApproxAge ?? row.ApproxAge,
-                existing.ImageDate ? dateOnly(existing.ImageDate) : (row.ImageDate ? dateOnly(row.ImageDate) : null),
-                row.StorageKey,
-                existing.OriginalFileName || row.OriginalFileName,
-                existing.Caption !== row.Caption ? existing.Caption : row.Caption,
-                row.SortOrder,row.CreatedByUserID,mysqlDateTimeValue(row.CreatedAt),
-                existing.UpdatedByUserID || row.UpdatedByUserID || null,
-                mysqlDateTimeValue(existing.UpdatedAt || row.UpdatedAt),
-                row.ImageID
-            ]
-        );
-        return;
-    }
-
-    if (!existing) {
-        try {
-            await c.query(
-                `INSERT INTO FTImageT
-                 (ImageID,PersonID,ImageType,ApproxAge,ImageDate,StorageKey,OriginalFileName,Caption,
-                  SortOrder,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-                [
-                    row.ImageID,sourcePersonID,row.ImageType,row.ApproxAge,
-                    row.ImageDate ? dateOnly(row.ImageDate) : null,row.StorageKey,row.OriginalFileName,
-                    row.Caption,row.SortOrder,row.CreatedByUserID,mysqlDateTimeValue(row.CreatedAt),
-                    row.UpdatedByUserID || null,mysqlDateTimeValue(row.UpdatedAt)
-                ]
-            );
-            return;
-        } catch (e) {
-            if (e.code !== 'ER_DUP_ENTRY') throw e;
-        }
-    }
-
-    const err = new Error(`ImageID ${row.ImageID} cannot be safely restored.`);
-    err.status = 409;
-    throw err;
-}
-
-async function restoreMissingBaselineImage(c, row, survivingPersonID) {
-    const [[existing]] = await c.query(
-        'SELECT ImageID FROM FTImageT WHERE ImageID=? LIMIT 1',
-        [row.ImageID]
-    );
-    if (existing) return;
-
-    try {
-        await c.query(
-            `INSERT INTO FTImageT
-             (ImageID,PersonID,ImageType,ApproxAge,ImageDate,StorageKey,OriginalFileName,Caption,
-              SortOrder,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-            [
-                row.ImageID,survivingPersonID,row.ImageType,row.ApproxAge,
-                row.ImageDate ? dateOnly(row.ImageDate) : null,row.StorageKey,row.OriginalFileName,
-                row.Caption,row.SortOrder,row.CreatedByUserID,mysqlDateTimeValue(row.CreatedAt),
-                row.UpdatedByUserID || null,mysqlDateTimeValue(row.UpdatedAt)
-            ]
-        );
-    } catch (e) {
-        if (e.code !== 'ER_DUP_ENTRY') throw e;
-    }
-}
-
-async function safelyRevertSurvivingPersonFields(c, personMergeRow, userID) {
-    if (!personMergeRow) return;
-    let before;
-    let after;
-    try {
-        before = JSON.parse(personMergeRow.SurvivingPersonSnapshotBefore || '{}');
-        after = JSON.parse(personMergeRow.SurvivingPersonSnapshotAfter || '{}');
-    } catch (_) {
-        return;
-    }
-    if (!before || !after || !personMergeRow.SurvivingPersonID) return;
-
-    const [[current]] = await c.query(
-        'SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1',
-        [personMergeRow.SurvivingPersonID]
-    );
-    if (!current) return;
-
-    const next = {};
-    for (const field of ONE_TREE_PERSON_FIELDS) {
-        const currentValue = field === 'BirthDate' || field === 'DeathDate'
-            ? dateOnly(current[field])
-            : current[field];
-        const afterValue = field === 'BirthDate' || field === 'DeathDate'
-            ? dateOnly(after[field])
-            : after[field];
-        const beforeValue = field === 'BirthDate' || field === 'DeathDate'
-            ? dateOnly(before[field])
-            : before[field];
-
-        next[field] = normalizeCompareValue(currentValue) === normalizeCompareValue(afterValue)
-            ? beforeValue
-            : currentValue;
-    }
-
-    await c.query(
-        `UPDATE FTPersonT
-         SET FirstName=?,MiddleName=?,LastName=?,SuffixName=?,NickName=?,MaidenName=?,
-             Gender=?,BirthDate=?,BirthPlace=?,Died=?,DeathDate=?,UpdatedByUserID=?,UpdatedAt=NOW()
-         WHERE PersonID=?`,
-        [
-            next.FirstName || null,next.MiddleName || null,next.LastName || null,
-            next.SuffixName || null,next.NickName || null,next.MaidenName || null,
-            next.Gender || null,next.BirthDate || null,next.BirthPlace || null,
-            Number(next.Died) ? 1 : 0,next.DeathDate || null,userID,
-            personMergeRow.SurvivingPersonID
-        ]
-    );
-}
-
-async function removeUndoBridge(c, survivingTreeID, bridge, pairMap) {
-    if (!bridge) return;
-    const mapID = id => pairMap.get(Number(id)) || Number(id || 0);
-    const focal = mapID(bridge.focalPersonID);
-    const related = mapID(bridge.relatedPersonID);
-    const kind = String(bridge.relationshipKind || '').toLowerCase();
-    if (!focal || !related || !kind || focal === related) return;
-
-    if (kind === 'mother' || kind === 'father') {
-        await c.query(
-            'DELETE FROM FTParentT WHERE FamilyTreeID=? AND PersonID=? AND ParentPersonID=?',
-            [survivingTreeID,focal,related]
-        );
-    } else if (kind === 'child') {
-        await c.query(
-            'DELETE FROM FTParentT WHERE FamilyTreeID=? AND PersonID=? AND ParentPersonID=?',
-            [survivingTreeID,related,focal]
-        );
-    } else if (kind === 'partner') {
-        const a = Math.min(focal,related);
-        const z = Math.max(focal,related);
-        await c.query(
-            'DELETE FROM FTPartnerT WHERE FamilyTreeID=? AND PersonID=? AND PartnerPersonID=?',
-            [survivingTreeID,a,z]
-        );
-    } else if (kind === 'sibling') {
-        const a = Math.min(focal,related);
-        const z = Math.max(focal,related);
-        await c.query(
-            'DELETE FROM FTSiblingT WHERE FamilyTreeID=? AND PersonID=? AND SiblingPersonID=?',
-            [survivingTreeID,a,z]
-        );
-    }
-}
-
-async function undoOneTreeMerge(c, mergeRow, userID) {
-    let snapshot;
-    try {
-        snapshot = JSON.parse(mergeRow.MergeSnapshot || '{}');
-    } catch (_) {
-        const err = new Error('The stored One Tree merge snapshot is not readable.');
-        err.status = 500;
-        throw err;
-    }
-
-    const sourceTreeID = Number(mergeRow.SourceFamilyTreeID);
-    const survivingTreeID = Number(mergeRow.SurvivingFamilyTreeID);
-    const sourceTree = snapshot.sourceTree || {};
-
-    if (
-        Number(sourceTree.CreatedByUserID) !== Number(userID) &&
-        Number(mergeRow.MergedByUserID) !== Number(userID)
-    ) {
-        const err = new Error('Only the creator of the merged source Tree or the user who completed the merge may undo it.');
-        err.status = 403;
-        throw err;
-    }
-
-    const [[newerActiveMerge]] = await c.query(
-        `SELECT TreeMergeID,MergedAt
-         FROM FTTreeMergeT
-         WHERE SurvivingFamilyTreeID=? AND Status='ACTIVE' AND MergedAt>?
-         ORDER BY MergedAt DESC,TreeMergeID DESC LIMIT 1`,
-        [survivingTreeID,mergeRow.MergedAt]
-    );
-    if (newerActiveMerge) {
-        const err = new Error('A newer One Tree merge depends on this Tree. Undo the newer merge first.');
-        err.status = 409;
-        throw err;
-    }
-
-    const [[sourceCurrent]] = await c.query(
-        'SELECT * FROM FamilyTreeT WHERE FamilyTreeID=? FOR UPDATE',
-        [sourceTreeID]
-    );
-    if (
-        !sourceCurrent ||
-        sourceCurrent.Status !== 'Merged' ||
-        Number(sourceCurrent.MergedIntoFamilyTreeID) !== survivingTreeID
-    ) {
-        const err = new Error('The source Family Tree is no longer in the state required for this undo.');
-        err.status = 409;
-        throw err;
-    }
-
-    const [[unexpected]] = await c.query(
-        `SELECT
-            (SELECT COUNT(*) FROM FTFamilyTreePersonT WHERE FamilyTreeID=?) AS personCount,
-            (SELECT COUNT(*) FROM FTParentT WHERE FamilyTreeID=?) AS parentCount,
-            (SELECT COUNT(*) FROM FTPartnerT WHERE FamilyTreeID=?) AS partnerCount,
-            (SELECT COUNT(*) FROM FTSiblingT WHERE FamilyTreeID=?) AS siblingCount`,
-        [sourceTreeID,sourceTreeID,sourceTreeID,sourceTreeID]
-    );
-    if (
-        Number(unexpected.personCount) || Number(unexpected.parentCount) ||
-        Number(unexpected.partnerCount) || Number(unexpected.siblingCount)
-    ) {
-        const err = new Error('The historical source Tree contains unexpected current data. Undo was stopped to protect it.');
-        err.status = 409;
-        throw err;
-    }
-
-    const pairMap = new Map();
-    for (const pair of snapshot.pairs || []) {
-        pairMap.set(Number(pair.sourcePersonID), Number(pair.survivingPersonID));
-    }
-    const mapID = id => pairMap.get(Number(id)) || Number(id);
-
-    const [personMergeRows] = await c.query(
-        'SELECT * FROM FTPersonMergeT WHERE TreeMergeID=? ORDER BY PersonMergeID',
-        [mergeRow.TreeMergeID]
-    );
-
-    for (const pair of snapshot.pairs || []) {
-        await restorePersonFromSnapshot(c, pair.sourcePerson);
-    }
-
-    const baselineMembers = new Set(
-        ((snapshot.survivingBaseline || {}).memberships || [])
-            .map(row => Number(row.PersonID))
-    );
-    for (const membership of snapshot.sourceMemberships || []) {
-        const mappedID = mapID(membership.PersonID);
-        if (!baselineMembers.has(mappedID)) {
-            await c.query(
-                'DELETE FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=?',
-                [survivingTreeID,mappedID]
-            );
-        }
-    }
-
-    const baselineParents = new Set(
-        ((snapshot.survivingBaseline || {}).parents || [])
-            .map(row => relationshipKey(row.PersonID,row.ParentPersonID))
-    );
-    for (const rel of snapshot.sourceParents || []) {
-        const childID = mapID(rel.PersonID);
-        const parentID = mapID(rel.ParentPersonID);
-        if (!baselineParents.has(relationshipKey(childID,parentID))) {
-            await c.query(
-                'DELETE FROM FTParentT WHERE FamilyTreeID=? AND PersonID=? AND ParentPersonID=?',
-                [survivingTreeID,childID,parentID]
-            );
-        }
-    }
-
-    const baselinePartners = new Set(
-        ((snapshot.survivingBaseline || {}).partners || [])
-            .map(row => relationshipKey(Math.min(Number(row.PersonID),Number(row.PartnerPersonID)),Math.max(Number(row.PersonID),Number(row.PartnerPersonID))))
-    );
-    for (const rel of snapshot.sourcePartners || []) {
-        const a = Math.min(mapID(rel.PersonID),mapID(rel.PartnerPersonID));
-        const z = Math.max(mapID(rel.PersonID),mapID(rel.PartnerPersonID));
-        if (!baselinePartners.has(relationshipKey(a,z))) {
-            await c.query(
-                'DELETE FROM FTPartnerT WHERE FamilyTreeID=? AND PersonID=? AND PartnerPersonID=?',
-                [survivingTreeID,a,z]
-            );
-        }
-    }
-
-    const baselineSiblings = new Set(
-        ((snapshot.survivingBaseline || {}).siblings || [])
-            .map(row => relationshipKey(Math.min(Number(row.PersonID),Number(row.SiblingPersonID)),Math.max(Number(row.PersonID),Number(row.SiblingPersonID))))
-    );
-    for (const rel of snapshot.sourceSiblings || []) {
-        const a = Math.min(mapID(rel.PersonID),mapID(rel.SiblingPersonID));
-        const z = Math.max(mapID(rel.PersonID),mapID(rel.SiblingPersonID));
-        if (!baselineSiblings.has(relationshipKey(a,z))) {
-            await c.query(
-                'DELETE FROM FTSiblingT WHERE FamilyTreeID=? AND PersonID=? AND SiblingPersonID=?',
-                [survivingTreeID,a,z]
-            );
-        }
-    }
-
-    let bridge = snapshot.bridge || {};
-    try {
-        if (mergeRow.BridgeJSON) bridge = JSON.parse(mergeRow.BridgeJSON);
-    } catch (_) {}
-    await removeUndoBridge(c,survivingTreeID,bridge,pairMap);
-
-    for (const membership of snapshot.sourceMemberships || []) {
-        await c.query(
-            `INSERT INTO FTFamilyTreePersonT
-             (FamilyTreeID,PersonID,OriginFamilyTreeID,AddedByUserID,AddedAt,Notes)
-             VALUES (?,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE
-               OriginFamilyTreeID=VALUES(OriginFamilyTreeID),
-               AddedByUserID=VALUES(AddedByUserID),
-               AddedAt=VALUES(AddedAt),
-               Notes=VALUES(Notes)`,
-            [
-                sourceTreeID,membership.PersonID,
-                membership.OriginFamilyTreeID || sourceTreeID,
-                membership.AddedByUserID,mysqlDateTimeValue(membership.AddedAt),membership.Notes
-            ]
-        );
-    }
-
-    for (const rel of snapshot.sourceParents || []) {
-        await c.query(
-            `INSERT INTO FTParentT
-             (FamilyTreeID,PersonID,ParentPersonID,ParentType,AncestrySide,Notes,
-              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-             VALUES (?,?,?,?,?,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE
-               ParentType=VALUES(ParentType),AncestrySide=VALUES(AncestrySide),Notes=VALUES(Notes),
-               UpdatedByUserID=VALUES(UpdatedByUserID),UpdatedAt=VALUES(UpdatedAt)`,
-            [
-                sourceTreeID,rel.PersonID,rel.ParentPersonID,rel.ParentType,rel.AncestrySide,rel.Notes,
-                rel.CreatedByUserID,mysqlDateTimeValue(rel.CreatedAt),rel.UpdatedByUserID || null,
-                mysqlDateTimeValue(rel.UpdatedAt)
-            ]
-        );
-    }
-
-    for (const rel of snapshot.sourcePartners || []) {
-        await c.query(
-            `INSERT INTO FTPartnerT
-             (FamilyTreeID,PersonID,PartnerPersonID,RelationshipType,Notes,
-              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-             VALUES (?,?,?,?,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE
-               RelationshipType=VALUES(RelationshipType),Notes=VALUES(Notes),
-               UpdatedByUserID=VALUES(UpdatedByUserID),UpdatedAt=VALUES(UpdatedAt)`,
-            [
-                sourceTreeID,rel.PersonID,rel.PartnerPersonID,rel.RelationshipType,rel.Notes,
-                rel.CreatedByUserID,mysqlDateTimeValue(rel.CreatedAt),rel.UpdatedByUserID || null,
-                mysqlDateTimeValue(rel.UpdatedAt)
-            ]
-        );
-    }
-
-    for (const rel of snapshot.sourceSiblings || []) {
-        await c.query(
-            `INSERT INTO FTSiblingT
-             (FamilyTreeID,PersonID,SiblingPersonID,Notes,
-              CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-             VALUES (?,?,?,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE
-               Notes=VALUES(Notes),UpdatedByUserID=VALUES(UpdatedByUserID),UpdatedAt=VALUES(UpdatedAt)`,
-            [
-                sourceTreeID,rel.PersonID,rel.SiblingPersonID,rel.Notes,
-                rel.CreatedByUserID,mysqlDateTimeValue(rel.CreatedAt),rel.UpdatedByUserID || null,
-                mysqlDateTimeValue(rel.UpdatedAt)
-            ]
-        );
-    }
-
-    const baselineUsers = new Set(
-        ((snapshot.survivingBaseline || {}).users || []).map(row => Number(row.UserID))
-    );
-    for (const member of snapshot.sourceUsers || []) {
-        await c.query(
-            `INSERT INTO FTFamilyTreeUserT
-             (FamilyTreeID,UserID,JoinedAt,LastActivityAt,IsActive,AddedByUserID)
-             VALUES (?,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE
-               JoinedAt=VALUES(JoinedAt),LastActivityAt=NOW(),IsActive=VALUES(IsActive),AddedByUserID=VALUES(AddedByUserID)`,
-            [
-                sourceTreeID,member.UserID,mysqlDateTimeValue(member.JoinedAt),
-                mysqlDateTimeValue(member.LastActivityAt),Number(member.IsActive) ? 1 : 0,member.AddedByUserID
-            ]
-        );
-        if (!baselineUsers.has(Number(member.UserID))) {
-            await c.query(
-                `UPDATE FTFamilyTreeUserT
-                 SET IsActive=0,LastActivityAt=NOW()
-                 WHERE FamilyTreeID=? AND UserID=?`,
-                [survivingTreeID,member.UserID]
-            );
-        }
-    }
-
-    for (const pair of snapshot.pairs || []) {
-        for (const row of pair.sourceContacts || []) {
-            await restoreSourceContact(c,row,pair.sourcePersonID,pair.survivingPersonID);
-        }
-        for (const row of pair.sourceEventLinks || []) {
-            await restoreSourceEventLink(c,row,pair.sourcePersonID,pair.survivingPersonID);
-        }
-        for (const row of pair.sourceImages || []) {
-            await restoreSourceImage(c,row,pair.sourcePersonID,pair.survivingPersonID);
-        }
-        for (const row of pair.survivingImages || []) {
-            await restoreMissingBaselineImage(c,row,pair.survivingPersonID);
-        }
-    }
-
-    for (const personMergeRow of personMergeRows) {
-        await safelyRevertSurvivingPersonFields(c,personMergeRow,userID);
-        await c.query(
-            `UPDATE FTPersonMergeT
-             SET UndoByUserID=?,UndoAt=NOW(),UndoReason='UndoOneTreeMerge'
-             WHERE PersonMergeID=?`,
-            [userID,personMergeRow.PersonMergeID]
-        );
-    }
-
-    await c.query(
-        `UPDATE FamilyTreeT
-         SET Status='Active',MergedIntoFamilyTreeID=NULL,MergedAt=NULL,MergedByUserID=NULL,
-             LastActivityAt=NOW(),LastActivityByUserID=?
-         WHERE FamilyTreeID=?`,
-        [userID,sourceTreeID]
-    );
-    await c.query(
-        `UPDATE FamilyTreeT
-         SET LastActivityAt=NOW(),LastActivityByUserID=?
-         WHERE FamilyTreeID=?`,
-        [userID,survivingTreeID]
-    );
-
-    await c.query(
-        `UPDATE FTFamilyTreeUserT SET IsActive=0
-         WHERE UserID=? AND FamilyTreeID<>?`,
-        [userID,sourceTreeID]
-    );
-    await c.query(
-        `INSERT INTO FTFamilyTreeUserT
-         (FamilyTreeID,UserID,JoinedAt,LastActivityAt,IsActive,AddedByUserID)
-         VALUES (?,?,NOW(),NOW(),1,?)
-         ON DUPLICATE KEY UPDATE IsActive=1,LastActivityAt=NOW()`,
-        [sourceTreeID,userID,userID]
-    );
-
-    await c.query(
-        `UPDATE FTTreeMergeT
-         SET Status='UNDONE',UndoneByUserID=?,UndoneAt=NOW(),UndoNote='User reversed an incorrect One Tree merge.'
-         WHERE TreeMergeID=?`,
-        [userID,mergeRow.TreeMergeID]
-    );
-
-    await logActivity(
-        c,sourceTreeID,userID,'UNDO_MERGE','FamilyTreeT',sourceTreeID,null,
-        `Restored Family Tree ${sourceTree.FamilyTreeCode || sourceTreeID} after undoing One Tree merge ${mergeRow.TreeMergeID}`
-    );
-    await logActivity(
-        c,survivingTreeID,userID,'UNDO_MERGE','FamilyTreeT',sourceTreeID,null,
-        `Separated Family Tree ${sourceTree.FamilyTreeCode || sourceTreeID} from this Tree by undoing One Tree merge ${mergeRow.TreeMergeID}`
-    );
-
-    let cleanupKeys = [];
-    try {
-        cleanupKeys = JSON.parse(mergeRow.CreatedR2KeysJSON || '[]');
-    } catch (_) {}
-
-    return {
-        TreeMergeID: mergeRow.TreeMergeID,
-        FamilyTreeID: sourceTreeID,
-        FamilyTreeCode: sourceTree.FamilyTreeCode,
-        separatedFromFamilyTreeID: survivingTreeID,
-        cleanupKeys: Array.isArray(cleanupKeys) ? cleanupKeys : []
-    };
-}
-
-async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID, olderPersonID, resolutions, keepImageIDs, userID, r2Plan, treeMergeID) {
+async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID, olderPersonID, resolutions, keepImageIDs, userID, r2Plan) {
     const [[olderPerson]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? FOR UPDATE', [olderPersonID]);
     const [[newerPerson]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? FOR UPDATE', [newerPersonID]);
     if (!olderPerson || !newerPerson) {
@@ -3220,6 +2391,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
     for (const image of [...olderImages, ...newerImages]) {
         if (!keepSet.has(Number(image.ImageID))) {
             await c.query('DELETE FROM FTImageT WHERE ImageID=?', [image.ImageID]);
+            if (image.StorageKey) r2Plan.oldKeys.push(image.StorageKey);
         }
     }
 
@@ -3265,6 +2437,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
         if (image.StorageKey !== storageKey) {
             await copyImage(image.StorageKey, storageKey);
             r2Plan.newKeys.push(storageKey);
+            r2Plan.oldKeys.push(image.StorageKey);
         }
 
         await c.query(
@@ -3275,19 +2448,13 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
         );
     }
 
-    const [[afterOlder]] = await c.query(
-        'SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1',
-        [olderPersonID]
-    );
-
     await c.query(
         `INSERT INTO FTPersonMergeT
-         (TreeMergeID,SourcePersonID,SurvivingPersonID,SourceFamilyTreeID,SurvivingFamilyTreeID,
+         (SourcePersonID,SurvivingPersonID,SourceFamilyTreeID,SurvivingFamilyTreeID,
           MergedByUserID,MergedAt,MergeReason,ConflictResolutionJSON,
-          SourcePersonSnapshot,SurvivingPersonSnapshotBefore,SurvivingPersonSnapshotAfter)
-         VALUES (?,?,?,?,?,?,NOW(),'OneTreeMethod',?,?,?,?)`,
+          SourcePersonSnapshot,SurvivingPersonSnapshotBefore)
+         VALUES (?,?,?,?,?,NOW(),'OneTreeMethod',?,?,?)`,
         [
-            treeMergeID || null,
             newerPersonID,
             olderPersonID,
             newerTreeID,
@@ -3295,8 +2462,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
             userID,
             JSON.stringify(resolutions || {}),
             JSON.stringify(beforeNewer),
-            JSON.stringify(beforeOlder),
-            JSON.stringify(afterOlder || {})
+            JSON.stringify(beforeOlder)
         ]
     );
 
@@ -3315,7 +2481,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
     return { newerPersonID, olderPersonID };
 }
 
-async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bridge, r2Plan, treeMergeID) {
+async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bridge, r2Plan) {
     const mapping = new Map();
     const resolutionByNewerID = new Map();
     const keepImagesByNewerID = new Map();
@@ -3348,8 +2514,7 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
             resolutionByNewerID.get(newerPersonID),
             keepImagesByNewerID.get(newerPersonID),
             userID,
-            r2Plan,
-            treeMergeID
+            r2Plan
         );
     }
 
@@ -3497,8 +2662,7 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
         focalPersonID,
         relatedPersonID,
         mergedTreeCode: newerTree.FamilyTreeCode,
-        mergedPersonCount: mapping.size,
-        TreeMergeID: treeMergeID || null
+        mergedPersonCount: mapping.size
     };
 }
 
@@ -6807,38 +5971,19 @@ router.post('/one-tree/merge', auth, async (req, res) => {
                 }
             }
 
-            const normalizedBridge = {
-                focalPersonID: Number(bridge.focalPersonID || 0) || null,
-                relatedPersonID: Number(bridge.relatedPersonID || targetPersonID) || null,
-                relationshipKind: String(bridge.relationshipKind || '').toLowerCase() || null
-            };
-
-            const mergeRecord = await createOneTreeMergeRecord(
-                c,
-                review.olderTree,
-                review.newerTree,
-                req.user.userId,
-                decisions,
-                normalizedBridge
-            );
-
-            const merged = await mergeTreesOneTree(
+            return mergeTreesOneTree(
                 c,
                 review.olderTree,
                 review.newerTree,
                 decisions,
                 req.user.userId,
-                normalizedBridge,
-                r2Plan,
-                mergeRecord.TreeMergeID
+                {
+                    focalPersonID: Number(bridge.focalPersonID || 0) || null,
+                    relatedPersonID: Number(bridge.relatedPersonID || targetPersonID) || null,
+                    relationshipKind: String(bridge.relationshipKind || '').toLowerCase() || null
+                },
+                r2Plan
             );
-
-            await c.query(
-                'UPDATE FTTreeMergeT SET CreatedR2KeysJSON=? WHERE TreeMergeID=?',
-                [JSON.stringify([...new Set(r2Plan.newKeys)]), mergeRecord.TreeMergeID]
-            );
-
-            return merged;
         });
 
         const newKeySet = new Set(r2Plan.newKeys);
@@ -6862,164 +6007,6 @@ router.post('/one-tree/merge', auth, async (req, res) => {
             code: e.responseCode || undefined,
             message: e.message
         });
-    }
-});
-
-router.get('/one-tree/undo-options', auth, async (req, res) => {
-    const code = String(req.query.familyTreeCode || '').trim();
-    if (!code) {
-        return res.status(400).json({ message: 'FamilyTreeCode is required.' });
-    }
-
-    try {
-        const c = await pool.getConnection();
-        try {
-            const tree = await requireTree(c, code, req.user.userId);
-            const [rows] = await c.query(
-                `SELECT
-                    tm.TreeMergeID,
-                    tm.SourceFamilyTreeID,
-                    sourceTree.FamilyTreeCode AS SourceFamilyTreeCode,
-                    sourceTree.CreatedByUserID AS SourceCreatedByUserID,
-                    tm.SurvivingFamilyTreeID,
-                    survivingTree.FamilyTreeCode AS SurvivingFamilyTreeCode,
-                    tm.MergedByUserID,
-                    u.UserName AS MergedByUserName,
-                    tm.MergedAt,
-                    tm.Status
-                 FROM FTTreeMergeT tm
-                 JOIN FamilyTreeT sourceTree ON sourceTree.FamilyTreeID=tm.SourceFamilyTreeID
-                 JOIN FamilyTreeT survivingTree ON survivingTree.FamilyTreeID=tm.SurvivingFamilyTreeID
-                 LEFT JOIN UsersT u ON u.UserID=tm.MergedByUserID
-                 WHERE tm.SurvivingFamilyTreeID=? AND tm.Status='ACTIVE'
-                 ORDER BY tm.MergedAt DESC,tm.TreeMergeID DESC`,
-                [tree.FamilyTreeID]
-            );
-
-            const visible = rows.filter(row =>
-                Number(row.SourceCreatedByUserID) === Number(req.user.userId) ||
-                Number(row.MergedByUserID) === Number(req.user.userId)
-            );
-
-            res.json({
-                FamilyTreeID: tree.FamilyTreeID,
-                FamilyTreeCode: tree.FamilyTreeCode,
-                merges: visible
-            });
-        } finally {
-            c.release();
-        }
-    } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
-    }
-});
-
-router.get('/one-tree/undo-review/:treeMergeID', auth, async (req, res) => {
-    const treeMergeID = Number(req.params.treeMergeID || 0);
-    if (!treeMergeID) {
-        return res.status(400).json({ message: 'TreeMergeID is required.' });
-    }
-
-    try {
-        const [[row]] = await pool.query(
-            `SELECT
-                tm.*,
-                sourceTree.FamilyTreeCode AS SourceFamilyTreeCode,
-                sourceTree.CreatedByUserID AS SourceCreatedByUserID,
-                survivingTree.FamilyTreeCode AS SurvivingFamilyTreeCode,
-                u.UserName AS MergedByUserName
-             FROM FTTreeMergeT tm
-             JOIN FamilyTreeT sourceTree ON sourceTree.FamilyTreeID=tm.SourceFamilyTreeID
-             JOIN FamilyTreeT survivingTree ON survivingTree.FamilyTreeID=tm.SurvivingFamilyTreeID
-             LEFT JOIN UsersT u ON u.UserID=tm.MergedByUserID
-             WHERE tm.TreeMergeID=? LIMIT 1`,
-            [treeMergeID]
-        );
-        if (!row) {
-            return res.status(404).json({ message: 'One Tree merge history was not found.' });
-        }
-        if (row.Status !== 'ACTIVE') {
-            return res.status(409).json({ message: 'This One Tree merge has already been undone.' });
-        }
-        if (
-            Number(row.SourceCreatedByUserID) !== Number(req.user.userId) &&
-            Number(row.MergedByUserID) !== Number(req.user.userId)
-        ) {
-            return res.status(403).json({ message: 'You are not authorized to undo this One Tree merge.' });
-        }
-
-        let snapshot = {};
-        try { snapshot = JSON.parse(row.MergeSnapshot || '{}'); } catch (_) {}
-        const samePersonPairs = (snapshot.pairs || []).map(pair => ({
-            sourcePersonID: pair.sourcePersonID,
-            survivingPersonID: pair.survivingPersonID,
-            sourceName: familyTreePersonName(pair.sourcePerson),
-            survivingName: familyTreePersonName(pair.survivingPerson)
-        }));
-
-        res.json({
-            TreeMergeID: row.TreeMergeID,
-            SourceFamilyTreeCode: row.SourceFamilyTreeCode,
-            SurvivingFamilyTreeCode: row.SurvivingFamilyTreeCode,
-            MergedByUserID: row.MergedByUserID,
-            MergedByUserName: row.MergedByUserName,
-            MergedAt: row.MergedAt,
-            sourcePersonCount: (snapshot.sourceMemberships || []).length,
-            mergedPersonCount: samePersonPairs.length,
-            samePersonPairs
-        });
-    } catch (e) {
-        res.status(500).json({ message: e.message });
-    }
-});
-
-router.post('/one-tree/undo', auth, async (req, res) => {
-    const treeMergeID = Number((req.body || {}).treeMergeID || 0);
-    if (!treeMergeID) {
-        return res.status(400).json({ message: 'TreeMergeID is required.' });
-    }
-
-    try {
-        const result = await withTx(async c => {
-            const [[mergeRow]] = await c.query(
-                'SELECT * FROM FTTreeMergeT WHERE TreeMergeID=? FOR UPDATE',
-                [treeMergeID]
-            );
-            if (!mergeRow) {
-                const err = new Error('One Tree merge history was not found.');
-                err.status = 404;
-                throw err;
-            }
-            if (mergeRow.Status !== 'ACTIVE') {
-                const err = new Error('This One Tree merge has already been undone.');
-                err.status = 409;
-                throw err;
-            }
-            return undoOneTreeMerge(c,mergeRow,req.user.userId);
-        });
-
-        for (const key of [...new Set(result.cleanupKeys || [])]) {
-            try {
-                const [[used]] = await pool.query(
-                    'SELECT COUNT(*) AS n FROM FTImageT WHERE StorageKey=?',
-                    [key]
-                );
-                if (!Number(used.n)) {
-                    await safelyDeleteImage(key);
-                }
-            } catch (_) {
-                /* Database undo remains committed even if R2 cleanup cannot finish. */
-            }
-        }
-
-        res.json({
-            TreeMergeID: result.TreeMergeID,
-            FamilyTreeID: result.FamilyTreeID,
-            FamilyTreeCode: result.FamilyTreeCode,
-            message: `Family Tree ${result.FamilyTreeCode} has been restored as a separate Tree.`
-        });
-    } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
     }
 });
 
