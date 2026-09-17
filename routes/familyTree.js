@@ -2560,7 +2560,7 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
         await c.query(
             `INSERT IGNORE INTO FTPartnerT
              (FamilyTreeID,PersonID,PartnerPersonID,RelationshipType,Notes,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-             VALUES (?,?,?,?,?,?,?,?,?,?)`,
+             VALUES (?,?,?,?,?,?,?,?,?)`,
             [olderTree.FamilyTreeID,a,z,rel.RelationshipType,rel.Notes,rel.CreatedByUserID,rel.CreatedAt,rel.UpdatedByUserID,rel.UpdatedAt]
         );
     }
