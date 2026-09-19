@@ -1,6 +1,6 @@
 # CLAUDE.md – WonderfulApps Developer Onboarding Guide
 
-**Last updated:** September 16, 2026  
+**Last updated:** September 19, 2026  
 **Project:** WonderfulApps (WA)  
 **Database ground truth:** `wappsDump.sql`
 
@@ -29,6 +29,7 @@ WonderfulApps is a multi-application web/PWA project built with:
 - **Database:** MySQL, with production SQL maintained for MySQL 5.5 compatibility
 - **Authentication:** JWT bearer tokens, email verification, and bcrypt password hashing
 - **Subscription / entitlement system:** hierarchical plans, per-application access rules, development entitlements, promo codes, and usage tracking
+- **Notification / consent system:** account, subscription, application, Family Tree, and marketing notification categories; preferences; consent history; suppression; and unsubscribe processing
 - **Database driver:** `mysql2`
 - **Validation:** `express-validator`
 - **Logging:** Morgan + Winston
@@ -60,8 +61,9 @@ The current WA project includes:
 - Property and geolocation-related tools
 - Amortization / loan-payment tools
 - Contact/email functions
+- Notification preferences, consent history, suppression, and unsubscribe processing
 - **Budget application**
-- **Family Tree application**
+- **Family Tree application**, including One Tree Merge and Undo One Tree Merge
 
 Budget, Family Tree, and Subscription are implemented WA components, not future placeholders.
 
@@ -79,6 +81,7 @@ routes/
 ├── familyTree.js
 ├── geocode.js
 ├── interestEarned.js
+├── notifications.js
 ├── subscriptions.js
 ├── track.js
 ├── users.js
@@ -92,6 +95,7 @@ Current `server.js` mounts the principal routes as follows:
 |---|---|---|
 | `/users` | `routes/users.js` | Authentication / user flow |
 | `/subscriptions` | `routes/subscriptions.js` | Authenticated subscription APIs |
+| `/notifications` | `routes/notifications.js` | Authenticated preference APIs plus public token unsubscribe endpoints |
 | `/track` | `routes/track.js` | Existing general usage tracking |
 | `/weights` | `routes/weights.js` | `weigh_in` access required |
 | `/activities` | `routes/activities.js` | `weigh_in` access required |
@@ -121,9 +125,9 @@ All four subscription routes require a valid JWT.
 
 ## 5. Current Database
 
-The September 15/16, 2026 `wappsDump.sql` contains **46 tables**.
+The current `wappsDump.sql` is the database ground truth and contains **53 tables**. It already includes the notification/consent schema and the Family Tree Undo One Tree Merge schema.
 
-### Core user / system tables
+### Core user / system tables (4)
 
 ```text
 UsersT
@@ -144,7 +148,18 @@ UserSubscriptionT
 UserUsageT
 ```
 
-### Weight / activity tables
+### Notification / consent tables (6)
+
+```text
+ConsentTextVersionsT
+NotificationConsentHistoryT
+NotificationHistoryT
+NotificationPreferencesT
+NotificationSuppressionT
+UserAgreementHistoryT
+```
+
+### Weight / activity tables (3)
 
 ```text
 WeightsT
@@ -152,13 +167,13 @@ ActivitiesT
 WeightActivitiesT
 ```
 
-### Interest table
+### Interest table (1)
 
 ```text
 InterestEarnedT
 ```
 
-### ETF tables
+### ETF tables (3)
 
 ```text
 etfActivityT
@@ -184,7 +199,7 @@ BudgetRecurrenceWeeklyDayT
 BudgetSubscriptionT
 ```
 
-### Family Tree tables (15)
+### Family Tree tables (16)
 
 ```text
 FamilyTreeT
@@ -202,19 +217,21 @@ FTPersonMergeT
 FTPersonT
 FTRecordArchiveT
 FTSiblingT
+FTTreeMergeT
 ```
 
 ### Database rules
 
+- `wappsDump.sql` is the authoritative current schema reference.
+- The current dump already includes all implemented notification/consent and Undo One Tree Merge table changes.
 - Keep SQL compatible with the deployed MySQL 5.5 environment unless the database platform is intentionally changed.
 - Use `utf8mb4`.
 - Respect existing primary keys, unique keys, indexes, and foreign-key rules in `wappsDump.sql`.
 - Many user-owned tables use `UserID` and database-level cascading deletes to `UsersT`.
 - `UserSequenceT` supports user-scoped identifiers used by several WA modules.
 - Do not invent or rename database columns without checking every route and frontend consumer.
-- Family Tree relationships must be handled according to the actual Family Tree schema and route logic; do not assume every logical relationship is enforced only by SQL foreign keys.
-- Treat `wappsDump.sql` as the schema reference before writing SQL.
-- `subscription_schema.sql` is the implementation script used to establish the subscription subsystem, but the current full-database authority remains `wappsDump.sql`.
+- Family Tree relationships and merge/undo behavior are partly application-managed; do not assume SQL foreign keys alone describe all integrity rules.
+- Historical implementation/migration SQL files are not the current database authority when they differ from `wappsDump.sql`.
 
 ---
 
@@ -374,7 +391,56 @@ Do not create `payment.html`, payment-provider logic, or recurring billing behav
 
 ---
 
-## 7. Budget Application
+## 7. Notification / Consent System
+
+The notification system is implemented through `routes/notifications.js`, `services/notificationService.js`, registration logic in `routes/users.js`, notification-aware Family Tree logic, and the notification/consent tables in `wappsDump.sql`.
+
+### 7.1 Notification categories
+
+Current categories are:
+
+```text
+ACCOUNT
+SUBSCRIPTION
+APP_NOTICE
+FAMILY_TREE
+MARKETING
+```
+
+`ACCOUNT` and `SUBSCRIPTION` are required categories. `APP_NOTICE`, `FAMILY_TREE`, and `MARKETING` are optional categories subject to user preference/suppression rules.
+
+### 7.2 Preferences and consent
+
+`NotificationPreferencesT` stores current user preferences for:
+
+```text
+MarketingEmail
+MarketingSMS
+FamilyTreeEmail
+AppNoticeEmail
+```
+
+Registration records the user's explicit marketing email/SMS choices and requires acceptance of the current Terms of Use and Privacy Policy. Consent/agreement history is retained in `NotificationConsentHistoryT` and `UserAgreementHistoryT`, with versioned text in `ConsentTextVersionsT`.
+
+Phone 1 remains required by the current registration implementation.
+
+### 7.3 History, suppression, and unsubscribe
+
+`NotificationHistoryT` records notification attempts and results. `NotificationSuppressionT` stores destination/category/channel suppressions so a recipient's stop request can continue to be honored independently of a particular user record.
+
+`routes/notifications.js` provides authenticated preference endpoints and public token-based unsubscribe endpoints. Public unsubscribe links do not require login.
+
+`PUBLIC_BASE_URL` controls the public URL used when notification links are generated. Local testing should use the local server origin; production should use the production WA origin.
+
+### 7.4 Family Tree notifications
+
+Family Tree edit/delete notification behavior is integrated with `routes/familyTree.js` and uses the central notification service. The Family Tree-specific `FTNotificationT` remains part of the Family Tree audit/delivery workflow while central notification history and suppression rules are also applied.
+
+Do not bypass the central notification service when adding new optional email/SMS notification behavior.
+
+---
+
+## 8. Budget Application
 
 The Budget application is implemented through `routes/budget.js`, Budget HTML pages, and the Budget tables in `wappsDump.sql`.
 
@@ -408,7 +474,7 @@ Do not replace the existing Budget schema with a generic single `BudgetsT` table
 
 ---
 
-## 8. Family Tree Application
+## 9. Family Tree Application
 
 The Family Tree application is implemented through `routes/familyTree.js`, Family Tree HTML pages, companion `httpdocs/js/FT*.js` modules, and the Family Tree tables in `wappsDump.sql`.
 
@@ -429,6 +495,35 @@ The current schema includes support for:
 - Family Tree activity
 - Person merge operations
 - Archived records
+
+### One Tree Merge and Undo One Tree Merge
+
+The One Tree Method can merge a newer/source Tree into an older/surviving Tree. The current implementation records reversible merge history in `FTTreeMergeT` and links person-level merge records through `FTPersonMergeT.TreeMergeID`.
+
+`FTTreeMergeT` stores the source Tree, surviving Tree, merge user/time, status, bridge/decision data, a pre-merge snapshot, generated R2 keys, and undo metadata.
+
+Current Undo API endpoints in `routes/familyTree.js` include:
+
+```text
+GET  /familytree/one-tree/undo-options
+GET  /familytree/one-tree/undo-review/:treeMergeID
+POST /familytree/one-tree/undo
+```
+
+Undo is a structural reversal of a recorded merge event. It restores the source Tree and its people/relationships from the recorded merge snapshot while preserving the older surviving Tree. A merge that predates the snapshot-based implementation is not safely inferred as undoable.
+
+Important implementation rules:
+
+- Record the Tree merge snapshot within the same transaction as the merge.
+- Preserve source Tree identity and original relationship/membership data needed for reversal.
+- Preserve later changes where the undo logic is specifically designed to do so; do not replace current data blindly without reviewing the merge/undo rules.
+- Handle parent, partner, sibling, contact, event, image, Tree-user, and person-merge data consistently.
+- Keep `FTTreeMergeT` and linked `FTPersonMergeT` history intact for auditability.
+- Multiple dependent merges must be undone in a valid order; do not bypass dependency checks.
+- R2 image/object cleanup must distinguish pre-existing objects from merge-generated objects.
+- `moveComponentToTree()` uses the current MySQL-5.5-compatible membership-copy logic; do not reintroduce the earlier self-`INSERT ... SELECT ... ON DUPLICATE KEY UPDATE` ambiguity involving `OriginFamilyTreeID`.
+
+The current Undo workflow was successfully exercised end-to-end during September 2026 testing: a newer Tree was merged into an older Tree, Undo restored the newer Tree's seven-person family structure, and those people were no longer listed in the older Tree.
 
 ### FTSiblingT
 
@@ -451,7 +546,7 @@ The entire Family Tree API is currently protected through the `family_tree` subs
 
 ---
 
-## 9. Authentication and Security
+## 10. Authentication and Security
 
 - JWT tokens are used for authenticated API requests.
 - Final JWTs are currently issued after successful email-code verification.
@@ -512,7 +607,7 @@ These frontend security requirements remain in force if WA is packaged as a PWA,
 
 ---
 
-## 10. Transactions and Database Access
+## 11. Transactions and Database Access
 
 Use the existing database helpers and patterns in the project.
 
@@ -529,7 +624,7 @@ Do not partially commit a multi-step operation that would leave inconsistent dat
 
 ---
 
-## 11. Frontend Standards
+## 12. Frontend Standards
 
 ### HTML pretty-formatting requirement
 
@@ -583,7 +678,7 @@ These declarations prevent browser-generated dark-mode recoloring from changing 
 
 ---
 
-## 12. Backend Coding Standards
+## 13. Backend Coding Standards
 
 - Follow the existing route/module style before introducing a new pattern.
 - Use `async/await`.
@@ -602,7 +697,7 @@ These declarations prevent browser-generated dark-mode recoloring from changing 
 
 ---
 
-## 13. Current Package Baseline
+## 14. Current Package Baseline
 
 Current `package.json` identifies WonderfulApps version `1.0.0`.
 
@@ -630,7 +725,7 @@ Do not rely on older documentation for dependency versions; check `package.json`
 
 ---
 
-## 14. File Structure – High-Level
+## 15. File Structure – High-Level
 
 ```text
 wonderfulApp/
@@ -652,6 +747,7 @@ wonderfulApp/
 │   ├── budget.js
 │   ├── etf.js
 │   ├── familyTree.js
+│   ├── notifications.js
 │   ├── geocode.js
 │   ├── interestEarned.js
 │   ├── subscriptions.js
@@ -660,6 +756,7 @@ wonderfulApp/
 │   ├── weightActivities.js
 │   └── weights.js
 ├── services/
+│   ├── notificationService.js
 │   └── subscriptionService.js
 ├── middleware/
 │   ├── auth.js
@@ -685,7 +782,7 @@ This is a high-level guide, not an exhaustive file listing.
 
 ---
 
-## 15. Change Procedure
+## 16. Change Procedure
 
 Before changing an existing feature:
 
@@ -707,7 +804,7 @@ Before changing an existing feature:
 
 ---
 
-## 16. Important “Do Not” Rules
+## 17. Important “Do Not” Rules
 
 - Do not design from an old schema when `wappsDump.sql` is available.
 - Do not rename or remove fields without tracing all consumers.

@@ -1,6 +1,6 @@
 # TechSummary.md – WonderfulApps Architecture & Technical Summary
 
-**Last updated:** September 16, 2026  
+**Last updated:** September 19, 2026  
 **Project:** WonderfulApps (WA)  
 **Database reference:** `wappsDump.sql`
 
@@ -22,14 +22,17 @@ The current system includes:
 - **A multi-table Budget application**
 - **A multi-table Family Tree application**
 - **A hierarchical Subscription / Entitlement system**
+- **A centralized Notification / Consent system**
+- **Family Tree One Tree Merge with snapshot-based Undo One Tree Merge**
 
-The current SQL dump contains **46 tables**, including:
+The current `wappsDump.sql` contains **53 tables**, including:
 
 - **7 subscription / entitlement tables**
+- **6 notification / consent tables**
 - **13 Budget tables**
-- **15 Family Tree tables**
+- **16 Family Tree tables**
 
-The September 16 merge also incorporates Family Tree relationship changes, including the explicit `FTSiblingT` relationship table and related merge/relationship handling.
+The current Family Tree implementation includes explicit `FTSiblingT` relationships and snapshot-based One Tree Merge history/Undo support through `FTTreeMergeT` and extended `FTPersonMergeT` records.
 
 The frontend follows project-wide standards for:
 
@@ -105,6 +108,7 @@ Express server (server.js)
     +-- routes/
     |     +-- users
     |     +-- subscriptions
+    |     +-- notifications
     |     +-- weights
     |     +-- activities
     |     +-- weightActivities
@@ -116,6 +120,7 @@ Express server (server.js)
     |     +-- geocode
     |
     +-- services/
+    |     +-- notificationService.js
     |     +-- subscriptionService.js
     |
     +-- shared utilities / database helpers
@@ -123,7 +128,7 @@ Express server (server.js)
     v
 MySQL
     |
-    +-- 46 current tables
+    +-- 53 current tables
 
 Family Tree image/file workflow may also use:
 Express -> r2Storage.js -> S3-compatible object storage
@@ -141,6 +146,7 @@ Current `server.js` mounts:
 |---|---|---|
 | `/users` | `routes/users.js` | Registration/login/verification |
 | `/subscriptions` | `routes/subscriptions.js` | Authenticated subscription functions |
+| `/notifications` | `routes/notifications.js` | Preferences plus public token unsubscribe flow |
 | `/track` | `routes/track.js` | Existing general usage tracking |
 | `/weights` | `routes/weights.js` | JWT + `weigh_in` |
 | `/activities` | `routes/activities.js` | JWT + `weigh_in` |
@@ -172,6 +178,8 @@ All subscription API endpoints pass through `authenticateToken()`.
 
 ## 4. Database Inventory
 
+The current database authority is `wappsDump.sql`.
+
 ### 4.1 Core user/system (4)
 
 ```text
@@ -193,7 +201,18 @@ UserSubscriptionT
 UserUsageT
 ```
 
-### 4.3 Weight and activity (3)
+### 4.3 Notification / consent (6)
+
+```text
+ConsentTextVersionsT
+NotificationConsentHistoryT
+NotificationHistoryT
+NotificationPreferencesT
+NotificationSuppressionT
+UserAgreementHistoryT
+```
+
+### 4.4 Weight and activity (3)
 
 ```text
 WeightsT
@@ -201,13 +220,13 @@ ActivitiesT
 WeightActivitiesT
 ```
 
-### 4.4 Interest (1)
+### 4.5 Interest (1)
 
 ```text
 InterestEarnedT
 ```
 
-### 4.5 ETF (3)
+### 4.6 ETF (3)
 
 ```text
 etfActivityT
@@ -215,7 +234,7 @@ etfCategoryT
 etfSymbolT
 ```
 
-### 4.6 Budget (13)
+### 4.7 Budget (13)
 
 ```text
 BudgetCardT
@@ -233,7 +252,7 @@ BudgetRecurrenceWeeklyDayT
 BudgetSubscriptionT
 ```
 
-### 4.7 Family Tree (15)
+### 4.8 Family Tree (16)
 
 ```text
 FamilyTreeT
@@ -251,9 +270,12 @@ FTPersonMergeT
 FTPersonT
 FTRecordArchiveT
 FTSiblingT
+FTTreeMergeT
 ```
 
-**Total current tables: 46**
+**Total current tables: 53**
+
+`wappsDump.sql` already includes the current notification/consent and Undo One Tree Merge schema changes. Historical implementation or migration dumps are not the current schema authority.
 
 ---
 
@@ -455,7 +477,56 @@ There is currently no production payment-provider workflow.
 
 ---
 
-## 7. Budget Subsystem
+## 7. Notification / Consent Subsystem
+
+The centralized notification system is implemented by `routes/notifications.js`, `services/notificationService.js`, registration logic in `routes/users.js`, and notification-aware application code such as Family Tree.
+
+### 7.1 Categories and preference model
+
+Current categories are:
+
+```text
+ACCOUNT
+SUBSCRIPTION
+APP_NOTICE
+FAMILY_TREE
+MARKETING
+```
+
+`ACCOUNT` and `SUBSCRIPTION` are required categories. `MARKETING`, `APP_NOTICE`, and `FAMILY_TREE` are optional categories governed by preference/suppression rules.
+
+`NotificationPreferencesT` stores the current user settings for marketing email, marketing SMS, Family Tree email, and application-notice email.
+
+### 7.2 Consent and agreements
+
+Registration requires Terms of Use and Privacy Policy acceptance and records explicit marketing email/SMS choices. Versioned consent text is stored in `ConsentTextVersionsT`; notification consent actions are retained in `NotificationConsentHistoryT`; Terms/Privacy acceptance history is stored in `UserAgreementHistoryT`.
+
+The current registration route continues to require `Phone1`.
+
+### 7.3 Delivery history and suppression
+
+`NotificationHistoryT` records central notification attempts, outcomes, unsubscribe tokens, and failure details. `NotificationSuppressionT` stores destination/category/channel suppressions so opt-out state can persist independently of a specific delivery.
+
+`routes/notifications.js` exposes:
+
+```text
+GET  /notifications/preferences
+PUT  /notifications/preferences
+GET  /notifications/unsubscribe/:token
+POST /notifications/unsubscribe/:token
+```
+
+The preference routes require authentication. The token unsubscribe routes are public by design.
+
+`PUBLIC_BASE_URL` is used to build public links. Production and local test environments must use the correct origin.
+
+### 7.4 Family Tree integration
+
+Family Tree edit/delete notices use the central notification service while `FTNotificationT` continues to hold Family Tree-specific notification records. This keeps application-level audit information while honoring the centralized preference/suppression model.
+
+---
+
+## 8. Budget Subsystem
 
 The Budget application is a first-class WA module.
 
@@ -485,7 +556,7 @@ Architectural notes:
 
 ---
 
-## 8. Family Tree Subsystem
+## 9. Family Tree Subsystem
 
 The Family Tree application is a first-class WA module with a large dedicated backend route module.
 
@@ -506,6 +577,44 @@ The Family Tree application is a first-class WA module with a large dedicated ba
 - `FTFamilyTreeActivityT` – activity/audit-style data
 - `FTPersonMergeT` – person-merge data
 - `FTRecordArchiveT` – archived records
+
+### One Tree Merge and Undo One Tree Merge
+
+The One Tree Method can consolidate a newer/source Tree into an older/surviving Tree. The current implementation records a Tree-level merge event in `FTTreeMergeT` and can link person-level merge history through `FTPersonMergeT.TreeMergeID`.
+
+`FTTreeMergeT` records:
+
+```text
+TreeMergeID
+SourceFamilyTreeID
+SurvivingFamilyTreeID
+MergedByUserID
+MergedAt
+Status
+BridgeJSON
+DecisionsJSON
+MergeSnapshot
+CreatedR2KeysJSON
+UndoneByUserID
+UndoneAt
+UndoNote
+```
+
+Undo-related person merge data in `FTPersonMergeT` includes `TreeMergeID`, the source and surviving person snapshots, the surviving-person post-merge snapshot, and undo audit fields.
+
+Current backend endpoints are:
+
+```text
+GET  /familytree/one-tree/undo-options
+GET  /familytree/one-tree/undo-review/:treeMergeID
+POST /familytree/one-tree/undo
+```
+
+The undo operation is snapshot-based and transactional. Its purpose is to structurally reverse a recorded One Tree Merge: reactivate the source Tree, return source memberships/relationships to it, keep the older surviving Tree intact, and preserve the merge/undo audit history.
+
+The current implementation also includes the MySQL-5.5-compatible `moveComponentToTree()` membership-copy fix that avoids the earlier ambiguous `OriginFamilyTreeID` self-insert/update form.
+
+A September 2026 end-to-end test successfully merged a seven-person newer Tree into an older Tree and then restored the newer Tree through Undo; the seven people were present in the restored Tree and absent from the older Tree afterward.
 
 ### Explicit sibling relationships
 
@@ -551,7 +660,7 @@ Merge/move logic in `routes/familyTree.js` now carries sibling relationships wit
 
 ---
 
-## 9. Authentication and Frontend Security
+## 10. Authentication and Frontend Security
 
 Typical authenticated flow:
 
@@ -636,7 +745,7 @@ Dynamic `src` and `href` values must also be constrained or validated.
 
 ---
 
-## 10. Request Processing
+## 11. Request Processing
 
 A subscription-controlled API request follows:
 
@@ -658,7 +767,7 @@ Family Tree multipart uploads remain a special case: `server.js` bypasses the ge
 
 ---
 
-## 11. Transaction Guidance
+## 12. Transaction Guidance
 
 Transactions should be used whenever multiple writes form one logical operation.
 
@@ -677,7 +786,7 @@ The transaction boundary should cover the complete logical unit of work.
 
 ---
 
-## 12. HTML / Frontend Source Standard
+## 13. HTML / Frontend Source Standard
 
 ### Pretty formatting is mandatory
 
@@ -718,7 +827,7 @@ This prevents browser-generated dark-mode recoloring from altering the intended 
 
 ---
 
-## 13. Frontend Design and API Contract
+## 14. Frontend Design and API Contract
 
 - Preserve existing page appearance unless redesign is requested.
 - Use current WA navigation/header/footer patterns where practical.
@@ -731,7 +840,7 @@ This prevents browser-generated dark-mode recoloring from altering the intended 
 
 ---
 
-## 14. Current Package Baseline
+## 15. Current Package Baseline
 
 Current `package.json` identifies WonderfulApps version `1.0.0`.
 
@@ -759,7 +868,7 @@ Check `package.json` before changing dependency assumptions.
 
 ---
 
-## 15. Deployment and Environment
+## 16. Deployment and Environment
 
 Current CORS origins in `server.js` include:
 
@@ -785,7 +894,7 @@ Subscription plan definitions and development-entitlement controls belong in the
 
 ---
 
-## 16. Static Files and Caching
+## 17. Static Files and Caching
 
 `server.js` serves `httpdocs/` as static content.
 
@@ -806,7 +915,7 @@ When diagnosing apparent frontend inconsistency, distinguish:
 
 ---
 
-## 17. Project Structure
+## 18. Project Structure
 
 ```text
 wonderfulApp/
@@ -828,6 +937,7 @@ wonderfulApp/
 │   ├── budget.js
 │   ├── etf.js
 │   ├── familyTree.js
+│   ├── notifications.js
 │   ├── geocode.js
 │   ├── interestEarned.js
 │   ├── subscriptions.js
@@ -836,6 +946,7 @@ wonderfulApp/
 │   ├── weightActivities.js
 │   └── weights.js
 ├── services/
+│   ├── notificationService.js
 │   └── subscriptionService.js
 ├── middleware/
 │   ├── auth.js
@@ -861,7 +972,7 @@ This is intentionally a high-level architecture view rather than a complete inve
 
 ---
 
-## 18. Development Checklist
+## 19. Development Checklist
 
 ```text
 [ ] Read current source files before editing
@@ -886,7 +997,7 @@ This is intentionally a high-level architecture view rather than a complete inve
 
 ---
 
-## 19. Current Documentation Principles
+## 20. Current Documentation Principles
 
 1. Current executable code is authoritative for behavior.
 2. `wappsDump.sql` is authoritative for the database schema.
