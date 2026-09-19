@@ -131,6 +131,67 @@
             margin: 8px 0;
         }
         .error { color: #900; }
+        .free-tier-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .refresh-btn {
+            background: #4CAF50;
+            color: #fff;
+        }
+        .free-tier-table {
+            min-width: 1350px;
+        }
+        .free-tier-table th:first-child,
+        .free-tier-table td:first-child {
+            position: static;
+        }
+        .free-tier-table td:nth-child(1),
+        .free-tier-table td:nth-child(2) {
+            text-align: left;
+        }
+        .tier-status {
+            display: inline-block;
+            min-width: 78px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .tier-ok {
+            background: #d9f2df;
+            color: #145523;
+        }
+        .tier-caution {
+            background: #fff0bf;
+            color: #725100;
+        }
+        .tier-warning {
+            background: #ffd7d7;
+            color: #8b0000;
+        }
+        .tier-provider {
+            background: #e7e7e7;
+            color: #444;
+        }
+        .tier-unavailable {
+            background: #f1d9ff;
+            color: #5b287a;
+        }
+        .tier-included {
+            background: #dcecff;
+            color: #164b78;
+        }
+        .tier-note {
+            margin-top: 10px;
+            color: #666;
+            font-size: 13px;
+            line-height: 1.4;
+        }
         footer {
             position: fixed;
             bottom: 0;
@@ -203,6 +264,34 @@
 
                 <div id="userUsageStatus" class="status"></div>
                 <div class="table-wrap" id="userUsageTable"></div>
+            </section>
+
+            <section class="card">
+                <h2>Free Tier Usage</h2>
+                <p class="note">
+                    This section compares current Wonderful Apps service usage with the free-tier limits that matter
+                    to the present WA setup. Database size and Resend email volume are retrieved automatically.
+                    Current R2 stored data is measured from the configured bucket. Render instance hours and R2
+                    operation totals remain provider-dashboard values until those provider metrics are connected.
+                    The Next Paid Level and Cost columns show the immediate fallback if a free allowance is reached,
+                    helping plan an upgrade before service is interrupted. x10 is not included because WA now sends
+                    through Resend and Contact Us is delivered to Gmail.
+                </p>
+
+                <div class="free-tier-actions">
+                    <button id="refreshFreeTierBtn" class="refresh-btn" type="button">REFRESH FREE TIER USAGE</button>
+                    <span id="freeTierUpdated"></span>
+                </div>
+
+                <div id="freeTierStatus" class="status"></div>
+                <div class="table-wrap" id="freeTierTable"></div>
+                <div class="tier-note">
+                    Status thresholds: under 70% = OK; 70% through 84.9% = Caution; 85% and above = Warning.
+                    Provider means the current value must be read from that provider's dashboard. R2 storage is shown
+                    as current stored bytes against the 10 GB-month free allowance, so it is a useful capacity indicator
+                    rather than the provider's final monthly billing calculation. Paid-level prices are planning references;
+                    check the provider before upgrading because pricing can change.
+                </div>
             </section>
         </main>
     </div>
@@ -295,6 +384,138 @@
 
             html += '</tbody></table>';
             target.innerHTML = html;
+        }
+
+
+        function formatBytes(bytes) {
+            const value = Number(bytes);
+            if (!Number.isFinite(value)) return '—';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let size = Math.max(0, value);
+            let index = 0;
+            while (size >= 1024 && index < units.length - 1) {
+                size /= 1024;
+                index += 1;
+            }
+            const decimals = index >= 2 ? 2 : (index === 1 ? 1 : 0);
+            return `${size.toFixed(decimals)} ${units[index]}`;
+        }
+
+        function formatTierValue(row, value, isLimit = false) {
+            if (value === null || value === undefined) {
+                if (isLimit && row.limitLabel) return row.limitLabel;
+                return row.status === 'provider' ? 'Provider dashboard' : '—';
+            }
+
+            switch (row.unit) {
+                case 'bytes':
+                    return formatBytes(value);
+                case 'emails':
+                    return `${Number(value).toLocaleString()} email${Number(value) === 1 ? '' : 's'}`;
+                case 'hours':
+                    return `${Number(value).toLocaleString()} hours`;
+                case 'operations':
+                    return `${Number(value).toLocaleString()} operations`;
+                default:
+                    return String(value);
+            }
+        }
+
+        function statusLabel(status) {
+            return {
+                ok: 'OK',
+                caution: 'Caution',
+                warning: 'Warning',
+                provider: 'Provider',
+                unavailable: 'Unavailable',
+                included: 'Included'
+            }[status] || String(status || '—');
+        }
+
+        function renderFreeTierTable(rows) {
+            const target = document.getElementById('freeTierTable');
+
+            if (!rows || !rows.length) {
+                target.innerHTML = '<p>No free-tier data is available.</p>';
+                return;
+            }
+
+            let html = `
+                <table class="free-tier-table">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Resource</th>
+                            <th>Current Usage</th>
+                            <th>Free Limit</th>
+                            <th>% Used</th>
+                            <th>Remaining</th>
+                            <th>Status</th>
+                            <th>Next Paid Level</th>
+                            <th>Cost</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            rows.forEach(row => {
+                const percent = row.percentUsed === null || row.percentUsed === undefined
+                    ? '—'
+                    : `${Number(row.percentUsed).toFixed(1)}%`;
+                const remaining = row.remainingValue === null || row.remainingValue === undefined
+                    ? '—'
+                    : formatTierValue(row, row.remainingValue);
+                const current = row.status === 'included'
+                    ? 'Free'
+                    : formatTierValue(row, row.currentValue);
+                const limit = formatTierValue(row, row.limitValue, true);
+
+                html += `
+                    <tr title="${escapeHtml(row.note || '')}">
+                        <td><strong>${escapeHtml(row.service)}</strong></td>
+                        <td>${escapeHtml(row.resource)}</td>
+                        <td>${escapeHtml(current)}</td>
+                        <td>${escapeHtml(limit)}</td>
+                        <td>${escapeHtml(percent)}</td>
+                        <td>${escapeHtml(remaining)}</td>
+                        <td>
+                            <span class="tier-status tier-${escapeHtml(row.status)}">
+                                ${escapeHtml(statusLabel(row.status))}
+                            </span>
+                        </td>
+                        <td>${escapeHtml(row.nextPaidLevel || '—')}</td>
+                        <td>${escapeHtml(row.nextPaidCost || '—')}</td>
+                        <td>${escapeHtml(row.source || '—')}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            target.innerHTML = html;
+        }
+
+        async function loadFreeTierUsage() {
+            const status = document.getElementById('freeTierStatus');
+            const updated = document.getElementById('freeTierUpdated');
+            status.className = 'status';
+            status.textContent = 'Loading...';
+
+            try {
+                const data = await apiGet('/track/free-tier-usage');
+                renderFreeTierTable(data.rows);
+                status.textContent = '';
+                const usageUpdated = data.generatedAt
+                    ? `Updated ${formatDate(data.generatedAt)}`
+                    : '';
+                const pricingReviewed = data.pricingReviewed
+                    ? ` | Paid pricing reviewed ${data.pricingReviewed}`
+                    : '';
+                updated.textContent = `${usageUpdated}${pricingReviewed}`;
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = error.message;
+            }
         }
 
         async function loadAppUsage() {
@@ -403,10 +624,13 @@
                 }
             });
 
+            document.getElementById('refreshFreeTierBtn').addEventListener('click', loadFreeTierUsage);
+
             try {
                 await loadUsers();
                 await loadAppUsage();
                 await loadUserUsage();
+                await loadFreeTierUsage();
             } catch (error) {
                 document.getElementById('appUsageStatus').className = 'status error';
                 document.getElementById('appUsageStatus').textContent = error.message;

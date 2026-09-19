@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
+const { getStorageStats } = require('../r2Storage');
 
 function isAdminUser(user) {
     if (!user) return false;
@@ -59,6 +60,395 @@ function laterDate(a, b) {
     if (!a) return b || null;
     if (!b) return a || null;
     return new Date(a) >= new Date(b) ? a : b;
+}
+
+
+const FREE_TIER_LIMITS = {
+    databaseBytes: 5 * 1024 * 1024,
+    resendDailyEmails: 100,
+    resendMonthlyEmails: 3000,
+    renderMonthlyHours: 750,
+    r2StorageBytes: 10 * 1024 * 1024 * 1024,
+    r2ClassAMonthly: 1000000,
+    r2ClassBMonthly: 10000000
+};
+
+const PRICING_REVIEWED = '2026-09-19';
+
+const NEXT_PAID_LEVELS = {
+    database: {
+        level: '100 MB database',
+        cost: '$19'
+    },
+    resend: {
+        level: 'Pro — 50,000 emails/month; no daily limit',
+        cost: '$20/month'
+    },
+    render: {
+        level: '0.5c-512mb (Starter) — 0.5 CPU, 512 MB RAM',
+        cost: '$7/month'
+    },
+    r2Storage: {
+        level: 'Standard usage above free allowance',
+        cost: '$0.015/GB-month'
+    },
+    r2ClassA: {
+        level: 'Standard usage above free allowance',
+        cost: '$4.50/million operations'
+    },
+    r2ClassB: {
+        level: 'Standard usage above free allowance',
+        cost: '$0.36/million operations'
+    },
+    r2Egress: {
+        level: 'No upgrade needed',
+        cost: 'Free'
+    }
+};
+
+function percentageStatus(percentUsed) {
+    if (percentUsed === null || percentUsed === undefined || !Number.isFinite(percentUsed)) {
+        return 'provider';
+    }
+    if (percentUsed >= 85) return 'warning';
+    if (percentUsed >= 70) return 'caution';
+    return 'ok';
+}
+
+function buildNumericTierRow({
+    id,
+    service,
+    resource,
+    unit,
+    currentValue,
+    limitValue,
+    source,
+    note = '',
+    nextPaidLevel = '—',
+    nextPaidCost = '—'
+}) {
+    const current = toNumber(currentValue);
+    const limit = toNumber(limitValue);
+    const percentUsed = limit > 0 ? (current / limit) * 100 : null;
+    return {
+        id,
+        service,
+        resource,
+        unit,
+        currentValue: current,
+        limitValue: limit,
+        percentUsed,
+        remainingValue: limit > 0 ? Math.max(limit - current, 0) : null,
+        status: percentageStatus(percentUsed),
+        source,
+        note,
+        nextPaidLevel,
+        nextPaidCost
+    };
+}
+
+function buildProviderTierRow({
+    id,
+    service,
+    resource,
+    unit,
+    limitValue = null,
+    limitLabel = null,
+    status = 'provider',
+    note = '',
+    nextPaidLevel = '—',
+    nextPaidCost = '—'
+}) {
+    return {
+        id,
+        service,
+        resource,
+        unit,
+        currentValue: null,
+        limitValue,
+        limitLabel,
+        percentUsed: null,
+        remainingValue: null,
+        status,
+        source: 'Provider dashboard',
+        note,
+        nextPaidLevel,
+        nextPaidCost
+    };
+}
+
+function datePartsInTimeZone(date, timeZone) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(date);
+
+    const values = Object.fromEntries(
+        parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value])
+    );
+
+    return {
+        year: Number(values.year),
+        month: Number(values.month),
+        day: Number(values.day)
+    };
+}
+
+function ymdFromParts(parts) {
+    return [
+        String(parts.year).padStart(4, '0'),
+        String(parts.month).padStart(2, '0'),
+        String(parts.day).padStart(2, '0')
+    ].join('-');
+}
+
+function addCalendarDays(parts, days) {
+    const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days));
+    return {
+        year: date.getUTCFullYear(),
+        month: date.getUTCMonth() + 1,
+        day: date.getUTCDate()
+    };
+}
+
+async function loadDatabaseSizeBytes() {
+    try {
+        const [[row]] = await pool.query(
+            `SELECT COALESCE(SUM(DATA_LENGTH + INDEX_LENGTH), 0) AS TotalBytes
+               FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE()`
+        );
+        return toNumber(row && row.TotalBytes);
+    } catch (error) {
+        const [rows] = await pool.query('SHOW TABLE STATUS');
+        return rows.reduce((sum, row) => {
+            return sum + toNumber(row.Data_length) + toNumber(row.Index_length);
+        }, 0);
+    }
+}
+
+async function loadResendSentCounts() {
+    if (!process.env.RESEND_API_KEY) {
+        throw new Error('RESEND_API_KEY is not configured.');
+    }
+
+    const timeZone = process.env.APP_TIMEZONE || 'America/New_York';
+    const todayParts = datePartsInTimeZone(new Date(), timeZone);
+    const today = ymdFromParts(todayParts);
+    const tomorrow = ymdFromParts(addCalendarDays(todayParts, 1));
+    const monthStart = `${today.slice(0, 7)}-01`;
+
+    async function fetchMetrics(startDate, endDate) {
+        const params = new URLSearchParams({
+            start_date: startDate,
+            end_date: endDate,
+            timezone: timeZone,
+            metrics: 'sent'
+        });
+
+        const response = await fetch(`https://api.resend.com/emails/metrics?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+                Accept: 'application/json'
+            }
+        });
+
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (error) {
+            data = null;
+        }
+
+        if (!response.ok) {
+            const message = data && (data.message || data.error)
+                ? (data.message || data.error)
+                : `Resend returned HTTP ${response.status}.`;
+            throw new Error(message);
+        }
+
+        return data;
+    }
+
+    const [dailyMetrics, monthlyMetrics] = await Promise.all([
+        fetchMetrics(today, tomorrow),
+        fetchMetrics(monthStart, tomorrow)
+    ]);
+
+    return {
+        today: toNumber(dailyMetrics && dailyMetrics.totals && dailyMetrics.totals.sent),
+        month: toNumber(monthlyMetrics && monthlyMetrics.totals && monthlyMetrics.totals.sent),
+        timeZone
+    };
+}
+
+async function loadFreeTierUsage() {
+    const rows = [];
+
+    try {
+        const databaseBytes = await loadDatabaseSizeBytes();
+        rows.push(buildNumericTierRow({
+            id: 'database-size',
+            service: 'FreeSQLdatabase',
+            resource: 'Database size',
+            unit: 'bytes',
+            currentValue: databaseBytes,
+            limitValue: FREE_TIER_LIMITS.databaseBytes,
+            source: 'Automatic',
+            note: 'Current MySQL data plus index size compared with the 5 MB database limit.',
+            nextPaidLevel: NEXT_PAID_LEVELS.database.level,
+            nextPaidCost: NEXT_PAID_LEVELS.database.cost
+        }));
+    } catch (error) {
+        rows.push({
+            ...buildProviderTierRow({
+                id: 'database-size',
+                service: 'FreeSQLdatabase',
+                resource: 'Database size',
+                unit: 'bytes',
+                limitValue: FREE_TIER_LIMITS.databaseBytes,
+                status: 'unavailable',
+                note: `Automatic database-size query failed: ${error.message}`,
+                nextPaidLevel: NEXT_PAID_LEVELS.database.level,
+                nextPaidCost: NEXT_PAID_LEVELS.database.cost
+            }),
+            source: 'Unavailable'
+        });
+    }
+
+    try {
+        const resendCounts = await loadResendSentCounts();
+        rows.push(buildNumericTierRow({
+            id: 'resend-today',
+            service: 'Resend',
+            resource: 'Emails sent today',
+            unit: 'emails',
+            currentValue: resendCounts.today,
+            limitValue: FREE_TIER_LIMITS.resendDailyEmails,
+            source: 'Resend API',
+            note: `Resend-reported sent volume using ${resendCounts.timeZone}.`,
+            nextPaidLevel: NEXT_PAID_LEVELS.resend.level,
+            nextPaidCost: NEXT_PAID_LEVELS.resend.cost
+        }));
+        rows.push(buildNumericTierRow({
+            id: 'resend-month',
+            service: 'Resend',
+            resource: 'Emails sent this month',
+            unit: 'emails',
+            currentValue: resendCounts.month,
+            limitValue: FREE_TIER_LIMITS.resendMonthlyEmails,
+            source: 'Resend API',
+            note: 'Calendar-month sent volume reported directly by Resend.',
+            nextPaidLevel: NEXT_PAID_LEVELS.resend.level,
+            nextPaidCost: NEXT_PAID_LEVELS.resend.cost
+        }));
+    } catch (error) {
+        const resendUnavailable = [
+            ['resend-today', 'Emails sent today', FREE_TIER_LIMITS.resendDailyEmails],
+            ['resend-month', 'Emails sent this month', FREE_TIER_LIMITS.resendMonthlyEmails]
+        ];
+        resendUnavailable.forEach(([id, resource, limitValue]) => {
+            rows.push({
+                ...buildProviderTierRow({
+                    id,
+                    service: 'Resend',
+                    resource,
+                    unit: 'emails',
+                    limitValue,
+                    status: 'unavailable',
+                    note: `Resend metrics are temporarily unavailable: ${error.message}`,
+                    nextPaidLevel: NEXT_PAID_LEVELS.resend.level,
+                    nextPaidCost: NEXT_PAID_LEVELS.resend.cost
+                }),
+                source: 'Unavailable'
+            });
+        });
+    }
+
+    rows.push(buildProviderTierRow({
+        id: 'render-hours',
+        service: 'Render',
+        resource: 'Free instance hours this month',
+        unit: 'hours',
+        limitValue: FREE_TIER_LIMITS.renderMonthlyHours,
+        note: 'Current Render instance-hour usage is not available to WA without Render account/API usage data.',
+        nextPaidLevel: NEXT_PAID_LEVELS.render.level,
+        nextPaidCost: NEXT_PAID_LEVELS.render.cost
+    }));
+
+    try {
+        const r2Stats = await getStorageStats();
+        rows.push(buildNumericTierRow({
+            id: 'r2-storage',
+            service: 'Cloudflare R2',
+            resource: 'Current stored data',
+            unit: 'bytes',
+            currentValue: r2Stats.totalBytes,
+            limitValue: FREE_TIER_LIMITS.r2StorageBytes,
+            source: 'Automatic',
+            note: `${r2Stats.objectCount.toLocaleString()} object(s). Current bytes are compared with the 10 GB-month free storage allowance; provider billing uses GB-month.`,
+            nextPaidLevel: NEXT_PAID_LEVELS.r2Storage.level,
+            nextPaidCost: NEXT_PAID_LEVELS.r2Storage.cost
+        }));
+    } catch (error) {
+        rows.push({
+            ...buildProviderTierRow({
+                id: 'r2-storage',
+                service: 'Cloudflare R2',
+                resource: 'Current stored data',
+                unit: 'bytes',
+                limitValue: FREE_TIER_LIMITS.r2StorageBytes,
+                status: 'unavailable',
+                note: `R2 storage could not be measured automatically: ${error.message}`,
+                nextPaidLevel: NEXT_PAID_LEVELS.r2Storage.level,
+                nextPaidCost: NEXT_PAID_LEVELS.r2Storage.cost
+            }),
+            source: 'Unavailable'
+        });
+    }
+
+    rows.push(buildProviderTierRow({
+        id: 'r2-class-a',
+        service: 'Cloudflare R2',
+        resource: 'Class A operations this month',
+        unit: 'operations',
+        limitValue: FREE_TIER_LIMITS.r2ClassAMonthly,
+        note: 'Use the Cloudflare R2 dashboard for the provider operation total.',
+        nextPaidLevel: NEXT_PAID_LEVELS.r2ClassA.level,
+        nextPaidCost: NEXT_PAID_LEVELS.r2ClassA.cost
+    }));
+
+    rows.push(buildProviderTierRow({
+        id: 'r2-class-b',
+        service: 'Cloudflare R2',
+        resource: 'Class B operations this month',
+        unit: 'operations',
+        limitValue: FREE_TIER_LIMITS.r2ClassBMonthly,
+        note: 'Use the Cloudflare R2 dashboard for the provider operation total.',
+        nextPaidLevel: NEXT_PAID_LEVELS.r2ClassB.level,
+        nextPaidCost: NEXT_PAID_LEVELS.r2ClassB.cost
+    }));
+
+    rows.push(buildProviderTierRow({
+        id: 'r2-egress',
+        service: 'Cloudflare R2',
+        resource: 'Internet egress',
+        unit: 'text',
+        limitLabel: 'Free',
+        status: 'included',
+        note: 'Internet egress is included without a metered free-tier cap.',
+        nextPaidLevel: NEXT_PAID_LEVELS.r2Egress.level,
+        nextPaidCost: NEXT_PAID_LEVELS.r2Egress.cost
+    }));
+
+    return {
+        generatedAt: new Date().toISOString(),
+        pricingReviewed: PRICING_REVIEWED,
+        rows
+    };
 }
 
 async function loadAppUsage(period, userId = null) {
@@ -232,6 +622,18 @@ router.get('/user-usage', auth, requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error in /user-usage:', error.message);
         res.status(500).json({ error: 'Database error' });
+    }
+});
+
+
+// Current free-tier usage for the services that support reliable automatic measurement.
+router.get('/free-tier-usage', auth, requireAdmin, async (req, res) => {
+    try {
+        const data = await loadFreeTierUsage();
+        res.json(data);
+    } catch (error) {
+        console.error('Error in /free-tier-usage:', error.message);
+        res.status(500).json({ error: 'Unable to load free-tier usage.' });
     }
 });
 

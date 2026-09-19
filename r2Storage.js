@@ -4,7 +4,8 @@ const {
     DeleteObjectCommand,
     CopyObjectCommand,
     HeadObjectCommand,
-    GetObjectCommand
+    GetObjectCommand,
+    ListObjectsV2Command
 } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const sharp = require('sharp');
@@ -125,11 +126,37 @@ async function getSignedImageUrl(storageKey, expiresIn = 3600) {
     );
 }
 
+
+async function getStorageStats() {
+    let continuationToken = undefined;
+    let objectCount = 0;
+    let totalBytes = 0;
+
+    do {
+        const result = await getClient().send(new ListObjectsV2Command({
+            Bucket: bucketName,
+            ContinuationToken: continuationToken
+        }));
+
+        const contents = Array.isArray(result.Contents) ? result.Contents : [];
+        objectCount += contents.length;
+        totalBytes += contents.reduce((sum, item) => sum + Number(item.Size || 0), 0);
+        continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
+    } while (continuationToken);
+
+    return {
+        bucketName,
+        objectCount,
+        totalBytes
+    };
+}
+
 module.exports = {
     optimizeFamilyTreeImage,
     putImage,
     deleteImage,
     copyImage,
     imageExists,
-    getSignedImageUrl
+    getSignedImageUrl,
+    getStorageStats
 };
