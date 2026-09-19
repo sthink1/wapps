@@ -123,10 +123,7 @@ async function loadAppUsage(period, userId = null) {
             appId: app.AppID,
             appKey: app.AppKey,
             appName: app.AppName,
-            // APP_OPEN is recorded centrally from home.html for every application.
-            // Some legacy application pages do not write TrackUsageT View rows, so use
-            // the larger of page views and APP_OPEN events to avoid under-counting Visits.
-            visits: Math.max(toNumber(track.Visits), toNumber(usage.Sessions)),
+            visits: toNumber(track.Visits),
             activeUsers: toNumber(usage.ActiveUsers),
             sessions: toNumber(usage.Sessions),
             totalSeconds: toNumber(track.TotalSeconds),

@@ -67,34 +67,6 @@
             cursor: not-allowed;
         }
 
-        .other-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 10px;
-        }
-
-        .admin-tools {
-            margin-top: 8px;
-            text-align: center;
-        }
-
-        #trackActivityBtn {
-            display: none;
-            background-color: #111;
-            color: #fff;
-            border: none;
-            padding: 6px 12px;
-            font-size: 12px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        #trackActivityBtn:hover {
-            background-color: #333;
-        }
-
         #subscriptionStatus {
             margin: 8px 0 16px;
             font-weight: bold;
@@ -307,6 +279,7 @@
         <div class="button-group">
             <a href="login.html"><button>Login</button></a>
             <a href="register.html"><button>Register</button></a>
+            <a href="notificationPreferences.html"><button>Notifications</button></a>
             <button id="logoutBtn">Logout</button>
         </div>
 
@@ -482,7 +455,15 @@
         <div id="statistics">
             <h3>Other</h3>
 
-            <div class="button-group other-buttons">
+            <div class="button-group">
+                <button
+                    id="trackActivityBtn"
+                    class="admin-only-btn"
+                    data-page="track.html"
+                >
+                    Track Activity
+                </button>
+
                 <button
                     id="subscriptionBtn"
                     data-page="subscription.html"
@@ -491,28 +472,10 @@
                 </button>
 
                 <button
-                    id="notificationsBtn"
-                    data-page="notificationPreferences.html"
-                >
-                    Notifications
-                </button>
-
-                <button
                     class="restricted-btn"
                     data-page="ContactUs.html"
                 >
                     Contact Us
-                </button>
-            </div>
-
-            <div class="admin-tools">
-                <button
-                    id="trackActivityBtn"
-                    class="admin-only-btn"
-                    data-page="track.html"
-                    type="button"
-                >
-                    Track Activity
                 </button>
             </div>
         </div>
@@ -1063,33 +1026,6 @@
                             }
                         }
                     );
-
-                document
-                    .getElementById('notificationsBtn')
-                    .addEventListener(
-                        'click',
-                        function() {
-                            if (!isUserLoggedIn()) {
-                                showAccessDeniedModal(
-                                    'Login Required',
-                                    'You must be logged in to manage notification preferences.',
-                                    true,
-                                    true
-                                );
-                            } else {
-                                window.location.href =
-                                    this.dataset.page;
-                            }
-                        }
-                    );
-
-                // Show the Track Activity control only to the administrator.
-                const trackActivityBtn =
-                    document.getElementById('trackActivityBtn');
-
-                if (trackActivityBtn && await isUserAdmin()) {
-                    trackActivityBtn.style.display = 'inline-block';
-                }
 
                 // Handler for admin-only buttons.
                 const adminButtons =

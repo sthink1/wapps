@@ -166,9 +166,6 @@ const sendNotificationEmail = async ({
       </p>`;
   }
 
-  const companyUrl = 'https://WonderfulAppsCompany.com';
-  textFooter += `\n\nWonderfulAppsCompany.com`;
-
   const textBody = `${safeMessage}${textFooter}`;
   const htmlBody = `
 <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; line-height: 1.45;">
@@ -178,9 +175,6 @@ const sendNotificationEmail = async ({
   <hr style="border: none; border-top: 1px solid #ddd; margin-top: 20px;">
   <p style="color: #777; font-size: 12px;">
     This is an automated Wonderful Apps notification.
-  </p>
-  <p style="font-size: 13px; margin-bottom: 0;">
-    <a href="${companyUrl}">WonderfulAppsCompany.com</a>
   </p>
 </div>
   `.trim();

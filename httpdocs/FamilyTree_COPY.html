@@ -87,49 +87,6 @@
       padding: 12px;
     }
 
-    .menu-row {
-      position: relative;
-    }
-
-    .menu-row .menu-main-btn {
-      padding-left: 46px;
-      padding-right: 46px;
-    }
-
-    .menu-info-btn {
-      position: absolute;
-      top: 50%;
-      right: 8px;
-      transform: translateY(-50%);
-      width: 30px !important;
-      height: 30px;
-      padding: 0 !important;
-      border: 2px solid #08164f;
-      border-radius: 50%;
-      background: #fff !important;
-      color: #08164f !important;
-      font: bold 20px/25px Georgia, "Times New Roman", serif !important;
-      z-index: 2;
-    }
-
-    .menu-info-btn:hover,
-    .menu-info-btn:focus {
-      background: #f1f3ff !important;
-      outline: 2px solid #08164f;
-      outline-offset: 1px;
-    }
-
-    .info-modal-box {
-      width: min(520px, 100%);
-      text-align: center;
-    }
-
-    #menuInfoDescription {
-      text-align: left;
-      line-height: 1.5;
-      color: #333;
-    }
-
     main {
       background: aqua;
       padding: 18px;
@@ -262,35 +219,12 @@
 
       <section class="card">
         <div class="menu">
-          <div class="menu-row">
-            <button class="menu-main-btn" data-page="FTPersonNew.html">NEW PERSON</button>
-            <button class="menu-info-btn" type="button" data-title="New Person" data-description="Add a new person to the current family tree. After the person is created, additional family relationships, events, contacts, pictures, and other information can be added." aria-label="Information about New Person" title="Information about New Person">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn" id="personListBtn">PERSON LIST</button>
-            <button class="menu-info-btn" type="button" data-title="Person List" data-description="Display the people in the current family tree. Select a person from the list to view or work with that person's information. Use Filter List to search the list." aria-label="Information about Person List" title="Information about Person List">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn" id="enterCodeBtn">ENTER FAMILY CODE</button>
-            <button class="menu-info-btn" type="button" data-title="Enter Family Code" data-description="Enter a Family Code to open and work with an existing family tree." aria-label="Information about Enter Family Code" title="Information about Enter Family Code">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn" id="searchPersonBtn">SEARCH FOR PERSON</button>
-            <button class="menu-info-btn" type="button" data-title="Search for Person" data-description="Search for a person by name, birth date, or birth place. Select a matching person by choosing Use This Tree." aria-label="Information about Search for Person" title="Information about Search for Person">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn secondary" id="changeTreeBtn" type="button">CHANGE TREE</button>
-            <button class="menu-info-btn" type="button" data-title="Change Tree" data-description="End your current family tree association so you can enter another Family Code or start a new tree. This does not delete people or family tree information." aria-label="Information about Change Tree" title="Information about Change Tree">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn secondary" id="undoMergeBtn" type="button">UNDO ONE TREE MERGE</button>
-            <button class="menu-info-btn" type="button" data-title="Undo One Tree Merge" data-description="Undo the most recent family tree merge and restore the two family trees to their separate state. Use this only when the most recent merge needs to be reversed." aria-label="Information about Undo One Tree Merge" title="Information about Undo One Tree Merge">i</button>
-          </div>
+          <button data-page="FTPersonNew.html">NEW PERSON</button>
+          <button id="personListBtn">PERSON LIST</button>
+          <button id="enterCodeBtn">ENTER FAMILY CODE</button>
+          <button id="searchPersonBtn">SEARCH FOR PERSON</button>
+          <button id="changeTreeBtn" class="secondary" type="button">CHANGE TREE</button>
+          <button id="undoMergeBtn" class="secondary" type="button">UNDO ONE TREE MERGE</button>
         </div>
         <div id="statusMessage" class="status"></div>
       </section>
@@ -336,46 +270,9 @@
     </div>
   </div>
 
-  <div id="menuInfoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="menuInfoTitle">
-    <div class="modal-box info-modal-box">
-      <h2 id="menuInfoTitle">Family Tree Information</h2>
-      <p id="menuInfoDescription"></p>
-      <div class="actions" style="justify-content: center;">
-        <button id="menuInfoClose" class="secondary" type="button">CLOSE</button>
-      </div>
-    </div>
-  </div>
-
   <footer>
     Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
   </footer>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const modal = document.getElementById('menuInfoModal');
-      const title = document.getElementById('menuInfoTitle');
-      const description = document.getElementById('menuInfoDescription');
-      const closeButton = document.getElementById('menuInfoClose');
-
-      document.querySelectorAll('.menu-info-btn').forEach(button => {
-        button.addEventListener('click', event => {
-          event.preventDefault();
-          event.stopPropagation();
-          title.textContent = button.dataset.title || 'Family Tree Information';
-          description.textContent = button.dataset.description || '';
-          modal.classList.add('show');
-        });
-      });
-
-      closeButton.addEventListener('click', () => modal.classList.remove('show'));
-      modal.addEventListener('click', event => {
-        if (event.target === modal) modal.classList.remove('show');
-      });
-      document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') modal.classList.remove('show');
-      });
-    });
-  </script>
 
   <script src="js/FamilyTreePage.js?v=20260908-1"></script>
 </body>

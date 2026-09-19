@@ -109,21 +109,9 @@
             flex-wrap: wrap;
             margin-bottom: 14px;
         }
-        .user-controls select,
-        .user-controls input {
-            min-width: 220px;
+        .user-controls select {
+            min-width: 240px;
             padding: 8px;
-            font-size: 15px;
-        }
-        .user-id-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .user-id-group input {
-            min-width: 120px;
-            width: 140px;
         }
         .status {
             min-height: 22px;
@@ -177,8 +165,8 @@
             <section class="card">
                 <h2>User Usage</h2>
                 <p class="note">
-                    Select a user from the list or enter a UserID. User Usage has its own period filter,
-                    independent of the App Usage period above.
+                    Select a user to drill down into the same usage categories. The period selected above also applies
+                    to this section.
                 </p>
 
                 <div class="user-controls">
@@ -186,19 +174,6 @@
                     <select id="userSelect">
                         <option value="">Select a user</option>
                     </select>
-
-                    <div class="user-id-group">
-                        <label for="userIdInput"><strong>or UserID:</strong></label>
-                        <input id="userIdInput" type="number" min="1" step="1" inputmode="numeric" placeholder="UserID">
-                        <button id="userIdBtn" type="button">GO</button>
-                    </div>
-                </div>
-
-                <div class="period-buttons" id="userPeriodButtons" aria-label="User usage period">
-                    <button class="period-btn user-period-btn" data-period="today" type="button">Today</button>
-                    <button class="period-btn user-period-btn" data-period="7" type="button">Last 7 Days</button>
-                    <button class="period-btn user-period-btn active" data-period="30" type="button">Last 30 Days</button>
-                    <button class="period-btn user-period-btn" data-period="all" type="button">All Time</button>
                 </div>
 
                 <div id="userUsageStatus" class="status"></div>
@@ -218,7 +193,6 @@
                 : window.location.origin;
 
         let currentPeriod = '30';
-        let currentUserPeriod = '30';
         let currentUserId = '';
 
         function escapeHtml(value) {
@@ -335,7 +309,7 @@
             status.textContent = 'Loading...';
             try {
                 const data = await apiGet(
-                    `/track/user-usage?period=${encodeURIComponent(currentUserPeriod)}&userId=${encodeURIComponent(currentUserId)}`
+                    `/track/user-usage?period=${encodeURIComponent(currentPeriod)}&userId=${encodeURIComponent(currentUserId)}`
                 );
                 renderMatrix(data.apps, 'userUsageTable');
                 status.textContent = `Usage for ${data.user.UserName}`;
@@ -352,55 +326,19 @@
                 return;
             }
 
-            document.querySelectorAll('#periodButtons .period-btn').forEach(button => {
+            document.querySelectorAll('.period-btn').forEach(button => {
                 button.addEventListener('click', async () => {
                     currentPeriod = button.dataset.period;
-                    document.querySelectorAll('#periodButtons .period-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
                     button.classList.add('active');
                     await loadAppUsage();
-                });
-            });
-
-            document.querySelectorAll('#userPeriodButtons .user-period-btn').forEach(button => {
-                button.addEventListener('click', async () => {
-                    currentUserPeriod = button.dataset.period;
-                    document.querySelectorAll('#userPeriodButtons .user-period-btn').forEach(b => b.classList.remove('active'));
-                    button.classList.add('active');
                     await loadUserUsage();
                 });
             });
 
             document.getElementById('userSelect').addEventListener('change', async event => {
                 currentUserId = event.target.value;
-                document.getElementById('userIdInput').value = currentUserId;
                 await loadUserUsage();
-            });
-
-            async function selectUserIdFromInput() {
-                const input = document.getElementById('userIdInput');
-                const value = String(input.value || '').trim();
-                const userId = Number(value);
-                const status = document.getElementById('userUsageStatus');
-
-                if (!Number.isInteger(userId) || userId <= 0) {
-                    status.className = 'status error';
-                    status.textContent = 'Enter a valid UserID.';
-                    return;
-                }
-
-                currentUserId = String(userId);
-                const select = document.getElementById('userSelect');
-                const matchingOption = Array.from(select.options).find(option => option.value === currentUserId);
-                select.value = matchingOption ? currentUserId : '';
-                await loadUserUsage();
-            }
-
-            document.getElementById('userIdBtn').addEventListener('click', selectUserIdFromInput);
-            document.getElementById('userIdInput').addEventListener('keydown', async event => {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    await selectUserIdFromInput();
-                }
             });
 
             try {
