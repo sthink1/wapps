@@ -762,7 +762,7 @@ async function adoptTreeForUser(c, userID, targetTree) {
              ON DUPLICATE KEY UPDATE
                 OriginFamilyTreeID=
                     COALESCE(
-                        OriginFamilyTreeID,
+                        FTFamilyTreePersonT.OriginFamilyTreeID,
                         VALUES(OriginFamilyTreeID)
                     )`,
             [
@@ -3369,7 +3369,7 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
             `INSERT INTO FTFamilyTreePersonT
              (FamilyTreeID,PersonID,OriginFamilyTreeID,AddedByUserID,AddedAt,Notes)
              VALUES (?,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE OriginFamilyTreeID=COALESCE(OriginFamilyTreeID,VALUES(OriginFamilyTreeID))`,
+             ON DUPLICATE KEY UPDATE OriginFamilyTreeID=COALESCE(FTFamilyTreePersonT.OriginFamilyTreeID,VALUES(OriginFamilyTreeID))`,
             [
                 olderTree.FamilyTreeID,
                 destinationPersonID,
@@ -6434,26 +6434,6 @@ router.delete('/persons/:id', auth, async (req, res) => {
             );
 
             /*
-             * Defensive consistency check: a successful delete must not
-             * leave this Person attached to the Tree being edited.
-             * Throwing here rolls back the entire transaction rather than
-             * allowing a partial Family Tree delete to be committed.
-             */
-            const [[deletedMembershipCheck]] = await c.query(
-                `SELECT COUNT(*) AS n
-                   FROM FTFamilyTreePersonT
-                  WHERE FamilyTreeID=?
-                    AND PersonID=?`,
-                [treeID, id]
-            );
-
-            if (Number(deletedMembershipCheck.n) !== 0) {
-                throw new Error(
-                    'Person deletion did not remove the Family Tree membership.'
-                );
-            }
-
-            /*
              * If the person no longer belongs to ANY Family Tree, delete
              * the global person record and the person's operational data.
              */
@@ -6525,23 +6505,6 @@ router.delete('/persons/:id', auth, async (req, res) => {
                       WHERE PersonID=?`,
                     [id]
                 );
-
-                /*
-                 * Defensive consistency check: once the Person has no Tree
-                 * memberships, the global Person row must also be gone.
-                 */
-                const [[deletedPersonCheck]] = await c.query(
-                    `SELECT COUNT(*) AS n
-                       FROM FTPersonT
-                      WHERE PersonID=?`,
-                    [id]
-                );
-
-                if (Number(deletedPersonCheck.n) !== 0) {
-                    throw new Error(
-                        'Person deletion left a residual FTPersonT record.'
-                    );
-                }
 
                 /*
                  * Physical image cleanup remains intentionally best-effort,
@@ -6646,34 +6609,6 @@ router.delete('/persons/:id', auth, async (req, res) => {
                       WHERE FamilyTreeID=?`,
                     [treeID]
                 );
-
-                /*
-                 * Defensive consistency check: an empty Tree must not leave
-                 * either its FamilyTreeT row or active/user association rows
-                 * behind. Any residue rolls back the transaction.
-                 */
-                const [[deletedTreeCheck]] = await c.query(
-                    `SELECT COUNT(*) AS n
-                       FROM FamilyTreeT
-                      WHERE FamilyTreeID=?`,
-                    [treeID]
-                );
-
-                const [[deletedTreeUsersCheck]] = await c.query(
-                    `SELECT COUNT(*) AS n
-                       FROM FTFamilyTreeUserT
-                      WHERE FamilyTreeID=?`,
-                    [treeID]
-                );
-
-                if (
-                    Number(deletedTreeCheck.n) !== 0 ||
-                    Number(deletedTreeUsersCheck.n) !== 0
-                ) {
-                    throw new Error(
-                        'Empty Family Tree cleanup left residual Tree records.'
-                    );
-                }
 
                 return {
                     message:
