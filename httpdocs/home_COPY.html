@@ -78,13 +78,9 @@
         .admin-tools {
             margin-top: 8px;
             text-align: center;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
         }
 
-        .admin-only-btn {
+        #trackActivityBtn {
             display: none;
             background-color: #111;
             color: #fff;
@@ -95,7 +91,7 @@
             cursor: pointer;
         }
 
-        .admin-only-btn:hover {
+        #trackActivityBtn:hover {
             background-color: #333;
         }
 
@@ -517,15 +513,6 @@
                     type="button"
                 >
                     Track Activity
-                </button>
-
-                <button
-                    id="subControlBtn"
-                    class="admin-only-btn"
-                    data-page="SubControl.html"
-                    type="button"
-                >
-                    Sub Control
                 </button>
             </div>
         </div>
@@ -1096,15 +1083,12 @@
                         }
                     );
 
-                // Show administrator controls only to the administrator.
-                const userIsAdmin = await isUserAdmin();
+                // Show the Track Activity control only to the administrator.
+                const trackActivityBtn =
+                    document.getElementById('trackActivityBtn');
 
-                if (userIsAdmin) {
-                    document
-                        .querySelectorAll('.admin-only-btn')
-                        .forEach(button => {
-                            button.style.display = 'inline-block';
-                        });
+                if (trackActivityBtn && await isUserAdmin()) {
+                    trackActivityBtn.style.display = 'inline-block';
                 }
 
                 // Handler for admin-only buttons.

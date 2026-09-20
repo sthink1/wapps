@@ -10,10 +10,7 @@ const {
     createAdminPromoCode,
     updateAdminPromoCode,
     getAdminUserSubscription,
-    listAdminFreeGrants,
-    grantAdminFreeUsage,
-    updateAdminFreeGrant,
-    revokeAdminFreeGrant
+    grantAdminFreeUsage
 } = require('../services/subscriptionService');
 
 router.use(authenticateToken);
@@ -100,46 +97,10 @@ router.get('/admin/user/:userId', requireAdmin, async (req, res, next) => {
     }
 });
 
-
-router.get('/admin/grants', requireAdmin, async (req, res, next) => {
-    try {
-        res.json(await listAdminFreeGrants());
-    } catch (error) {
-        next(error);
-    }
-});
-
 router.post('/admin/grant', requireAdmin, async (req, res, next) => {
     try {
         const { userId, planId, endDate } = req.body || {};
         const result = await grantAdminFreeUsage(userId, planId, endDate, req.user.userId);
-        res.json(result);
-    } catch (error) {
-        if (error.status) return res.status(error.status).json({ error: error.message });
-        next(error);
-    }
-});
-
-
-router.put('/admin/grants/:grantId', requireAdmin, async (req, res, next) => {
-    try {
-        const { planId, endDate } = req.body || {};
-        const result = await updateAdminFreeGrant(
-            req.params.grantId,
-            planId,
-            endDate,
-            req.user.userId
-        );
-        res.json(result);
-    } catch (error) {
-        if (error.status) return res.status(error.status).json({ error: error.message });
-        next(error);
-    }
-});
-
-router.delete('/admin/grants/:grantId', requireAdmin, async (req, res, next) => {
-    try {
-        const result = await revokeAdminFreeGrant(req.params.grantId, req.user.userId);
         res.json(result);
     } catch (error) {
         if (error.status) return res.status(error.status).json({ error: error.message });

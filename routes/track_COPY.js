@@ -63,8 +63,8 @@ function laterDate(a, b) {
 }
 
 
-const CURRENT_PLAN_LIMITS = {
-    databaseBytes: 100 * 1024 * 1024,
+const FREE_TIER_LIMITS = {
+    databaseBytes: 5 * 1024 * 1024,
     resendDailyEmails: 100,
     resendMonthlyEmails: 3000,
     renderMonthlyHours: 750,
@@ -73,44 +73,36 @@ const CURRENT_PLAN_LIMITS = {
     r2ClassBMonthly: 10000000
 };
 
-const PRICING_REVIEWED = '2026-09-20';
+const PRICING_REVIEWED = '2026-09-19';
 
-const PLAN_DETAILS = {
+const NEXT_PAID_LEVELS = {
     database: {
-        currentPlan: 'MySQL Full — starting from 100 MB; up to 5 databases',
-        planType: 'Paid',
-        currentCost: '$21.15/year',
-        billing: 'Annual',
-        nextPaidPlan: 'No higher published MySQL level — contact provider',
-        nextPaidCost: 'Provider quote',
-        nextPaidLimit: 'Provider quote'
+        level: '100 MB database',
+        cost: '$19'
     },
     resend: {
-        currentPlan: 'Free',
-        planType: 'Free',
-        currentCost: '$0',
-        billing: 'Free',
-        nextPaidPlan: 'Pro — 50,000 emails/month; no daily limit',
-        nextPaidCost: '$20/month',
-        nextPaidLimit: '50,000 emails/month'
+        level: 'Pro — 50,000 emails/month; no daily limit',
+        cost: '$20/month'
     },
     render: {
-        currentPlan: 'Free Web Service',
-        planType: 'Free',
-        currentCost: '$0',
-        billing: 'Free',
-        nextPaidPlan: 'Starter — 0.5 CPU, 512 MB RAM',
-        nextPaidCost: '$7/month',
-        nextPaidLimit: 'Always-on paid compute; provider usage limits apply'
+        level: '0.5c-512mb (Starter) — 0.5 CPU, 512 MB RAM',
+        cost: '$7/month'
     },
-    r2: {
-        currentPlan: 'Standard — free included usage',
-        planType: 'Free / Usage Based',
-        currentCost: '$0 within included usage',
-        billing: 'Monthly usage',
-        nextPaidPlan: 'Standard usage above included allowance',
-        nextPaidCost: 'Usage based',
-        nextPaidLimit: 'No separate upgrade; pay for usage above allowance'
+    r2Storage: {
+        level: 'Standard usage above free allowance',
+        cost: '$0.015/GB-month'
+    },
+    r2ClassA: {
+        level: 'Standard usage above free allowance',
+        cost: '$4.50/million operations'
+    },
+    r2ClassB: {
+        level: 'Standard usage above free allowance',
+        cost: '$0.36/million operations'
+    },
+    r2Egress: {
+        level: 'No upgrade needed',
+        cost: 'Free'
     }
 };
 
@@ -123,7 +115,7 @@ function percentageStatus(percentUsed) {
     return 'ok';
 }
 
-function buildNumericPlanRow({
+function buildNumericTierRow({
     id,
     service,
     resource,
@@ -131,8 +123,9 @@ function buildNumericPlanRow({
     currentValue,
     limitValue,
     source,
-    plan,
-    note = ''
+    note = '',
+    nextPaidLevel = '—',
+    nextPaidCost = '—'
 }) {
     const current = toNumber(currentValue);
     const limit = toNumber(limitValue);
@@ -142,10 +135,6 @@ function buildNumericPlanRow({
         service,
         resource,
         unit,
-        currentPlan: plan.currentPlan,
-        planType: plan.planType,
-        currentCost: plan.currentCost,
-        billing: plan.billing,
         currentValue: current,
         limitValue: limit,
         percentUsed,
@@ -153,44 +142,38 @@ function buildNumericPlanRow({
         status: percentageStatus(percentUsed),
         source,
         note,
-        nextPaidPlan: plan.nextPaidPlan,
-        nextPaidCost: plan.nextPaidCost,
-        nextPaidLimit: plan.nextPaidLimit
+        nextPaidLevel,
+        nextPaidCost
     };
 }
 
-function buildProviderPlanRow({
+function buildProviderTierRow({
     id,
     service,
     resource,
     unit,
-    plan,
     limitValue = null,
     limitLabel = null,
     status = 'provider',
     note = '',
-    source = 'Provider dashboard'
+    nextPaidLevel = '—',
+    nextPaidCost = '—'
 }) {
     return {
         id,
         service,
         resource,
         unit,
-        currentPlan: plan.currentPlan,
-        planType: plan.planType,
-        currentCost: plan.currentCost,
-        billing: plan.billing,
         currentValue: null,
         limitValue,
         limitLabel,
         percentUsed: null,
         remainingValue: null,
         status,
-        source,
+        source: 'Provider dashboard',
         note,
-        nextPaidPlan: plan.nextPaidPlan,
-        nextPaidCost: plan.nextPaidCost,
-        nextPaidLimit: plan.nextPaidLimit
+        nextPaidLevel,
+        nextPaidCost
     };
 }
 
@@ -302,145 +285,163 @@ async function loadResendSentCounts() {
     };
 }
 
-async function loadCurrentPlans() {
+async function loadFreeTierUsage() {
     const rows = [];
 
     try {
         const databaseBytes = await loadDatabaseSizeBytes();
-        rows.push(buildNumericPlanRow({
+        rows.push(buildNumericTierRow({
             id: 'database-size',
             service: 'FreeSQLdatabase',
             resource: 'Database size',
             unit: 'bytes',
             currentValue: databaseBytes,
-            limitValue: CURRENT_PLAN_LIMITS.databaseBytes,
+            limitValue: FREE_TIER_LIMITS.databaseBytes,
             source: 'Automatic',
-            plan: PLAN_DETAILS.database,
-            note: 'Current MySQL data plus index size compared with the paid 100 MB plan capacity.'
+            note: 'Current MySQL data plus index size compared with the 5 MB database limit.',
+            nextPaidLevel: NEXT_PAID_LEVELS.database.level,
+            nextPaidCost: NEXT_PAID_LEVELS.database.cost
         }));
     } catch (error) {
-        rows.push(buildProviderPlanRow({
-            id: 'database-size',
-            service: 'FreeSQLdatabase',
-            resource: 'Database size',
-            unit: 'bytes',
-            limitValue: CURRENT_PLAN_LIMITS.databaseBytes,
-            status: 'unavailable',
-            source: 'Unavailable',
-            plan: PLAN_DETAILS.database,
-            note: `Automatic database-size query failed: ${error.message}`
-        }));
+        rows.push({
+            ...buildProviderTierRow({
+                id: 'database-size',
+                service: 'FreeSQLdatabase',
+                resource: 'Database size',
+                unit: 'bytes',
+                limitValue: FREE_TIER_LIMITS.databaseBytes,
+                status: 'unavailable',
+                note: `Automatic database-size query failed: ${error.message}`,
+                nextPaidLevel: NEXT_PAID_LEVELS.database.level,
+                nextPaidCost: NEXT_PAID_LEVELS.database.cost
+            }),
+            source: 'Unavailable'
+        });
     }
 
     try {
         const resendCounts = await loadResendSentCounts();
-        rows.push(buildNumericPlanRow({
+        rows.push(buildNumericTierRow({
             id: 'resend-today',
             service: 'Resend',
             resource: 'Emails sent today',
             unit: 'emails',
             currentValue: resendCounts.today,
-            limitValue: CURRENT_PLAN_LIMITS.resendDailyEmails,
+            limitValue: FREE_TIER_LIMITS.resendDailyEmails,
             source: 'Resend API',
-            plan: PLAN_DETAILS.resend,
-            note: `Resend-reported sent volume using ${resendCounts.timeZone}.`
+            note: `Resend-reported sent volume using ${resendCounts.timeZone}.`,
+            nextPaidLevel: NEXT_PAID_LEVELS.resend.level,
+            nextPaidCost: NEXT_PAID_LEVELS.resend.cost
         }));
-        rows.push(buildNumericPlanRow({
+        rows.push(buildNumericTierRow({
             id: 'resend-month',
             service: 'Resend',
             resource: 'Emails sent this month',
             unit: 'emails',
             currentValue: resendCounts.month,
-            limitValue: CURRENT_PLAN_LIMITS.resendMonthlyEmails,
+            limitValue: FREE_TIER_LIMITS.resendMonthlyEmails,
             source: 'Resend API',
-            plan: PLAN_DETAILS.resend,
-            note: 'Calendar-month sent volume reported directly by Resend.'
+            note: 'Calendar-month sent volume reported directly by Resend.',
+            nextPaidLevel: NEXT_PAID_LEVELS.resend.level,
+            nextPaidCost: NEXT_PAID_LEVELS.resend.cost
         }));
     } catch (error) {
-        [
-            ['resend-today', 'Emails sent today', CURRENT_PLAN_LIMITS.resendDailyEmails],
-            ['resend-month', 'Emails sent this month', CURRENT_PLAN_LIMITS.resendMonthlyEmails]
-        ].forEach(([id, resource, limitValue]) => {
-            rows.push(buildProviderPlanRow({
-                id,
-                service: 'Resend',
-                resource,
-                unit: 'emails',
-                limitValue,
-                status: 'unavailable',
-                source: 'Unavailable',
-                plan: PLAN_DETAILS.resend,
-                note: `Resend metrics are temporarily unavailable: ${error.message}`
-            }));
+        const resendUnavailable = [
+            ['resend-today', 'Emails sent today', FREE_TIER_LIMITS.resendDailyEmails],
+            ['resend-month', 'Emails sent this month', FREE_TIER_LIMITS.resendMonthlyEmails]
+        ];
+        resendUnavailable.forEach(([id, resource, limitValue]) => {
+            rows.push({
+                ...buildProviderTierRow({
+                    id,
+                    service: 'Resend',
+                    resource,
+                    unit: 'emails',
+                    limitValue,
+                    status: 'unavailable',
+                    note: `Resend metrics are temporarily unavailable: ${error.message}`,
+                    nextPaidLevel: NEXT_PAID_LEVELS.resend.level,
+                    nextPaidCost: NEXT_PAID_LEVELS.resend.cost
+                }),
+                source: 'Unavailable'
+            });
         });
     }
 
-    rows.push(buildProviderPlanRow({
+    rows.push(buildProviderTierRow({
         id: 'render-hours',
         service: 'Render',
-        resource: 'Instance hours this month',
+        resource: 'Free instance hours this month',
         unit: 'hours',
-        limitValue: CURRENT_PLAN_LIMITS.renderMonthlyHours,
-        plan: PLAN_DETAILS.render,
-        note: 'Current Render instance-hour usage is not available to WA without Render account/API usage data.'
+        limitValue: FREE_TIER_LIMITS.renderMonthlyHours,
+        note: 'Current Render instance-hour usage is not available to WA without Render account/API usage data.',
+        nextPaidLevel: NEXT_PAID_LEVELS.render.level,
+        nextPaidCost: NEXT_PAID_LEVELS.render.cost
     }));
 
     try {
         const r2Stats = await getStorageStats();
-        rows.push(buildNumericPlanRow({
+        rows.push(buildNumericTierRow({
             id: 'r2-storage',
             service: 'Cloudflare R2',
             resource: 'Current stored data',
             unit: 'bytes',
             currentValue: r2Stats.totalBytes,
-            limitValue: CURRENT_PLAN_LIMITS.r2StorageBytes,
+            limitValue: FREE_TIER_LIMITS.r2StorageBytes,
             source: 'Automatic',
-            plan: PLAN_DETAILS.r2,
-            note: `${r2Stats.objectCount.toLocaleString()} object(s). Current bytes are compared with the 10 GB-month included storage allowance; provider billing uses GB-month.`
+            note: `${r2Stats.objectCount.toLocaleString()} object(s). Current bytes are compared with the 10 GB-month free storage allowance; provider billing uses GB-month.`,
+            nextPaidLevel: NEXT_PAID_LEVELS.r2Storage.level,
+            nextPaidCost: NEXT_PAID_LEVELS.r2Storage.cost
         }));
     } catch (error) {
-        rows.push(buildProviderPlanRow({
-            id: 'r2-storage',
-            service: 'Cloudflare R2',
-            resource: 'Current stored data',
-            unit: 'bytes',
-            limitValue: CURRENT_PLAN_LIMITS.r2StorageBytes,
-            status: 'unavailable',
-            source: 'Unavailable',
-            plan: PLAN_DETAILS.r2,
-            note: `R2 storage could not be measured automatically: ${error.message}`
-        }));
+        rows.push({
+            ...buildProviderTierRow({
+                id: 'r2-storage',
+                service: 'Cloudflare R2',
+                resource: 'Current stored data',
+                unit: 'bytes',
+                limitValue: FREE_TIER_LIMITS.r2StorageBytes,
+                status: 'unavailable',
+                note: `R2 storage could not be measured automatically: ${error.message}`,
+                nextPaidLevel: NEXT_PAID_LEVELS.r2Storage.level,
+                nextPaidCost: NEXT_PAID_LEVELS.r2Storage.cost
+            }),
+            source: 'Unavailable'
+        });
     }
 
-    rows.push(buildProviderPlanRow({
+    rows.push(buildProviderTierRow({
         id: 'r2-class-a',
         service: 'Cloudflare R2',
         resource: 'Class A operations this month',
         unit: 'operations',
-        limitValue: CURRENT_PLAN_LIMITS.r2ClassAMonthly,
-        plan: PLAN_DETAILS.r2,
-        note: 'Use the Cloudflare R2 dashboard for the provider operation total.'
+        limitValue: FREE_TIER_LIMITS.r2ClassAMonthly,
+        note: 'Use the Cloudflare R2 dashboard for the provider operation total.',
+        nextPaidLevel: NEXT_PAID_LEVELS.r2ClassA.level,
+        nextPaidCost: NEXT_PAID_LEVELS.r2ClassA.cost
     }));
 
-    rows.push(buildProviderPlanRow({
+    rows.push(buildProviderTierRow({
         id: 'r2-class-b',
         service: 'Cloudflare R2',
         resource: 'Class B operations this month',
         unit: 'operations',
-        limitValue: CURRENT_PLAN_LIMITS.r2ClassBMonthly,
-        plan: PLAN_DETAILS.r2,
-        note: 'Use the Cloudflare R2 dashboard for the provider operation total.'
+        limitValue: FREE_TIER_LIMITS.r2ClassBMonthly,
+        note: 'Use the Cloudflare R2 dashboard for the provider operation total.',
+        nextPaidLevel: NEXT_PAID_LEVELS.r2ClassB.level,
+        nextPaidCost: NEXT_PAID_LEVELS.r2ClassB.cost
     }));
 
-    rows.push(buildProviderPlanRow({
+    rows.push(buildProviderTierRow({
         id: 'r2-egress',
         service: 'Cloudflare R2',
         resource: 'Internet egress',
         unit: 'text',
-        limitLabel: 'Included / no metered cap',
+        limitLabel: 'Free',
         status: 'included',
-        plan: PLAN_DETAILS.r2,
-        note: 'Internet egress is included without a metered allowance cap.'
+        note: 'Internet egress is included without a metered free-tier cap.',
+        nextPaidLevel: NEXT_PAID_LEVELS.r2Egress.level,
+        nextPaidCost: NEXT_PAID_LEVELS.r2Egress.cost
     }));
 
     return {
@@ -625,25 +626,14 @@ router.get('/user-usage', auth, requireAdmin, async (req, res) => {
 });
 
 
-// Current service plans, capacity and usage.
-router.get('/current-plans', auth, requireAdmin, async (req, res) => {
-    try {
-        const data = await loadCurrentPlans();
-        res.json(data);
-    } catch (error) {
-        console.error('Error in /current-plans:', error.message);
-        res.status(500).json({ error: 'Unable to load current plan information.' });
-    }
-});
-
-// Preserve the prior endpoint while older deployed pages may still call it.
+// Current free-tier usage for the services that support reliable automatic measurement.
 router.get('/free-tier-usage', auth, requireAdmin, async (req, res) => {
     try {
-        const data = await loadCurrentPlans();
+        const data = await loadFreeTierUsage();
         res.json(data);
     } catch (error) {
         console.error('Error in /free-tier-usage:', error.message);
-        res.status(500).json({ error: 'Unable to load current plan information.' });
+        res.status(500).json({ error: 'Unable to load free-tier usage.' });
     }
 });
 

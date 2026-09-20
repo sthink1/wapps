@@ -267,16 +267,19 @@
             </section>
 
             <section class="card">
-                <h2>Current Plans</h2>
+                <h2>Free Tier Usage</h2>
                 <p class="note">
-                    Current Plans shows the services WA uses now, whether each current plan is free or paid,
-                    its cost and billing basis, current capacity and usage, and the next paid level when one is published.
-                    Database size, Resend email volume and R2 stored data are measured automatically where available;
-                    some provider-only usage remains a dashboard value.
+                    This section compares current Wonderful Apps service usage with the free-tier limits that matter
+                    to the present WA setup. Database size and Resend email volume are retrieved automatically.
+                    Current R2 stored data is measured from the configured bucket. Render instance hours and R2
+                    operation totals remain provider-dashboard values until those provider metrics are connected.
+                    The Next Paid Level and Cost columns show the immediate fallback if a free allowance is reached,
+                    helping plan an upgrade before service is interrupted. x10 is not included because WA now sends
+                    through Resend and Contact Us is delivered to Gmail.
                 </p>
 
                 <div class="free-tier-actions">
-                    <button id="refreshFreeTierBtn" class="refresh-btn" type="button">REFRESH CURRENT PLANS</button>
+                    <button id="refreshFreeTierBtn" class="refresh-btn" type="button">REFRESH FREE TIER USAGE</button>
                     <span id="freeTierUpdated"></span>
                 </div>
 
@@ -284,10 +287,10 @@
                 <div class="table-wrap" id="freeTierTable"></div>
                 <div class="tier-note">
                     Status thresholds: under 70% = OK; 70% through 84.9% = Caution; 85% and above = Warning.
-                    Provider means the current usage value must be read from that provider's dashboard. R2 storage is shown
-                    as current stored bytes against its included 10 GB-month allowance, so it is a useful capacity indicator
-                    rather than the provider's final monthly billing calculation. Plan prices are planning references;
-                    check the provider before changing plans because pricing can change.
+                    Provider means the current value must be read from that provider's dashboard. R2 storage is shown
+                    as current stored bytes against the 10 GB-month free allowance, so it is a useful capacity indicator
+                    rather than the provider's final monthly billing calculation. Paid-level prices are planning references;
+                    check the provider before upgrading because pricing can change.
                 </div>
             </section>
         </main>
@@ -429,11 +432,11 @@
             }[status] || String(status || '—');
         }
 
-        function renderCurrentPlansTable(rows) {
+        function renderFreeTierTable(rows) {
             const target = document.getElementById('freeTierTable');
 
             if (!rows || !rows.length) {
-                target.innerHTML = '<p>No current-plan data is available.</p>';
+                target.innerHTML = '<p>No free-tier data is available.</p>';
                 return;
             }
 
@@ -442,18 +445,14 @@
                     <thead>
                         <tr>
                             <th>Service</th>
-                            <th>Current Plan</th>
-                            <th>Plan Type</th>
-                            <th>Current Cost</th>
-                            <th>Billing</th>
                             <th>Resource</th>
                             <th>Current Usage</th>
-                            <th>Current Limit</th>
+                            <th>Free Limit</th>
                             <th>% Used</th>
+                            <th>Remaining</th>
                             <th>Status</th>
-                            <th>Next Paid Plan</th>
-                            <th>Next Cost</th>
-                            <th>Next Limit</th>
+                            <th>Next Paid Level</th>
+                            <th>Cost</th>
                             <th>Source</th>
                         </tr>
                     </thead>
@@ -464,30 +463,29 @@
                 const percent = row.percentUsed === null || row.percentUsed === undefined
                     ? '—'
                     : `${Number(row.percentUsed).toFixed(1)}%`;
+                const remaining = row.remainingValue === null || row.remainingValue === undefined
+                    ? '—'
+                    : formatTierValue(row, row.remainingValue);
                 const current = row.status === 'included'
-                    ? 'Included'
+                    ? 'Free'
                     : formatTierValue(row, row.currentValue);
                 const limit = formatTierValue(row, row.limitValue, true);
 
                 html += `
                     <tr title="${escapeHtml(row.note || '')}">
                         <td><strong>${escapeHtml(row.service)}</strong></td>
-                        <td>${escapeHtml(row.currentPlan || '—')}</td>
-                        <td>${escapeHtml(row.planType || '—')}</td>
-                        <td>${escapeHtml(row.currentCost || '—')}</td>
-                        <td>${escapeHtml(row.billing || '—')}</td>
                         <td>${escapeHtml(row.resource)}</td>
                         <td>${escapeHtml(current)}</td>
                         <td>${escapeHtml(limit)}</td>
                         <td>${escapeHtml(percent)}</td>
+                        <td>${escapeHtml(remaining)}</td>
                         <td>
                             <span class="tier-status tier-${escapeHtml(row.status)}">
                                 ${escapeHtml(statusLabel(row.status))}
                             </span>
                         </td>
-                        <td>${escapeHtml(row.nextPaidPlan || '—')}</td>
+                        <td>${escapeHtml(row.nextPaidLevel || '—')}</td>
                         <td>${escapeHtml(row.nextPaidCost || '—')}</td>
-                        <td>${escapeHtml(row.nextPaidLimit || '—')}</td>
                         <td>${escapeHtml(row.source || '—')}</td>
                     </tr>
                 `;
@@ -497,21 +495,21 @@
             target.innerHTML = html;
         }
 
-        async function loadCurrentPlans() {
+        async function loadFreeTierUsage() {
             const status = document.getElementById('freeTierStatus');
             const updated = document.getElementById('freeTierUpdated');
             status.className = 'status';
             status.textContent = 'Loading...';
 
             try {
-                const data = await apiGet('/track/current-plans');
-                renderCurrentPlansTable(data.rows);
+                const data = await apiGet('/track/free-tier-usage');
+                renderFreeTierTable(data.rows);
                 status.textContent = '';
                 const usageUpdated = data.generatedAt
                     ? `Updated ${formatDate(data.generatedAt)}`
                     : '';
                 const pricingReviewed = data.pricingReviewed
-                    ? ` | Plan/pricing reviewed ${data.pricingReviewed}`
+                    ? ` | Paid pricing reviewed ${data.pricingReviewed}`
                     : '';
                 updated.textContent = `${usageUpdated}${pricingReviewed}`;
             } catch (error) {
@@ -626,13 +624,13 @@
                 }
             });
 
-            document.getElementById('refreshFreeTierBtn').addEventListener('click', loadCurrentPlans);
+            document.getElementById('refreshFreeTierBtn').addEventListener('click', loadFreeTierUsage);
 
             try {
                 await loadUsers();
                 await loadAppUsage();
                 await loadUserUsage();
-                await loadCurrentPlans();
+                await loadFreeTierUsage();
             } catch (error) {
                 document.getElementById('appUsageStatus').className = 'status error';
                 document.getElementById('appUsageStatus').textContent = error.message;
