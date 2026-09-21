@@ -214,7 +214,7 @@ async function loadPerson() {
     currentPerson = data.person;
     familyTreeCode = data.FamilyTreeCode || familyTreeCode;
 
-    sessionStorage.setItem('familyTreeCode', familyTreeCode);
+    /* Viewing a Person in a separated Tree does not change the user's current Tree. */
 
     [
         'PersonID',
@@ -1195,39 +1195,44 @@ async function deletePerson() {
 
     if (!confirmed) return;
 
-    const response = await fetch(
-        `${BASE_URL}/familytree/persons/${personID}` +
-        `?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,
-        {
-            method: 'DELETE',
-            headers: authHeaders(false)
-        }
-    );
+    const deleteButton = $('deleteBtn');
+    deleteButton.disabled = true;
+    setPageStatus('Deleting person...');
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw new Error(data.message || 'Delete failed.');
-    }
-
-    window.alert(data.message || 'Person deleted.');
-
-    if (data.FamilyTreeCode) {
-        familyTreeCode = data.FamilyTreeCode;
-        sessionStorage.setItem(
-            'familyTreeCode',
-            data.FamilyTreeCode
+    try {
+        const response = await fetch(
+            `${BASE_URL}/familytree/persons/${personID}` +
+            `?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,
+            {
+                method: 'DELETE',
+                headers: authHeaders(false)
+            }
         );
-    } else {
-        sessionStorage.removeItem('familyTreeCode');
-    }
 
-    if (data.treeDeleted || data.treeSplit) {
-        window.location.href = 'FamilyTree.html';
-        return;
-    }
+        const data = await response.json();
 
-    window.location.href = 'FTPersonList.html';
+        if (!response.ok) {
+            throw new Error(data.message || 'Delete failed.');
+        }
+
+        window.alert(data.message || 'Person deleted.');
+
+        /*
+         * Person List now rebuilds its split display from the database. Do not
+         * change the current FamilyTreeCode merely because the deleted/viewed
+         * person belonged to a separated branch.
+         */
+        if (data.treeDeleted) {
+            window.location.replace('FamilyTree.html');
+            return;
+        }
+
+        window.location.replace('FTPersonList.html');
+    } catch (error) {
+        deleteButton.disabled = false;
+        setPageStatus(error.message || 'Delete failed.');
+        throw error;
+    }
 }
 
 

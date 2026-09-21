@@ -136,8 +136,17 @@ async function resolveTreeAlias(c, treeOrCode) {
 }
 
 async function userHasTree(c, treeID, userID) {
+    /*
+     * IsActive identifies the user's CURRENT/default Tree. It is not an
+     * authorization flag. A user may retain access to another separated Tree
+     * while the original Tree remains current.
+     */
     const [rows] = await c.query(
-        'SELECT FamilyTreeUserID FROM FTFamilyTreeUserT WHERE FamilyTreeID=? AND UserID=? AND IsActive=1 LIMIT 1',
+        `SELECT FamilyTreeUserID
+           FROM FTFamilyTreeUserT
+          WHERE FamilyTreeID=?
+            AND UserID=?
+          LIMIT 1`,
         [treeID, userID]
     );
     return !!rows.length;
@@ -700,10 +709,12 @@ async function getPersonTree(c, personID) {
 }
 
 async function adoptTreeForUser(c, userID, targetTree) {
-    const resolvedTarget = await resolveTreeAlias(
-        c,
-        targetTree
-    );
+    /*
+     * ENTER FAMILY CODE / USE THIS TREE changes the user's current Tree only.
+     * It must never merge two Trees. Tree merging is handled exclusively by
+     * the separate One Tree Merge workflow.
+     */
+    const resolvedTarget = await resolveTreeAlias(c, targetTree);
 
     if (!resolvedTarget) {
         const err = new Error('Target Family Tree was not found.');
@@ -712,214 +723,6 @@ async function adoptTreeForUser(c, userID, targetTree) {
     }
 
     targetTree = resolvedTarget.activeTree;
-
-    const [sourceTrees] = await c.query(
-        `SELECT DISTINCT
-            ft.FamilyTreeID,
-            ft.FamilyTreeCode,
-            ft.CreatedAt
-         FROM FTFamilyTreeUserT ftu
-         JOIN FamilyTreeT ft
-           ON ft.FamilyTreeID=ftu.FamilyTreeID
-         WHERE ftu.UserID=?
-           AND ftu.IsActive=1
-           AND ft.FamilyTreeID<>?
-           AND EXISTS (
-               SELECT 1
-               FROM FTFamilyTreePersonT ftp
-               WHERE ftp.FamilyTreeID=ft.FamilyTreeID
-               LIMIT 1
-           )`,
-        [userID, targetTree.FamilyTreeID]
-    );
-
-    for (const source of sourceTrees) {
-        const sourceID = source.FamilyTreeID;
-
-        /*
-         * Preserve every person's original Tree identity while the Tree is
-         * merged into the authoritative target Tree.
-         */
-        await c.query(
-            `INSERT INTO FTFamilyTreePersonT
-             (
-                FamilyTreeID,
-                PersonID,
-                OriginFamilyTreeID,
-                AddedByUserID,
-                AddedAt,
-                Notes
-             )
-             SELECT
-                ?,
-                PersonID,
-                COALESCE(OriginFamilyTreeID, ?),
-                AddedByUserID,
-                AddedAt,
-                Notes
-             FROM FTFamilyTreePersonT
-             WHERE FamilyTreeID=?
-             ON DUPLICATE KEY UPDATE
-                OriginFamilyTreeID=
-                    COALESCE(
-                        OriginFamilyTreeID,
-                        VALUES(OriginFamilyTreeID)
-                    )`,
-            [
-                targetTree.FamilyTreeID,
-                sourceID,
-                sourceID
-            ]
-        );
-
-        await c.query(
-            `INSERT IGNORE INTO FTParentT
-             (
-                FamilyTreeID,
-                PersonID,
-                ParentPersonID,
-                ParentType,
-                AncestrySide,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             )
-             SELECT
-                ?,
-                PersonID,
-                ParentPersonID,
-                ParentType,
-                AncestrySide,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             FROM FTParentT
-             WHERE FamilyTreeID=?`,
-            [targetTree.FamilyTreeID, sourceID]
-        );
-
-        await c.query(
-            `INSERT IGNORE INTO FTPartnerT
-             (
-                FamilyTreeID,
-                PersonID,
-                PartnerPersonID,
-                RelationshipType,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             )
-             SELECT
-                ?,
-                PersonID,
-                PartnerPersonID,
-                RelationshipType,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             FROM FTPartnerT
-             WHERE FamilyTreeID=?`,
-            [targetTree.FamilyTreeID, sourceID]
-        );
-
-        await c.query(
-            `INSERT IGNORE INTO FTSiblingT
-             (
-                FamilyTreeID,
-                PersonID,
-                SiblingPersonID,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             )
-             SELECT
-                ?,
-                PersonID,
-                SiblingPersonID,
-                Notes,
-                CreatedByUserID,
-                CreatedAt,
-                UpdatedByUserID,
-                UpdatedAt
-             FROM FTSiblingT
-             WHERE FamilyTreeID=?`,
-            [targetTree.FamilyTreeID, sourceID]
-        );
-
-        await c.query(
-            `DELETE FROM FTParentT
-             WHERE FamilyTreeID=?`,
-            [sourceID]
-        );
-
-        await c.query(
-            `DELETE FROM FTPartnerT
-             WHERE FamilyTreeID=?`,
-            [sourceID]
-        );
-
-        await c.query(
-            `DELETE FROM FTSiblingT
-             WHERE FamilyTreeID=?`,
-            [sourceID]
-        );
-
-        await c.query(
-            `DELETE FROM FTFamilyTreePersonT
-             WHERE FamilyTreeID=?`,
-            [sourceID]
-        );
-
-        /*
-         * Do NOT delete the old Tree record. It becomes a historical alias
-         * pointing to the currently authoritative Tree.
-         */
-        await c.query(
-            `UPDATE FamilyTreeT
-             SET Status='Merged',
-                 MergedIntoFamilyTreeID=?,
-                 MergedAt=NOW(),
-                 MergedByUserID=?,
-                 LastActivityAt=NOW(),
-                 LastActivityByUserID=?
-             WHERE FamilyTreeID=?`,
-            [
-                targetTree.FamilyTreeID,
-                userID,
-                userID,
-                sourceID
-            ]
-        );
-
-        await c.query(
-            `UPDATE FTFamilyTreeUserT
-             SET IsActive=0,
-                 LastActivityAt=NOW()
-             WHERE FamilyTreeID=?`,
-            [sourceID]
-        );
-
-        await logActivity(
-            c,
-            targetTree.FamilyTreeID,
-            userID,
-            'MERGE',
-            'FamilyTreeT',
-            sourceID,
-            null,
-            `Merged Family Tree ${source.FamilyTreeCode} into ${targetTree.FamilyTreeCode}`
-        );
-    }
 
     await c.query(
         `UPDATE FTFamilyTreeUserT
@@ -1701,53 +1504,25 @@ async function splitTreeIfDisconnected(
     }
 
     /*
-     * If the deleting user originally owned one of the restored Trees,
-     * return that Tree as the user's active Tree. This matches the common
-     * case where a user's newer Tree had been temporarily absorbed into an
-     * older Tree and later becomes independent again.
+     * The original/first-created branch remains the user's current Tree after
+     * a split. The separated Trees stay accessible through their memberships
+     * but are not made current merely because the split occurred.
      */
-    const preferred =
-        restored.find(
-            item =>
-                Number(item.CreatedByUserID) ===
-                Number(userID)
-        ) ||
-        restored.find(() => true) ||
-        null;
+    await c.query(
+        `UPDATE FTFamilyTreeUserT
+         SET IsActive=0
+         WHERE UserID=?`,
+        [userID]
+    );
 
-    if (preferred) {
-        const [[hadMembership]] = await c.query(
-            `SELECT COUNT(*) AS n
-             FROM FTFamilyTreeUserT
-             WHERE FamilyTreeID=?
-               AND UserID=?`,
-            [
-                preferred.FamilyTreeID,
-                userID
-            ]
-        );
-
-        if (Number(hadMembership.n) > 0) {
-            await c.query(
-                `UPDATE FTFamilyTreeUserT
-                 SET IsActive=0
-                 WHERE UserID=?`,
-                [userID]
-            );
-
-            await c.query(
-                `UPDATE FTFamilyTreeUserT
-                 SET IsActive=1,
-                     LastActivityAt=NOW()
-                 WHERE FamilyTreeID=?
-                   AND UserID=?`,
-                [
-                    preferred.FamilyTreeID,
-                    userID
-                ]
-            );
-        }
-    }
+    await c.query(
+        `UPDATE FTFamilyTreeUserT
+         SET IsActive=1,
+             LastActivityAt=NOW()
+         WHERE FamilyTreeID=?
+           AND UserID=?`,
+        [tree.FamilyTreeID, userID]
+    );
 
     return {
         split: true,
@@ -1756,9 +1531,7 @@ async function splitTreeIfDisconnected(
                 item => item.FamilyTreeCode
             ),
         preferredFamilyTreeCode:
-            preferred
-                ? preferred.FamilyTreeCode
-                : tree.FamilyTreeCode
+            tree.FamilyTreeCode
     };
 }
 
@@ -3654,6 +3427,139 @@ router.get('/health', auth, async (req, res) => {
         res.status(500).json({
             message: 'FamilyTree database connection failed: ' + e.message
         });
+    }
+});
+
+/*
+ * Return the user's current Family Tree together with any active separated
+ * branches that share the same original Tree identity. This is derived from
+ * database memberships and OriginFamilyTreeID, so it survives refreshes,
+ * logout/login, and browser session-storage loss.
+ *
+ * Reading this endpoint never changes IsActive and never merges Trees.
+ */
+router.get('/split-view', auth, async (req, res) => {
+    try {
+        const c = await pool.getConnection();
+        try {
+            const [currentRows] = await c.query(
+                `SELECT ft.FamilyTreeID,
+                        ft.FamilyTreeCode,
+                        ft.CreatedAt
+                   FROM FTFamilyTreeUserT ftu
+                   JOIN FamilyTreeT ft
+                     ON ft.FamilyTreeID=ftu.FamilyTreeID
+                  WHERE ftu.UserID=?
+                    AND ftu.IsActive=1
+                    AND ft.Status='Active'
+                    AND ft.MergedIntoFamilyTreeID IS NULL
+                    AND EXISTS (
+                        SELECT 1
+                          FROM FTFamilyTreePersonT ftp
+                         WHERE ftp.FamilyTreeID=ft.FamilyTreeID
+                         LIMIT 1
+                    )
+                  ORDER BY ft.CreatedAt ASC, ft.FamilyTreeID ASC
+                  LIMIT 1`,
+                [req.user.userId]
+            );
+
+            if (!currentRows.length) {
+                return res.json({ trees: [], currentFamilyTreeCode: null });
+            }
+
+            const currentTree = currentRows[0];
+
+            const [originRows] = await c.query(
+                `SELECT DISTINCT
+                        COALESCE(OriginFamilyTreeID, FamilyTreeID) AS OriginFamilyTreeID
+                   FROM FTFamilyTreePersonT
+                  WHERE FamilyTreeID=?`,
+                [currentTree.FamilyTreeID]
+            );
+
+            const originIDs = [...new Set(
+                originRows
+                    .map(row => Number(row.OriginFamilyTreeID))
+                    .filter(Boolean)
+            )];
+
+            if (!originIDs.length) {
+                originIDs.push(Number(currentTree.FamilyTreeID));
+            }
+
+            const placeholders = originIDs.map(() => '?').join(',');
+
+            const [treeRows] = await c.query(
+                `SELECT DISTINCT
+                        ft.FamilyTreeID,
+                        ft.FamilyTreeCode,
+                        ft.CreatedAt,
+                        ftu.IsActive
+                   FROM FTFamilyTreeUserT ftu
+                   JOIN FamilyTreeT ft
+                     ON ft.FamilyTreeID=ftu.FamilyTreeID
+                  WHERE ftu.UserID=?
+                    AND ft.Status='Active'
+                    AND ft.MergedIntoFamilyTreeID IS NULL
+                    AND EXISTS (
+                        SELECT 1
+                          FROM FTFamilyTreePersonT ftp0
+                         WHERE ftp0.FamilyTreeID=ft.FamilyTreeID
+                         LIMIT 1
+                    )
+                    AND (
+                        ft.FamilyTreeID IN (${placeholders})
+                        OR EXISTS (
+                            SELECT 1
+                              FROM FTFamilyTreePersonT ftp1
+                             WHERE ftp1.FamilyTreeID=ft.FamilyTreeID
+                               AND COALESCE(
+                                     ftp1.OriginFamilyTreeID,
+                                     ftp1.FamilyTreeID
+                                   ) IN (${placeholders})
+                             LIMIT 1
+                        )
+                    )
+                  ORDER BY ft.CreatedAt ASC, ft.FamilyTreeID ASC`,
+                [
+                    req.user.userId,
+                    ...originIDs,
+                    ...originIDs
+                ]
+            );
+
+            const trees = [];
+
+            for (const tree of treeRows) {
+                const [persons] = await c.query(
+                    personSelectSql(`
+                        JOIN FTFamilyTreePersonT ftp
+                          ON ftp.PersonID=p.PersonID
+                        WHERE ftp.FamilyTreeID=?
+                    `) + ` ORDER BY p.LastName,p.FirstName,p.MiddleName,p.PersonID`,
+                    [tree.FamilyTreeID]
+                );
+
+                trees.push({
+                    FamilyTreeID: tree.FamilyTreeID,
+                    FamilyTreeCode: tree.FamilyTreeCode,
+                    isCurrent: Number(tree.IsActive) === 1,
+                    persons
+                });
+            }
+
+            res.json({
+                trees,
+                currentFamilyTreeCode: currentTree.FamilyTreeCode,
+                originalFamilyTreeCode:
+                    trees.length ? trees[0].FamilyTreeCode : currentTree.FamilyTreeCode
+            });
+        } finally {
+            c.release();
+        }
+    } catch (e) {
+        res.status(e.status || 500).json({ message: e.message });
     }
 });
 
@@ -6687,7 +6593,7 @@ router.delete('/persons/:id', auth, async (req, res) => {
 
             return {
                 message: splitResult.split
-                    ? `Person deleted. The family connection was removed and the Tree separated. Active code: ${splitResult.preferredFamilyTreeCode}.`
+                    ? `Person deleted. The family connection was removed and the Family Tree separated. The original Family Tree remains ${splitResult.preferredFamilyTreeCode}. Separated Family Tree code${splitResult.restoredCodes.length === 1 ? '' : 's'}: ${splitResult.restoredCodes.join(', ')}. The separated tree can be opened from Person List, by entering its Family Tree Code, or by searching for a person in that tree.`
                     : (
                         globalPersonDeleted
                             ? 'Person deleted.'
