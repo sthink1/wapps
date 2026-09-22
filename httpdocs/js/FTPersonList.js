@@ -19,6 +19,7 @@ let trees = [];
 let currentCode = '';
 let originalCode = '';
 let filterText = '';
+let selectedLetter = '';
 
 function nameOf(person) {
     const given = [
@@ -63,6 +64,22 @@ function personMatchesFilter(person) {
         .join(' ')
         .toLowerCase()
         .includes(filterText);
+}
+
+function personMatchesLetter(person) {
+    if (selectedLetter === 'ALL') return true;
+    if (!selectedLetter) return false;
+
+    const lastName = String(person.LastName || '').trim().toUpperCase();
+    return lastName.startsWith(selectedLetter);
+}
+
+function personShouldDisplay(person) {
+    // Filter List always searches the entire loaded Family Tree view.
+    // While search text is present, the alphabet selection is ignored.
+    if (filterText) return personMatchesFilter(person);
+
+    return personMatchesLetter(person);
 }
 
 async function useTree(familyTreeCode) {
@@ -126,7 +143,7 @@ function renderTreeSections() {
     const host = document.getElementById('treeSections');
 
     host.innerHTML = trees.map((tree, index) => {
-        const filteredPersons = (tree.persons || []).filter(personMatchesFilter);
+        const filteredPersons = (tree.persons || []).filter(personShouldDisplay);
         const isOriginal = tree.FamilyTreeCode === originalCode || index === 0;
         const isCurrent = Boolean(tree.isCurrent);
         const label = trees.length > 1
@@ -151,7 +168,13 @@ function renderTreeSections() {
                     <td>${escapeHtml(tree.FamilyTreeCode)}</td>
                 </tr>
             `).join('')
-            : '<tr><td colspan="6">No persons found.</td></tr>';
+            : `<tr><td colspan="6">${
+                filterText
+                    ? 'No persons found.'
+                    : selectedLetter
+                        ? 'No persons found for this letter.'
+                        : 'Choose a letter or All to display persons.'
+            }</td></tr>`;
 
         return `
             <section class="tree-section">
@@ -237,6 +260,7 @@ async function load() {
 
     if (!trees.length) {
         document.getElementById('treeSections').innerHTML = '';
+        document.getElementById('listSummary').textContent = '';
         document.getElementById('statusMessage').textContent =
             'No current Family Tree was found.';
         document.getElementById('splitNotice').style.display = 'none';
@@ -251,8 +275,9 @@ async function load() {
         0
     );
 
-    document.getElementById('statusMessage').textContent =
+    document.getElementById('listSummary').textContent =
         `${total} person${total === 1 ? '' : 's'} in ${trees.length} Family Tree${trees.length === 1 ? '' : 's'}.`;
+    document.getElementById('statusMessage').textContent = '';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -274,6 +299,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('filterInput').oninput = event => {
         filterText = event.target.value.trim().toLowerCase();
+        renderTreeSections();
+    };
+
+    document.getElementById('letterSelect').onchange = event => {
+        selectedLetter = event.target.value;
+
+        // If Filter List contains text, it continues to control the display
+        // and searches the entire loaded Family Tree view. The selected
+        // letter takes effect again automatically when Filter List is cleared.
         renderTreeSections();
     };
 
