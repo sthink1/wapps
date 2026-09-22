@@ -52,32 +52,6 @@
             box-sizing: border-box;
         }
 
-        .password-field {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 8px 0;
-        }
-
-        .password-field input[type="password"],
-        .password-field input[type="text"] {
-            flex: 1 1 auto;
-            width: auto;
-            margin: 0;
-        }
-
-        .password-toggle {
-            flex: 0 0 auto;
-            width: 72px;
-            margin: 0;
-            padding: 12px 10px;
-            background-color: #607d8b;
-        }
-
-        .password-toggle:hover {
-            background-color: #526d78;
-        }
-
         .notification-box {
             margin: 16px 0;
             padding: 14px;
@@ -148,40 +122,10 @@
             <input type="text" id="username" name="username" required>
 
             <label for="password">Password:</label>
-            <div class="password-field">
-                <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    placeholder="At least 8 characters."
-                    required
-                >
-                <button
-                    type="button"
-                    class="password-toggle"
-                    data-target="password"
-                    aria-label="Show password"
-                    aria-pressed="false"
-                >SHOW</button>
-            </div>
+            <input type="password" id="password" name="password" required>
 
             <label for="confirmPassword">Confirm Password:</label>
-            <div class="password-field">
-                <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    placeholder="At least 8 characters."
-                    required
-                >
-                <button
-                    type="button"
-                    class="password-toggle"
-                    data-target="confirmPassword"
-                    aria-label="Show confirm password"
-                    aria-pressed="false"
-                >SHOW</button>
-            </div>
+            <input type="password" id="confirmPassword" name="confirmPassword" required>
 
             <label for="email">Email:</label>
             <input type="email" id="email" name="email" required>
@@ -257,21 +201,6 @@
         const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080'
             ? 'http://localhost:8080'
             : window.location.origin;
-
-        document.querySelectorAll('.password-toggle').forEach(button => {
-            button.addEventListener('click', () => {
-                const target = document.getElementById(button.dataset.target);
-                const showing = target.type === 'text';
-
-                target.type = showing ? 'password' : 'text';
-                button.textContent = showing ? 'SHOW' : 'HIDE';
-                button.setAttribute('aria-pressed', String(!showing));
-                button.setAttribute(
-                    'aria-label',
-                    `${showing ? 'Show' : 'Hide'} ${target.id === 'confirmPassword' ? 'confirm password' : 'password'}`
-                );
-            });
-        });
 
         document.getElementById('registerForm').addEventListener('submit', function (e) {
             e.preventDefault();

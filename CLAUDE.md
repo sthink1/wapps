@@ -1,6 +1,6 @@
 # CLAUDE.md – WonderfulApps Developer Onboarding Guide
 
-**Last updated:** September 19, 2026  
+**Last updated:** September 22, 2026  
 **Project:** WonderfulApps (WA)  
 **Database ground truth:** `wappsDump.sql`
 
@@ -28,7 +28,7 @@ WonderfulApps is a multi-application web/PWA project built with:
 - **Backend:** Node.js with Express
 - **Database:** MySQL, with production SQL maintained for MySQL 5.5 compatibility
 - **Authentication:** JWT bearer tokens, email verification, and bcrypt password hashing
-- **Subscription / entitlement system:** hierarchical plans, per-application access rules, development entitlements, promo codes, and usage tracking
+- **Subscription / entitlement system:** hierarchical plans, per-application access rules, development entitlements, promo codes, administrator grants, and usage tracking
 - **Notification / consent system:** account, subscription, application, Family Tree, and marketing notification categories; preferences; consent history; suppression; and unsubscribe processing
 - **Database driver:** `mysql2`
 - **Validation:** `express-validator`
@@ -49,6 +49,7 @@ The current WA project includes:
 
 - User registration, login, email verification, and JWT authentication
 - Subscription / entitlement management
+- Administrator subscription control through `SubControl.html`
 - Promotional-code processing
 - Per-application subscription access enforcement
 - Subscription usage tracking
@@ -110,7 +111,7 @@ Current `server.js` mounts the principal routes as follows:
 
 ### Subscription APIs
 
-`routes/subscriptions.js` currently provides:
+`routes/subscriptions.js` currently provides user subscription APIs:
 
 ```text
 GET  /subscriptions/status
@@ -119,13 +120,26 @@ POST /subscriptions/promo
 POST /subscriptions/usage
 ```
 
-All four subscription routes require a valid JWT.
+It also provides administrator-only subscription-control APIs:
+
+```text
+GET    /subscriptions/admin/promos
+POST   /subscriptions/admin/promos
+PUT    /subscriptions/admin/promos/:promoCodeId
+GET    /subscriptions/admin/user/:userId
+GET    /subscriptions/admin/grants
+POST   /subscriptions/admin/grant
+PUT    /subscriptions/admin/grants/:grantId
+DELETE /subscriptions/admin/grants/:grantId
+```
+
+All subscription routes require a valid JWT. The `/admin/...` routes additionally require administrator status.
 
 ---
 
 ## 5. Current Database
 
-The current `wappsDump.sql` is the database ground truth and contains **53 tables**. It already includes the notification/consent schema and the Family Tree Undo One Tree Merge schema.
+The current `wappsDump.sql` is the database ground truth and contains **54 tables**. It includes the notification/consent schema, the Family Tree Undo One Tree Merge schema, and the administrator subscription-grant table.
 
 ### Core user / system tables (4)
 
@@ -136,9 +150,10 @@ UserSequenceT
 TrackUsageT
 ```
 
-### Subscription / entitlement tables (7)
+### Subscription / entitlement tables (8)
 
 ```text
+AdminSubscriptionGrantT
 AppT
 PromoCodeT
 PromoRedemptionT
@@ -223,7 +238,7 @@ FTTreeMergeT
 ### Database rules
 
 - `wappsDump.sql` is the authoritative current schema reference.
-- The current dump already includes all implemented notification/consent and Undo One Tree Merge table changes.
+- The current dump already includes the implemented notification/consent, administrator subscription-grant, and Undo One Tree Merge table changes.
 - Keep SQL compatible with the deployed MySQL 5.5 environment unless the database platform is intentionally changed.
 - Use `utf8mb4`.
 - Respect existing primary keys, unique keys, indexes, and foreign-key rules in `wappsDump.sql`.
@@ -232,6 +247,7 @@ FTTreeMergeT
 - Do not invent or rename database columns without checking every route and frontend consumer.
 - Family Tree relationships and merge/undo behavior are partly application-managed; do not assume SQL foreign keys alone describe all integrity rules.
 - Historical implementation/migration SQL files are not the current database authority when they differ from `wappsDump.sql`.
+- The current `.gitignore` rule `*Dump.sql` intentionally keeps SQL dump files out of normal Git tracking. Replacing `wappsDump.sql` locally therefore may not appear in VS Code Source Control or be pushed to GitHub/Render. Maintain the current dump separately as the schema/reference snapshot.
 
 ---
 
@@ -383,7 +399,50 @@ FILE_UPLOAD
 
 This is separate from the pre-existing `TrackUsageT` / `/track` functionality. Do not merge the two concepts casually; review their current purposes first.
 
-### 6.8 Payment status
+### 6.8 Administrator grants and Sub Control
+
+Administrator-granted free access is stored separately in `AdminSubscriptionGrantT`; it is not written over the user's underlying development-trial or promo entitlement.
+
+`SubControl.html` is the administrator UI for:
+
+- listing, creating, and editing promo codes;
+- looking up a user's subscription status;
+- listing active administrator grants;
+- granting a selected plan through a specified end date;
+- editing an existing grant's plan/end date;
+- revoking a grant without deleting its audit history.
+
+Important rules:
+
+- Administrator grants use the effective access type `ADMIN_GRANT`.
+- A grant may use any current plan, including Diamond.
+- Grant edits may raise or lower the grant plan and extend or shorten its end date.
+- Revocation is a soft revoke: `Active` is cleared and revoke metadata is retained.
+- `getCurrentSubscription()` / effective-subscription calculation considers an active administrator grant separately from the base `UserSubscriptionT` entitlement.
+- When an administrator grant expires or is revoked, the underlying development-trial/promo entitlement can again become effective if it is otherwise valid.
+- Do not collapse `AdminSubscriptionGrantT` into `UserSubscriptionT`; the separation preserves provenance and history.
+
+### 6.9 Current Plans monitoring
+
+The administrator Track Activity page now uses **Current Plans** rather than the former Free Tier label.
+
+Current backend endpoint:
+
+```text
+GET /track/current-plans
+```
+
+The prior endpoint remains temporarily for compatibility:
+
+```text
+GET /track/free-tier-usage
+```
+
+Both are administrator-only. `routes/track.js` currently reports plan/capacity information for FreeSQLdatabase, Resend, Render, and Cloudflare R2, using automatic usage values where available and provider/dashboard values where automatic measurement is unavailable.
+
+Current source data in `routes/track.js` records the FreeSQLdatabase database plan as paid MySQL Full starting at 100 MB and `$21.15/year`. Pricing metadata in this route was reviewed on `2026-09-20`; treat provider pricing as time-sensitive and re-check before changing displayed plan information.
+
+### 6.10 Payment status
 
 Payment subscription processing is **not yet implemented**. `subscription.html` currently states that payment subscriptions will be available later.
 
@@ -524,6 +583,24 @@ Important implementation rules:
 - `moveComponentToTree()` uses the current MySQL-5.5-compatible membership-copy logic; do not reintroduce the earlier self-`INSERT ... SELECT ... ON DUPLICATE KEY UPDATE` ambiguity involving `OriginFamilyTreeID`.
 
 The current Undo workflow was successfully exercised end-to-end during September 2026 testing: a newer Tree was merged into an older Tree, Undo restored the newer Tree's seven-person family structure, and those people were no longer listed in the older Tree.
+
+### Current Tree, separated Tree, and split behavior
+
+Family Tree membership and the user's **current** Tree are intentionally separate concepts.
+
+Current rules in `routes/familyTree.js`:
+
+- `FTFamilyTreeUserT.IsActive=1` identifies the user's current/default Tree; it is **not** the authorization flag for every Tree the user can access.
+- A user may retain membership in a separated Tree while the original Tree remains current.
+- `ENTER FAMILY CODE` / `USE THIS TREE` changes which Tree is current. It must **not** merge Trees.
+- Tree merging is performed only through the dedicated **One Tree Merge** workflow.
+- `POST /familytree/change-tree` ends the current Tree association by deactivating the current membership; it does not delete Family Tree data.
+- When deletion of a connecting/bridge person leaves disconnected components, the original/first-created branch remains the current Tree and other components become or reactivate separated Trees.
+- `GET /familytree/split-view` is read-only. It derives the current Tree plus related separated branches from database memberships and `OriginFamilyTreeID`, so the display survives refresh, logout/login, and loss of browser session storage.
+- Viewing a person in a separated Tree must not by itself change the current Tree.
+- Person List may therefore display more than one related FamilyTreeCode at the same time.
+
+Do not use ordinary navigation or person viewing as a hidden Tree-switch or merge operation.
 
 ### FTSiblingT
 
@@ -767,6 +844,8 @@ wonderfulApp/
 │   ├── login.html
 │   ├── register.html
 │   ├── subscription.html
+│   ├── SubControl.html
+│   ├── track.html
 │   ├── FTAncestor.html
 │   ├── FTPerson.html
 │   └── js/
@@ -815,6 +894,9 @@ Before changing an existing feature:
 - Do not collapse the Budget schema into a generic replacement table.
 - Do not treat explicit Family Tree siblings as if they can always be reconstructed from known parents.
 - Do not lose `FTSiblingT` relationships during Family Tree merge/move/archive work.
+- Do not treat `FTFamilyTreeUserT.IsActive` as the sole authorization test for every Tree membership.
+- Do not make `ENTER FAMILY CODE`, Person List navigation, or person viewing perform an implicit One Tree Merge.
+- Do not overwrite a base `UserSubscriptionT` entitlement when the intended action is a temporary administrator grant.
 - Do not insert raw untrusted strings into executable HTML.
 - Do not sanitize passwords.
 - Do not remove the light-mode compatibility declarations.

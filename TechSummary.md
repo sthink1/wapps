@@ -1,6 +1,6 @@
 # TechSummary.md – WonderfulApps Architecture & Technical Summary
 
-**Last updated:** September 19, 2026  
+**Last updated:** September 22, 2026  
 **Project:** WonderfulApps (WA)  
 **Database reference:** `wappsDump.sql`
 
@@ -21,13 +21,13 @@ The current system includes:
 - Contact/email functionality
 - **A multi-table Budget application**
 - **A multi-table Family Tree application**
-- **A hierarchical Subscription / Entitlement system**
+- **A hierarchical Subscription / Entitlement system with separate administrator grants**
 - **A centralized Notification / Consent system**
 - **Family Tree One Tree Merge with snapshot-based Undo One Tree Merge**
 
-The current `wappsDump.sql` contains **53 tables**, including:
+The current `wappsDump.sql` contains **54 tables**, including:
 
-- **7 subscription / entitlement tables**
+- **8 subscription / entitlement tables**
 - **6 notification / consent tables**
 - **13 Budget tables**
 - **16 Family Tree tables**
@@ -128,7 +128,7 @@ Express server (server.js)
     v
 MySQL
     |
-    +-- 53 current tables
+    +-- 54 current tables
 
 Family Tree image/file workflow may also use:
 Express -> r2Storage.js -> S3-compatible object storage
@@ -165,6 +165,8 @@ HTML responses are configured for revalidation (`no-cache`) so frontend developm
 
 ### Subscription API endpoints
 
+User endpoints:
+
 ```text
 GET  /subscriptions/status
 GET  /subscriptions/access/:appKey
@@ -172,7 +174,20 @@ POST /subscriptions/promo
 POST /subscriptions/usage
 ```
 
-All subscription API endpoints pass through `authenticateToken()`.
+Administrator endpoints:
+
+```text
+GET    /subscriptions/admin/promos
+POST   /subscriptions/admin/promos
+PUT    /subscriptions/admin/promos/:promoCodeId
+GET    /subscriptions/admin/user/:userId
+GET    /subscriptions/admin/grants
+POST   /subscriptions/admin/grant
+PUT    /subscriptions/admin/grants/:grantId
+DELETE /subscriptions/admin/grants/:grantId
+```
+
+All subscription API endpoints pass through `authenticateToken()`. Administrator endpoints additionally pass an administrator check.
 
 ---
 
@@ -189,9 +204,10 @@ UserSequenceT
 TrackUsageT
 ```
 
-### 4.2 Subscription / entitlement (7)
+### 4.2 Subscription / entitlement (8)
 
 ```text
+AdminSubscriptionGrantT
 AppT
 PromoCodeT
 PromoRedemptionT
@@ -275,7 +291,9 @@ FTTreeMergeT
 
 **Total current tables: 53**
 
-`wappsDump.sql` already includes the current notification/consent and Undo One Tree Merge schema changes. Historical implementation or migration dumps are not the current schema authority.
+`wappsDump.sql` already includes the current administrator subscription-grant, notification/consent, and Undo One Tree Merge schema changes. Historical implementation or migration dumps are not the current schema authority.
+
+The current `.gitignore` rule `*Dump.sql` intentionally excludes SQL dump files from normal Git tracking. A newly replaced local `wappsDump.sql` therefore may not appear as a VS Code/Git change and is not automatically propagated to GitHub/Render. The dump remains a local/Drive schema and recovery reference.
 
 ---
 
@@ -443,16 +461,47 @@ Uses
 
 A promo may extend the end date or increase plan level, but should not downgrade a user's existing access.
 
-### 6.7 Admin override
+### 6.7 Admin identity override
 
 `middleware/subscriptionAccess.js` currently recognizes an administrator when:
 
 - `UserID === 1`, or
 - the JWT username matches configured `ADMIN_USERNAME`.
 
-The admin override reports Diamond-equivalent access for subscription evaluation.
+The administrator identity override reports Diamond-equivalent access for subscription evaluation.
 
-### 6.8 Subscription usage
+### 6.8 Administrator subscription grants / Sub Control
+
+`AdminSubscriptionGrantT` is a separate overlay entitlement table. It preserves the user's underlying `UserSubscriptionT` row while allowing an administrator to grant a selected plan through a specified end date.
+
+The administrator UI is `httpdocs/SubControl.html`. Its current functions include promo-code maintenance, user subscription lookup, grant listing, grant creation, grant editing, and soft revocation.
+
+`AdminSubscriptionGrantT` records:
+
+```text
+AdminSubscriptionGrantID
+UserID
+PlanID
+GrantStartDate
+GrantEndDate
+Active
+GrantedByUserID
+CreatedDate
+ModifiedDate
+ModifiedByUserID
+RevokedDate
+RevokedByUserID
+```
+
+Current semantics:
+
+- the effective access type is `ADMIN_GRANT`;
+- any plan, including Diamond, may be granted;
+- edits may change the plan and end date;
+- revocation retains audit metadata rather than deleting the row;
+- expiration/revocation allows an otherwise-valid underlying development/promo entitlement to become effective again.
+
+### 6.9 Subscription usage
 
 `UserUsageT` stores subscription-related events.
 
@@ -469,7 +518,32 @@ FILE_UPLOAD
 
 `UserUsageT` is separate from the pre-existing `TrackUsageT`. Their purposes should remain distinct unless a deliberate redesign is made.
 
-### 6.9 Payment state
+### 6.10 Current Plans monitoring
+
+The administrator Track Activity page now presents **Current Plans** rather than the earlier Free Tier terminology.
+
+Current endpoint:
+
+```text
+GET /track/current-plans
+```
+
+Compatibility endpoint retained for older callers:
+
+```text
+GET /track/free-tier-usage
+```
+
+Both are administrator-only and currently report plan/capacity information for:
+
+- FreeSQLdatabase;
+- Resend;
+- Render;
+- Cloudflare R2.
+
+The FreeSQLdatabase row in current source represents the paid MySQL Full plan starting at 100 MB and `$21.15/year`. The provider-plan constants in `routes/track.js` are marked reviewed on `2026-09-20`; provider pricing/limits are time-sensitive and should be re-verified when updated.
+
+### 6.11 Payment state
 
 Payment processing is not yet implemented. The subscription UI explicitly indicates that payment subscriptions will be available later.
 
@@ -615,6 +689,24 @@ The undo operation is snapshot-based and transactional. Its purpose is to struct
 The current implementation also includes the MySQL-5.5-compatible `moveComponentToTree()` membership-copy fix that avoids the earlier ambiguous `OriginFamilyTreeID` self-insert/update form.
 
 A September 2026 end-to-end test successfully merged a seven-person newer Tree into an older Tree and then restored the newer Tree through Undo; the seven people were present in the restored Tree and absent from the older Tree afterward.
+
+### Current Tree and persistent separated-tree behavior
+
+The Family Tree subsystem distinguishes **membership** from the user's **current/default Tree**.
+
+Current implementation rules:
+
+- `FTFamilyTreeUserT.IsActive=1` identifies the current/default Tree, not the complete authorization set.
+- A user can remain a member of separated Trees while one original Tree stays current.
+- `ENTER FAMILY CODE` / `USE THIS TREE` changes the current Tree only; it does not merge Trees.
+- One Tree Merge is the exclusive merge workflow.
+- `POST /familytree/change-tree` clears the current association without deleting Family Tree data.
+- A delete that disconnects a Tree may create/reactivate separate branches. The original/first-created branch remains current.
+- `GET /familytree/split-view` derives the current Tree and related separated Trees from persisted memberships and `OriginFamilyTreeID`.
+- The split view therefore survives browser refresh, logout/login, and loss of session-storage state.
+- Opening/viewing a person in a separated Tree does not silently change the current Tree.
+
+This behavior is important to both authorization and UI design: Person List may display multiple related FamilyTreeCodes while only one is marked current.
 
 ### Explicit sibling relationships
 
@@ -957,6 +1049,8 @@ wonderfulApp/
 │   ├── login.html
 │   ├── register.html
 │   ├── subscription.html
+│   ├── SubControl.html
+│   ├── track.html
 │   ├── FTAncestor.html
 │   ├── FTPerson.html
 │   └── js/
@@ -984,6 +1078,8 @@ This is intentionally a high-level architecture view rather than a complete inve
 [ ] Use parameterized SQL
 [ ] Use a transaction for multi-write operations
 [ ] Preserve Family Tree sibling/parent/partner integrity where applicable
+[ ] For split/current-tree changes, test refresh and logout/login persistence
+[ ] Confirm viewing a separated Tree does not implicitly switch or merge Trees
 [ ] Preserve input sanitization
 [ ] Preserve safe output rendering
 [ ] Preserve light-mode declarations
@@ -991,7 +1087,7 @@ This is intentionally a high-level architecture view rather than a complete inve
 [ ] Test allowed and denied subscription paths
 [ ] Test expired entitlement behavior where relevant
 [ ] Test promo-code limits/duplicate redemption when promo logic changes
-[ ] Update wappsDump.sql for intentional schema changes
+[ ] Update the local/reference wappsDump.sql for intentional schema changes (SQL dumps are Git-ignored)
 [ ] Update CLAUDE.md / TechSummary.md for architectural changes
 ```
 
@@ -1000,7 +1096,7 @@ This is intentionally a high-level architecture view rather than a complete inve
 ## 20. Current Documentation Principles
 
 1. Current executable code is authoritative for behavior.
-2. `wappsDump.sql` is authoritative for the database schema.
+2. `wappsDump.sql` is authoritative for the database schema; under the current `*Dump.sql` ignore rule it is a local/Drive reference rather than a normal Git-tracked deployment file.
 3. `subscription_schema.sql` documents/creates the subscription subsystem, but does not replace the full SQL dump as database authority.
 4. Subscription access is server-enforced.
 5. Plan hierarchy is data-driven through `SubscriptionPlanT.PlanLevel`.
@@ -1008,12 +1104,14 @@ This is intentionally a high-level architecture view rather than a complete inve
 7. Free development entitlements must be capable of ending globally after development.
 8. Promo redemption is a transactional operation.
 9. Family Tree sibling relationships are first-class data and must survive relationship-sensitive operations.
-10. User ownership remains separate from subscription eligibility.
-11. Frontend sanitization and safe rendering are mandatory defense-in-depth controls.
-12. HTML source remains pretty formatted.
-13. WA currently uses an intentional light visual design.
-14. Native/WebView packaging must preserve the same security rules.
-15. Record major architecture changes in both `CLAUDE.md` and `TechSummary.md`.
+10. Family Tree current/default status (`IsActive`) is distinct from retained membership in separated Trees.
+11. Entering/viewing a separated Tree must not be treated as a merge operation.
+12. User ownership remains separate from subscription eligibility.
+13. Frontend sanitization and safe rendering are mandatory defense-in-depth controls.
+14. HTML source remains pretty formatted.
+15. WA currently uses an intentional light visual design.
+16. Native/WebView packaging must preserve the same security rules.
+17. Record major architecture changes in both `CLAUDE.md` and `TechSummary.md`.
 
 ---
 
