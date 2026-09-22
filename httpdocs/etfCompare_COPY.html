@@ -29,7 +29,6 @@
     .close { float: right; font-size: 24px; cursor: pointer; }
     button { padding: 8px 16px; cursor: pointer; }
     .sorted-column { background-color: #e0f7fa !important; font-weight: bold; }
-    .inventory-symbol { background-color: #fff2a8; font-weight: bold; }
 
     /* Added for Listed date styling */
     .name-cell {
@@ -191,7 +190,7 @@
 
     <table id="allocTable">
       <thead>
-        <tr><th>Symbol</th><th>Name</th><th>Price</th><th>Allocated</th><th>Shares</th><th>Cost</th></tr>
+        <tr><th>Symbol</th><th>Name</th><th>Price</th><th>Shares</th><th>Cost</th></tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -224,24 +223,6 @@
 // ─────────────────────────────────────────────
 // JWT token (unchanged)
 const token = localStorage.getItem('token') || '';
-let inventorySymbols = new Set();
-
-// Load the user's calculated ETF inventory. Inventory is derived from
-// purchases and sales; no separate inventory record is stored.
-async function loadInventorySymbols() {
-  try {
-    const result = await fetchWithAuth('/etf/activity/inventory');
-    const rows = Array.isArray(result.data) ? result.data : [];
-    inventorySymbols = new Set(
-      rows
-        .map(row => String(row.symbol || '').trim().toUpperCase())
-        .filter(Boolean)
-    );
-  } catch (err) {
-    console.warn('Could not load ETF inventory for symbol highlighting:', err);
-    inventorySymbols = new Set();
-  }
-}
 
 // ─────────────────────────────────────────────
 // Helper functions (trading day helpers imported from holidays.js)
@@ -373,7 +354,6 @@ async function loadTables() {
   const cachedData = getCachedData(cat);
   if (cachedData) {
     console.log(`Using cached data for category: ${cat}`);
-    await loadInventorySymbols();
     renderTable('currentTable', cachedData.current, true);
     renderTable('pastTable', cachedData.past, false);
 
@@ -408,7 +388,6 @@ async function loadTables() {
     // Store in per-category cache with TTL
     setCachedData(cat, current, past);
 
-    await loadInventorySymbols();
     renderTable('currentTable', current, true);
     renderTable('pastTable', past, false);
 
@@ -433,11 +412,7 @@ function renderTable(tableId, data, isCurrent) {
     const row = tbody.insertRow();
 
     if (isCurrent) {
-      const symbolCell = row.insertCell();
-      symbolCell.textContent = item.symbol;
-      if (inventorySymbols.has(String(item.symbol || '').trim().toUpperCase())) {
-        symbolCell.classList.add('inventory-symbol');
-      }
+      row.insertCell().textContent = item.symbol;
 
       // Modified Name cell (Change #2)
       const nameCell = row.insertCell();
@@ -472,11 +447,7 @@ function renderTable(tableId, data, isCurrent) {
         addCell(row, display);
       });
     } else {
-      const symbolCell = row.insertCell();
-      symbolCell.textContent = item.symbol;
-      if (inventorySymbols.has(String(item.symbol || '').trim().toUpperCase())) {
-        symbolCell.classList.add('inventory-symbol');
-      }
+      row.insertCell().textContent = item.symbol;
       addCell(row, item.price);
       ['1W','1M','YTD','1Y','3Y','5Y'].forEach(p => {
         const val = item.returns[p];
@@ -536,31 +507,37 @@ function calculateAllocation() {
   const amount = parseFloat(document.getElementById('investAmount').value) || 5000;
   if (amount <= 0) return alert('Enter a positive amount');
 
-  if (!window.selectedInvest || window.selectedInvest.length === 0) {
-    return alert('Select at least one ETF to invest in.');
+  let remaining = amount;
+  const shares = new Array(window.selectedInvest.length).fill(0);
+
+  while (remaining > 0) {
+    let added = false;
+    const minPrice = Math.min(...window.selectedInvest.map(s => s.price).filter(p => p > 0));
+    if (remaining < minPrice) break;
+
+    for (let i = 0; i < window.selectedInvest.length; i++) {
+      const p = window.selectedInvest[i].price;
+      if (p > 0 && remaining >= p) {
+        shares[i]++;
+        remaining -= p;
+        added = true;
+      }
+    }
+    if (!added) break;
   }
 
-  const invalidPrice = window.selectedInvest.find(s => !Number.isFinite(s.price) || s.price <= 0);
-  if (invalidPrice) {
-    return alert(`No valid current price is available for ${invalidPrice.symbol}.`);
-  }
-
-  const allocatedAmount = amount / window.selectedInvest.length;
   const tbody = document.querySelector('#allocTable tbody');
   tbody.innerHTML = '';
   let totalCost = 0;
 
-  window.selectedInvest.forEach(s => {
-    const shares = Math.floor(allocatedAmount / s.price);
-    const cost = shares * s.price;
+  window.selectedInvest.forEach((s, i) => {
+    const cost = shares[i] * s.price;
     totalCost += cost;
-
     const row = tbody.insertRow();
     row.insertCell().textContent = s.symbol;
     row.insertCell().textContent = s.name;
     row.insertCell().textContent = formatNumber(s.price);
-    row.insertCell().textContent = formatNumber(allocatedAmount);
-    row.insertCell().textContent = shares;
+    row.insertCell().textContent = shares[i];
     row.insertCell().textContent = formatNumber(cost);
   });
 

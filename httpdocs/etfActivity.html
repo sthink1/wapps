@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
   <title>ETF Activity</title>
   <style>
@@ -152,7 +153,6 @@
   <div class="nav-buttons">
     <button onclick="showSection('buySection')">Purchase</button>
     <button onclick="showSection('sellSection')">Sale</button>
-    <button onclick="showSection('inventorySection'); loadInventory()">Inventory</button>
     <button onclick="showSection('salesReportSection')">Sales Report</button>
     <button onclick="showSection('transactionSection'); loadTransactions()">Transactions</button>
     <button class="btn-neutral" onclick="goBack()">Back</button>
@@ -1180,6 +1180,13 @@ function escHtml(str) {
 window.onload = async () => {
   await loadCategories('buyCategory');
   await loadCategories('sellCategory');
+
+  // Allow etf.html to open this page directly to the calculated Inventory report.
+  const section = new URLSearchParams(window.location.search).get('section');
+  if (section === 'inventory') {
+    showSection('inventorySection');
+    await loadInventory();
+  }
 };
 
 </script>

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
 <title>ETF</title>
 
@@ -79,12 +80,13 @@ footer {
         <button onclick="goHome()">Home</button>
     </div>
 
-    <div class="app-description">Research and manage Exchange-Traded Fund investments. Select ETF categories, review and compare ETF symbols, and track ETF investment activity, including purchases, sales and holdings.</div>
+    <div class="app-description">Research and manage Exchange-Traded Fund investments. Select ETF categories, review and compare ETF symbols, and track ETF investment activity, including purchases, sales and holdings. Automatically calculate the number of shares to purchase based on an investment amount allocated to the ETFs you want to purchase.</div>
 
     <button onclick="goCategories()">Categories</button>
     <button onclick="goSymbols()">Symbols</button><br>
     <button onclick="goCompare()">Compare</button><br>
     <button onclick="goActivity()">Activity</button><br>
+    <button onclick="goInventory()">Inventory</button><br>
     <button onclick="goETFTest()">ETF Test</button>
 </div>
 
@@ -102,6 +104,7 @@ function goCategories(){ window.location.href="etfCategory.html"; }
 function goSymbols(){ window.location.href="etfSymbol.html"; }
 function goCompare(){ window.location.href="etfCompare.html"; }
 function goActivity(){ window.location.href="etfActivity.html"; }
+function goInventory(){ window.location.href="etfActivity.html?section=inventory"; }
 function goHome(){ window.location.href="home.html"; }
 function goETFTest(){ window.location.href="etfAPItest.html"; }
 </script>
