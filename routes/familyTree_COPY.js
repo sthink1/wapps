@@ -282,8 +282,6 @@ const PERSON_EDIT_FIELDS = [
     ['Gender', 'Gender'],
     ['BirthDate', 'Birth Date'],
     ['BirthPlace', 'Birth Place'],
-    ['CurrentCity', 'Current City'],
-    ['CurrentState', 'Current State'],
     ['Died', 'Died'],
     ['DeathDate', 'Death Date']
 ];
@@ -622,8 +620,6 @@ function personSelectSql(extraWhere = '') {
           p.Gender,
           p.BirthDate,
           p.BirthPlace,
-          p.CurrentCity,
-          p.CurrentState,
           p.Died,
           p.DeathDate,
           (
@@ -1688,8 +1684,6 @@ const ONE_TREE_PERSON_FIELDS = [
     'Gender',
     'BirthDate',
     'BirthPlace',
-    'CurrentCity',
-    'CurrentState',
     'Died',
     'DeathDate'
 ];
@@ -1935,7 +1929,7 @@ async function findGlobalDuplicateCandidates(c, input, options = {}) {
     const [rows] = await c.query(
         `SELECT DISTINCT
             p.PersonID,p.FirstName,p.MiddleName,p.LastName,p.SuffixName,
-            p.NickName,p.MaidenName,p.Gender,p.BirthDate,p.BirthPlace,p.CurrentCity,p.CurrentState,
+            p.NickName,p.MaidenName,p.Gender,p.BirthDate,p.BirthPlace,
             p.Died,p.DeathDate,p.CreatedByUserID,p.CreatedAt,
             ft.FamilyTreeID,ft.FamilyTreeCode,ft.CreatedAt AS FamilyTreeCreatedAt,
             (
@@ -2278,8 +2272,8 @@ async function restorePersonFromSnapshot(c, person) {
     await c.query(
         `INSERT INTO FTPersonT
          (PersonID,FirstName,MiddleName,LastName,SuffixName,NickName,MaidenName,Gender,
-          BirthDate,BirthPlace,CurrentCity,CurrentState,Died,DeathDate,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          BirthDate,BirthPlace,Died,DeathDate,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
             person.PersonID,
             person.FirstName || null,
@@ -2291,8 +2285,6 @@ async function restorePersonFromSnapshot(c, person) {
             person.Gender || null,
             person.BirthDate ? dateOnly(person.BirthDate) : null,
             person.BirthPlace || null,
-            person.CurrentCity || null,
-            person.CurrentState || null,
             Number(person.Died) ? 1 : 0,
             person.DeathDate ? dateOnly(person.DeathDate) : null,
             person.CreatedByUserID,
@@ -2552,12 +2544,12 @@ async function safelyRevertSurvivingPersonFields(c, personMergeRow, userID) {
     await c.query(
         `UPDATE FTPersonT
          SET FirstName=?,MiddleName=?,LastName=?,SuffixName=?,NickName=?,MaidenName=?,
-             Gender=?,BirthDate=?,BirthPlace=?,CurrentCity=?,CurrentState=?,Died=?,DeathDate=?,UpdatedByUserID=?,UpdatedAt=NOW()
+             Gender=?,BirthDate=?,BirthPlace=?,Died=?,DeathDate=?,UpdatedByUserID=?,UpdatedAt=NOW()
          WHERE PersonID=?`,
         [
             next.FirstName || null,next.MiddleName || null,next.LastName || null,
             next.SuffixName || null,next.NickName || null,next.MaidenName || null,
-            next.Gender || null,next.BirthDate || null,next.BirthPlace || null,next.CurrentCity || null,next.CurrentState || null,
+            next.Gender || null,next.BirthDate || null,next.BirthPlace || null,
             Number(next.Died) ? 1 : 0,next.DeathDate || null,userID,
             personMergeRow.SurvivingPersonID
         ]
@@ -2954,7 +2946,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
     await c.query(
         `UPDATE FTPersonT
          SET FirstName=?,MiddleName=?,LastName=?,SuffixName=?,NickName=?,MaidenName=?,
-             Gender=?,BirthDate=?,BirthPlace=?,CurrentCity=?,CurrentState=?,Died=?,DeathDate=?,UpdatedByUserID=?,UpdatedAt=NOW()
+             Gender=?,BirthDate=?,BirthPlace=?,Died=?,DeathDate=?,UpdatedByUserID=?,UpdatedAt=NOW()
          WHERE PersonID=?`,
         [
             update.FirstName || null,
@@ -2966,8 +2958,6 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
             update.Gender || null,
             update.BirthDate || null,
             update.BirthPlace || null,
-            update.CurrentCity || null,
-            update.CurrentState || null,
             Number(update.Died) ? 1 : 0,
             update.DeathDate || null,
             userID,
@@ -3711,8 +3701,6 @@ router.post('/persons', auth, async (req, res) => {
                     Gender,
                     BirthDate,
                     BirthPlace,
-                    CurrentCity,
-                    CurrentState,
                     Died,
                     DeathDate,
                     CreatedByUserID,
@@ -3720,7 +3708,7 @@ router.post('/persons', auth, async (req, res) => {
                     UpdatedByUserID,
                     UpdatedAt
                  )
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, ?,NOW(),NULL,NULL)`,
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?, ?,NOW(),NULL,NULL)`,
                 [
                     b.FirstName || null,
                     b.MiddleName || null,
@@ -3731,8 +3719,6 @@ router.post('/persons', auth, async (req, res) => {
                     b.Gender || null,
                     b.BirthDate || null,
                     b.BirthPlace || null,
-                    b.CurrentCity || null,
-                    b.CurrentState || null,
                     b.Died ? 1 : 0,
                     b.DeathDate || null,
                     userID
@@ -3913,8 +3899,6 @@ router.put('/persons/:id', auth, async (req, res) => {
                      Gender=?,
                      BirthDate=?,
                      BirthPlace=?,
-                     CurrentCity=?,
-                     CurrentState=?,
                      Died=?,
                      DeathDate=?,
                      UpdatedByUserID=?,
@@ -3930,8 +3914,6 @@ router.put('/persons/:id', auth, async (req, res) => {
                     b.Gender || null,
                     b.BirthDate || null,
                     b.BirthPlace || null,
-                    b.CurrentCity || null,
-                    b.CurrentState || null,
                     b.Died ? 1 : 0,
                     b.Died
                         ? (b.DeathDate || null)
@@ -4050,8 +4032,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                     p.Gender,
                     p.BirthDate,
                     p.DeathDate,
-                    p.CurrentCity,
-                    p.CurrentState,
                     (
                         SELECT i.StorageKey
                           FROM FTImageT i
@@ -4177,15 +4157,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
             const paternalGrandfatherID = fatherID
                 ? parentIDFor(fatherID, 'Father')
                 : null;
-
-            const maternalGrandmotherMotherID = maternalGrandmotherID ? parentIDFor(maternalGrandmotherID, 'Mother') : null;
-            const maternalGrandmotherFatherID = maternalGrandmotherID ? parentIDFor(maternalGrandmotherID, 'Father') : null;
-            const maternalGrandfatherMotherID = maternalGrandfatherID ? parentIDFor(maternalGrandfatherID, 'Mother') : null;
-            const maternalGrandfatherFatherID = maternalGrandfatherID ? parentIDFor(maternalGrandfatherID, 'Father') : null;
-            const paternalGrandmotherMotherID = paternalGrandmotherID ? parentIDFor(paternalGrandmotherID, 'Mother') : null;
-            const paternalGrandmotherFatherID = paternalGrandmotherID ? parentIDFor(paternalGrandmotherID, 'Father') : null;
-            const paternalGrandfatherMotherID = paternalGrandfatherID ? parentIDFor(paternalGrandfatherID, 'Mother') : null;
-            const paternalGrandfatherFatherID = paternalGrandfatherID ? parentIDFor(paternalGrandfatherID, 'Father') : null;
 
             const childIDs = uniqueIDs(
                 [...(childrenByParent.get(id) || [])]
@@ -4321,14 +4292,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 signedMaternalGrandfather,
                 signedPaternalGrandmother,
                 signedPaternalGrandfather,
-                signedMaternalGrandmotherMother,
-                signedMaternalGrandmotherFather,
-                signedMaternalGrandfatherMother,
-                signedMaternalGrandfatherFather,
-                signedPaternalGrandmotherMother,
-                signedPaternalGrandmotherFather,
-                signedPaternalGrandfatherMother,
-                signedPaternalGrandfatherFather,
                 signedSiblings,
                 signedPartners,
                 signedChildren,
@@ -4343,14 +4306,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 signedPerson(personByID.get(maternalGrandfatherID)),
                 signedPerson(personByID.get(paternalGrandmotherID)),
                 signedPerson(personByID.get(paternalGrandfatherID)),
-                signedPerson(personByID.get(maternalGrandmotherMotherID)),
-                signedPerson(personByID.get(maternalGrandmotherFatherID)),
-                signedPerson(personByID.get(maternalGrandfatherMotherID)),
-                signedPerson(personByID.get(maternalGrandfatherFatherID)),
-                signedPerson(personByID.get(paternalGrandmotherMotherID)),
-                signedPerson(personByID.get(paternalGrandmotherFatherID)),
-                signedPerson(personByID.get(paternalGrandfatherMotherID)),
-                signedPerson(personByID.get(paternalGrandfatherFatherID)),
                 signedPeople(peopleForIDs([...siblingIDs])),
                 signedPeople(peopleForIDs(partnerIDs)),
                 signedPeople(peopleForIDs(childIDs)),
@@ -4369,14 +4324,6 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                 maternalGrandfather: signedMaternalGrandfather,
                 paternalGrandmother: signedPaternalGrandmother,
                 paternalGrandfather: signedPaternalGrandfather,
-                maternalGrandmotherMother: signedMaternalGrandmotherMother,
-                maternalGrandmotherFather: signedMaternalGrandmotherFather,
-                maternalGrandfatherMother: signedMaternalGrandfatherMother,
-                maternalGrandfatherFather: signedMaternalGrandfatherFather,
-                paternalGrandmotherMother: signedPaternalGrandmotherMother,
-                paternalGrandmotherFather: signedPaternalGrandmotherFather,
-                paternalGrandfatherMother: signedPaternalGrandfatherMother,
-                paternalGrandfatherFather: signedPaternalGrandfatherFather,
                 siblings: signedSiblings,
                 partners: signedPartners,
                 children: signedChildren,
@@ -4686,9 +4633,9 @@ router.post('/related-person', auth, async (req, res) => {
 
             const [personResult] = await c.query(
                 `INSERT INTO FTPersonT
-                 (FirstName,MiddleName,LastName,SuffixName,NickName,MaidenName,Gender,BirthDate,BirthPlace,CurrentCity,CurrentState,Died,DeathDate,
+                 (FirstName,MiddleName,LastName,SuffixName,NickName,MaidenName,Gender,BirthDate,BirthPlace,Died,DeathDate,
                   CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NULL,NULL)`,
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NULL,NULL)`,
                 [
                     b.FirstName || null,
                     b.MiddleName || null,
@@ -4699,8 +4646,6 @@ router.post('/related-person', auth, async (req, res) => {
                     b.Gender || null,
                     b.BirthDate || null,
                     b.BirthPlace || null,
-                    b.CurrentCity || null,
-                    b.CurrentState || null,
                     b.Died ? 1 : 0,
                     b.Died ? (b.DeathDate || null) : null,
                     userID

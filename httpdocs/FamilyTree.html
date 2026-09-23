@@ -1,382 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="color-scheme" content="only light">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Wonderful Apps - Family Tree</title>
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" href="/favicon.ico">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.14/purify.min.js"></script>
-  <script src="js/inputSanitizer.js?v=20260914-1"></script>
-
-  <style>
-    :root {
-      color-scheme: only light;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background: #f4f4f4;
-      padding: 18px 10px 58px;
-    }
-
-    .shell {
-      width: min(1000px, 100%);
-      margin: auto;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px #0002;
-      overflow: hidden;
-    }
-
-    header {
-      text-align: center;
-      padding: 16px;
-    }
-
-    .btn,
-    button {
-      border: 0;
-      border-radius: 4px;
-      background: #4CAF50;
-      color: #fff;
-      padding: 10px 16px;
-      font-size: 15px;
-      cursor: pointer;
-      text-decoration: none;
-    }
-
-    .secondary {
-      background: #777 !important;
-    }
-
-    .bio-notice {
-      background: #fff3cd;
-      border: 3px solid #b7791f;
-      color: #5f4300;
-      font-size: 17px;
-      font-weight: bold;
-      line-height: 1.4;
-      text-align: center;
-    }
-
-    .bio-notice p {
-      margin: 0;
-    }
-
-    .bio-notice p + p {
-      margin-top: 4px;
-    }
-
-    .menu {
-      max-width: 430px;
-      margin: auto;
-      display: grid;
-      gap: 12px;
-    }
-
-    .menu button {
-      width: 100%;
-      font-size: 17px;
-      padding: 12px;
-    }
-
-    .menu-row {
-      position: relative;
-    }
-
-    .menu-row .menu-main-btn {
-      padding-left: 46px;
-      padding-right: 46px;
-    }
-
-    .menu-info-btn {
-      position: absolute;
-      top: 50%;
-      right: 8px;
-      transform: translateY(-50%);
-      width: 30px !important;
-      height: 30px;
-      padding: 0 !important;
-      border: 2px solid #08164f;
-      border-radius: 50%;
-      background: #fff !important;
-      color: #08164f !important;
-      font: bold 20px/25px Georgia, "Times New Roman", serif !important;
-      z-index: 2;
-    }
-
-    .menu-info-btn:hover,
-    .menu-info-btn:focus {
-      background: #f1f3ff !important;
-      outline: 2px solid #08164f;
-      outline-offset: 1px;
-    }
-
-    .info-modal-box {
-      width: min(520px, 100%);
-      text-align: center;
-    }
-
-    #menuInfoDescription {
-      text-align: left;
-      line-height: 1.5;
-      color: #333;
-    }
-
-    main {
-      background: aqua;
-      padding: 18px;
-      min-height: 380px;
-    }
-
-    .card {
-      background: #fff;
-      padding: 16px;
-      border-radius: 7px;
-      margin-bottom: 14px;
-    }
-
-    .center {
-      text-align: center;
-    }
-
-    code {
-      font-size: 18px;
-      background: #eee;
-      padding: 5px 9px;
-      border-radius: 4px;
-    }
-
-    .status {
-      min-height: 22px;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-
-    .error {
-      color: #900;
-    }
-
-    .success {
-      color: #075f07;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: #0007;
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
-    }
-
-    .modal.show {
-      display: flex;
-    }
-
-    .modal-box {
-      background: #fff;
-      width: min(760px, 100%);
-      max-height: 88vh;
-      overflow: auto;
-      padding: 18px;
-      border-radius: 7px;
-    }
-
-    input {
-      width: 100%;
-      padding: 9px;
-      border: 1px solid #aaa;
-      font-size: 15px;
-    }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    th,
-    td {
-      border: 1px solid #ccc;
-      padding: 7px;
-      text-align: left;
-    }
-
-    th {
-      background: #eee;
-    }
-
-    footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      background: #ddd;
-      padding: 6px;
-      text-align: center;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="only light">
+    <title>Wonderful Apps - Family Tree Instructions</title>
+    <style>
+        :root { color-scheme: only light; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; padding: 18px 10px 58px; color: #222; }
+        .shell { width: min(1000px, 100%); margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px #0002; overflow: hidden; }
+        header { text-align: center; padding: 18px; }
+        .welcome { margin: 0 0 14px; font-size: 32px; }
+        .nav { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        button,.btn { border: 0; border-radius: 4px; background: #4CAF50; color: #fff; padding: 10px 16px; font-size: 15px; cursor: pointer; text-decoration: none; }
+        .secondary { background: #777; }
+        main { background: aqua; padding: 18px; min-height: 500px; }
+        .card { background: #fff; padding: 16px; border-radius: 7px; margin-bottom: 14px; }
+        .app-description { background: #fff3cd; border: 3px solid #b7791f; color: #5f4300; font-size: 17px; font-weight: bold; line-height: 1.4; text-align: center; }
+        .instruction-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+        .icon-btn { width: 46px; height: 46px; padding: 4px; border: 1px solid #8ba5c7; display: inline-flex; align-items: center; justify-content: center; }
+        .icon-btn img { width: 34px; height: 34px; }
+        .person-btn { background: #d9efff; }
+        .tree-btn { background: #ddf7b8; border-color: #63a52e; }
+        .menu-grid { max-width: 470px; display: grid; gap: 9px; }
+        .menu-grid button { width: 100%; font-size: 16px; }
+        .code-button { background: #eef1f5; color: #111; border: 1px solid #777; font-family: Consolas, monospace; }
+        .modal { display:none; position:fixed; inset:0; z-index:3000; background:#0008; align-items:center; justify-content:center; padding:12px; }
+        .modal.show { display:flex; }
+        .modal-box { width:min(820px,100%); max-height:90vh; overflow:auto; background:white; border-radius:8px; padding:18px; }
+        .modal-box h2 { text-align:center; margin-top:0; }
+        .modal-box p,.modal-box li { line-height:1.5; }
+        .sample { border:1px solid #aaa; background:#f8fbfd; padding:12px; margin:12px 0; overflow:auto; }
+        .mini-tree { min-width:620px; text-align:center; }
+        .mini-row { display:flex; justify-content:center; gap:12px; margin:9px 0; }
+        .mini-card { width:112px; border:1px solid #aaa; background:white; padding:5px; font-size:11px; }
+        .mini-card img { width:58px; height:72px; object-fit:contain; }
+        .mini-icons img { width:21px; height:21px; margin:2px; }
+        .mini-person { display:grid; grid-template-columns:95px 1fr; gap:10px; max-width:500px; margin:auto; text-align:left; }
+        .mini-person img.photo { width:90px; height:112px; object-fit:contain; }
+        .flow { display:grid; gap:6px; justify-content:center; text-align:center; font-weight:bold; }
+        .flow-box { border:1px solid #888; background:#eef4fb; padding:7px 10px; min-width:220px; }
+        .flow-arrow { font-size:20px; }
+        .close-row { text-align:center; margin-top:14px; }
+        footer { position:fixed; bottom:0; left:0; width:100%; background:#ddd; padding:6px; text-align:center; }
+        @media(max-width:620px){ .welcome{font-size:27px;} }
+    </style>
 </head>
-
 <body>
-  <div class="shell">
+<div class="shell">
     <header>
-      <h1>FAMILY TREE</h1>
-      <a class="btn secondary" href="home.html">HOME</a>
-    </header>
-
-    <main>
-      <section class="card center">
-        <strong>Current FamilyTreeCode:</strong>
-        <code id="familyTreeCodeDisplay">None associated</code>
-      </section>
-
-      <section class="card bio-notice app-description">
-        <p>
-          FamilyTree records biological family relationships only. Parents, children, siblings and ancestry shown in
-          FamilyTree are biological relationships. Adoptive, step and other non-biological parent-child relationships
-          are not included.
-        </p>
-        <p>
-          If only we had a record of our Parents, Grandparents and Great Grandparents IN THEIR OWN WORDS. This Family
-          Tree gives you the ability to record who you are and what you did for your future Children, Grandchildren and
-          Great Grandchildren to find out about you, IN YOUR OWN WORDS.
-        </p>
-      </section>
-
-      <section class="card">
-        <div class="menu">
-          <div class="menu-row">
-            <button class="menu-main-btn" data-page="FTPersonNew.html">NEW PERSON</button>
-            <button class="menu-info-btn" type="button" data-title="New Person" data-description="Add a new person to the current family tree. After the person is created, additional family relationships, events, contacts, pictures, and other information can be added." aria-label="Information about New Person" title="Information about New Person">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn" id="personListBtn">PERSON LIST</button>
-            <button class="menu-info-btn" type="button" data-title="Person List" data-description="Display the people in the current family tree. Select a person from the list to view or work with that person's information. Use Filter List to search the list." aria-label="Information about Person List" title="Information about Person List">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn" id="enterCodeBtn">ENTER FAMILY CODE</button>
-            <button class="menu-info-btn" type="button" data-title="Enter Family Code" data-description="Enter a Family Code to open and work with an existing family tree." aria-label="Information about Enter Family Code" title="Information about Enter Family Code">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn" id="searchPersonBtn">SEARCH FOR PERSON</button>
-            <button class="menu-info-btn" type="button" data-title="Search for Person" data-description="Search for a person by name, birth date, or birth place. Select a matching person by choosing Use This Tree." aria-label="Information about Search for Person" title="Information about Search for Person">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn secondary" id="changeTreeBtn" type="button">CHANGE TREE</button>
-            <button class="menu-info-btn" type="button" data-title="Change Tree" data-description="End your current family tree association so you can enter another Family Code or start a new tree. This does not delete people or family tree information." aria-label="Information about Change Tree" title="Information about Change Tree">i</button>
-          </div>
-
-          <div class="menu-row">
-            <button class="menu-main-btn secondary" id="undoMergeBtn" type="button">UNDO ONE TREE MERGE</button>
-            <button class="menu-info-btn" type="button" data-title="Undo One Tree Merge" data-description="Undo the most recent family tree merge and restore the two family trees to their separate state. Use this only when the most recent merge needs to be reversed." aria-label="Information about Undo One Tree Merge" title="Information about Undo One Tree Merge">i</button>
-          </div>
+        <h1 class="welcome">Welcome to Family Tree</h1>
+        <div class="nav">
+            <a class="btn secondary" href="home.html">HOME</a>
+            <a class="btn" href="FamilyTree2.html">PROCEED TO FAMILY TREE</a>
         </div>
-        <div id="statusMessage" class="status"></div>
-      </section>
+    </header>
+    <main>
+        <section class="card app-description">
+            <p>FamilyTree records biological family relationships only. Parents, children, siblings and ancestry shown in FamilyTree are biological relationships. Adoptive, step and other non-biological parent-child relationships are not included.</p>
+            <p>If only we had a record of our Parents, Grandparents and Great Grandparents IN THEIR OWN WORDS. This Family Tree gives you the ability to record who you are and what you did for your future Children, Grandchildren and Great Grandchildren to find out about you, IN YOUR OWN WORDS.</p>
+        </section>
+        <section class="card">
+            <h2>Instructions</h2>
+            <p>Review these instructions to learn how to navigate Family Tree and the Ancestor Tree.</p>
+            <div class="instruction-row">
+                <button class="icon-btn tree-btn" id="treeInstructionsBtn" type="button" aria-label="Tree instructions" title="Tree instructions"><img src="images/tree.svg" alt=""></button>
+                <span>Click Tree button for instructions.</span>
+            </div>
+            <div class="instruction-row">
+                <button class="icon-btn person-btn" id="personInstructionsBtn" type="button" aria-label="Person instructions" title="Person instructions"><img src="images/person.svg" alt=""></button>
+                <span>Click Person button for instructions.</span>
+            </div>
+        </section>
+        <section class="card">
+            <h2>Family Tree Menu Buttons</h2>
+            <p><b>Click each button for instructions.</b></p>
+            <div class="menu-grid" id="menuInstructionButtons">
+                <button type="button" data-key="newPerson">NEW PERSON</button>
+                <button type="button" data-key="personList">PERSON LIST</button>
+                <button type="button" data-key="enterCode">ENTER FAMILY CODE</button>
+                <button type="button" data-key="searchPerson">SEARCH FOR PERSON</button>
+                <button type="button" class="secondary" data-key="changeTree">CHANGE TREE</button>
+                <button type="button" class="secondary" data-key="undoMerge">UNDO ONE TREE MERGE</button>
+            </div>
+        </section>
+        <section class="card">
+            <h2>Current Family Tree Code</h2>
+            <div class="instruction-row">
+                <button id="currentCodeBtn" class="code-button" type="button">None associated</button>
+                <span>Click button for instructions.</span>
+            </div>
+        </section>
     </main>
-  </div>
+</div>
 
-  <div id="codeModal" class="modal">
+<div id="infoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
     <div class="modal-box">
-      <h2>ENTER FAMILY CODE</h2>
-      <input id="codeInput" placeholder="Example: FT-SX8HGEHR">
-      <div class="actions">
-        <button id="codeSubmit">ENTER TREE</button>
-        <button class="secondary" data-close="codeModal">CANCEL</button>
-      </div>
-      <div id="codeStatus" class="status"></div>
+        <h2 id="infoTitle"></h2>
+        <div id="infoBody"></div>
+        <div class="close-row"><button class="secondary" id="infoClose" type="button">CLOSE</button></div>
     </div>
-  </div>
-
-  <div id="searchModal" class="modal">
-    <div class="modal-box">
-      <h2>SEARCH FOR PERSON</h2>
-      <input id="searchInput" placeholder="Name, birth date, or birth place">
-      <div class="actions">
-        <button id="searchSubmit">SEARCH</button>
-        <button class="secondary" data-close="searchModal">CANCEL</button>
-      </div>
-      <div id="searchStatus" class="status"></div>
-      <div style="overflow: auto;">
-        <table id="searchTable" style="display: none;">
-          <thead>
-            <tr>
-              <th>PersonID</th>
-              <th>Name</th>
-              <th>Birth Date</th>
-              <th>Birth Place</th>
-              <th>FamilyTreeCode</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="searchBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div id="menuInfoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="menuInfoTitle">
-    <div class="modal-box info-modal-box">
-      <h2 id="menuInfoTitle">Family Tree Information</h2>
-      <p id="menuInfoDescription"></p>
-      <div class="actions" style="justify-content: center;">
-        <button id="menuInfoClose" class="secondary" type="button">CLOSE</button>
-      </div>
-    </div>
-  </div>
-
-  <footer>
-    Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
-  </footer>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const modal = document.getElementById('menuInfoModal');
-      const title = document.getElementById('menuInfoTitle');
-      const description = document.getElementById('menuInfoDescription');
-      const closeButton = document.getElementById('menuInfoClose');
-
-      document.querySelectorAll('.menu-info-btn').forEach(button => {
-        button.addEventListener('click', event => {
-          event.preventDefault();
-          event.stopPropagation();
-          title.textContent = button.dataset.title || 'Family Tree Information';
-          description.textContent = button.dataset.description || '';
-          modal.classList.add('show');
-        });
-      });
-
-      closeButton.addEventListener('click', () => modal.classList.remove('show'));
-      modal.addEventListener('click', event => {
-        if (event.target === modal) modal.classList.remove('show');
-      });
-      document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') modal.classList.remove('show');
-      });
-    });
-  </script>
-
-  <script src="js/FamilyTreePage.js?v=20260908-1"></script>
+</div>
+<footer>Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr</footer>
+<script src="js/FTInstructions.js?v=20260923-1"></script>
+<script>
+const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+const modal=document.getElementById('infoModal'), title=document.getElementById('infoTitle'), body=document.getElementById('infoBody');
+function showModal(t,html){title.textContent=t;body.innerHTML=html;modal.classList.add('show');}
+function iconPair(){return '<span class="mini-icons"><img src="images/person.svg" alt="Person"><img src="images/tree.svg" alt="Tree"></span>';}
+function sampleCard(name,years,home){return `<div class="mini-card"><img src="images/person-placeholder.svg" alt=""><div><b>${name}</b></div><div>${years}</div><div>${home}</div>${iconPair()}</div>`;}
+document.getElementById('treeInstructionsBtn').onclick=()=>showModal('Tree Button Instructions',`
+<div class="sample mini-tree"><div class="mini-row">${sampleCard('Great Grandparent','1890–1971','Boston, MA')}${sampleCard('Great Grandparent','1894–1980','Albany, NY')}${sampleCard('Great Grandparent','1896–1979','Buffalo, NY')}${sampleCard('Great Grandparent','1900–1988','Erie, PA')}</div><div class="mini-row">${sampleCard('Grandparent','1918–1999','Orlando, FL')}${sampleCard('Grandparent','1920–2001','Tampa, FL')}</div><div class="mini-row">${sampleCard('Parent','1942–Living','Orlando, FL')}</div><div class="mini-row">${sampleCard('Focus Person','1968–Living','Orlando, FL')}</div></div>
+<p>The person at the bottom of the Ancestor Tree is the <b>focus person</b>. Biological parents appear above that person, grandparents above the parents, and great-grandparents at the top.</p>
+<ul><li>Click the <b>Person</b> symbol for any displayed person to open that person's detailed Person page.</li><li>Click the <b>Tree</b> symbol for any displayed person to make that person the new focus person. The tree is then redrawn to show that person's biological ancestors.</li><li>You can continue clicking Tree symbols to move backward through different branches of the family.</li></ul>`);
+document.getElementById('personInstructionsBtn').onclick=()=>showModal('Person Button Instructions',`
+<div class="sample"><div class="mini-person"><img class="photo" src="images/person-placeholder.svg" alt=""><div><b>PERSON ${iconPair()}</b><p>Name: Sample Person</p><p>Birth Place: Orlando, Florida</p><p>Current Home: Orlando, FL</p><p>Contact and Life Event controls appear with the Person information.</p></div></div><hr><b>BIOLOGICAL PARENTS</b><p>${iconPair()} &nbsp; Female &nbsp; 78 &nbsp; Sample Parent</p><b>BIOLOGICAL SIBLINGS</b><p>${iconPair()} &nbsp; Male &nbsp; 52 &nbsp; Sample Sibling</p></div>
+<p>The Person page contains the detailed information recorded for one person, including biological parents, siblings, partners, biological children, pictures, contact information, and life events.</p>
+<ul><li>Click <b>Person</b> to see information <b>about the person</b>.</li><li>Click <b>Tree</b> to see that person's <b>ancestor tree</b>.</li></ul>`);
+const samples={newPerson:'The New Person page first records the Person information and checks for possible duplicates. After the Person is saved, Part 2 is used for biological family relationships, Profile Picture, Contact Info, and Life Events.',personList:'The Person List shows the people associated with the current Family Tree and provides access to individual Person pages.',enterCode:'Enter a Family Tree Code such as FT-PE9YU5VH to make that existing Family Tree the current tree.',searchPerson:'Search for an existing person. USE THIS TREE changes the current tree; it is different from USE THIS PERSON during duplicate review.',changeTree:'Change Tree ends only your current association with the present tree. It does not delete the Family Tree or its information.',undoMerge:'Undo One Tree Merge is for reversing the most recent eligible One Tree merge when that merge was made in error.'};
+document.querySelectorAll('#menuInstructionButtons [data-key]').forEach(btn=>btn.onclick=()=>{const item=window.FT_INSTRUCTIONS[btn.dataset.key];showModal(item.title,`<p>${item.description}</p><div class="sample"><h3>${item.title}</h3><p>${samples[btn.dataset.key]||''}</p></div>`);});
+document.getElementById('currentCodeBtn').onclick=()=>showModal('Family Tree Code Instructions',`
+<div class="sample"><div class="flow"><div class="flow-box">NEW PERSON</div><div class="flow-arrow">↓</div><div class="flow-box">DUPLICATE SEARCH</div><div class="flow-arrow">↓</div><div class="flow-box">No Match → Create Person<br>Match Found → USE THIS PERSON</div><div class="flow-arrow">↓</div><div class="flow-box">Same Tree or ONE TREE REVIEW</div><div class="flow-arrow">↓</div><div class="flow-box">RESULTING CURRENT FAMILY TREE</div></div></div>
+<p>When you create your first Person and you are not already working in a Family Tree, Wonderful Apps creates a new Family Tree Code. The code identifies the family tree containing that Person and the biological family relationships connected to that tree.</p>
+<p>Before a new Person is created, Wonderful Apps searches the Family Tree database for possible duplicates. <b>USE THIS PERSON</b> means use the existing Person record rather than create a second record for the same individual. If the existing Person belongs to another Family Tree, the <b>One Tree Method</b> may require review before the connected information is combined into one tree. The current Family Tree Code may then change to the resulting tree code.</p>
+<p><b>SEARCH FOR PERSON / USE THIS TREE</b> is different: it intentionally makes another person's existing Family Tree your current tree.</p>
+<p><b>CHANGE TREE</b> ends your current tree association so you can enter another code, search for a person in another tree, or begin a new tree. It does not delete Family Tree information.</p>
+<p><b>UNDO ONE TREE MERGE</b> reverses the most recent eligible One Tree merge and restores the two trees that existed before that merge.</p>`);
+document.getElementById('infoClose').onclick=()=>modal.classList.remove('show'); modal.onclick=e=>{if(e.target===modal)modal.classList.remove('show')}; document.addEventListener('keydown',e=>{if(e.key==='Escape')modal.classList.remove('show')});
+(async()=>{const token=localStorage.getItem('token');if(!token)return;try{const r=await fetch(`${BASE_URL}/familytree/current-tree`,{headers:{Authorization:`Bearer ${token}`}});const d=await r.json();if(r.ok&&d.tree&&d.tree.FamilyTreeCode)document.getElementById('currentCodeBtn').textContent=d.tree.FamilyTreeCode;}catch(_){}})();
+</script>
 </body>
 </html>

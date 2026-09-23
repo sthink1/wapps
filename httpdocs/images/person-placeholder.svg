@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 190" role="img" aria-label="Person picture not entered">
+  <rect x="2" y="2" width="146" height="186" rx="10" fill="#ffffff" stroke="#b7d3ef" stroke-width="4"/>
+  <rect x="12" y="12" width="126" height="150" rx="6" fill="#deefff"/>
+  <circle cx="75" cy="65" r="29" fill="#86abd3"/>
+  <path d="M30 153c0-31 20-54 45-54s45 23 45 54z" fill="#86abd3"/>
+</svg>

@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="color-scheme" content="only light">
+    <title>Wonderful Apps - Home</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <style>
+        :root {
+            color-scheme: only light;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+            padding-bottom: 40px;
+        }
+
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 460px;
+        }
+
+        .button-group,
+        .app-buttons {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .button-group button,
+        .app-buttons button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .button-group button:hover,
+        .app-buttons button:hover {
+            background-color: #45a049;
+        }
+
+        .app-buttons .restricted-btn:disabled {
+            background-color: #999;
+            color: #eee;
+            cursor: not-allowed;
+        }
+
+        .other-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .admin-tools {
+            margin-top: 8px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .admin-only-btn {
+            display: none;
+            background-color: #111;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .admin-only-btn:hover {
+            background-color: #333;
+        }
+
+        #subscriptionStatus {
+            margin: 8px 0 16px;
+            font-weight: bold;
+        }
+
+        #applications {
+            margin-bottom: 20px;
+            background-color: aqua;
+        }
+
+        #applications h3 {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        #applications .app-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /*
+         * Each application uses a wrapper so the application button and
+         * information button remain separate clickable controls.
+         */
+        .app-row {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .app-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .app-row .restricted-btn {
+            min-width: 190px;
+            margin: 0;
+            padding-left: 42px;
+            padding-right: 42px;
+        }
+
+        /*
+         * Small circled "i" in the upper-right portion of the application button.
+         * It is intentionally a separate button, not a button nested inside a button.
+         */
+        .app-info-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 30px;
+            height: 30px;
+            min-width: 30px;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 2px solid #08164f !important;
+            border-radius: 50% !important;
+            background-color: #ffffff !important;
+            color: #08164f !important;
+            font-size: 20px !important;
+            font-family: Georgia, "Times New Roman", serif;
+            font-weight: bold;
+            font-style: normal;
+            line-height: 25px;
+            cursor: pointer;
+            z-index: 2;
+            box-sizing: border-box;
+        }
+
+        .app-info-btn:hover,
+        .app-info-btn:focus {
+            background-color: #f1f3ff !important;
+            color: #08164f !important;
+            outline: 2px solid #08164f;
+            outline-offset: 1px;
+        }
+
+        /* Shared modal overlay */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            padding: 30px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+        }
+
+        .modal-content h2 {
+            color: #333;
+            margin-top: 0;
+        }
+
+        .modal-content p {
+            color: #666;
+            line-height: 1.6;
+            margin: 15px 0;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .modal-buttons button:hover {
+            background-color: #45a049;
+        }
+
+        .modal-buttons .cancel-btn {
+            background-color: #888;
+        }
+
+        .modal-buttons .cancel-btn:hover {
+            background-color: #666;
+        }
+
+        /*
+         * Information modal description. The actual descriptive text is not
+         * duplicated in home.html. JavaScript fetches it from the selected
+         * application's HTML file and reads its .app-description element.
+         */
+        #appInfoDescription {
+            color: #333;
+            line-height: 1.5;
+            text-align: left;
+            margin: 15px 0;
+        }
+
+        footer {
+            background-color: lightgray;
+            height: 30px;
+            padding-top: 5px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        footer table {
+            width: 460px;
+            margin: 0 auto;
+        }
+
+        footer td {
+            text-align: center;
+        }
+
+        @media (max-width: 520px) {
+            .container {
+                width: calc(100% - 40px);
+                padding: 20px;
+            }
+
+            .app-row .restricted-btn {
+                min-width: 190px;
+            }
+
+            .app-info-btn {
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                line-height: 27px;
+            }
+
+            .modal-content {
+                width: calc(100% - 30px);
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Welcome to Wonderful Apps</h1>
+
+        <div class="button-group">
+            <a href="login.html"><button>Login</button></a>
+            <a href="register.html"><button>Register</button></a>
+            <button id="logoutBtn">Logout</button>
+        </div>
+
+        <div id="userDisplay"></div>
+        <div id="subscriptionStatus"></div>
+
+        <div id="applications">
+            <h3>Applications</h3>
+
+            <div class="app-buttons">
+                <div class="app-row">
+                    <button
+                        class="restricted-btn"
+                        data-app-key="weigh_in"
+                        data-page="weighIn.html"
+                    >
+                        Weigh In
+                    </button>
+                    <button
+                        class="app-info-btn"
+                        type="button"
+                        data-title="Weigh In"
+                        data-description-page="weighIn.html"
+                        aria-label="Information about Weigh In"
+                        title="Information about Weigh In"
+                    >
+                        i
+                    </button>
+                </div>
+
+                <div class="app-row">
+                    <button
+                        class="restricted-btn"
+                        data-app-key="loan_payment"
+                        data-page="amortization.html"
+                    >
+                        Loan Payment
+                    </button>
+                    <button
+                        class="app-info-btn"
+                        type="button"
+                        data-title="Loan Payment"
+                        data-description-page="amortization.html"
+                        aria-label="Information about Loan Payment"
+                        title="Information about Loan Payment"
+                    >
+                        i
+                    </button>
+                </div>
+
+                <div class="app-row">
+                    <button
+                        class="restricted-btn"
+                        data-app-key="property_info"
+                        data-page="propertyInfo.html"
+                    >
+                        Property Info
+                    </button>
+                    <button
+                        class="app-info-btn"
+                        type="button"
+                        data-title="Property Info"
+                        data-description-page="propertyInfo.html"
+                        aria-label="Information about Property Info"
+                        title="Information about Property Info"
+                    >
+                        i
+                    </button>
+                </div>
+
+                <div class="app-row">
+                    <button
+                        class="restricted-btn"
+                        data-app-key="interest_earned"
+                        data-page="InterestEarned.html"
+                    >
+                        Interest Earned
+                    </button>
+                    <button
+                        class="app-info-btn"
+                        type="button"
+                        data-title="Interest Earned"
+                        data-description-page="InterestEarned.html"
+                        aria-label="Information about Interest Earned"
+                        title="Information about Interest Earned"
+                    >
+                        i
+                    </button>
+                </div>
+
+                <div class="app-row">
+                    <button
+                        class="restricted-btn"
+                        data-app-key="town_notice"
+                        data-page="TownNotice.html"
+                    >
+                        Town Notice
+                    </button>
+                    <button
+                        class="app-info-btn"
+                        type="button"
+                        data-title="Town Notice"
+                        data-description-page="TownNotice.html"
+                        aria-label="Information about Town Notice"
+                        title="Information about Town Notice"
+                    >
+                        i
+                    </button>
+                </div>
+
+                <div class="app-row">
+                    <button
+                        class="restricted-btn"
+                        data-app-key="etf_investing"
+                        data-page="etf.html"
+                    >
+                        ETF Investing
+                    </button>
+                    <button
+                        class="app-info-btn"
+                        type="button"
+                        data-title="ETF Investing"
+                        data-description-page="etf.html"
+                        aria-label="Information about ETF Investing"
+                        title="Information about ETF Investing"
+                    >
+                        i
+                    </button>
+                </div>
+
+                <div class="app-row">
+                    <button
+                        class="restricted-btn"
+                        data-app-key="budget"
+                        data-page="budget.html"
+                    >
+                        My Money My Budget
+                    </button>
+                    <button
+                        class="app-info-btn"
+                        type="button"
+                        data-title="My Money My Budget"
+                        data-description-page="budget.html"
+                        aria-label="Information about My Money My Budget"
+                        title="Information about My Money My Budget"
+                    >
+                        i
+                    </button>
+                </div>
+
+                <div class="app-row">
+                    <button
+                        class="restricted-btn"
+                        data-app-key="family_tree"
+                        data-page="FamilyTree.html"
+                    >
+                        Family Tree
+                    </button>
+                    <button
+                        class="app-info-btn"
+                        type="button"
+                        data-title="Family Tree"
+                        data-description-page="FamilyTree.html"
+                        aria-label="Information about Family Tree"
+                        title="Information about Family Tree"
+                    >
+                        i
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="statistics">
+            <h3>Other</h3>
+
+            <div class="button-group other-buttons">
+                <button
+                    id="subscriptionBtn"
+                    data-page="subscription.html"
+                >
+                    Subscription
+                </button>
+
+                <button
+                    id="notificationsBtn"
+                    data-page="notificationPreferences.html"
+                >
+                    Notifications
+                </button>
+
+                <button
+                    class="restricted-btn"
+                    data-page="ContactUs.html"
+                >
+                    Contact Us
+                </button>
+            </div>
+
+            <div class="admin-tools">
+                <button
+                    id="trackActivityBtn"
+                    class="admin-only-btn"
+                    data-page="track.html"
+                    type="button"
+                >
+                    Track Activity
+                </button>
+
+                <button
+                    id="subControlBtn"
+                    class="admin-only-btn"
+                    data-page="SubControl.html"
+                    type="button"
+                >
+                    Sub Control
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for access denied messages -->
+    <div id="accessDeniedModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Access Denied</h2>
+            <p id="modalMessage"></p>
+
+            <div class="modal-buttons">
+                <button
+                    class="cancel-btn"
+                    onclick="closeAccessDeniedModal()"
+                >
+                    Close
+                </button>
+
+                <button
+                    id="loginFromModalBtn"
+                    style="display: none;"
+                    onclick="redirectToLogin()"
+                >
+                    Go to Login
+                </button>
+
+                <button
+                    id="registerFromModalBtn"
+                    style="display: none;"
+                    onclick="redirectToRegister()"
+                >
+                    Go to Register
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!--
+        Application information modal.
+        The descriptive text is loaded from the .app-description element
+        in the individual application's HTML file.
+    -->
+    <div
+        id="appInfoModal"
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="appInfoTitle"
+    >
+        <div class="modal-content">
+            <h2 id="appInfoTitle">Application Information</h2>
+
+            <div id="appInfoDescription">
+                Loading...
+            </div>
+
+            <div class="modal-buttons">
+                <button
+                    class="cancel-btn"
+                    type="button"
+                    onclick="closeAppInfoModal()"
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td>
+                    Copyright © 2026 Wonderful Apps Company - All Rights Reserved
+                </td>
+                <td style="text-align: center; border: 1px solid black;">
+                    Designed by MPG Jr
+                </td>
+            </tr>
+        </table>
+    </footer>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(() => console.log('Service Worker registered'))
+                    .catch(error => {
+                        console.error(
+                            'Service Worker registration failed:',
+                            error
+                        );
+                    });
+            });
+        }
+
+        const BASE_URL =
+            window.location.hostname === 'localhost' &&
+            window.location.port !== '8080'
+                ? 'http://localhost:8080'
+                : window.location.origin;
+
+        const appDescriptionCache = new Map();
+
+        // Helper function to get current logged-in user.
+        function getCurrentUser() {
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                return null;
+            }
+
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url
+                    .replace(/-/g, '+')
+                    .replace(/_/g, '/');
+
+                const decodedToken = JSON.parse(
+                    decodeURIComponent(
+                        atob(base64)
+                            .split('')
+                            .map(function(c) {
+                                return (
+                                    '%' +
+                                    (
+                                        '00' +
+                                        c.charCodeAt(0).toString(16)
+                                    ).slice(-2)
+                                );
+                            })
+                            .join('')
+                    )
+                );
+
+                return decodedToken;
+            } catch (error) {
+                console.error('Error decoding token:', error);
+                return null;
+            }
+        }
+
+        // Helper function to check if user is logged in.
+        function isUserLoggedIn() {
+            return localStorage.getItem('token') !== null;
+        }
+
+        // Helper function to check if user is admin.
+        async function isUserAdmin() {
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                return false;
+            }
+
+            try {
+                const response = await fetch(
+                    `${BASE_URL}/users/is-admin`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    return false;
+                }
+
+                const data = await response.json();
+                return data.isAdmin || false;
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+                return false;
+            }
+        }
+
+        // Access-denied modal functions.
+        function showAccessDeniedModal(
+            title,
+            message,
+            showLoginBtn = false,
+            showRegisterBtn = false
+        ) {
+            const modal =
+                document.getElementById('accessDeniedModal');
+
+            const modalTitle =
+                document.getElementById('modalTitle');
+
+            const modalMessage =
+                document.getElementById('modalMessage');
+
+            const loginBtn =
+                document.getElementById('loginFromModalBtn');
+
+            const registerBtn =
+                document.getElementById('registerFromModalBtn');
+
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+
+            loginBtn.style.display =
+                showLoginBtn ? 'block' : 'none';
+
+            registerBtn.style.display =
+                showRegisterBtn ? 'block' : 'none';
+
+            modal.classList.add('show');
+        }
+
+        function closeAccessDeniedModal() {
+            const modal =
+                document.getElementById('accessDeniedModal');
+
+            modal.classList.remove('show');
+        }
+
+        function redirectToLogin() {
+            closeAccessDeniedModal();
+            window.location.href = 'login.html';
+        }
+
+        function redirectToRegister() {
+            closeAccessDeniedModal();
+            window.location.href = 'register.html';
+        }
+
+        /*
+         * Load the descriptive text directly from the application's own
+         * HTML file. Each application page is expected to contain:
+         *
+         *     <div class="app-description">...</div>
+         *
+         * This keeps the individual application page as the authoritative
+         * source of its description and avoids duplicating descriptions here.
+         */
+        async function showAppInfoModal(title, page) {
+            const modal =
+                document.getElementById('appInfoModal');
+
+            const modalTitle =
+                document.getElementById('appInfoTitle');
+
+            const descriptionContainer =
+                document.getElementById('appInfoDescription');
+
+            modalTitle.textContent = title;
+            descriptionContainer.textContent = 'Loading...';
+            modal.classList.add('show');
+
+            try {
+                let descriptionHtml =
+                    appDescriptionCache.get(page);
+
+                if (!descriptionHtml) {
+                    const response = await fetch(page, {
+                        cache: 'no-cache'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(
+                            `Unable to load ${page}.`
+                        );
+                    }
+
+                    const htmlText = await response.text();
+
+                    const parser = new DOMParser();
+                    const appDocument =
+                        parser.parseFromString(
+                            htmlText,
+                            'text/html'
+                        );
+
+                    const description =
+                        appDocument.querySelector(
+                            '.app-description'
+                        );
+
+                    if (!description) {
+                        throw new Error(
+                            `No .app-description element was found in ${page}.`
+                        );
+                    }
+
+                    descriptionHtml =
+                        description.innerHTML.trim();
+
+                    appDescriptionCache.set(
+                        page,
+                        descriptionHtml
+                    );
+                }
+
+                descriptionContainer.innerHTML =
+                    descriptionHtml;
+            } catch (error) {
+                console.error(
+                    'Error loading application description:',
+                    error
+                );
+
+                descriptionContainer.textContent =
+                    'The application description could not be loaded.';
+            }
+        }
+
+        function closeAppInfoModal() {
+            const modal =
+                document.getElementById('appInfoModal');
+
+            modal.classList.remove('show');
+        }
+
+        // Close either modal when the user clicks outside its content.
+        window.addEventListener('click', function(event) {
+            const accessDeniedModal =
+                document.getElementById('accessDeniedModal');
+
+            const appInfoModal =
+                document.getElementById('appInfoModal');
+
+            if (event.target === accessDeniedModal) {
+                closeAccessDeniedModal();
+            }
+
+            if (event.target === appInfoModal) {
+                closeAppInfoModal();
+            }
+        });
+
+        // Escape closes an open modal.
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeAccessDeniedModal();
+                closeAppInfoModal();
+            }
+        });
+
+        async function loadSubscriptionAccess() {
+            const token = localStorage.getItem('token');
+
+            const statusDisplay =
+                document.getElementById('subscriptionStatus');
+
+            if (!token) {
+                statusDisplay.textContent = '';
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `${BASE_URL}/subscriptions/status`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        'Unable to load subscription status.'
+                    );
+                }
+
+                const data = await response.json();
+                const subscription = data.subscription;
+
+                if (
+                    subscription &&
+                    subscription.exists
+                ) {
+                    if (
+                        subscription.accessType === 'ADMIN'
+                    ) {
+                        statusDisplay.textContent =
+                            'Administrator | All applications available';
+                    } else {
+                        const expires =
+                            subscription.effectiveEndDate ||
+                            'No expiration';
+
+                        statusDisplay.textContent =
+                            `Plan: ${subscription.planName} | ` +
+                            `Access Expires: ${expires}`;
+                    }
+                }
+
+                data.apps.forEach(app => {
+                    const button =
+                        document.querySelector(
+                            `[data-app-key="${app.appKey}"]`
+                        );
+
+                    if (!button) {
+                        return;
+                    }
+
+                    button.disabled = !app.allowed;
+
+                    if (!app.allowed) {
+                        if (
+                            app.reason ===
+                            'NOT_AVAILABLE_DURING_DEVELOPMENT'
+                        ) {
+                            button.title =
+                                `${app.appName} is not available ` +
+                                'during development.';
+                        } else if (
+                            app.reason ===
+                            'SUBSCRIPTION_EXPIRED'
+                        ) {
+                            button.title =
+                                'Subscription access has expired.';
+                        } else if (
+                            app.reason ===
+                            'PLAN_TOO_LOW'
+                        ) {
+                            button.title =
+                                `${app.minimumPlanName} plan required.`;
+                        } else {
+                            button.title =
+                                'Application is not currently available.';
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error(
+                    'Subscription status error:',
+                    error
+                );
+            }
+        }
+
+        async function recordAppOpen(appKey) {
+            const token = localStorage.getItem('token');
+
+            if (!token || !appKey) {
+                return;
+            }
+
+            try {
+                await fetch(
+                    `${BASE_URL}/subscriptions/usage`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            appKey,
+                            eventType: 'APP_OPEN',
+                            quantity: 1
+                        })
+                    }
+                );
+            } catch (error) {
+                console.error(
+                    'Usage tracking error:',
+                    error
+                );
+            }
+        }
+
+        document.addEventListener(
+            'DOMContentLoaded',
+            async function() {
+                await loadSubscriptionAccess();
+
+                /*
+                 * Information controls do not require the user to enter
+                 * the application. They only display the description
+                 * already present in that application's HTML file.
+                 */
+                const infoButtons =
+                    document.querySelectorAll(
+                        '.app-info-btn'
+                    );
+
+                infoButtons.forEach(button => {
+                    button.addEventListener(
+                        'click',
+                        function(event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+
+                            showAppInfoModal(
+                                this.dataset.title,
+                                this.dataset.descriptionPage
+                            );
+                        }
+                    );
+                });
+
+                // Handler for restricted buttons.
+                const restrictedButtons =
+                    document.querySelectorAll(
+                        '.restricted-btn'
+                    );
+
+                restrictedButtons.forEach(button => {
+                    button.addEventListener(
+                        'click',
+                        async function() {
+                            if (!isUserLoggedIn()) {
+                                showAccessDeniedModal(
+                                    'Login Required',
+                                    'You must be logged in to use this application. ' +
+                                    'Please Login. If not registered, please Register first.',
+                                    true,
+                                    true
+                                );
+                            } else if (this.disabled) {
+                                window.location.href =
+                                    'subscription.html';
+                            } else {
+                                await recordAppOpen(
+                                    this.dataset.appKey
+                                );
+
+                                window.location.href =
+                                    this.dataset.page;
+                            }
+                        }
+                    );
+                });
+
+                document
+                    .getElementById('subscriptionBtn')
+                    .addEventListener(
+                        'click',
+                        function() {
+                            if (!isUserLoggedIn()) {
+                                showAccessDeniedModal(
+                                    'Login Required',
+                                    'You must be logged in to view subscription information.',
+                                    true,
+                                    true
+                                );
+                            } else {
+                                window.location.href =
+                                    this.dataset.page;
+                            }
+                        }
+                    );
+
+                document
+                    .getElementById('notificationsBtn')
+                    .addEventListener(
+                        'click',
+                        function() {
+                            if (!isUserLoggedIn()) {
+                                showAccessDeniedModal(
+                                    'Login Required',
+                                    'You must be logged in to manage notification preferences.',
+                                    true,
+                                    true
+                                );
+                            } else {
+                                window.location.href =
+                                    this.dataset.page;
+                            }
+                        }
+                    );
+
+                // Show administrator controls only to the administrator.
+                const userIsAdmin = await isUserAdmin();
+
+                if (userIsAdmin) {
+                    document
+                        .querySelectorAll('.admin-only-btn')
+                        .forEach(button => {
+                            button.style.display = 'inline-block';
+                        });
+                }
+
+                // Handler for admin-only buttons.
+                const adminButtons =
+                    document.querySelectorAll(
+                        '.admin-only-btn'
+                    );
+
+                adminButtons.forEach(button => {
+                    button.addEventListener(
+                        'click',
+                        async function() {
+                            if (!isUserLoggedIn()) {
+                                showAccessDeniedModal(
+                                    'Login Required',
+                                    'You must be logged in to use this application. ' +
+                                    'Please Login. If not registered, please Register first.',
+                                    true,
+                                    true
+                                );
+                            } else if (
+                                !(await isUserAdmin())
+                            ) {
+                                showAccessDeniedModal(
+                                    'Admin Access Required',
+                                    'Only the administrator is permitted to use this application.'
+                                );
+                            } else {
+                                window.location.href =
+                                    this.dataset.page;
+                            }
+                        }
+                    );
+                });
+
+                // User display and logout logic.
+                const token =
+                    localStorage.getItem('token');
+
+                const userDisplay =
+                    document.getElementById(
+                        'userDisplay'
+                    );
+
+                if (token) {
+                    const decodedToken =
+                        getCurrentUser();
+
+                    if (decodedToken) {
+                        userDisplay.textContent =
+                            `Logged in as: ${decodedToken.username}`;
+                    } else {
+                        userDisplay.textContent =
+                            'Not Logged In';
+                    }
+
+                    document
+                        .getElementById('logoutBtn')
+                        .addEventListener(
+                            'click',
+                            () => {
+                                localStorage.removeItem(
+                                    'token'
+                                );
+
+                                alert(
+                                    'You have been logged out.'
+                                );
+
+                                window.location.href =
+                                    'home.html';
+                            }
+                        );
+                } else {
+                    userDisplay.textContent =
+                        'Not Logged In';
+                }
+
+                // Track page view.
+                if (token) {
+                    const page =
+                        window.location.pathname;
+
+                    fetch(
+                        `${BASE_URL}/track/log/page`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type':
+                                    'application/json',
+                                'Authorization':
+                                    `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                page
+                            })
+                        }
+                    )
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(
+                                `HTTP error! status: ` +
+                                `${response.status}`
+                            );
+                        }
+
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log(
+                            'Page view tracked:',
+                            data.message || 'Success'
+                        );
+                    })
+                    .catch(error => {
+                        console.error(
+                            'Error tracking page view:',
+                            error.message
+                        );
+                    });
+
+                    // Track time spent on page.
+                    const startTime = Date.now();
+
+                    window.addEventListener(
+                        'beforeunload',
+                        () => {
+                            const duration =
+                                Math.floor(
+                                    (
+                                        Date.now() -
+                                        startTime
+                                    ) / 1000
+                                );
+
+                            console.log(
+                                'Beforeunload duration:',
+                                duration
+                            );
+
+                            if (duration > 0) {
+                                const timeSpentData = {
+                                    page:
+                                        window.location.pathname,
+                                    duration: duration,
+                                    token: token
+                                };
+
+                                console.log(
+                                    'Sending time spent data:',
+                                    timeSpentData
+                                );
+
+                                fetch(
+                                    `${BASE_URL}/track/log/time-spent`,
+                                    {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type':
+                                                'application/json',
+                                            'Authorization':
+                                                `Bearer ${token}`
+                                        },
+                                        body:
+                                            JSON.stringify(
+                                                timeSpentData
+                                            )
+                                    }
+                                )
+                                .then(response => {
+                                    console.log(
+                                        'Time spent response status:',
+                                        response.status
+                                    );
+
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    console.log(
+                                        'Time spent response:',
+                                        data
+                                    );
+                                })
+                                .catch(error => {
+                                    console.error(
+                                        'Error sending time spent:',
+                                        error.message
+                                    );
+                                });
+                            }
+                        }
+                    );
+                }
+            }
+        );
+    </script>
+</body>
+</html>

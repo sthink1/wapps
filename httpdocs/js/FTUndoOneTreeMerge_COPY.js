@@ -127,7 +127,7 @@ async function undoMerge(treeMergeID) {
         sessionStorage.setItem('familyTreeCode', d.FamilyTreeCode);
         $('status').textContent = d.message || `Family Tree ${d.FamilyTreeCode} was restored.`;
         setTimeout(() => {
-            window.location.href = 'FamilyTree2.html';
+            window.location.href = 'FamilyTree.html';
         }, 900);
     } catch (e) {
         $('status').textContent = e.message;

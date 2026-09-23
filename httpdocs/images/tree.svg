@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tree">
+  <rect x="1.5" y="1.5" width="61" height="61" rx="11" fill="#ddf7b8" stroke="#63a52e" stroke-width="3"/>
+  <path d="M30 54V35c-3-5-7-8-12-11m14 13c3-6 8-10 14-13m-14 9V17" fill="none" stroke="#7b451f" stroke-width="6" stroke-linecap="round"/>
+  <path d="M18 14c-6 0-10 4-10 9 0 6 5 10 11 9 1 6 6 9 12 7 4 5 12 5 16 0 6 1 11-3 11-9 0-5-4-9-9-9 0-7-6-12-13-11-4-6-14-5-18 4z" fill="#2f8b2f"/>
+  <circle cx="19" cy="20" r="7" fill="#62a928"/><circle cx="42" cy="18" r="8" fill="#4a9c2d"/><circle cx="32" cy="15" r="8" fill="#237c31"/>
+</svg>

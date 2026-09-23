@@ -134,26 +134,52 @@ function setPageStatus(message) {
     $('pageStatus').textContent = message || '';
 }
 
-function compactFamilyRow(person) {
+function personRow(person, extraCells = []) {
     return `
         <tr>
-            <td><button class="person-link icon-action" data-id="${person.PersonID}" type="button" title="View Person" aria-label="View Person"><img src="images/person.svg" alt=""></button></td>
-            <td><button class="tree-link icon-action" data-id="${person.PersonID}" type="button" title="View Ancestor Tree" aria-label="View Ancestor Tree"><img src="images/tree.svg" alt=""></button></td>
+            <td>
+                <button
+                    class="person-link"
+                    data-id="${person.PersonID}"
+                    title="Open PersonID ${person.PersonID}"
+                >P</button>
+            </td>
+            <td>${escapeHtml(person.Gender || '')}</td>
+            <td class="${ageClass(person)}">${ageOf(person)}</td>
+            <td>${escapeHtml(person.FirstName || '')}</td>
+            <td>${escapeHtml(person.MiddleName || '')}</td>
+            <td>${escapeHtml(person.LastName || '')}</td>
+            <td>${escapeHtml(person.SuffixName || '')}</td>
+            <td>${escapeHtml(person.NickName || '')}</td>
+            <td>${escapeHtml(person.MaidenName || '')}</td>
+            ${extraCells.map(value => `<td>${escapeHtml(value || '')}</td>`).join('')}
+        </tr>
+    `;
+}
+
+function familyCompactRow(person) {
+    return `
+        <tr>
+            <td>
+                <button
+                    class="person-link"
+                    data-id="${person.PersonID}"
+                    title="Open PersonID ${person.PersonID}"
+                >${person.PersonID}</button>
+            </td>
             <td>${escapeHtml(person.Gender || '')}</td>
             <td class="${ageClass(person)}">${ageOf(person)}</td>
             <td style="white-space:normal;min-width:220px">${escapeHtml(nameOf(person))}</td>
-        </tr>`;
+        </tr>
+    `;
 }
 
 function wirePersonLinks() {
     document.querySelectorAll('.person-link').forEach(button => {
         button.onclick = () => {
-            window.location.href = `FTPerson.html?PersonID=${encodeURIComponent(button.dataset.id)}&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
-        };
-    });
-    document.querySelectorAll('.tree-link').forEach(button => {
-        button.onclick = () => {
-            window.location.href = `FTAncestor.html?PersonID=${encodeURIComponent(button.dataset.id)}&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
+            window.location.href =
+                `FTPerson.html?PersonID=${encodeURIComponent(button.dataset.id)}` +
+                `&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
         };
     });
 }
@@ -209,7 +235,6 @@ async function loadPerson() {
     $('Age').textContent = ageOf(currentPerson);
     $('Age').classList.toggle('deceased-age', isDeceased(currentPerson));
     $('Died').textContent = Number(currentPerson.Died) ? 'Yes' : 'No';
-    $('CurrentHome').textContent = [currentPerson.CurrentCity, currentPerson.CurrentState].filter(Boolean).join(', ');
     $('FamilyTreeCode').textContent = familyTreeCode;
 }
 
@@ -236,19 +261,34 @@ async function loadRelationships() {
         ];
     currentParents = parents;
 
-    $('parentBody').innerHTML = parents.length ? parents.map(compactFamilyRow).join('') : '<tr><td colspan="5">None entered</td></tr>';
+    $('parentBody').innerHTML = parents.length
+        ? parents
+            .map(person =>
+                personRow(
+                    person,
+                    [person.AncestrySide]
+                )
+            )
+            .join('')
+        : '<tr><td colspan="10">None entered</td></tr>';
 
     const siblings = data.siblings || [];
     currentSiblings = siblings;
     $('siblingTitle').textContent = `BIOLOGICAL SIBLINGS (${siblings.length})`;
-    $('siblingBody').innerHTML = siblings.length ? siblings.map(compactFamilyRow).join('') : '<tr><td colspan="5">None entered</td></tr>';
+    $('siblingBody').innerHTML = siblings.length
+        ? siblings.map(person => familyCompactRow(person)).join('')
+        : '<tr><td colspan="4">None entered</td></tr>';
 
     currentPartners = data.partners || [];
 
-    $('partnerBody').innerHTML = currentPartners.length ? currentPartners.map(compactFamilyRow).join('') : '<tr><td colspan="5">None entered</td></tr>';
+    $('partnerBody').innerHTML = currentPartners.length
+        ? currentPartners.map(person => personRow(person)).join('')
+        : '<tr><td colspan="9">None entered</td></tr>';
 
     currentChildren = data.children || [];
-    $('childBody').innerHTML = currentChildren.length ? currentChildren.map(compactFamilyRow).join('') : '<tr><td colspan="5">None entered</td></tr>';
+    $('childBody').innerHTML = currentChildren.length
+        ? currentChildren.map(person => personRow(person)).join('')
+        : '<tr><td colspan="9">None entered</td></tr>';
 
     wirePersonLinks();
 }
@@ -296,14 +336,12 @@ async function loadImages() {
         const data = await response.json();
 
         currentProfile = data;
-        profileImage.classList.remove('placeholder-photo');
         profileImage.src = safeImageUrl(data.url);
         profileImage.dataset.imageId = data.ImageID;
         profileImage.oncontextmenu = event =>
             showImageContextMenu(event, data.ImageID, true);
     } else {
-        profileImage.src = 'images/person-placeholder.svg';
-        profileImage.classList.add('placeholder-photo');
+        profileImage.removeAttribute('src');
         profileImage.removeAttribute('data-image-id');
         profileImage.oncontextmenu = null;
     }
@@ -368,7 +406,8 @@ async function loadImages() {
 
             card.append(img, caption, details, label);
         } else {
-            card.innerHTML = `<img src="images/person-placeholder.svg" alt="Picture not entered"><div class="small">Picture ${slot + 1} — Picture of YOU at various stages of your life.<br><b>Not entered</b></div>`;
+            card.innerHTML =
+                `<div class="small">Picture ${slot + 1} — Picture of YOU at various stages of your life.<br>Not entered</div>`;
         }
 
         host.appendChild(card);
@@ -387,8 +426,6 @@ function fillEditForm() {
     $('eGender').value = currentPerson.Gender || '';
     $('eBirthDate').value = dateInputValue(currentPerson.BirthDate);
     $('eBirthPlace').value = currentPerson.BirthPlace || '';
-    $('eCurrentCity').value = currentPerson.CurrentCity || '';
-    $('eCurrentState').value = currentPerson.CurrentState || '';
     $('eDied').checked = Number(currentPerson.Died) === 1;
     $('eDeathDate').value = dateInputValue(currentPerson.DeathDate);
     $('eDeathDate').disabled = !$('eDied').checked;
@@ -407,8 +444,6 @@ async function saveEdit() {
         Gender: nullable($('eGender').value),
         BirthDate: nullable($('eBirthDate').value),
         BirthPlace: nullable($('eBirthPlace').value),
-        CurrentCity: nullable($('eCurrentCity').value),
-        CurrentState: nullable($('eCurrentState').value),
         Died: $('eDied').checked ? 1 : 0,
         DeathDate: $('eDied').checked
             ? nullable($('eDeathDate').value)
@@ -653,8 +688,6 @@ function relatedPersonData() {
         Gender: nullable($('rGender').value),
         BirthDate: nullable($('rBirthDate').value),
         BirthPlace: nullable($('rBirthPlace').value),
-        CurrentCity: nullable($('rCurrentCity').value),
-        CurrentState: nullable($('rCurrentState').value),
         Died: $('rDied').checked ? 1 : 0,
         DeathDate: $('rDied').checked ? nullable($('rDeathDate').value) : null
     };
@@ -670,8 +703,6 @@ function clearRelatedForm() {
         'rMaidenName',
         'rBirthDate',
         'rBirthPlace',
-        'rCurrentCity',
-        'rCurrentState',
         'rDeathDate'
     ].forEach(id => {
         $(id).value = '';
@@ -701,7 +732,7 @@ function renderRelatedDuplicates(matches) {
     $('rDupWrap').classList.toggle('hidden', !matches.length);
     $('rDupBody').innerHTML = matches.map(person => `
         <tr data-dup-id="${escapeHtml(person.PersonID)}">
-            <td><img class="dup-photo" src="${escapeHtml(safeImageUrl(person.ProfileImageUrl)||'images/person-placeholder.svg')}" alt=""></td>
+            <td>${safeImageUrl(person.ProfileImageUrl) ? `<img class="dup-photo" src="${escapeHtml(safeImageUrl(person.ProfileImageUrl))}" alt="">` : ''}</td>
             <td><button type="button" class="view-existing" data-id="${escapeHtml(person.PersonID)}">${escapeHtml(person.PersonID)}</button></td>
             <td>${escapeHtml(nameOf(person))}</td>
             <td>${escapeHtml(dateUS(person.BirthDate))}</td>
@@ -1192,7 +1223,7 @@ async function deletePerson() {
          * person belonged to a separated branch.
          */
         if (data.treeDeleted) {
-            window.location.replace('FamilyTree2.html');
+            window.location.replace('FamilyTree.html');
             return;
         }
 
@@ -1271,7 +1302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     $('backBtn').onclick = () => {
         if (history.length > 1) history.back();
-        else window.location.href = 'FamilyTree2.html';
+        else window.location.href = 'FamilyTree.html';
     };
 
     $('rDied').onchange = () => {
@@ -1313,7 +1344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 $('rStatus').textContent = error.message;
             });
 
-    $('treeHeadingBtn').onclick = () =>
+    $('ancestorBtn').onclick = () =>
         navigateTo('FTAncestor.html');
 
     $('contactBtn').onclick = () =>

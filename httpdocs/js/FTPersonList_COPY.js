@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('backBtn').onclick = () =>
         history.length > 1
             ? history.back()
-            : window.location.href = 'FamilyTree2.html';
+            : window.location.href = 'FamilyTree.html';
 
     document.getElementById('refreshBtn').onclick = () => {
         load().catch(error => {
