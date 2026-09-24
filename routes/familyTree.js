@@ -6569,12 +6569,32 @@ router.delete('/persons/:id', auth, async (req, res) => {
             }
 
             /*
+             * Remove any orphaned membership rows before deciding whether the
+             * Family Tree is empty. An orphan can exist if an older operation
+             * removed FTPersonT first but left FTFamilyTreePersonT behind.
+             * Without this repair, an empty Tree can incorrectly appear to
+             * contain a Person and therefore survive last-person deletion.
+             */
+            await c.query(
+                `DELETE ftp
+                   FROM FTFamilyTreePersonT ftp
+                   LEFT JOIN FTPersonT p
+                     ON p.PersonID=ftp.PersonID
+                  WHERE ftp.FamilyTreeID=?
+                    AND p.PersonID IS NULL`,
+                [treeID]
+            );
+
+            /*
              * Now determine whether the Family Tree itself has become empty.
+             * Count only memberships backed by an existing Person row.
              */
             const [[remainingTreePeople]] = await c.query(
                 `SELECT COUNT(*) AS n
-                   FROM FTFamilyTreePersonT
-                  WHERE FamilyTreeID=?`,
+                   FROM FTFamilyTreePersonT ftp
+                   JOIN FTPersonT p
+                     ON p.PersonID=ftp.PersonID
+                  WHERE ftp.FamilyTreeID=?`,
                 [treeID]
             );
 
