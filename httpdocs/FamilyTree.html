@@ -61,10 +61,18 @@
         .mini-connect { height:24px; position:relative; margin:0 auto; width:82%; }
         .mini-connect::before { content:""; position:absolute; left:12%; right:12%; top:11px; height:2px; background:linear-gradient(to right,#888 0 44%,transparent 44% 56%,#888 56% 100%); }
         .mini-connect::after { content:""; position:absolute; left:50%; top:0; height:24px; border-left:2px solid #888; }
+        .mini-connect.great-split { width:96%; height:30px; }
+        .mini-connect.great-split::before { left:2%; right:2%; top:10px; background:linear-gradient(to right,#888 0 47%,transparent 47% 53%,#888 53% 100%); }
+        .mini-connect.great-split::after { content:none; }
+        .mini-action-btn { width:30px; height:30px; padding:2px; border:1px solid #8ba5c7; display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+        .mini-action-btn img { width:23px; height:23px; object-fit:contain; }
+        .mini-action-btn.person { background:#d9efff; }
+        .mini-action-btn.tree { background:#ddf7b8; border-color:#63a52e; }
         .mini-person-page { border:1px solid #999; background:#98cfe2; padding:10px; }
         .mini-section { background:#fff; border:1px solid #aaa; margin:8px 0; }
         .mini-section-title { background:#ffc400; padding:5px 7px; font-weight:bold; display:flex; align-items:center; justify-content:space-between; gap:8px; }
         .mini-section-title.gray { background:#eee; }
+        .mini-section-title.person-sample { justify-content:flex-start; }
         .mini-person-top { display:grid; grid-template-columns:110px 1fr 135px; gap:10px; padding:8px; align-items:start; }
         .mini-person-top .photo { width:100px; height:125px; object-fit:contain; border:1px solid #bbb; background:#f5f5f5; }
         .mini-button-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
@@ -133,19 +141,6 @@
             <h2>Instructions</h2>
             <p>Review these instructions to learn how to navigate Family Tree and the Ancestor Tree.</p>
 
-            <div class="instruction-row">
-                <button class="icon-btn tree-btn" id="treeInstructionsBtn" type="button" aria-label="Tree instructions" title="Tree instructions">
-                    <img src="images/tree.svg" alt="">
-                </button>
-                <span>Click Tree button for instructions.</span>
-            </div>
-            <div class="instruction-row">
-                <button class="icon-btn person-btn" id="personInstructionsBtn" type="button" aria-label="Person instructions" title="Person instructions">
-                    <img src="images/person.svg" alt="">
-                </button>
-                <span>Click Person button for instructions.</span>
-            </div>
-
             <div class="instruction-subsection">
                 <h3>Family Tree Menu Buttons</h3>
                 <p><b>Click each button for instructions.</b></p>
@@ -180,7 +175,7 @@
 
 <footer>Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr</footer>
 
-<script src="js/FTInstructions.js?v=20260923-2"></script>
+<script src="js/FTInstructions.js?v=20260924-1"></script>
 <script>
 const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080'
     ? 'http://localhost:8080'
@@ -198,6 +193,14 @@ function showModal(modalTitle, html) {
 
 function iconPair() {
     return '<span class="mini-icons"><img src="images/person.svg" alt="Person"><img src="images/tree.svg" alt="Tree"></span>';
+}
+
+function miniPersonButton() {
+    return '<span class="mini-action-btn person" aria-hidden="true"><img src="images/person.svg" alt=""></span>';
+}
+
+function miniTreeButton() {
+    return '<span class="mini-action-btn tree" aria-hidden="true"><img src="images/tree.svg" alt=""></span>';
 }
 
 function sampleCard(name, years, home) {
@@ -219,7 +222,7 @@ function treeInstructionsHtml() {
                 ${sampleCard('Great Grandparent','1900–1988','Erie, PA')}
                 ${sampleCard('Great Grandparent','1902–1991','Pittsburgh, PA')}
             </div>
-            <div class="mini-connect"></div>
+            <div class="mini-connect great-split" title="Mother's side | Father's side"></div>
             <div class="mini-tree-title">GRANDPARENTS</div>
             <div class="mini-gen grand">
                 ${sampleCard('Grandparent','1918–1999','Orlando, FL')}
@@ -252,7 +255,7 @@ function personInstructionsHtml() {
         <p><b>The Person button opens the Person Page.</b></p>
         <div class="sample mini-person-page">
             <div class="mini-section">
-                <div class="mini-section-title">PERSON <span>${iconPair()}</span></div>
+                <div class="mini-section-title person-sample">PERSON ${miniTreeButton()}</div>
                 <div class="mini-person-top">
                     <img class="photo" src="images/person-placeholder.svg" alt="">
                     <div>
@@ -284,7 +287,7 @@ function personInstructionsHtml() {
             </div>
             <div class="mini-section">
                 <div class="mini-section-title gray">BIOLOGICAL PARENTS</div>
-                <table class="mini-table"><tr><th>Person</th><th>Tree</th><th>Gender</th><th>Age</th><th>Name</th></tr><tr><td>●</td><td>🌳</td><td>Female</td><td>78</td><td>Sample Parent</td></tr></table>
+                <table class="mini-table"><tr><th>Person</th><th>Tree</th><th>Gender</th><th>Age</th><th>Name</th></tr><tr><td>${miniPersonButton()}</td><td>${miniTreeButton()}</td><td>Female</td><td>78</td><td>Sample Parent</td></tr></table>
                 <div class="mini-button-row" style="padding:6px;"><span class="mini-button">ADD BIOLOGICAL MOTHER</span><span class="mini-button">ADD BIOLOGICAL FATHER</span></div>
             </div>
             <div class="mini-section"><div class="mini-section-title gray">BIOLOGICAL SIBLINGS</div><div class="mini-button-row" style="padding:6px;"><span class="mini-button">ADD SIBLING</span></div></div>
@@ -323,9 +326,7 @@ const openTreeInstructions = () => showModal('Tree Button Instructions', treeIns
 const openPersonInstructions = () => showModal('Person Button Instructions', personInstructionsHtml());
 
 document.getElementById('treeHeroBtn').onclick = openTreeInstructions;
-document.getElementById('treeInstructionsBtn').onclick = openTreeInstructions;
 document.getElementById('personHeroBtn').onclick = openPersonInstructions;
-document.getElementById('personInstructionsBtn').onclick = openPersonInstructions;
 
 document.querySelectorAll('#menuInstructionButtons [data-key]').forEach(button => {
     button.onclick = () => {

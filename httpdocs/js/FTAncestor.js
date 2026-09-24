@@ -46,6 +46,12 @@ function isDeceased(person) {
 
 function ageOf(person) {
     if (!person || !person.BirthDate) return '';
+
+    const deceased = Number(person.Died) === 1 || !!person.DeathDate;
+
+    // A deceased Person without a death date has no calculable age at death.
+    if (deceased && !person.DeathDate) return '';
+
     const birth = new Date(`${String(person.BirthDate).slice(0, 10)}T00:00:00`);
     const end = person.DeathDate
         ? new Date(`${String(person.DeathDate).slice(0, 10)}T00:00:00`)
@@ -58,12 +64,28 @@ function ageOf(person) {
 
 function lifespan(person) {
     if (!person) return '';
-    const birth = person.BirthDate ? String(person.BirthDate).slice(0, 4) : '';
-    const death = person.DeathDate
+
+    const birthYear = person.BirthDate
+        ? String(person.BirthDate).slice(0, 4)
+        : '';
+    const deathYear = person.DeathDate
         ? String(person.DeathDate).slice(0, 4)
-        : (Number(person.Died) ? '' : 'Living');
-    if (!birth && !death) return '';
-    return `${birth || '?'}–${death || '?'}`;
+        : '';
+    const diedChecked = Number(person.Died) === 1;
+
+    let endText = '';
+    if (deathYear) {
+        endText = deathYear;
+    } else if (diedChecked) {
+        endText = 'Died';
+    } else if (birthYear) {
+        endText = 'Living';
+    }
+
+    if (birthYear && endText) return `${birthYear}–${endText}`;
+    if (!birthYear && deathYear) return `Died ${deathYear}`;
+    if (!birthYear && diedChecked) return 'Died';
+    return '';
 }
 
 function homeOf(person) {

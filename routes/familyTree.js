@@ -4049,6 +4049,7 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                     p.MaidenName,
                     p.Gender,
                     p.BirthDate,
+                    p.Died,
                     p.DeathDate,
                     p.CurrentCity,
                     p.CurrentState,
@@ -4415,6 +4416,7 @@ router.get('/persons/:id/relationships', auth, async (req, res) => {
                 p.MaidenName,
                 p.Gender,
                 p.BirthDate,
+                p.Died,
                 p.DeathDate
             `;
 

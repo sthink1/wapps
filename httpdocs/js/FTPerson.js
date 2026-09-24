@@ -56,6 +56,12 @@ let relatedDifferent = new Set();
 function ageOf(person) {
     if (!person || !person.BirthDate) return '';
 
+    const deceased = Number(person.Died) === 1 || !!person.DeathDate;
+
+    // If the Person is known to be deceased but no death date is known,
+    // the age at death cannot be calculated.
+    if (deceased && !person.DeathDate) return '';
+
     const start = new Date(`${String(person.BirthDate).slice(0, 10)}T00:00:00`);
     const end = person.DeathDate
         ? new Date(`${String(person.DeathDate).slice(0, 10)}T00:00:00`)
