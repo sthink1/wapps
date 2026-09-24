@@ -1290,8 +1290,7 @@ async function moveComponentToTree(
 async function splitTreeIfDisconnected(
     c,
     tree,
-    userID,
-    affectedPersonIDs = null
+    userID
 ) {
     await ensureOriginTreeID(
         c,
@@ -1303,31 +1302,7 @@ async function splitTreeIfDisconnected(
         tree.FamilyTreeID
     );
 
-    /*
-     * Person deletion must split only the portion of the Tree that was
-     * connected through the deleted Person. A Tree may already contain
-     * disconnected people/components for legitimate historical reasons.
-     * Those pre-existing components must not be moved merely because an
-     * unrelated Person was deleted.
-     */
-    let splitComponents = components;
-
-    if (Array.isArray(affectedPersonIDs)) {
-        const affectedSet = new Set(
-            affectedPersonIDs
-                .map(Number)
-                .filter(Boolean)
-        );
-
-        splitComponents = components.filter(
-            component =>
-                component.some(
-                    row => affectedSet.has(Number(row.PersonID))
-                )
-        );
-    }
-
-    if (splitComponents.length <= 1) {
+    if (components.length <= 1) {
         return {
             split: false,
             restoredCodes: [],
@@ -1337,37 +1312,36 @@ async function splitTreeIfDisconnected(
     }
 
     /*
-     * Within the newly separated portion, the component containing people
-     * who originated in the currently authoritative Tree keeps the current
-     * code. If more than one candidate qualifies, prefer the largest one.
-     * If none qualifies, the largest affected component keeps the code.
+     * The component containing people who originated in the currently
+     * authoritative Tree keeps the current code. If no component contains
+     * such a person, the largest component keeps the current code.
      */
-    const anchorCandidates = splitComponents
-        .map((component, index) => ({
-            index,
-            size: component.length,
-            hasCurrentOrigin: component.some(
+    let anchorIndex = components.findIndex(
+        component =>
+            component.some(
                 row =>
                     row.OriginFamilyTreeID ===
                     tree.FamilyTreeID
             )
-        }))
-        .sort((a, b) => {
-            if (a.hasCurrentOrigin !== b.hasCurrentOrigin) {
-                return a.hasCurrentOrigin ? -1 : 1;
-            }
-            return b.size - a.size;
-        });
+    );
 
-    const anchorIndex = anchorCandidates[0].index;
+    if (anchorIndex < 0) {
+        anchorIndex = components
+            .map((component, index) => ({
+                index,
+                size: component.length
+            }))
+            .sort((a, b) => b.size - a.size)[0].index;
+    }
+
     const restored = [];
 
-    for (let i = 0; i < splitComponents.length; i++) {
+    for (let i = 0; i < components.length; i++) {
         if (i === anchorIndex) {
             continue;
         }
 
-        const component = splitComponents[i];
+        const component = components[i];
         const personIDs = component.map(
             row => row.PersonID
         );
@@ -6320,29 +6294,6 @@ router.delete('/persons/:id', auth, async (req, res) => {
             const originalCreatorUserID =
                 deletedPerson.CreatedByUserID;
 
-            /*
-             * Capture the PRE-delete connected component containing this
-             * Person. After the delete, only surviving people from this
-             * component are eligible for a delete-triggered split. This
-             * prevents unrelated components that were already disconnected
-             * from being moved into new Family Trees.
-             */
-            const preDeleteComponents =
-                await loadTreeComponents(c, treeID);
-
-            const affectedBeforeDelete =
-                preDeleteComponents.find(
-                    component =>
-                        component.some(
-                            row => Number(row.PersonID) === id
-                        )
-                ) || [];
-
-            const affectedSurvivorIDs =
-                affectedBeforeDelete
-                    .map(row => Number(row.PersonID))
-                    .filter(personID => personID && personID !== id);
-
             const deleteRecipients =
                 await getDeleteNotificationRecipients(
                     c,
@@ -6593,8 +6544,7 @@ router.delete('/persons/:id', auth, async (req, res) => {
                     await splitTreeIfDisconnected(
                         c,
                         tree,
-                        userID,
-                        affectedSurvivorIDs
+                        userID
                     );
             }
 
