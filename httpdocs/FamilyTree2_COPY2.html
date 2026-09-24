@@ -11,43 +11,232 @@
   <script src="js/inputSanitizer.js?v=20260914-1"></script>
 
   <style>
-    :root { color-scheme: only light; }
-    * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; padding: 18px 10px 58px; }
-    .shell { width: min(1000px, 100%); margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px #0002; overflow: hidden; }
-    header { text-align: center; padding: 16px; }
-    .btn,button { border: 0; border-radius: 4px; background: #4CAF50; color: #fff; padding: 10px 16px; font-size: 15px; cursor: pointer; text-decoration: none; }
-    .secondary { background: #777 !important; }
-    .header-actions { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
-    .back-instructions { padding: 13px 24px; font-size: 17px; font-weight: bold; }
-    .home-btn { padding: 13px 24px; font-size: 17px; font-weight: bold; }
-    .bio-notice { background: #fff3cd; border: 3px solid #b7791f; color: #5f4300; font-size: 17px; line-height: 1.4; text-align: center; }
-    .bio-notice .lead { margin:0 0 10px; font-weight:bold; text-decoration:underline; }
-    .bio-notice p:last-child { margin-bottom:0; }
-    .menu { max-width: 430px; margin: auto; display: grid; gap: 12px; }
-    .menu button { width: 100%; font-size: 17px; padding: 12px; }
-    .menu-row { position: relative; }
-    .menu-row .menu-main-btn { padding-left: 46px; padding-right: 46px; }
-    .menu-info-btn { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); width: 30px !important; height: 30px; padding: 0 !important; border: 2px solid #08164f; border-radius: 50%; background: #fff !important; color: #08164f !important; font: bold 20px/25px Georgia, "Times New Roman", serif !important; z-index: 2; }
-    .menu-info-btn:hover,.menu-info-btn:focus { background: #f1f3ff !important; outline: 2px solid #08164f; outline-offset: 1px; }
-    .info-modal-box { width: min(520px, 100%); text-align: center; }
-    #menuInfoDescription { text-align: left; line-height: 1.5; color: #333; }
-    main { background: aqua; padding: 18px; min-height: 380px; }
-    .card { background: #fff; padding: 16px; border-radius: 7px; margin-bottom: 14px; }
-    .center { text-align: center; }
-    code { font-size: 18px; background: #eee; padding: 5px 9px; border-radius: 4px; }
-    .status { min-height: 22px; margin-top: 10px; font-weight: bold; }
-    .error { color: #900; }
-    .success { color: #075f07; }
-    .modal { display: none; position: fixed; inset: 0; background: #0007; z-index: 2000; align-items: center; justify-content: center; padding: 12px; }
-    .modal.show { display: flex; }
-    .modal-box { background: #fff; width: min(760px, 100%); max-height: 88vh; overflow: auto; padding: 18px; border-radius: 7px; }
-    input { width: 100%; padding: 9px; border: 1px solid #aaa; font-size: 15px; }
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-    table { width: 100%; border-collapse: collapse; }
-    th,td { border: 1px solid #ccc; padding: 7px; text-align: left; }
-    th { background: #eee; }
-    footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #ddd; padding: 6px; text-align: center; }
+    :root {
+      color-scheme: only light;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+      padding: 18px 10px 58px;
+    }
+
+    .shell {
+      width: min(1000px, 100%);
+      margin: auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px #0002;
+      overflow: hidden;
+    }
+
+    header {
+      text-align: center;
+      padding: 16px;
+    }
+
+    .btn,
+    button {
+      border: 0;
+      border-radius: 4px;
+      background: #4CAF50;
+      color: #fff;
+      padding: 10px 16px;
+      font-size: 15px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .secondary {
+      background: #777 !important;
+    }
+
+    .back-instructions {
+      padding: 13px 24px;
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .bio-notice {
+      background: #fff3cd;
+      border: 3px solid #b7791f;
+      color: #5f4300;
+      font-size: 17px;
+      font-weight: bold;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    .bio-notice p {
+      margin: 0;
+    }
+
+    .bio-notice p + p {
+      margin-top: 4px;
+    }
+
+    .menu {
+      max-width: 430px;
+      margin: auto;
+      display: grid;
+      gap: 12px;
+    }
+
+    .menu button {
+      width: 100%;
+      font-size: 17px;
+      padding: 12px;
+    }
+
+    .menu-row {
+      position: relative;
+    }
+
+    .menu-row .menu-main-btn {
+      padding-left: 46px;
+      padding-right: 46px;
+    }
+
+    .menu-info-btn {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      transform: translateY(-50%);
+      width: 30px !important;
+      height: 30px;
+      padding: 0 !important;
+      border: 2px solid #08164f;
+      border-radius: 50%;
+      background: #fff !important;
+      color: #08164f !important;
+      font: bold 20px/25px Georgia, "Times New Roman", serif !important;
+      z-index: 2;
+    }
+
+    .menu-info-btn:hover,
+    .menu-info-btn:focus {
+      background: #f1f3ff !important;
+      outline: 2px solid #08164f;
+      outline-offset: 1px;
+    }
+
+    .info-modal-box {
+      width: min(520px, 100%);
+      text-align: center;
+    }
+
+    #menuInfoDescription {
+      text-align: left;
+      line-height: 1.5;
+      color: #333;
+    }
+
+    main {
+      background: aqua;
+      padding: 18px;
+      min-height: 380px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 16px;
+      border-radius: 7px;
+      margin-bottom: 14px;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    code {
+      font-size: 18px;
+      background: #eee;
+      padding: 5px 9px;
+      border-radius: 4px;
+    }
+
+    .status {
+      min-height: 22px;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .error {
+      color: #900;
+    }
+
+    .success {
+      color: #075f07;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0007;
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #fff;
+      width: min(760px, 100%);
+      max-height: 88vh;
+      overflow: auto;
+      padding: 18px;
+      border-radius: 7px;
+    }
+
+    input {
+      width: 100%;
+      padding: 9px;
+      border: 1px solid #aaa;
+      font-size: 15px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 7px;
+      text-align: left;
+    }
+
+    th {
+      background: #eee;
+    }
+
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #ddd;
+      padding: 6px;
+      text-align: center;
+    }
   </style>
 </head>
 
@@ -55,10 +244,7 @@
   <div class="shell">
     <header>
       <h1>FAMILY TREE</h1>
-      <div class="header-actions">
-        <a class="btn secondary home-btn" href="home.html">HOME</a>
-        <a class="btn secondary back-instructions" href="FamilyTree.html">BACK TO INSTRUCTIONS</a>
-      </div>
+      <a class="btn secondary back-instructions" href="FamilyTree.html">BACK TO INSTRUCTIONS</a>
     </header>
 
     <main>
@@ -68,8 +254,16 @@
       </section>
 
       <section class="card bio-notice app-description">
-        <p class="lead">FamilyTree records biological family relationships only.</p>
-        <p>Parents, children, siblings and ancestry shown in FamilyTree are biological relationships. Adoptive, step and other non-biological parent-child relationships are not included.</p>
+        <p>
+          FamilyTree records biological family relationships only. Parents, children, siblings and ancestry shown in
+          FamilyTree are biological relationships. Adoptive, step and other non-biological parent-child relationships
+          are not included.
+        </p>
+        <p>
+          If only we had a record of our Parents, Grandparents and Great Grandparents IN THEIR OWN WORDS. This Family
+          Tree gives you the ability to record who you are and what you did for your future Children, Grandchildren and
+          Great Grandchildren to find out about you, IN YOUR OWN WORDS.
+        </p>
       </section>
 
       <section class="card">
@@ -132,7 +326,16 @@
       <div id="searchStatus" class="status"></div>
       <div style="overflow: auto;">
         <table id="searchTable" style="display: none;">
-          <thead><tr><th>PersonID</th><th>Name</th><th>Birth Date</th><th>Birth Place</th><th>FamilyTreeCode</th><th></th></tr></thead>
+          <thead>
+            <tr>
+              <th>PersonID</th>
+              <th>Name</th>
+              <th>Birth Date</th>
+              <th>Birth Place</th>
+              <th>FamilyTreeCode</th>
+              <th></th>
+            </tr>
+          </thead>
           <tbody id="searchBody"></tbody>
         </table>
       </div>
@@ -149,7 +352,9 @@
     </div>
   </div>
 
-  <footer>Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr</footer>
+  <footer>
+    Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
+  </footer>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -170,12 +375,16 @@
       });
 
       closeButton.addEventListener('click', () => modal.classList.remove('show'));
-      modal.addEventListener('click', event => { if (event.target === modal) modal.classList.remove('show'); });
-      document.addEventListener('keydown', event => { if (event.key === 'Escape') modal.classList.remove('show'); });
+      modal.addEventListener('click', event => {
+        if (event.target === modal) modal.classList.remove('show');
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') modal.classList.remove('show');
+      });
     });
   </script>
 
-  <script src="js/FTInstructions.js?v=20260923-2"></script>
+  <script src="js/FTInstructions.js?v=20260923-1"></script>
   <script src="js/FamilyTreePage.js?v=20260923-1"></script>
 </body>
 </html>
