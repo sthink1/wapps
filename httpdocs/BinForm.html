@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
     <title>Wonderful Apps - Budget In</title>
 
@@ -538,11 +539,11 @@
                 const sel = document.getElementById('description');
                 sel.innerHTML = '<option value="">Select a description</option>';
                 rows.forEach(r => {
-                    const o = document.createElement('option');
-                    o.value = r.Description;
-                    o.textContent = r.Description;
-                    sel.appendChild(o);
-                });
+                        const o = document.createElement('option');
+                        o.value = r.Description;
+                        o.textContent = r.Description;
+                        sel.appendChild(o);
+                    });
                 if (selectedText && ![...sel.options].some(o => o.value === selectedText)) {
                     const o = document.createElement('option');
                     o.value = selectedText;

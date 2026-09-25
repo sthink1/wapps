@@ -905,6 +905,10 @@ Before changing an existing feature:
 - Do not weaken `UserID` ownership controls.
 - Do not modify unrelated functionality while completing a focused task.
 
+## 18. Instructions for Budget global Description dropdown values
+
+- Budget global Description dropdown values are controlled by BudgetDescriptionT. Before changing global Budget descriptions, review docs/ BudgetDescription_Global_List.sql. Do not hard-code global Description values in HTML forms.
+
 ---
 
 *End of CLAUDE.md*

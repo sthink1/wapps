@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
     <title>Wonderful Apps - My Money</title>
     <link rel="manifest" href="/manifest.json">
@@ -101,6 +102,15 @@
         .total-row td { font-weight:bold; background:#f7f7f7; }
         .hint { font-size:13px; color:#333; margin:6px 0 10px; background:#fff3a6; font-weight:bold; padding:8px 10px; border:1px solid #d9c55a; border-radius:4px; display:inline-block; }
         .projection { margin-top:18px; }
+        .projection-controls {
+            display:flex;
+            justify-content:center;
+            gap:10px;
+            flex-wrap:wrap;
+            margin:0 0 12px;
+        }
+        .projection-reset-btn { background:#777; color:white; }
+        .projection-add-btn { background:#1565c0; color:white; }
         .projection table { max-width:600px; margin:0 auto; }
         .projection th, .projection td { text-align:center; }
         .shortage { background:#000 !important; color:#fff !important; font-weight:bold; }
@@ -173,6 +183,10 @@
 
             <div class="projection">
                 <h2>PROJECTED MY MONEY</h2>
+                <div class="projection-controls">
+                    <button type="button" class="projection-reset-btn" id="projectionDefaultRange">Current + 11 Months</button>
+                    <button type="button" class="projection-add-btn" id="projectionAdd12">Show Additional 12 Months</button>
+                </div>
                 <div class="table-shell">
                     <table>
                         <thead><tr><th>Month</th><th>Projected Balance of My Money</th></tr></thead>
@@ -226,6 +240,8 @@ const BASE_URL = window.location.hostname === 'localhost' && window.location.por
 
 let editingMoneyId = null;
 let editingInvestmentId = null;
+let projectionFrom = null;
+let projectionTo = null;
 
 function token(){ return localStorage.getItem('token'); }
 function requireLogin(){
@@ -378,8 +394,13 @@ async function saveInvestment(){
         await loadInvestments();
     }catch(err){ showMessage('investmentMessage',err.message); }
 }
+function setDefaultProjectionRange(){
+    projectionFrom=currentMonth();
+    projectionTo=addMonths(projectionFrom,11);
+}
 async function loadProjection(){
-    const from=currentMonth(), to=addMonths(from,11);
+    if(!projectionFrom || !projectionTo) setDefaultProjectionRange();
+    const from=projectionFrom, to=projectionTo;
     const data=await apiFetch(`/budget/monthly/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
     const body=document.getElementById('projectionBody');
     body.innerHTML='';
@@ -403,6 +424,23 @@ document.getElementById('moneySaveBtn').addEventListener('click',saveMoney);
 document.getElementById('moneyCancelBtn').addEventListener('click',cancelMoneyEdit);
 document.getElementById('investmentSaveBtn').addEventListener('click',saveInvestment);
 document.getElementById('investmentCancelBtn').addEventListener('click',cancelInvestmentEdit);
+document.getElementById('projectionDefaultRange').addEventListener('click',async()=>{
+    setDefaultProjectionRange();
+    try{
+        await loadProjection();
+    }catch(err){
+        showMessage('moneyMessage',err.message);
+    }
+});
+document.getElementById('projectionAdd12').addEventListener('click',async()=>{
+    if(!projectionFrom || !projectionTo) setDefaultProjectionRange();
+    projectionTo=addMonths(projectionTo,12);
+    try{
+        await loadProjection();
+    }catch(err){
+        showMessage('moneyMessage',err.message);
+    }
+});
 
 if('serviceWorker' in navigator){
     window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(err=>console.error('Service Worker registration failed',err)));
