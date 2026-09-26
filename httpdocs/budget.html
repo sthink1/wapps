@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="color-scheme" content="only light">
     <title>Wonderful Apps - Budget</title>
     <link rel="manifest" href="/manifest.json">
@@ -138,6 +139,243 @@
             margin: 0 auto 14px;
             max-width: 100%;
         }
+
+
+        /* Print My Details modal and report */
+        .budget-details-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .budget-details-modal.show {
+            display: block;
+        }
+
+        .budget-details-modal-content {
+            width: min(1200px, 96vw);
+            max-height: 90vh;
+            overflow: auto;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+            padding: 20px;
+            text-align: left;
+        }
+
+        .budget-details-title {
+            text-align: center;
+            margin: 0 0 4px;
+        }
+
+        .budget-details-timestamp {
+            text-align: center;
+            font-weight: bold;
+            margin: 0 0 14px;
+        }
+
+        .budget-details-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .budget-details-actions button {
+            background: #1565c0;
+            color: white;
+            border: 0;
+            padding: 9px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .budget-details-actions .close-btn {
+            background: #777;
+        }
+
+        .budget-details-actions button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+
+        .budget-details-status {
+            text-align: center;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .budget-details-status.error {
+            color: #900;
+        }
+
+        .budget-details-section {
+            margin: 18px 0 26px;
+            break-inside: avoid-page;
+        }
+
+        .budget-details-section h2 {
+            text-align: left;
+            font-size: 20px;
+            margin: 0 0 8px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid #444;
+        }
+
+        .budget-details-subsection {
+            margin: 18px 0 24px;
+            break-inside: auto;
+        }
+
+        .budget-details-subsection h3 {
+            margin: 0 0 6px;
+            font-size: 17px;
+        }
+
+        .budget-details-table-wrap {
+            overflow-x: auto;
+        }
+
+        .budget-details-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            font-size: 13px;
+        }
+
+        .budget-details-table th,
+        .budget-details-table td {
+            border: 1px solid #bbb;
+            padding: 6px;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+        }
+
+        .budget-details-table th {
+            background: #e8e8e8;
+            text-align: center;
+        }
+
+        .budget-details-table td.number-cell {
+            text-align: right;
+        }
+
+        .budget-details-table.compact {
+            font-size: 11px;
+        }
+
+        .budget-details-total-row td {
+            font-weight: bold;
+            background: #f3f3f3;
+        }
+
+        .budget-details-empty {
+            color: #666;
+            text-align: center;
+        }
+
+        .budget-details-current-balance {
+            font-weight: bold;
+            margin: 0 0 8px;
+        }
+
+        .budget-details-shortage,
+        .budget-details-shortage-cell {
+            background: #000 !important;
+            color: #fff !important;
+            font-weight: bold;
+        }
+
+        .budget-details-deficit td {
+            font-weight: bold;
+        }
+
+        @media (max-width: 720px) {
+            .budget-details-modal {
+                padding: 8px;
+            }
+
+            .budget-details-modal-content {
+                width: 100%;
+                max-height: 94vh;
+                padding: 12px;
+            }
+        }
+
+        @media print {
+            @page {
+                size: landscape;
+                margin: 0.45in;
+            }
+
+            body.printing-budget-details > .container,
+            body.printing-budget-details > footer {
+                display: none !important;
+            }
+
+            body.printing-budget-details {
+                display: block;
+                background: #fff;
+                padding: 0;
+            }
+
+            body.printing-budget-details .budget-details-modal {
+                display: block !important;
+                position: static;
+                inset: auto;
+                background: #fff;
+                padding: 0;
+                overflow: visible;
+            }
+
+            body.printing-budget-details .budget-details-modal-content {
+                width: 100%;
+                max-height: none;
+                overflow: visible;
+                box-shadow: none;
+                border-radius: 0;
+                padding: 0;
+            }
+
+            body.printing-budget-details .budget-details-actions,
+            body.printing-budget-details .budget-details-status {
+                display: none !important;
+            }
+
+            body.printing-budget-details .budget-details-table-wrap {
+                overflow: visible;
+            }
+
+            body.printing-budget-details .budget-details-table {
+                font-size: 9px;
+            }
+
+            body.printing-budget-details .budget-details-table.compact {
+                font-size: 8px;
+            }
+
+            body.printing-budget-details .budget-details-table thead {
+                display: table-header-group;
+            }
+
+            body.printing-budget-details .budget-details-table tr {
+                break-inside: avoid;
+            }
+
+            body.printing-budget-details .budget-details-section {
+                break-inside: auto;
+            }
+
+            body.printing-budget-details .budget-details-subsection {
+                break-inside: auto;
+            }
+        }
     </style>
 </head>
 
@@ -157,6 +395,7 @@
                     <button class="budget-btn nav-budget-btn" data-page="BMoney.html">My Money</button>
                     <button class="budget-btn nav-budget-btn" data-page="BmonthBudget.html">My Monthly Budget</button>
                     <button class="budget-btn nav-budget-btn" data-page="Breports.html">Review My Current In's &amp; Out's</button>
+                    <button class="nav-budget-btn" id="printMyDetailsBtn" type="button">Print My Details</button>
                 </div>
             </div>
             <div class="budget-section">
@@ -176,6 +415,30 @@
                     <button class="budget-btn out-budget-btn" data-page="BcardForm.html">Credit Card</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+
+
+    <div
+        id="budgetDetailsModal"
+        class="budget-details-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+        aria-labelledby="budgetDetailsTitle"
+    >
+        <div class="budget-details-modal-content">
+            <h1 id="budgetDetailsTitle" class="budget-details-title">MY MONEY MY BUDGET DETAILS</h1>
+            <p id="budgetDetailsTimestamp" class="budget-details-timestamp"></p>
+
+            <div class="budget-details-actions">
+                <button id="budgetDetailsPrintBtn" type="button" disabled>Print</button>
+                <button id="budgetDetailsCloseBtn" class="close-btn" type="button">Close</button>
+            </div>
+
+            <div id="budgetDetailsStatus" class="budget-details-status"></div>
+            <div id="budgetDetailsReport"></div>
         </div>
     </div>
 
@@ -267,5 +530,6 @@
             });
         });
     </script>
+    <script src="js/BudgetPrintDetails.js?v=20260926-1"></script>
 </body>
 </html>
