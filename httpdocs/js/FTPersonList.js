@@ -153,13 +153,15 @@ function renderTreeSections() {
         const rows = filteredPersons.length
             ? filteredPersons.map(person => `
                 <tr>
-                    <td>
+                    <td class="icon-cell">
                         <button
-                            class="pid"
+                            class="pid icon-action person-link"
                             type="button"
                             data-id="${escapeHtml(person.PersonID)}"
                             data-code="${escapeHtml(tree.FamilyTreeCode)}"
-                        >${escapeHtml(person.PersonID)}</button>
+                            title="View Person"
+                            aria-label="View Person"
+                        ><img src="images/person.svg" alt=""></button>
                     </td>
                     <td>${escapeHtml(nameOf(person))}</td>
                     <td>${escapeHtml(dateUS(person.BirthDate))}</td>
@@ -193,7 +195,7 @@ function renderTreeSections() {
                     <table>
                         <thead>
                             <tr>
-                                <th>PersonID</th>
+                                <th>Person</th>
                                 <th>Name</th>
                                 <th>Birth Date</th>
                                 <th>Birth Place</th>
