@@ -57,6 +57,12 @@ footer {
     text-align: center;
 }
 
+        .etf-action-area {
+            background-color: #CDE8FF;
+            padding: 15px 10px;
+            margin-top: 12px;
+        }
+
         .app-description {
             box-sizing: border-box;
             background-color: #ffffff;
@@ -82,12 +88,14 @@ footer {
 
     <div class="app-description">Research and manage Exchange-Traded Fund investments. Select ETF categories, review and compare ETF symbols, and track ETF investment activity, including purchases, sales and holdings. Automatically calculate the number of shares to purchase based on an investment amount allocated to the ETFs you want to purchase.</div>
 
-    <button onclick="goCategories()">Categories</button>
-    <button onclick="goSymbols()">Symbols</button><br>
-    <button onclick="goCompare()">Compare</button><br>
-    <button onclick="goActivity()">Activity</button><br>
-    <button onclick="goInventory()">Inventory</button><br>
-    <button onclick="goETFTest()">ETF Test</button>
+    <div class="etf-action-area">
+        <button onclick="goCategories()">Categories</button>
+        <button onclick="goSymbols()">Symbols</button><br>
+        <button onclick="goCompare()">Compare</button><br>
+        <button onclick="goActivity()">Activity</button><br>
+        <button onclick="goInventory()">Inventory</button><br>
+        <button onclick="goETFTest()">ETF Test</button>
+    </div>
 </div>
 
 <footer>
