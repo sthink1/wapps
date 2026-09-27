@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="only light">
+  <title>Family Network Verification</title>
+  <style>
+    :root{color-scheme:only light}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f4f4f4;padding:28px 12px}.card{max-width:650px;margin:auto;background:#fff;border:1px solid #bbb;border-radius:7px;padding:22px}h1{text-align:center}.actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}button{border:0;border-radius:4px;padding:11px 18px;font-size:16px;cursor:pointer}.approve{background:#4CAF50;color:#fff}.decline{background:#b42318;color:#fff}.status{margin-top:18px;font-weight:bold;line-height:1.5}.small{color:#555;line-height:1.5}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>FAMILY NETWORK VERIFICATION</h1>
+    <p id="intro" class="small">Checking this verification request...</p>
+    <div id="actions" class="actions" style="display:none">
+      <button id="approveBtn" class="approve" type="button">YES — INCLUDE ME IN FAMILY NETWORK</button>
+      <button id="declineBtn" class="decline" type="button">NO — DO NOT INCLUDE ME</button>
+    </div>
+    <div id="status" class="status"></div>
+  </main>
+<script>
+const token=new URLSearchParams(location.search).get('token')||'';
+const intro=document.getElementById('intro'),actions=document.getElementById('actions'),statusEl=document.getElementById('status');
+async function load(){
+ if(!token){statusEl.textContent='This verification link is not valid.';return;}
+ const r=await fetch(`/notifications/network-verification/${encodeURIComponent(token)}`);const d=await r.json();
+ if(!r.ok){statusEl.textContent=d.message||'This verification link is not valid.';return;}
+ intro.textContent=`Wonderful Apps was asked to include ${d.personName} in the Family Network for FamilyTreeCode ${d.familyTreeCode}. Family Network is visible only within that Family Tree. Approve only if you want this Person to appear in Family Network searches.`;
+ if(d.responded){statusEl.textContent=d.response==='APPROVED'?'This request was already approved.':'This request was already declined.';return;}
+ actions.style.display='flex';
+}
+async function respond(response){
+ actions.style.display='none';statusEl.textContent='Saving your response...';
+ const r=await fetch(`/notifications/network-verification/${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({response})});const d=await r.json();
+ statusEl.textContent=d.message||'Your response has been recorded.';
+}
+document.getElementById('approveBtn').onclick=()=>respond('APPROVED');
+document.getElementById('declineBtn').onclick=()=>respond('DECLINED');
+load().catch(e=>statusEl.textContent=e.message);
+</script>
+</body>
+</html>

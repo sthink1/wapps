@@ -26,6 +26,7 @@ function setCurrent(code){
  $('familyTreeCodeDisplay').textContent=currentCode||'None associated';
  if($('changeTreeBtn'))$('changeTreeBtn').disabled=!currentCode;
  if($('undoMergeBtn'))$('undoMergeBtn').disabled=!currentCode;
+ if($('networkBtn'))$('networkBtn').disabled=!currentCode;
 }
 async function loadCurrentTree(){
  const r=await fetch(`${BASE_URL}/familytree/current-tree`,{headers:ah(false)}),d=await r.json();
@@ -46,6 +47,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
  $('enterCodeBtn').onclick=()=>{$('codeInput').value='';$('codeStatus').textContent='';$('codeModal').classList.add('show')};
  $('searchPersonBtn').onclick=()=>{$('searchInput').value='';$('searchBody').innerHTML='';$('searchTable').style.display='none';$('searchStatus').textContent='';$('searchModal').classList.add('show')};
  $('personListBtn').onclick=()=>{if(!currentCode){$('statusMessage').textContent='Enter, search for, or create a Family Tree first.';return}location.href='FTPersonList.html'};
+ $('networkBtn').onclick=()=>{if(!currentCode){$('statusMessage').textContent='Enter, search for, or create a Family Tree first.';return}location.href='FTNetwork.html'};
  $('changeTreeBtn').onclick=async()=>{if(!currentCode)return;const ok=window.confirm(`Change from Family Tree ${currentCode}?\n\nThis will NOT delete people, pictures, relationships, contacts, events, or activity. It only ends your current association so you can enter another Family Tree or start a new one.`);if(!ok)return;try{const r=await fetch(`${BASE_URL}/familytree/change-tree`,{method:'POST',headers:ah()}),d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to change Family Tree.');setCurrent('');$('statusMessage').textContent=d.message||'You are no longer associated with a current Family Tree. Enter another code, search for a person, or create a new person.';}catch(e){$('statusMessage').textContent=e.message}};
  $('undoMergeBtn').onclick=()=>{if(!currentCode){$('statusMessage').textContent='There is no current Family Tree.';return}location.href=`FTUndoOneTreeMerge.html?familyTreeCode=${encodeURIComponent(currentCode)}`};
  $('codeSubmit').onclick=async()=>{try{const d=await enterCode($('codeInput').value.trim());$('codeStatus').textContent=d.message||`Family Tree ${d.FamilyTreeCode} is now active.`;setTimeout(()=>$('codeModal').classList.remove('show'),500)}catch(e){$('codeStatus').textContent=e.message}};

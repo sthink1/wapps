@@ -1223,6 +1223,78 @@ window.addEventListener('pageshow', event => {
     }
 });
 
+
+
+const NETWORK_HELP_TYPES = [
+    'Career Advice','College / Education Advice','Job Opportunities','Professional Introductions',
+    'Business Advice','Mentoring','Professional Services','Local / Area Information',
+    'Moving / Relocation Advice','Technology Help','Financial / Accounting Knowledge',
+    'Legal Knowledge','Medical / Healthcare Knowledge','Real Estate Knowledge',
+    'Genealogy / Family History','Hobbies / Activities','Other'
+];
+let networkEducation=[];
+let networkCareer=[];
+let networkItems=[];
+let networkHelp=[];
+
+function networkEsc(value){return escapeHtml(value);}
+function networkTable(headers, rows){
+    return `<div class="table-wrap"><table class="network-list"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}<th></th></tr></thead><tbody>${rows.length?rows.join(''):`<tr><td colspan="${headers.length+1}">None entered.</td></tr>`}</tbody></table></div>`;
+}
+function renderNetworkLists(){
+    $('neList').innerHTML=networkTable(['School','Degree','Program','Year'],networkEducation.map((x,i)=>`<tr><td>${networkEsc(x.School)}</td><td>${networkEsc(x.Degree||'')}</td><td>${networkEsc(x.ProgramField||'')}</td><td>${networkEsc(x.GraduationYear||'')}</td><td><button class="n-del-ed" data-i="${i}">DELETE</button></td></tr>`));
+    $('ncList').innerHTML=networkTable(['Profession','Company','Position','Location'],networkCareer.map((x,i)=>`<tr><td>${networkEsc(x.Profession||'')}</td><td>${networkEsc(x.CompanyOrganization||'')}</td><td>${networkEsc(x.PositionTitle||'')}</td><td>${networkEsc([x.City,x.State].filter(Boolean).join(', '))}</td><td><button class="n-del-career" data-i="${i}">DELETE</button></td></tr>`));
+    $('niList').innerHTML=networkTable(['Type','Description','Detail'],networkItems.map((x,i)=>`<tr><td>${networkEsc(x.ItemType)}</td><td>${networkEsc(x.Description)}</td><td>${networkEsc(x.Detail||'')}</td><td><button class="n-del-item" data-i="${i}">DELETE</button></td></tr>`));
+    document.querySelectorAll('.n-del-ed').forEach(b=>b.onclick=()=>{networkEducation.splice(Number(b.dataset.i),1);renderNetworkLists()});
+    document.querySelectorAll('.n-del-career').forEach(b=>b.onclick=()=>{networkCareer.splice(Number(b.dataset.i),1);renderNetworkLists()});
+    document.querySelectorAll('.n-del-item').forEach(b=>b.onclick=()=>{networkItems.splice(Number(b.dataset.i),1);renderNetworkLists()});
+}
+function setNetworkVerification(profile){
+    const email=profile.currentEmail||profile.VerifiedEmail||'';
+    $('nVerificationEmail').textContent=email||'No email contact entered';
+    const status=profile.effectiveVerificationStatus||profile.VerificationStatus||'NOT_REQUESTED';
+    const el=$('nVerificationStatus');
+    el.className=status==='VERIFIED'?'verified':status==='PENDING'?'pending':status==='DECLINED'?'declined':'';
+    el.textContent=status==='VERIFIED'?'Verified ✓':status==='PENDING'?'Pending Verification':status==='DECLINED'?'Declined':'Not Verified';
+}
+function buildHelpChecks(){
+    $('nhChecks').innerHTML=NETWORK_HELP_TYPES.map(t=>`<label><input type="checkbox" class="nhCheck" value="${networkEsc(t)}"> ${networkEsc(t)}</label>`).join('');
+}
+async function loadNetwork(){
+    $('networkStatus').textContent='Loading...';
+    const r=await fetch(`${BASE_URL}/familytree/persons/${personID}/network?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,{headers:authHeaders(false)});
+    const d=await r.json(); if(!r.ok)throw new Error(d.message||'Unable to load Network information.');
+    const p=d.profile||{};
+    $('networkPersonName').textContent=nameOf(currentPerson||{PersonID:personID});
+    $('nInclude').checked=Number(p.IncludeInSearch)===1;
+    $('nNote').value=p.NetworkNote||'';
+    $('nPreferred').value=p.PreferredContactType||'';
+    setNetworkVerification(p);
+    networkEducation=d.education||[]; networkCareer=d.career||[]; networkItems=d.items||[]; networkHelp=d.help||[];
+    renderNetworkLists(); buildHelpChecks();
+    const selected=new Set(networkHelp.map(x=>x.HelpType)); document.querySelectorAll('.nhCheck').forEach(c=>c.checked=selected.has(c.value));
+    $('nhDetail').value=(networkHelp.find(x=>x.HelpDetail)?.HelpDetail)||'';
+    $('networkStatus').textContent='';
+}
+function val(id){const v=$(id).value.trim();return v||null;}
+function num(id){const v=$(id).value.trim();return v?Number(v):null;}
+function addEducation(){const School=val('neSchool');if(!School){$('networkStatus').textContent='School / Institution is required.';return}networkEducation.push({School,Degree:val('neDegree'),ProgramField:val('neProgram'),Certification:val('neCertification'),GraduationYear:num('neYear'),City:val('neCity'),State:val('neState'),Country:val('neCountry'),Note:val('neNote')});['neSchool','neDegree','neProgram','neCertification','neYear','neCity','neState','neCountry','neNote'].forEach(id=>$(id).value='');renderNetworkLists();}
+function addCareer(){const row={Profession:val('ncProfession'),Industry:val('ncIndustry'),CompanyOrganization:val('ncCompany'),PositionTitle:val('ncPosition'),Specialty:val('ncSpecialty'),City:val('ncCity'),State:val('ncState'),Country:val('ncCountry'),StartYear:num('ncStart'),EndYear:num('ncEnd'),CurrentPosition:$('ncCurrent').checked?1:0,Note:val('ncNote')};if(!row.Profession&&!row.CompanyOrganization&&!row.PositionTitle){$('networkStatus').textContent='Enter a Profession, Company / Organization, or Position / Title.';return}networkCareer.push(row);['ncProfession','ncIndustry','ncCompany','ncPosition','ncSpecialty','ncCity','ncState','ncCountry','ncStart','ncEnd','ncNote'].forEach(id=>$(id).value='');$('ncCurrent').checked=false;renderNetworkLists();}
+function addItem(){const Description=val('niDescription');if(!Description){$('networkStatus').textContent='Description is required.';return}networkItems.push({ItemType:$('niType').value,Description,Detail:val('niDetail')});$('niDescription').value='';$('niDetail').value='';renderNetworkLists();}
+async function saveNetwork(){
+    const helpDetail=val('nhDetail');
+    const help=[...document.querySelectorAll('.nhCheck:checked')].map(c=>({HelpType:c.value,HelpDetail:helpDetail}));
+    const body={familyTreeCode,IncludeInSearch:$('nInclude').checked?1:0,NetworkNote:val('nNote'),PreferredContactType:val('nPreferred'),education:networkEducation,career:networkCareer,items:networkItems,help};
+    $('networkStatus').textContent='Saving...';
+    const r=await fetch(`${BASE_URL}/familytree/persons/${personID}/network`,{method:'PUT',headers:authHeaders(),body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to save Network information.');
+    $('networkStatus').textContent=d.message||'Network saved.';await loadNetwork();
+}
+async function deleteNetwork(){
+    if(!confirm('Delete all Network information for this Person?'))return;
+    const r=await fetch(`${BASE_URL}/familytree/persons/${personID}/network?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,{method:'DELETE',headers:authHeaders(false)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to delete Network information.');
+    $('networkStatus').textContent=d.message||'Network deleted.';await loadNetwork();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     if (!token()) {
         window.location.href = 'login.html';
@@ -1325,6 +1397,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('contactBtn').onclick = () =>
         navigateTo('FTContact.html');
 
+    $('networkBtn').onclick = () => loadNetwork().then(() => $('networkModal').classList.add('show')).catch(error => setPageStatus(error.message));
+
     $('eventBtn').onclick = () =>
         navigateTo('FTEvent.html');
 
@@ -1392,6 +1466,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             .catch(error => {
                 $('addPictureStatus').textContent = error.message;
             });
+
+    $('networkCloseBtn').onclick = () => $('networkModal').classList.remove('show');
+    $('neAdd').onclick = addEducation;
+    $('ncAdd').onclick = addCareer;
+    $('niAdd').onclick = addItem;
+    $('networkSaveBtn').onclick = () => saveNetwork().catch(error => $('networkStatus').textContent = error.message);
+    $('networkDeleteBtn').onclick = () => deleteNetwork().catch(error => $('networkStatus').textContent = error.message);
 
     $('makeProfileMenuBtn').onclick = () =>
         makeProfilePicture()

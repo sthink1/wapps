@@ -1,4 +1,6 @@
 const express = require('express');
+const crypto = require('crypto');
+const { pool } = require('../dbConnection');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const {
@@ -74,5 +76,69 @@ router.post('/unsubscribe/:token', async (req, res) => {
         res.status(error.status || 500).json({ message: error.message });
     }
 });
+
+
+
+function verificationTokenHash(token) {
+    return crypto.createHash('sha256').update(String(token || '')).digest('hex');
+}
+
+// Public Family Network verification. No WA login is required.
+router.get('/network-verification/:token', async (req, res) => {
+    try {
+        const tokenHash = verificationTokenHash(req.params.token);
+        const [rows] = await pool.query(
+            `SELECT v.NetworkVerificationID,v.PersonID,v.FamilyTreeID,v.EmailAddress,v.ExpiresAt,v.RespondedAt,v.Response,
+                    p.FirstName,p.MiddleName,p.LastName,p.SuffixName,ft.FamilyTreeCode
+             FROM FTNetworkVerificationT v
+             JOIN FTPersonT p ON p.PersonID=v.PersonID
+             JOIN FamilyTreeT ft ON ft.FamilyTreeID=v.FamilyTreeID
+             WHERE v.TokenHash=? LIMIT 1`,
+            [tokenHash]
+        );
+        if (!rows.length) return res.status(404).json({ message: 'This Family Network verification link is not valid.' });
+        const row = rows[0];
+        if (!row.RespondedAt && new Date(row.ExpiresAt).getTime() < Date.now()) return res.status(410).json({ message: 'This Family Network verification link has expired.' });
+        res.json({
+            personName: [row.FirstName,row.MiddleName,row.LastName,row.SuffixName].filter(Boolean).join(' '),
+            familyTreeCode: row.FamilyTreeCode,
+            responded: !!row.RespondedAt,
+            response: row.Response || null
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.post('/network-verification/:token', async (req, res) => {
+    const response = String((req.body || {}).response || '').toUpperCase();
+    if (!['APPROVED','DECLINED'].includes(response)) return res.status(400).json({ message: 'Response must be APPROVED or DECLINED.' });
+    const c = await pool.getConnection();
+    try {
+        await c.beginTransaction();
+        const tokenHash = verificationTokenHash(req.params.token);
+        const [rows] = await c.query(`SELECT * FROM FTNetworkVerificationT WHERE TokenHash=? LIMIT 1 FOR UPDATE`, [tokenHash]);
+        if (!rows.length) { const e=new Error('This Family Network verification link is not valid.'); e.status=404; throw e; }
+        const row=rows[0];
+        if (row.RespondedAt) { await c.rollback(); return res.json({ message: row.Response==='APPROVED'?'This Family Network request was already approved.':'This Family Network request was already declined.' }); }
+        if (new Date(row.ExpiresAt).getTime() < Date.now()) { const e=new Error('This Family Network verification link has expired.'); e.status=410; throw e; }
+        const [emailRows] = await c.query(`SELECT ContactID FROM FTContactT WHERE PersonID=? AND LOWER(TRIM(ContactType))='email' AND LOWER(TRIM(ContactValue))=LOWER(TRIM(?)) LIMIT 1`, [row.PersonID,row.EmailAddress]);
+        if (!emailRows.length) { const e=new Error('The Person email address has changed. A new Family Network verification is required.'); e.status=409; throw e; }
+        if (response==='APPROVED') {
+            const [profileRows]=await c.query('SELECT IncludeInSearch FROM FTNetworkT WHERE PersonID=? LIMIT 1',[row.PersonID]);
+            if (!profileRows.length || Number(profileRows[0].IncludeInSearch)!==1) { const e=new Error('This Person is no longer marked for Family Network Search.'); e.status=409; throw e; }
+            await c.query(`UPDATE FTNetworkT SET VerificationStatus='VERIFIED',VerifiedEmail=?,VerifiedAt=NOW(),DeclinedAt=NULL,UpdatedAt=NOW() WHERE PersonID=?`,[row.EmailAddress,row.PersonID]);
+        } else {
+            await c.query(`UPDATE FTNetworkT SET IncludeInSearch=0,VerificationStatus='DECLINED',VerifiedEmail=NULL,VerifiedAt=NULL,DeclinedAt=NOW(),UpdatedAt=NOW() WHERE PersonID=?`,[row.PersonID]);
+        }
+        await c.query(`UPDATE FTNetworkVerificationT SET RespondedAt=NOW(),Response=? WHERE NetworkVerificationID=?`,[response,row.NetworkVerificationID]);
+        await c.commit();
+        res.json({ message: response==='APPROVED'?'Family Network participation has been approved.':'Family Network participation has been declined.' });
+    } catch (error) {
+        try { await c.rollback(); } catch (_) {}
+        res.status(error.status || 500).json({ message: error.message });
+    } finally { c.release(); }
+});
+
 
 module.exports = router;

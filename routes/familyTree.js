@@ -26,15 +26,23 @@ const upload = multer({
 
 async function withTx(work) {
     const c = await pool.getConnection();
+    const afterCommit = [];
+    c._ftAfterCommit = afterCommit;
     try {
         await c.beginTransaction();
         const result = await work(c);
         await c.commit();
+        for (const task of afterCommit) {
+            try { await task(); } catch (error) {
+                console.error('FamilyTree after-commit task failed:', error);
+            }
+        }
         return result;
     } catch (e) {
         try { await c.rollback(); } catch (_) {}
         throw e;
     } finally {
+        delete c._ftAfterCommit;
         c.release();
     }
 }
@@ -256,7 +264,77 @@ async function logActivity(
         [treeID, userID]
     );
 
+    const autoNotifyTypes = new Set(['FTContactT','FTEventT','FTImageT','FTParentT','FTPartnerT','FTSiblingT','mother','father','child','sibling','partner','shared-parent','parent-to-siblings']);
+    if (c._ftAfterCommit && autoNotifyTypes.has(entityType) && personID) {
+        const snapshot = {
+            treeID, userID, activityType: type, entityType, entityID, personID,
+            description: description || null, activityID: activity.insertId
+        };
+        c._ftAfterCommit.push(() => sendGenericPersonActivityNotification(snapshot));
+        if (entityType === 'FTContactT') {
+            c._ftAfterCommit.push(() => refreshNetworkVerificationAfterContactChange(treeID, userID, personID));
+        }
+    }
+
     return activity.insertId;
+}
+
+async function sendGenericPersonActivityNotification(snapshot) {
+    const c = await pool.getConnection();
+    try {
+        const tree = await getTreeByID(c, snapshot.treeID);
+        const [[person]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1', [snapshot.personID]);
+        if (!tree || !person) return;
+        const recipients = await getEditNotificationRecipients(c, snapshot.personID, person.CreatedByUserID, snapshot.userID);
+        const actor = await getNotificationUser(c, snapshot.userID);
+        const personName = familyTreePersonName(person);
+        const actorName = actor ? actor.UserName : `UserID ${snapshot.userID}`;
+        let title = 'Family Tree Information Edited';
+        const action = String(snapshot.activityType || '').toUpperCase();
+        if (snapshot.entityType === 'FTContactT') title = action.includes('DELETE') ? 'Contact Deleted' : action.includes('EDIT') ? 'Contact Edited' : 'Contact Added';
+        else if (snapshot.entityType === 'FTEventT') title = action.includes('DELETE') ? 'Event Deleted' : action.includes('EDIT') ? 'Event Edited' : 'Event Added';
+        else if (snapshot.entityType === 'FTImageT') {
+            title = action.includes('DELETE') ? 'Picture Deleted' : (action.includes('PROFILE') || /profile/i.test(snapshot.description || '')) ? 'Profile Picture Changed' : 'Picture Added';
+        } else if (['FTParentT','FTPartnerT','FTSiblingT','mother','father','child','sibling','partner','shared-parent','parent-to-siblings'].includes(snapshot.entityType)) {
+            title = action.includes('DELETE') ? 'Relationship Deleted' : action.includes('EDIT') ? 'Relationship Edited' : 'Relationship Added';
+        }
+        const message = `${title}
+
+Person: ${personName}
+What changed:
+- ${snapshot.description || title}
+
+Changed by: ${actorName}
+Date/Time: ${new Date().toISOString()}
+FamilyTreeCode: ${tree.FamilyTreeCode}`;
+        const pending = await createNotificationRecords(c, {
+            treeID: snapshot.treeID,
+            activityID: snapshot.activityID,
+            notificationType: title.replace(/\s+/g,'_').toUpperCase(),
+            subject: `FamilyTree: ${title} - ${personName}`,
+            message,
+            recipients,
+            relatedRecordID: snapshot.entityID || snapshot.personID
+        });
+        await sendPendingFamilyTreeNotifications(pending);
+    } finally { c.release(); }
+}
+
+async function refreshNetworkVerificationAfterContactChange(treeID, userID, personID) {
+    const c = await pool.getConnection();
+    let pending = null;
+    try {
+        await c.beginTransaction();
+        const tree = await getTreeByID(c, treeID);
+        if (!tree) { await c.rollback(); return; }
+        const result = await prepareNetworkVerification(c, tree, personID, userID);
+        pending = result.pending;
+        await c.commit();
+    } catch (error) {
+        try { await c.rollback(); } catch (_) {}
+        throw error;
+    } finally { c.release(); }
+    if (pending) await sendNetworkVerificationRequest(pending);
 }
 
 function familyTreePersonName(person) {
@@ -6532,6 +6610,13 @@ router.delete('/persons/:id', auth, async (req, res) => {
                     [id]
                 );
 
+                await c.query('DELETE FROM FTNetworkEducationT WHERE PersonID=?', [id]);
+                await c.query('DELETE FROM FTNetworkCareerT WHERE PersonID=?', [id]);
+                await c.query('DELETE FROM FTNetworkItemT WHERE PersonID=?', [id]);
+                await c.query('DELETE FROM FTNetworkHelpT WHERE PersonID=?', [id]);
+                await c.query('DELETE FROM FTNetworkVerificationT WHERE PersonID=?', [id]);
+                await c.query('DELETE FROM FTNetworkT WHERE PersonID=?', [id]);
+
                 await c.query(
                     `DELETE FROM FTPersonT
                       WHERE PersonID=?`,
@@ -7127,6 +7212,255 @@ router.post('/one-tree/undo', auth, async (req, res) => {
         res.status(e.status || 500).json({ message: e.message });
     }
 });
+
+
+/* =========================
+   FAMILY NETWORK
+   ========================= */
+function networkPublicBaseUrl() {
+    return String(process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+}
+
+async function getNetworkProfileRow(c, personID) {
+    const [rows] = await c.query('SELECT * FROM FTNetworkT WHERE PersonID=? LIMIT 1', [personID]);
+    return rows[0] || null;
+}
+
+async function queueNetworkNotification(c, tree, userID, personID, activityID, title, detail, relatedRecordID) {
+    const [[person]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1', [personID]);
+    if (!person) return [];
+    const recipients = await getEditNotificationRecipients(c, personID, person.CreatedByUserID, userID);
+    const actor = await getNotificationUser(c, userID);
+    const personName = familyTreePersonName(person);
+    const actorName = actor ? actor.UserName : `UserID ${userID}`;
+    const message = `${title}\n\n${detail}\n\nChanged by: ${actorName}\nDate/Time: ${new Date().toISOString()}\nFamilyTreeCode: ${tree.FamilyTreeCode}`;
+    return createNotificationRecords(c, {
+        treeID: tree.FamilyTreeID,
+        activityID,
+        notificationType: title.replace(/\s+/g, '_').toUpperCase(),
+        subject: `FamilyTree: ${title} - ${personName}`,
+        message,
+        recipients,
+        relatedRecordID: relatedRecordID || personID
+    });
+}
+
+async function prepareNetworkVerification(c, tree, personID, userID) {
+    const profile = await getNetworkProfileRow(c, personID);
+    if (!profile || Number(profile.IncludeInSearch) !== 1) return { pending: null, noEmail: false };
+
+    const emailRow = await getPersonEmail(c, personID);
+    const email = emailRow ? String(emailRow.ContactValue || '').trim().toLowerCase() : '';
+    if (!email) {
+        await c.query(`UPDATE FTNetworkT SET VerificationStatus='NOT_REQUESTED',VerifiedEmail=NULL,VerifiedAt=NULL,VerificationRequestedAt=NULL,UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=?`, [userID, personID]);
+        return { pending: null, noEmail: true };
+    }
+
+    if (String(profile.VerificationStatus || '') === 'VERIFIED' && String(profile.VerifiedEmail || '').trim().toLowerCase() === email) {
+        return { pending: null, noEmail: false };
+    }
+
+    const [pendingRows] = await c.query(
+        `SELECT NetworkVerificationID,EmailAddress FROM FTNetworkVerificationT
+         WHERE PersonID=? AND RespondedAt IS NULL AND ExpiresAt>NOW()
+         ORDER BY NetworkVerificationID DESC LIMIT 1`, [personID]
+    );
+    if (pendingRows.length && String(pendingRows[0].EmailAddress || '').trim().toLowerCase() === email && String(profile.VerificationStatus || '') === 'PENDING') {
+        return { pending: null, noEmail: false };
+    }
+
+    await c.query(`UPDATE FTNetworkVerificationT SET RespondedAt=NOW(),Response='SUPERSEDED' WHERE PersonID=? AND RespondedAt IS NULL`, [personID]);
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    await c.query(
+        `INSERT INTO FTNetworkVerificationT(PersonID,FamilyTreeID,EmailAddress,TokenHash,RequestedByUserID,RequestedAt,ExpiresAt,RespondedAt,Response)
+         VALUES(?,?,?,?,?,NOW(),DATE_ADD(NOW(),INTERVAL 7 DAY),NULL,NULL)`,
+        [personID, tree.FamilyTreeID, email, tokenHash, userID]
+    );
+    await c.query(`UPDATE FTNetworkT SET VerificationStatus='PENDING',VerifiedEmail=NULL,VerifiedAt=NULL,DeclinedAt=NULL,VerificationRequestedAt=NOW(),UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=?`, [userID, personID]);
+    const [[person]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1', [personID]);
+    return { pending: { email, rawToken, personName: familyTreePersonName(person), familyTreeCode: tree.FamilyTreeCode, personID }, noEmail: false };
+}
+
+async function sendNetworkVerificationRequest(pending) {
+    if (!pending) return null;
+    const url = `${networkPublicBaseUrl()}/networkVerification.html?token=${encodeURIComponent(pending.rawToken)}`;
+    const delivery = await sendNotification({
+        recipientEmail: pending.email,
+        category: 'FAMILY_TREE',
+        channel: 'EMAIL',
+        subject: `Family Network verification for ${pending.personName}`,
+        message:
+            `A relative using Wonderful Apps Family Tree asked to include ${pending.personName} in Family Network searches for FamilyTreeCode ${pending.familyTreeCode}.\n\n` +
+            `Family Network is for relatives in that Family Tree. It is not a public networking directory.\n\n` +
+            `Please approve or decline here:\n${url}\n\n` +
+            `If you did not expect this request, you may decline it.`,
+        templateName: 'FAMILY_NETWORK_VERIFICATION',
+        relatedApp: 'FAMILY_TREE',
+        relatedRecordID: pending.personID,
+        explainFamilyTreeRecipient: true
+    });
+    if (delivery && delivery.status === 'SUPPRESSED') {
+        await pool.query(`UPDATE FTNetworkVerificationT SET RespondedAt=NOW(),Response='SUPPRESSED' WHERE PersonID=? AND EmailAddress=? AND RespondedAt IS NULL`, [pending.personID, pending.email]);
+        await pool.query(`UPDATE FTNetworkT SET VerificationStatus='NOT_REQUESTED',VerificationRequestedAt=NULL WHERE PersonID=?`, [pending.personID]);
+    }
+    return delivery;
+}
+
+router.get('/persons/:id/network', auth, async (req, res) => {
+    const personID = Number(req.params.id), code = String(req.query.familyTreeCode || '');
+    try {
+        const c = await pool.getConnection();
+        try {
+            const tree = await requireTree(c, code, req.user.userId);
+            const [member] = await c.query('SELECT 1 FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=? LIMIT 1', [tree.FamilyTreeID, personID]);
+            if (!member.length) return res.status(404).json({ message: 'Person is not in this Family Tree.' });
+            const profile = await getNetworkProfileRow(c, personID) || { PersonID: personID, IncludeInSearch: 0, VerificationStatus: 'NOT_REQUESTED' };
+            const emailRow = await getPersonEmail(c, personID);
+            const currentEmail = emailRow ? String(emailRow.ContactValue || '').trim() : '';
+            let effectiveVerificationStatus = profile.VerificationStatus || 'NOT_REQUESTED';
+            if (effectiveVerificationStatus === 'VERIFIED' && String(profile.VerifiedEmail || '').toLowerCase() !== currentEmail.toLowerCase()) effectiveVerificationStatus = 'NOT_REQUESTED';
+            if (effectiveVerificationStatus === 'PENDING') {
+                const [pr] = await c.query(`SELECT EmailAddress FROM FTNetworkVerificationT WHERE PersonID=? AND RespondedAt IS NULL AND ExpiresAt>NOW() ORDER BY NetworkVerificationID DESC LIMIT 1`, [personID]);
+                if (!pr.length || String(pr[0].EmailAddress || '').toLowerCase() !== currentEmail.toLowerCase()) effectiveVerificationStatus = 'NOT_REQUESTED';
+            }
+            const [education] = await c.query('SELECT * FROM FTNetworkEducationT WHERE PersonID=? ORDER BY GraduationYear,NetworkEducationID', [personID]);
+            const [career] = await c.query('SELECT * FROM FTNetworkCareerT WHERE PersonID=? ORDER BY CurrentPosition DESC,StartYear DESC,NetworkCareerID', [personID]);
+            const [items] = await c.query('SELECT * FROM FTNetworkItemT WHERE PersonID=? ORDER BY ItemType,Description,NetworkItemID', [personID]);
+            const [help] = await c.query('SELECT * FROM FTNetworkHelpT WHERE PersonID=? ORDER BY HelpType,NetworkHelpID', [personID]);
+            res.json({ profile: { ...profile, currentEmail, effectiveVerificationStatus }, education, career, items, help });
+        } finally { c.release(); }
+    } catch (e) { res.status(e.status || 500).json({ message: e.message }); }
+});
+
+router.put('/persons/:id/network', auth, async (req, res) => {
+    const personID = Number(req.params.id), userID = req.user.userId, b = req.body || {};
+    try {
+        const result = await withTx(async c => {
+            const tree = await requireTree(c, b.familyTreeCode, userID);
+            const [member] = await c.query('SELECT 1 FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=? LIMIT 1', [tree.FamilyTreeID, personID]);
+            if (!member.length) { const e = new Error('Person is not in this Family Tree.'); e.status = 404; throw e; }
+            const before = await getNetworkProfileRow(c, personID);
+            if (!before) {
+                await c.query(`INSERT INTO FTNetworkT(PersonID,IncludeInSearch,NetworkNote,PreferredContactType,VerificationStatus,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt) VALUES(?,?,?,?, 'NOT_REQUESTED',?,NOW(),NULL,NULL)`, [personID, b.IncludeInSearch ? 1 : 0, b.NetworkNote || null, b.PreferredContactType || null, userID]);
+            } else {
+                await c.query(`UPDATE FTNetworkT SET IncludeInSearch=?,NetworkNote=?,PreferredContactType=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=?`, [b.IncludeInSearch ? 1 : 0, b.NetworkNote || null, b.PreferredContactType || null, userID, personID]);
+            }
+            if (!b.IncludeInSearch) {
+                await c.query(`UPDATE FTNetworkT SET VerificationStatus='NOT_REQUESTED',VerifiedEmail=NULL,VerificationRequestedAt=NULL,VerifiedAt=NULL,DeclinedAt=NULL WHERE PersonID=?`, [personID]);
+                await c.query(`UPDATE FTNetworkVerificationT SET RespondedAt=NOW(),Response='SUPERSEDED' WHERE PersonID=? AND RespondedAt IS NULL`, [personID]);
+            }
+            await c.query('DELETE FROM FTNetworkEducationT WHERE PersonID=?', [personID]);
+            for (const x of Array.isArray(b.education) ? b.education : []) {
+                if (!String(x.School || '').trim()) continue;
+                await c.query(`INSERT INTO FTNetworkEducationT(PersonID,School,Degree,ProgramField,Certification,GraduationYear,City,State,Country,Note,CreatedByUserID,CreatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,NOW())`, [personID,x.School,x.Degree||null,x.ProgramField||null,x.Certification||null,x.GraduationYear||null,x.City||null,x.State||null,x.Country||null,x.Note||null,userID]);
+            }
+            await c.query('DELETE FROM FTNetworkCareerT WHERE PersonID=?', [personID]);
+            for (const x of Array.isArray(b.career) ? b.career : []) {
+                if (!x.Profession && !x.CompanyOrganization && !x.PositionTitle) continue;
+                await c.query(`INSERT INTO FTNetworkCareerT(PersonID,Profession,Industry,CompanyOrganization,PositionTitle,Specialty,City,State,Country,StartYear,EndYear,CurrentPosition,Note,CreatedByUserID,CreatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())`, [personID,x.Profession||null,x.Industry||null,x.CompanyOrganization||null,x.PositionTitle||null,x.Specialty||null,x.City||null,x.State||null,x.Country||null,x.StartYear||null,x.EndYear||null,x.CurrentPosition?1:0,x.Note||null,userID]);
+            }
+            await c.query('DELETE FROM FTNetworkItemT WHERE PersonID=?', [personID]);
+            for (const x of Array.isArray(b.items) ? b.items : []) {
+                if (!String(x.Description || '').trim()) continue;
+                await c.query(`INSERT INTO FTNetworkItemT(PersonID,ItemType,Description,Detail,CreatedByUserID,CreatedAt) VALUES(?,?,?,?,?,NOW())`, [personID,x.ItemType||'Other',x.Description,x.Detail||null,userID]);
+            }
+            await c.query('DELETE FROM FTNetworkHelpT WHERE PersonID=?', [personID]);
+            for (const x of Array.isArray(b.help) ? b.help : []) {
+                if (!String(x.HelpType || '').trim()) continue;
+                await c.query(`INSERT INTO FTNetworkHelpT(PersonID,HelpType,HelpDetail,CreatedByUserID,CreatedAt) VALUES(?,?,?,?,NOW())`, [personID,x.HelpType,x.HelpDetail||null,userID]);
+            }
+            const activityID = await logActivity(c, tree.FamilyTreeID, userID, before ? 'EDIT' : 'CREATE', 'FTNetworkT', personID, personID, before ? 'Edited Network' : 'Added Network');
+            const detail = `${before ? 'Network information was edited.' : 'Network information was added.'}\nEducation entries: ${(b.education||[]).length}\nCareer entries: ${(b.career||[]).length}\nSkill/Interest/Organization entries: ${(b.items||[]).length}\nCan Help Relatives With selections: ${(b.help||[]).length}\nInclude in Family Network Search: ${b.IncludeInSearch ? 'Yes' : 'No'}`;
+            const pendingEmails = await queueNetworkNotification(c, tree, userID, personID, activityID, before ? 'Network Edited' : 'Network Added', detail, personID);
+            const verification = b.IncludeInSearch ? await prepareNetworkVerification(c, tree, personID, userID) : { pending: null, noEmail: false };
+            return { pendingEmails, verification, message: verification.noEmail ? 'Network saved. Add an Email contact before this Person can be verified for Family Network Search.' : (verification.pending ? 'Network saved. A verification email is being sent.' : 'Network saved.') };
+        });
+        await sendPendingFamilyTreeNotifications(result.pendingEmails);
+        if (result.verification.pending) await sendNetworkVerificationRequest(result.verification.pending);
+        res.json({ message: result.message });
+    } catch (e) { res.status(e.status || 500).json({ message: e.message }); }
+});
+
+router.delete('/persons/:id/network', auth, async (req, res) => {
+    const personID = Number(req.params.id), userID = req.user.userId, code = String(req.query.familyTreeCode || '');
+    try {
+        const result = await withTx(async c => {
+            const tree = await requireTree(c, code, userID);
+            const before = await getNetworkProfileRow(c, personID);
+            if (!before) return { pendingEmails: [], message: 'No Network information existed.' };
+            await c.query('DELETE FROM FTNetworkEducationT WHERE PersonID=?', [personID]);
+            await c.query('DELETE FROM FTNetworkCareerT WHERE PersonID=?', [personID]);
+            await c.query('DELETE FROM FTNetworkItemT WHERE PersonID=?', [personID]);
+            await c.query('DELETE FROM FTNetworkHelpT WHERE PersonID=?', [personID]);
+            await c.query('DELETE FROM FTNetworkVerificationT WHERE PersonID=?', [personID]);
+            await c.query('DELETE FROM FTNetworkT WHERE PersonID=?', [personID]);
+            const activityID = await logActivity(c, tree.FamilyTreeID, userID, 'DELETE', 'FTNetworkT', before.NetworkID, personID, 'Deleted Network');
+            const pendingEmails = await queueNetworkNotification(c, tree, userID, personID, activityID, 'Network Deleted', 'All Network information for this Person was deleted.', before.NetworkID);
+            return { pendingEmails, message: 'Network deleted.' };
+        });
+        await sendPendingFamilyTreeNotifications(result.pendingEmails);
+        res.json({ message: result.message });
+    } catch (e) { res.status(e.status || 500).json({ message: e.message }); }
+});
+
+router.get('/network/search', auth, async (req, res) => {
+    const code = String(req.query.familyTreeCode || '');
+    const criteria = ['q','name','city','state','school','program','profession','company','position','item','help'].reduce((o,k)=>(o[k]=String(req.query[k]||'').trim().toLowerCase(),o),{});
+    if (!Object.values(criteria).some(Boolean)) return res.status(400).json({ message: 'Enter at least one search criterion.' });
+    try {
+        const c = await pool.getConnection();
+        try {
+            const tree = await requireTree(c, code, req.user.userId);
+            const [people] = await c.query(`SELECT p.PersonID,p.FirstName,p.MiddleName,p.LastName,p.SuffixName,p.NickName,p.MaidenName,p.CurrentCity,p.CurrentState,n.NetworkNote,n.PreferredContactType
+                FROM FTFamilyTreePersonT ftp JOIN FTPersonT p ON p.PersonID=ftp.PersonID JOIN FTNetworkT n ON n.PersonID=p.PersonID
+                WHERE ftp.FamilyTreeID=? AND n.IncludeInSearch=1 AND n.VerificationStatus='VERIFIED'
+                  AND EXISTS(SELECT 1 FROM FTContactT ce WHERE ce.PersonID=p.PersonID AND LOWER(TRIM(ce.ContactType))='email' AND LOWER(TRIM(ce.ContactValue))=LOWER(TRIM(n.VerifiedEmail)))
+                ORDER BY p.LastName,p.FirstName,p.PersonID`, [tree.FamilyTreeID]);
+            const ids = people.map(x=>Number(x.PersonID)); if (!ids.length) return res.json({ results: [] });
+            const marks=ids.map(()=>'?').join(',');
+            const [contacts]=await c.query(`SELECT PersonID,ContactType,ContactValue,ContactNote FROM FTContactT WHERE PersonID IN (${marks})`,ids);
+            const [events]=await c.query(`SELECT ep.PersonID,e.EventType,e.EventDate,e.EventPlace,e.EventDescription FROM FTEventPersonT ep JOIN FTEventT e ON e.EventID=ep.EventID WHERE ep.PersonID IN (${marks})`,ids);
+            const [education]=await c.query(`SELECT PersonID,School,Degree,ProgramField,Certification,GraduationYear,City,State,Country,Note FROM FTNetworkEducationT WHERE PersonID IN (${marks})`,ids);
+            const [career]=await c.query(`SELECT PersonID,Profession,Industry,CompanyOrganization,PositionTitle,Specialty,City,State,Country,StartYear,EndYear,CurrentPosition,Note FROM FTNetworkCareerT WHERE PersonID IN (${marks})`,ids);
+            const [items]=await c.query(`SELECT PersonID,ItemType,Description,Detail FROM FTNetworkItemT WHERE PersonID IN (${marks})`,ids);
+            const [help]=await c.query(`SELECT PersonID,HelpType,HelpDetail FROM FTNetworkHelpT WHERE PersonID IN (${marks})`,ids);
+            const by=(rows,id)=>rows.filter(x=>Number(x.PersonID)===Number(id));
+            const has=(v,term)=>String(v||'').toLowerCase().includes(term);
+            const results=[];
+            for(const p of people){
+                const cs=by(contacts,p.PersonID), es=by(events,p.PersonID), ed=by(education,p.PersonID), ca=by(career,p.PersonID), it=by(items,p.PersonID), hp=by(help,p.PersonID);
+                const name=[p.FirstName,p.MiddleName,p.LastName,p.SuffixName,p.NickName,p.MaidenName].filter(Boolean).join(' ');
+                const source=[];
+                source.push(['Person', [name,p.CurrentCity,p.CurrentState,p.NetworkNote].filter(Boolean).join(' | ')]);
+                cs.forEach(x=>source.push(['Contact', [x.ContactType,x.ContactValue,x.ContactNote].filter(Boolean).join(' | ')]));
+                es.forEach(x=>source.push(['Event', [x.EventType,x.EventDate,x.EventPlace,x.EventDescription].filter(Boolean).join(' | ')]));
+                ed.forEach(x=>source.push(['Education', [x.School,x.Degree,x.ProgramField,x.Certification,x.GraduationYear,x.City,x.State,x.Country,x.Note].filter(Boolean).join(' | ')]));
+                ca.forEach(x=>source.push(['Career', [x.Profession,x.Industry,x.CompanyOrganization,x.PositionTitle,x.Specialty,x.City,x.State,x.Country,x.StartYear,x.EndYear,x.Note].filter(Boolean).join(' | ')]));
+                it.forEach(x=>source.push(['Network', [x.ItemType,x.Description,x.Detail].filter(Boolean).join(' | ')]));
+                hp.forEach(x=>source.push(['Can Help', [x.HelpType,x.HelpDetail].filter(Boolean).join(' | ')]));
+                const all=source.map(x=>x[1]).join(' | ').toLowerCase();
+                const qTokens=criteria.q.split(/\s+/).filter(Boolean);
+                if(qTokens.length && !qTokens.every(t=>all.includes(t))) continue;
+                if(criteria.name&&!has(name,criteria.name))continue;
+                const cityText=[p.CurrentCity,...ed.map(x=>x.City),...ca.map(x=>x.City),...es.map(x=>x.EventPlace),...cs.map(x=>x.ContactValue)].join(' | '); if(criteria.city&&!has(cityText,criteria.city))continue;
+                const stateText=[p.CurrentState,...ed.map(x=>x.State),...ca.map(x=>x.State),...es.map(x=>x.EventPlace),...cs.map(x=>x.ContactValue)].join(' | '); if(criteria.state&&!has(stateText,criteria.state))continue;
+                if(criteria.school&&!ed.some(x=>has(x.School,criteria.school)))continue;
+                if(criteria.program&&!ed.some(x=>has(x.ProgramField,criteria.program)))continue;
+                if(criteria.profession&&!ca.some(x=>has(x.Profession,criteria.profession)))continue;
+                if(criteria.company&&!ca.some(x=>has(x.CompanyOrganization,criteria.company)))continue;
+                if(criteria.position&&!ca.some(x=>has(x.PositionTitle,criteria.position)))continue;
+                if(criteria.item&&!it.some(x=>has(`${x.ItemType} ${x.Description} ${x.Detail||''}`,criteria.item)))continue;
+                if(criteria.help&&!hp.some(x=>has(x.HelpType,criteria.help)))continue;
+                const terms=[...qTokens,...Object.entries(criteria).filter(([k,v])=>k!=='q'&&v).map(([,v])=>v)];
+                const matches=source.filter(([,text])=>terms.some(t=>has(text,t))).slice(0,8).map(([label,text])=>`${label}: ${text}`);
+                results.push({PersonID:p.PersonID,Name:[p.FirstName,p.MiddleName,p.LastName,p.SuffixName].filter(Boolean).join(' '),Location:[p.CurrentCity,p.CurrentState].filter(Boolean).join(', '),Matches:matches.length?matches:['Network profile matched the search criteria.']});
+            }
+            res.json({ results });
+        } finally { c.release(); }
+    } catch(e){res.status(e.status||500).json({message:e.message});}
+});
+
 
 router.use((err, req, res, next) => {
     if (
