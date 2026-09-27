@@ -909,6 +909,10 @@ Before changing an existing feature:
 
 - Budget global Description dropdown values are controlled by BudgetDescriptionT. Before changing global Budget descriptions, review docs/ BudgetDescription_Global_List.sql. Do not hard-code global Description values in HTML forms.
 
+## 19. HTML Formatting Standard
+
+- All new or revised HTML files must be saved in readable, pretty-formatted form. Do not minify or compact HTML, CSS, or inline JavaScript. Formatting changes must preserve existing functionality, IDs, classes, event handlers, script references, and page structure.
+
 ---
 
 *End of CLAUDE.md*
