@@ -22,7 +22,6 @@ const familyTreeRoutes = require('./routes/familyTree');
 const subscriptionRoutes = require('./routes/subscriptions');
 const notificationRoutes = require('./routes/notifications');
 const { authenticateToken, requireAppAccess } = require('./middleware/subscriptionAccess');
-const usageActivity = require('./middleware/usageActivity');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -96,13 +95,13 @@ app.use('/track', trackRoutes);
 
 // Subscription-protected data/API applications.  The browser UI also disables
 // unavailable buttons, but these server checks are the actual cost/security gate.
-app.use('/weights', authenticateToken, requireAppAccess('weigh_in'), usageActivity('weigh_in'), weightsRoutes);
-app.use('/activities', authenticateToken, requireAppAccess('weigh_in'), usageActivity('weigh_in'), activitiesRoutes);
-app.use('/weightActivities', authenticateToken, requireAppAccess('weigh_in'), usageActivity('weigh_in'), weightActivitiesRoutes);
-app.use('/interestEarned', authenticateToken, requireAppAccess('interest_earned'), usageActivity('interest_earned'), interestEarnedRoutes);
-app.use('/budget', authenticateToken, requireAppAccess('budget'), usageActivity('budget'), budgetRoutes);
-app.use('/familytree', authenticateToken, requireAppAccess('family_tree'), usageActivity('family_tree'), familyTreeRoutes);
-app.use('/etf', authenticateToken, requireAppAccess('etf_investing'), usageActivity('etf_investing'), etfRoutes);
+app.use('/weights', authenticateToken, requireAppAccess('weigh_in'), weightsRoutes);
+app.use('/activities', authenticateToken, requireAppAccess('weigh_in'), activitiesRoutes);
+app.use('/weightActivities', authenticateToken, requireAppAccess('weigh_in'), weightActivitiesRoutes);
+app.use('/interestEarned', authenticateToken, requireAppAccess('interest_earned'), interestEarnedRoutes);
+app.use('/budget', authenticateToken, requireAppAccess('budget'), budgetRoutes);
+app.use('/familytree', authenticateToken, requireAppAccess('family_tree'), familyTreeRoutes);
+app.use('/etf', authenticateToken, requireAppAccess('etf_investing'), etfRoutes);
 
 // Property Info is currently classified as Standard/local-low-cost.
 // Keep its existing geocode route behavior unchanged until its external cost model is finalized.

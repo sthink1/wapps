@@ -354,7 +354,7 @@
 
                 <div class="form-field">
                     <label for="grantEndDate">Access Through</label>
-                    <input id="grantEndDate" type="date" required>
+                    <input id="grantEndDate" type="text" inputmode="numeric" maxlength="10" placeholder="MM/DD/YYYY" autocomplete="off" required>
                 </div>
 
                 <div class="form-actions">
@@ -400,7 +400,7 @@
 
                 <div class="field">
                     <label for="editGrantEndDate">Access Through</label>
-                    <input id="editGrantEndDate" type="date" required>
+                    <input id="editGrantEndDate" type="text" inputmode="numeric" maxlength="10" placeholder="MM/DD/YYYY" autocomplete="off" required>
                 </div>
 
                 <div class="form-actions full-width">
@@ -468,6 +468,46 @@
             }
 
             return data;
+        }
+
+        function formatAccessDate(value) {
+            const text = String(value || '').trim();
+            const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+            if (!match) return text;
+            return `${match[2]}/${match[3]}/${match[1]}`;
+        }
+
+        function accessDateToIso(value) {
+            const text = String(value || '').trim();
+            let year;
+            let month;
+            let day;
+
+            let match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+            if (match) {
+                month = Number(match[1]);
+                day = Number(match[2]);
+                year = Number(match[3]);
+            } else {
+                match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
+                if (!match) {
+                    throw new Error('Access Through must be entered as MM/DD/YYYY, for example 12/28/2030.');
+                }
+                year = Number(match[1]);
+                month = Number(match[2]);
+                day = Number(match[3]);
+            }
+
+            const date = new Date(Date.UTC(year, month - 1, day));
+            if (
+                date.getUTCFullYear() !== year ||
+                date.getUTCMonth() !== month - 1 ||
+                date.getUTCDate() !== day
+            ) {
+                throw new Error('Access Through is not a valid calendar date.');
+            }
+
+            return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         }
 
         function formatSubscription(subscription) {
@@ -706,7 +746,7 @@
             document.getElementById('editGrantUser').textContent =
                 `User ID ${grant.userId} — ${grant.username}`;
             populatePlanSelect('editGrantPlan', grant.planId);
-            document.getElementById('editGrantEndDate').value = grant.endDate;
+            document.getElementById('editGrantEndDate').value = formatAccessDate(grant.endDate);
             document.getElementById('grantEditForm').style.display = 'grid';
             setStatus('grantEditStatus', '');
             document.getElementById('editGrantPlan').focus();
@@ -745,9 +785,17 @@
             setStatus('grantEditStatus', '');
 
             const grantId = document.getElementById('editGrantId').value;
+            let endDate;
+            try {
+                endDate = accessDateToIso(document.getElementById('editGrantEndDate').value);
+            } catch (error) {
+                setStatus('grantEditStatus', error.message, 'error');
+                return;
+            }
+
             const payload = {
                 planId: Number(document.getElementById('editGrantPlan').value),
-                endDate: document.getElementById('editGrantEndDate').value
+                endDate
             };
 
             try {
@@ -826,10 +874,18 @@
                 return;
             }
 
+            let endDate;
+            try {
+                endDate = accessDateToIso(document.getElementById('grantEndDate').value);
+            } catch (error) {
+                setStatus('grantStatus', error.message, 'error');
+                return;
+            }
+
             const payload = {
                 userId: selectedUser.userId,
                 planId: Number(document.getElementById('grantPlan').value),
-                endDate: document.getElementById('grantEndDate').value
+                endDate
             };
 
             try {

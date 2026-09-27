@@ -390,7 +390,7 @@ async function redeemPromoCode(userId, rawCode) {
 }
 
 async function recordUsage(userId, appKey, eventType, quantity = 1, detail = null) {
-    const permittedEvents = ['APP_OPEN', 'RECORD_CREATE', 'RECORD_UPDATE', 'RECORD_DELETE', 'API_CALL', 'EMAIL_SENT', 'FILE_UPLOAD'];
+    const permittedEvents = ['APP_OPEN', 'RECORD_CREATE', 'RECORD_UPDATE', 'API_CALL', 'EMAIL_SENT', 'FILE_UPLOAD'];
     if (!permittedEvents.includes(eventType)) {
         throw Object.assign(new Error('Invalid usage event type.'), { status: 400 });
     }

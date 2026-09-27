@@ -1679,31 +1679,8 @@
                 attachAmountFormatting(input);
             });
 
-            const page = window.location.pathname;
-            let startTime = Date.now();
-
-            makeAuthenticatedRequest(`${BASE_URL}/track/log/page`, {
-                method: 'POST',
-                body: JSON.stringify({ page })
-            })
-            .catch(error => console.error('Error tracking page view:', error.message));
-
-            window.addEventListener('beforeunload', () => {
-                const duration = Math.floor((Date.now() - startTime) / 1000);
-                if (duration > 0) {
-                    const timeSpentData = { page, duration, token };
-                    fetch('http:///track/log/time-spent', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify(timeSpentData)
-                    })
-                    .catch(error => console.error('Error sending time spent:', error.message));
-                }
-            });
         });
     </script>
+    <script src="js/usageTracking.js?v=20260927-1"></script>
 </body>
 </html>

@@ -50,6 +50,20 @@ function pageToAppKeySql(pageExpression) {
     END`;
 }
 
+function relatedAppToAppKeySql(appExpression) {
+    return `CASE
+        WHEN UPPER(REPLACE(${appExpression}, ' ', '_')) = 'FAMILY_TREE' THEN 'family_tree'
+        WHEN UPPER(REPLACE(${appExpression}, ' ', '_')) = 'WEIGH_IN' THEN 'weigh_in'
+        WHEN UPPER(REPLACE(${appExpression}, ' ', '_')) = 'LOAN_PAYMENT' THEN 'loan_payment'
+        WHEN UPPER(REPLACE(${appExpression}, ' ', '_')) = 'PROPERTY_INFO' THEN 'property_info'
+        WHEN UPPER(REPLACE(${appExpression}, ' ', '_')) = 'INTEREST_EARNED' THEN 'interest_earned'
+        WHEN UPPER(REPLACE(${appExpression}, ' ', '_')) = 'TOWN_NOTICE' THEN 'town_notice'
+        WHEN UPPER(REPLACE(${appExpression}, ' ', '_')) = 'ETF_INVESTING' THEN 'etf_investing'
+        WHEN UPPER(REPLACE(${appExpression}, ' ', '_')) IN ('BUDGET', 'MY_MONEY_MY_BUDGET') THEN 'budget'
+        ELSE NULL
+    END`;
+}
+
 function toNumber(value) {
     if (value === null || value === undefined || value === '') return 0;
     const n = Number(value);
@@ -454,10 +468,13 @@ async function loadAppUsage(period, userId = null) {
     const normalizedPeriod = normalizePeriod(period);
     const usageWhere = dateClause(normalizedPeriod, 'uu.OccurredAt');
     const trackWhere = dateClause(normalizedPeriod, 'tu.Timestamp');
+    const emailWhere = dateClause(normalizedPeriod, 'nh.CreatedAt');
     const userUsageFilter = userId ? ' AND uu.UserID = ?' : '';
     const trackUserFilter = userId ? ' AND tu.UserID = ?' : '';
+    const emailUserFilter = userId ? ' AND nh.UserID = ?' : '';
     const usageParams = userId ? [userId] : [];
     const trackParams = userId ? [userId] : [];
+    const emailParams = userId ? [userId] : [];
 
     const [apps] = await pool.query(
         `SELECT AppID, AppKey, AppName
@@ -474,7 +491,6 @@ async function loadAppUsage(period, userId = null) {
                 COUNT(DISTINCT CASE WHEN uu.EventType = 'APP_OPEN' THEN uu.UserID ELSE NULL END) AS ActiveUsers,
                 SUM(CASE WHEN uu.EventType = 'API_CALL' THEN uu.Quantity ELSE 0 END) AS RequestsActions,
                 SUM(CASE WHEN uu.EventType IN ('RECORD_CREATE', 'RECORD_UPDATE', 'RECORD_DELETE') THEN uu.Quantity ELSE 0 END) AS DataActivity,
-                SUM(CASE WHEN uu.EventType = 'EMAIL_SENT' THEN uu.Quantity ELSE 0 END) AS EmailActivity,
                 SUM(CASE WHEN uu.EventType = 'FILE_UPLOAD' THEN uu.Quantity ELSE 0 END) AS StorageActivity,
                 MAX(uu.OccurredAt) AS LastUsage
            FROM AppT a
@@ -502,12 +518,28 @@ async function loadAppUsage(period, userId = null) {
         trackParams
     );
 
+    const notificationAppKeyCase = relatedAppToAppKeySql('nh.RelatedApp');
+    const [emailRows] = await pool.query(
+        `SELECT ${notificationAppKeyCase} AS AppKey,
+                COUNT(*) AS EmailActivity,
+                MAX(COALESCE(nh.SentAt, nh.CreatedAt)) AS LastEmail
+           FROM NotificationHistoryT nh
+          WHERE nh.Channel = 'EMAIL'
+            AND nh.Status = 'SENT'
+            AND ${emailWhere}${emailUserFilter}
+          GROUP BY ${notificationAppKeyCase}
+         HAVING AppKey IS NOT NULL`,
+        emailParams
+    );
+
     const usageMap = new Map(usageRows.map(row => [row.AppKey, row]));
     const trackMap = new Map(trackRows.map(row => [row.AppKey, row]));
+    const emailMap = new Map(emailRows.map(row => [row.AppKey, row]));
 
     return apps.map(app => {
         const usage = usageMap.get(app.AppKey) || {};
         const track = trackMap.get(app.AppKey) || {};
+        const email = emailMap.get(app.AppKey) || {};
         return {
             appId: app.AppID,
             appKey: app.AppKey,
@@ -524,9 +556,9 @@ async function loadAppUsage(period, userId = null) {
                 : 0,
             requestsActions: toNumber(usage.RequestsActions),
             dataActivity: toNumber(usage.DataActivity),
-            emailActivity: toNumber(usage.EmailActivity),
+            emailActivity: toNumber(email.EmailActivity),
             storageActivity: toNumber(usage.StorageActivity),
-            lastUsed: laterDate(usage.LastUsage, track.LastTrack)
+            lastUsed: laterDate(laterDate(usage.LastUsage, track.LastTrack), email.LastEmail)
         };
     });
 }

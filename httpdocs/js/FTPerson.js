@@ -48,6 +48,8 @@ let currentPerson = null;
 let currentProfile = null;
 let currentLifeImages = [];
 let contextImageID = null;
+let contextImageUrl = '';
+let contextImageAlt = 'Picture';
 let currentParents = [];
 let currentSiblings = [];
 let currentChildren = [];
@@ -263,6 +265,8 @@ function showImageContextMenu(event, imageID, isProfile) {
     event.preventDefault();
 
     contextImageID = isProfile ? null : Number(imageID);
+    contextImageUrl = safeImageUrl(event.currentTarget && event.currentTarget.src);
+    contextImageAlt = (event.currentTarget && event.currentTarget.alt) || 'Picture';
 
     const menu = $('imageContextMenu');
     const makeProfileButton = $('makeProfileMenuBtn');
@@ -282,6 +286,21 @@ function showImageContextMenu(event, imageID, isProfile) {
 
 function hideImageContextMenu() {
     $('imageContextMenu').classList.remove('show');
+}
+
+function openPictureZoom() {
+    if (!contextImageUrl) return;
+
+    const image = $('pictureZoomImage');
+    image.src = contextImageUrl;
+    image.alt = contextImageAlt;
+    hideImageContextMenu();
+    $('pictureZoomModal').classList.add('show');
+}
+
+function closePictureZoom() {
+    $('pictureZoomModal').classList.remove('show');
+    $('pictureZoomImage').removeAttribute('src');
 }
 
 async function loadImages() {
@@ -1397,7 +1416,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('contactBtn').onclick = () =>
         navigateTo('FTContact.html');
 
-    $('networkBtn').onclick = () => loadNetwork().then(() => $('networkModal').classList.add('show')).catch(error => setPageStatus(error.message));
+    const networkBtn = $('networkBtn');
+    if (networkBtn) {
+        networkBtn.onclick = () =>
+            loadNetwork()
+                .then(() => $('networkModal').classList.add('show'))
+                .catch(error => setPageStatus(error.message));
+    }
 
     $('eventBtn').onclick = () =>
         navigateTo('FTEvent.html');
@@ -1467,12 +1492,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                 $('addPictureStatus').textContent = error.message;
             });
 
-    $('networkCloseBtn').onclick = () => $('networkModal').classList.remove('show');
-    $('neAdd').onclick = addEducation;
-    $('ncAdd').onclick = addCareer;
-    $('niAdd').onclick = addItem;
-    $('networkSaveBtn').onclick = () => saveNetwork().catch(error => $('networkStatus').textContent = error.message);
-    $('networkDeleteBtn').onclick = () => deleteNetwork().catch(error => $('networkStatus').textContent = error.message);
+    const networkCloseBtn = $('networkCloseBtn');
+    const educationAddBtn = $('neAdd');
+    const careerAddBtn = $('ncAdd');
+    const itemAddBtn = $('niAdd');
+    const networkSaveBtn = $('networkSaveBtn');
+    const networkDeleteBtn = $('networkDeleteBtn');
+
+    if (networkCloseBtn) networkCloseBtn.onclick = () => $('networkModal').classList.remove('show');
+    if (educationAddBtn) educationAddBtn.onclick = addEducation;
+    if (careerAddBtn) careerAddBtn.onclick = addCareer;
+    if (itemAddBtn) itemAddBtn.onclick = addItem;
+    if (networkSaveBtn) {
+        networkSaveBtn.onclick = () =>
+            saveNetwork().catch(error => {
+                const status = $('networkStatus');
+                if (status) status.textContent = error.message;
+            });
+    }
+    if (networkDeleteBtn) {
+        networkDeleteBtn.onclick = () =>
+            deleteNetwork().catch(error => {
+                const status = $('networkStatus');
+                if (status) status.textContent = error.message;
+            });
+    }
+
+    $('zoomPictureMenuBtn').onclick = openPictureZoom;
+    $('pictureZoomCloseBtn').onclick = closePictureZoom;
+    $('pictureZoomModal').onclick = event => {
+        if (event.target === $('pictureZoomModal')) closePictureZoom();
+    };
 
     $('makeProfileMenuBtn').onclick = () =>
         makeProfilePicture()
@@ -1484,6 +1534,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('click', event => {
         if (!event.target.closest('#imageContextMenu')) {
             hideImageContextMenu();
+        }
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && $('pictureZoomModal').classList.contains('show')) {
+            closePictureZoom();
         }
     });
 
