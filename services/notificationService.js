@@ -147,7 +147,8 @@ async function sendNotification({
     templateName = null,
     relatedApp = null,
     relatedRecordID = null,
-    explainFamilyTreeRecipient = false
+    explainFamilyTreeRecipient = false,
+    actionButtons = []
 }) {
     category = String(category || '').toUpperCase();
     channel = String(channel || '').toUpperCase();
@@ -263,7 +264,8 @@ async function sendNotification({
                 message,
                 category,
                 unsubscribeUrl,
-                explainFamilyTreeRecipient: explainFamilyTreeRecipient && !user
+                explainFamilyTreeRecipient: explainFamilyTreeRecipient && !user,
+                actionButtons
             });
 
             await c.query(

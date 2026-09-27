@@ -134,6 +134,7 @@ const sendNotificationEmail = async ({
   category,
   unsubscribeUrl = null,
   explainFamilyTreeRecipient = false,
+  actionButtons = [],
 }) => {
   if (!email || !subject || !message || !category) {
     throw new Error('Email, subject, message, and category are required.');
@@ -142,6 +143,47 @@ const sendNotificationEmail = async ({
   const safeMessage = String(message);
   const escapedMessage = escapeHtml(safeMessage).replace(/\n/g, '<br>');
   const safeUnsubscribeUrl = unsubscribeUrl ? escapeHtml(unsubscribeUrl) : null;
+
+  const safeActionButtons = Array.isArray(actionButtons)
+    ? actionButtons
+        .filter((button) => button && button.label && button.url)
+        .slice(0, 4)
+        .map((button) => {
+          const rawUrl = String(button.url || '').trim();
+          if (!/^https?:\/\//i.test(rawUrl)) return null;
+
+          const kind = String(button.kind || '').toLowerCase();
+          const background = kind === 'approve'
+            ? '#4CAF50'
+            : kind === 'decline'
+              ? '#b42318'
+              : '#d7e7fb';
+          const color = kind === 'approve' || kind === 'decline'
+            ? '#ffffff'
+            : '#111111';
+
+          return {
+            label: escapeHtml(button.label),
+            url: escapeHtml(rawUrl),
+            background,
+            color
+          };
+        })
+        .filter(Boolean)
+    : [];
+
+  const htmlActions = safeActionButtons.length
+    ? `
+      <div style="margin: 22px 0; text-align: center;">
+        ${safeActionButtons.map((button) => `
+          <a href="${button.url}"
+             style="display: inline-block; margin: 6px; padding: 12px 18px; border-radius: 4px;
+                    background: ${button.background}; color: ${button.color}; text-decoration: none;
+                    font-weight: bold;">
+            ${button.label}
+          </a>`).join('')}
+      </div>`
+    : '';
 
   let textFooter = '';
   let htmlFooter = '';
@@ -169,11 +211,18 @@ const sendNotificationEmail = async ({
   const companyUrl = 'https://WonderfulAppsCompany.com';
   textFooter += `\n\nWonderfulAppsCompany.com`;
 
-  const textBody = `${safeMessage}${textFooter}`;
+  const textActions = safeActionButtons.length
+    ? `\n\n${safeActionButtons
+        .map((button) => `${button.label}:\n${button.url}`)
+        .join('\n\n')}`
+    : '';
+
+  const textBody = `${safeMessage}${textActions}${textFooter}`;
   const htmlBody = `
 <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; line-height: 1.45;">
   <h2 style="color: #333;">Wonderful Apps Notification</h2>
   <p>${escapedMessage}</p>
+  ${htmlActions}
   ${htmlFooter}
   <hr style="border: none; border-top: 1px solid #ddd; margin-top: 20px;">
   <p style="color: #777; font-size: 12px;">

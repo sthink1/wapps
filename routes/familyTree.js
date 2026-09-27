@@ -7284,26 +7284,54 @@ async function prepareNetworkVerification(c, tree, personID, userID) {
 
 async function sendNetworkVerificationRequest(pending) {
     if (!pending) return null;
-    const url = `${networkPublicBaseUrl()}/networkVerification.html?token=${encodeURIComponent(pending.rawToken)}`;
+
+    const baseUrl = `${networkPublicBaseUrl()}/networkVerification.html?token=${encodeURIComponent(pending.rawToken)}`;
+    const approveUrl = `${baseUrl}&choice=APPROVED`;
+    const declineUrl = `${baseUrl}&choice=DECLINED`;
+
     const delivery = await sendNotification({
         recipientEmail: pending.email,
         category: 'FAMILY_TREE',
         channel: 'EMAIL',
         subject: `Family Network verification for ${pending.personName}`,
         message:
-            `A relative using Wonderful Apps Family Tree asked to include ${pending.personName} in Family Network searches for FamilyTreeCode ${pending.familyTreeCode}.\n\n` +
+            `A relative or yourself using Wonderful Apps Family Tree asked to include ${pending.personName} in Family Network searches for FamilyTreeCode ${pending.familyTreeCode}.\n\n` +
             `Family Network is for relatives in that Family Tree. It is not a public networking directory.\n\n` +
-            `Please approve or decline here:\n${url}\n\n` +
-            `If you did not expect this request, you may decline it.`,
+            `Choose YES or NO below. You will be asked to confirm your choice on the Wonderful Apps verification page.\n\n` +
+            `If you did not expect this request, you should just delete this email.`,
         templateName: 'FAMILY_NETWORK_VERIFICATION',
         relatedApp: 'FAMILY_TREE',
         relatedRecordID: pending.personID,
-        explainFamilyTreeRecipient: true
+        explainFamilyTreeRecipient: true,
+        actionButtons: [
+            {
+                label: 'YES — INCLUDE ME IN FAMILY NETWORK',
+                url: approveUrl,
+                kind: 'approve'
+            },
+            {
+                label: 'NO — DO NOT INCLUDE ME',
+                url: declineUrl,
+                kind: 'decline'
+            }
+        ]
     });
+
     if (delivery && delivery.status === 'SUPPRESSED') {
-        await pool.query(`UPDATE FTNetworkVerificationT SET RespondedAt=NOW(),Response='SUPPRESSED' WHERE PersonID=? AND EmailAddress=? AND RespondedAt IS NULL`, [pending.personID, pending.email]);
-        await pool.query(`UPDATE FTNetworkT SET VerificationStatus='NOT_REQUESTED',VerificationRequestedAt=NULL WHERE PersonID=?`, [pending.personID]);
+        await pool.query(
+            `UPDATE FTNetworkVerificationT
+             SET RespondedAt=NOW(),Response='SUPPRESSED'
+             WHERE PersonID=? AND EmailAddress=? AND RespondedAt IS NULL`,
+            [pending.personID, pending.email]
+        );
+        await pool.query(
+            `UPDATE FTNetworkT
+             SET VerificationStatus='NOT_REQUESTED',VerificationRequestedAt=NULL
+             WHERE PersonID=?`,
+            [pending.personID]
+        );
     }
+
     return delivery;
 }
 
