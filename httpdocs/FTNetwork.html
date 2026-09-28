@@ -1,27 +1,280 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="only light">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="only light">
   <title>Family Networking</title>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.14/purify.min.js"></script>
   <script src="js/inputSanitizer.js?v=20260914-1"></script>
+
   <style>
-    :root{color-scheme:only light}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f4f4f4;padding:12px 8px 48px}.shell{width:min(1120px,100%);margin:auto;background:#fff;border:1px solid #aaa}header{text-align:center;padding:12px}.nav,.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}button,.btn{border:1px solid #8ba5c7;border-radius:3px;background:#d7e7fb;padding:8px 13px;cursor:pointer;text-decoration:none;color:#111}.green{background:#4CAF50;color:#fff}.icon-action{width:38px;height:38px;padding:3px;display:inline-flex;align-items:center;justify-content:center}.icon-action img{width:28px;height:28px}main{background:#98cfe2;padding:12px}.section{background:#fff;border:1px solid #aaa;margin-bottom:10px;padding:12px}.gridform{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px}.field{display:flex;flex-direction:column;gap:4px}.full{grid-column:1/-1}input,select{width:100%;padding:8px;border:1px solid #aaa;font:inherit}table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}th,td{border:1px solid #bbb;padding:7px;text-align:left;vertical-align:top}th{background:#d6dde8;color:#4b6076;font-weight:normal}.match{white-space:normal;min-width:320px}.status{min-height:22px;margin-top:8px;font-weight:bold}.small{font-size:12px;color:#555}footer{position:fixed;bottom:0;left:0;width:100%;background:#ddd;padding:6px;text-align:center}@media(max-width:760px){.gridform{grid-template-columns:1fr}.full{grid-column:1}}
+    :root {
+      color-scheme: only light;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+      padding: 12px 8px 48px;
+    }
+
+    .shell {
+      width: min(1120px, 100%);
+      margin: auto;
+      background: #fff;
+      border: 1px solid #aaa;
+    }
+
+    header {
+      text-align: center;
+      padding: 12px;
+    }
+
+    .nav,
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button,
+    .btn {
+      border: 1px solid #8ba5c7;
+      border-radius: 3px;
+      background: #d7e7fb;
+      padding: 8px 13px;
+      cursor: pointer;
+      text-decoration: none;
+      color: #111;
+    }
+
+    .green {
+      background: #4CAF50;
+      color: #fff;
+    }
+
+    .icon-action {
+      width: 38px;
+      height: 38px;
+      padding: 3px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon-action img {
+      width: 28px;
+      height: 28px;
+    }
+
+    main {
+      background: #98cfe2;
+      padding: 12px;
+    }
+
+    .section {
+      background: #fff;
+      border: 1px solid #aaa;
+      margin-bottom: 10px;
+      padding: 12px;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 18px;
+    }
+
+    .choice-grid label {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      line-height: 1.35;
+    }
+
+    .choice-grid input {
+      width: auto;
+      margin-top: 2px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    th,
+    td {
+      border: 1px solid #bbb;
+      padding: 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #d6dde8;
+      color: #4b6076;
+      font-weight: normal;
+    }
+
+    .match {
+      white-space: normal;
+      min-width: 320px;
+    }
+
+    .status {
+      min-height: 22px;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .small {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.4;
+    }
+
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #ddd;
+      padding: 6px;
+      text-align: center;
+    }
+
+    @media(max-width: 760px) {
+      .choice-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
-<div class="shell"><header><h1>FAMILY NETWORKING</h1><div class="nav"><a class="btn" href="FamilyTree2.html">FAMILY TREE</a><a class="btn" href="FTPersonList.html">PERSON LIST</a></div></header>
-<main>
-<section class="section"><div><b>Current FamilyTreeCode:</b> <span id="codeDisplay"></span></div><p class="small">Searches are restricted to verified Network participants in this Family Tree only.</p></section>
-<section class="section"><h2>SEARCH FAMILY NETWORK</h2><div class="gridform">
-<div class="field full"><label>Search Everything</label><input id="q" placeholder="Example: attorney Orlando, University of Florida, Disney, cycling"></div>
-<div class="field"><label>Name</label><input id="name"></div><div class="field"><label>City</label><input id="city"></div><div class="field"><label>State</label><input id="state"></div>
-<div class="field"><label>School / College</label><input id="school"></div><div class="field"><label>Program / Field</label><input id="program"></div><div class="field"><label>Profession</label><input id="profession"></div>
-<div class="field"><label>Company / Organization</label><input id="company"></div><div class="field"><label>Position / Title</label><input id="position"></div><div class="field"><label>Skill / Interest / Organization</label><input id="item"></div>
-<div class="field"><label>Can Help With</label><select id="help"><option value=""></option><option>Career Advice</option><option>College / Education Advice</option><option>Job Opportunities</option><option>Professional Introductions</option><option>Business Advice</option><option>Mentoring</option><option>Professional Services</option><option>Local / Area Information</option><option>Moving / Relocation Advice</option><option>Technology Help</option><option>Financial / Accounting Knowledge</option><option>Legal Knowledge</option><option>Medical / Healthcare Knowledge</option><option>Real Estate Knowledge</option><option>Genealogy / Family History</option><option>Hobbies / Activities</option><option>Other</option></select></div>
-</div><div class="actions" style="justify-content:flex-start;margin-top:12px"><button id="searchBtn" class="green">SEARCH</button><button id="clearBtn">CLEAR</button></div><div id="status" class="status"></div></section>
-<section class="section"><h2>RESULTS</h2><div class="table-wrap"><table><thead><tr><th>Person</th><th>Name</th><th>Location</th><th>Why Matched</th></tr></thead><tbody id="body"><tr><td colspan="4">Enter search criteria.</td></tr></tbody></table></div></section>
-</main></div><footer>Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr</footer>
-<script src="js/FTNetwork.js?v=20260926-1"></script>
-    <script src="js/usageTracking.js?v=20260927-1"></script>
-</body></html>
+  <div class="shell">
+    <header>
+      <h1>FAMILY NETWORKING</h1>
+
+      <div class="nav">
+        <a class="btn" href="FamilyTree2.html">FAMILY TREE</a>
+        <a class="btn" href="FTPersonList.html">PERSON LIST</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div>
+          <strong>Current FamilyTreeCode:</strong>
+          <span id="codeDisplay"></span>
+        </div>
+
+        <div style="margin-top:6px">
+          <strong>Searching Blood Relatives Of:</strong>
+          <span id="searchPersonDisplay">Checking...</span>
+        </div>
+
+        <p class="small">
+          Results are limited to verified Network participants who are in the biological blood line of the Person whose page started this search.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>SEARCH FAMILY NETWORK</h2>
+
+        <p class="small">
+          Select one or more statements. The first six are matched to the corresponding complementary Networking choice. The last two are mutual-interest matches.
+        </p>
+
+        <div class="choice-grid">
+          <label>
+            <input id="BusinessSeekingVendor" class="network-search-choice" type="checkbox">
+            I am a business looking for a vendor.
+          </label>
+
+          <label>
+            <input id="VendorSeekingBusiness" class="network-search-choice" type="checkbox">
+            I am a vendor looking for a business.
+          </label>
+
+          <label>
+            <input id="SeekingProfessionalServices" class="network-search-choice" type="checkbox">
+            I am looking for professional services.
+          </label>
+
+          <label>
+            <input id="ProfessionalOfferingServices" class="network-search-choice" type="checkbox">
+            I am a professional offering my services.
+          </label>
+
+          <label>
+            <input id="CustomerSeekingBusiness" class="network-search-choice" type="checkbox">
+            I am a customer looking for a business.
+          </label>
+
+          <label>
+            <input id="BusinessSeekingCustomers" class="network-search-choice" type="checkbox">
+            I am a business looking for customers.
+          </label>
+
+          <label>
+            <input id="SeekingRelativesInArea" class="network-search-choice" type="checkbox">
+            I am looking to contact relatives in an area.
+          </label>
+
+          <label>
+            <input id="SeekingSchoolConnection" class="network-search-choice" type="checkbox">
+            I am looking for someone going to my school.
+          </label>
+        </div>
+
+        <div class="actions" style="justify-content:flex-start;margin-top:12px">
+          <button id="searchBtn" class="green" type="button">SEARCH</button>
+          <button id="clearBtn" type="button">CLEAR</button>
+        </div>
+
+        <div id="status" class="status"></div>
+      </section>
+
+      <section class="section">
+        <h2>RESULTS</h2>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Person</th>
+                <th>Name</th>
+                <th>Why Matched</th>
+              </tr>
+            </thead>
+            <tbody id="body">
+              <tr>
+                <td colspan="3">Select search criteria.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
+  </footer>
+
+  <script src="js/FTNetwork.js?v=20260927-network-person-search"></script>
+  <script src="js/usageTracking.js?v=20260927-1"></script>
+</body>
+</html>

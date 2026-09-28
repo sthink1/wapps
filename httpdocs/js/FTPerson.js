@@ -1244,74 +1244,155 @@ window.addEventListener('pageshow', event => {
 
 
 
-const NETWORK_HELP_TYPES = [
-    'Career Advice','College / Education Advice','Job Opportunities','Professional Introductions',
-    'Business Advice','Mentoring','Professional Services','Local / Area Information',
-    'Moving / Relocation Advice','Technology Help','Financial / Accounting Knowledge',
-    'Legal Knowledge','Medical / Healthcare Knowledge','Real Estate Knowledge',
-    'Genealogy / Family History','Hobbies / Activities','Other'
-];
-let networkEducation=[];
-let networkCareer=[];
-let networkItems=[];
-let networkHelp=[];
 
-function networkEsc(value){return escapeHtml(value);}
-function networkTable(headers, rows){
-    return `<div class="table-wrap"><table class="network-list"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}<th></th></tr></thead><tbody>${rows.length?rows.join(''):`<tr><td colspan="${headers.length+1}">None entered.</td></tr>`}</tbody></table></div>`;
+const NETWORK_PROFILE_FIELDS = [
+    'BusinessSeekingVendor',
+    'VendorSeekingBusiness',
+    'SeekingProfessionalServices',
+    'ProfessionalOfferingServices',
+    'CustomerSeekingBusiness',
+    'BusinessSeekingCustomers',
+    'SeekingRelativesInArea',
+    'SeekingSchoolConnection'
+];
+
+function setNetworkVerification(profile) {
+    const email = profile.currentEmail || profile.VerifiedEmail || '';
+    $('nVerificationEmail').textContent = email || 'No email contact entered';
+
+    const status =
+        profile.effectiveVerificationStatus ||
+        profile.VerificationStatus ||
+        'NOT_REQUESTED';
+
+    const element = $('nVerificationStatus');
+    element.className =
+        status === 'VERIFIED'
+            ? 'verified'
+            : status === 'PENDING'
+                ? 'pending'
+                : status === 'DECLINED'
+                    ? 'declined'
+                    : '';
+
+    element.textContent =
+        status === 'VERIFIED'
+            ? 'Verified ✓'
+            : status === 'PENDING'
+                ? 'Pending Verification'
+                : status === 'DECLINED'
+                    ? 'Declined'
+                    : 'Not Verified';
 }
-function renderNetworkLists(){
-    $('neList').innerHTML=networkTable(['School','Degree','Program','Year'],networkEducation.map((x,i)=>`<tr><td>${networkEsc(x.School)}</td><td>${networkEsc(x.Degree||'')}</td><td>${networkEsc(x.ProgramField||'')}</td><td>${networkEsc(x.GraduationYear||'')}</td><td><button class="n-del-ed" data-i="${i}">DELETE</button></td></tr>`));
-    $('ncList').innerHTML=networkTable(['Profession','Company','Position','Location'],networkCareer.map((x,i)=>`<tr><td>${networkEsc(x.Profession||'')}</td><td>${networkEsc(x.CompanyOrganization||'')}</td><td>${networkEsc(x.PositionTitle||'')}</td><td>${networkEsc([x.City,x.State].filter(Boolean).join(', '))}</td><td><button class="n-del-career" data-i="${i}">DELETE</button></td></tr>`));
-    $('niList').innerHTML=networkTable(['Type','Description','Detail'],networkItems.map((x,i)=>`<tr><td>${networkEsc(x.ItemType)}</td><td>${networkEsc(x.Description)}</td><td>${networkEsc(x.Detail||'')}</td><td><button class="n-del-item" data-i="${i}">DELETE</button></td></tr>`));
-    document.querySelectorAll('.n-del-ed').forEach(b=>b.onclick=()=>{networkEducation.splice(Number(b.dataset.i),1);renderNetworkLists()});
-    document.querySelectorAll('.n-del-career').forEach(b=>b.onclick=()=>{networkCareer.splice(Number(b.dataset.i),1);renderNetworkLists()});
-    document.querySelectorAll('.n-del-item').forEach(b=>b.onclick=()=>{networkItems.splice(Number(b.dataset.i),1);renderNetworkLists()});
+
+async function loadNetwork() {
+    $('networkStatus').textContent = 'Loading...';
+
+    const response = await fetch(
+        `${BASE_URL}/familytree/persons/${personID}/network` +
+        `?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,
+        {
+            headers: authHeaders(false)
+        }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Unable to load Network information.'
+        );
+    }
+
+    const profile = data.profile || {};
+
+    $('networkPersonName').textContent =
+        nameOf(currentPerson || { PersonID: personID });
+
+    $('nInclude').checked = Number(profile.IncludeInSearch) === 1;
+    $('nNote').value = profile.NetworkNote || '';
+    $('nPreferred').value = profile.PreferredContactType || '';
+
+    NETWORK_PROFILE_FIELDS.forEach(field => {
+        const checkbox = $(`n${field}`);
+        if (checkbox) {
+            checkbox.checked = Number(profile[field]) === 1;
+        }
+    });
+
+    setNetworkVerification(profile);
+    $('networkStatus').textContent = '';
 }
-function setNetworkVerification(profile){
-    const email=profile.currentEmail||profile.VerifiedEmail||'';
-    $('nVerificationEmail').textContent=email||'No email contact entered';
-    const status=profile.effectiveVerificationStatus||profile.VerificationStatus||'NOT_REQUESTED';
-    const el=$('nVerificationStatus');
-    el.className=status==='VERIFIED'?'verified':status==='PENDING'?'pending':status==='DECLINED'?'declined':'';
-    el.textContent=status==='VERIFIED'?'Verified ✓':status==='PENDING'?'Pending Verification':status==='DECLINED'?'Declined':'Not Verified';
+
+function networkValue(id) {
+    const value = $(id).value.trim();
+    return value || null;
 }
-function buildHelpChecks(){
-    $('nhChecks').innerHTML=NETWORK_HELP_TYPES.map(t=>`<label><input type="checkbox" class="nhCheck" value="${networkEsc(t)}"> ${networkEsc(t)}</label>`).join('');
+
+async function saveNetwork() {
+    const body = {
+        familyTreeCode,
+        IncludeInSearch: $('nInclude').checked ? 1 : 0,
+        NetworkNote: networkValue('nNote'),
+        PreferredContactType: networkValue('nPreferred')
+    };
+
+    NETWORK_PROFILE_FIELDS.forEach(field => {
+        const checkbox = $(`n${field}`);
+        body[field] = checkbox && checkbox.checked ? 1 : 0;
+    });
+
+    $('networkStatus').textContent = 'Saving...';
+
+    const response = await fetch(
+        `${BASE_URL}/familytree/persons/${personID}/network`,
+        {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify(body)
+        }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Unable to save Network information.'
+        );
+    }
+
+    $('networkStatus').textContent =
+        data.message || 'Network saved.';
+
+    await loadNetwork();
 }
-async function loadNetwork(){
-    $('networkStatus').textContent='Loading...';
-    const r=await fetch(`${BASE_URL}/familytree/persons/${personID}/network?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,{headers:authHeaders(false)});
-    const d=await r.json(); if(!r.ok)throw new Error(d.message||'Unable to load Network information.');
-    const p=d.profile||{};
-    $('networkPersonName').textContent=nameOf(currentPerson||{PersonID:personID});
-    $('nInclude').checked=Number(p.IncludeInSearch)===1;
-    $('nNote').value=p.NetworkNote||'';
-    $('nPreferred').value=p.PreferredContactType||'';
-    setNetworkVerification(p);
-    networkEducation=d.education||[]; networkCareer=d.career||[]; networkItems=d.items||[]; networkHelp=d.help||[];
-    renderNetworkLists(); buildHelpChecks();
-    const selected=new Set(networkHelp.map(x=>x.HelpType)); document.querySelectorAll('.nhCheck').forEach(c=>c.checked=selected.has(c.value));
-    $('nhDetail').value=(networkHelp.find(x=>x.HelpDetail)?.HelpDetail)||'';
-    $('networkStatus').textContent='';
-}
-function val(id){const v=$(id).value.trim();return v||null;}
-function num(id){const v=$(id).value.trim();return v?Number(v):null;}
-function addEducation(){const School=val('neSchool');if(!School){$('networkStatus').textContent='School / Institution is required.';return}networkEducation.push({School,Degree:val('neDegree'),ProgramField:val('neProgram'),Certification:val('neCertification'),GraduationYear:num('neYear'),City:val('neCity'),State:val('neState'),Country:val('neCountry'),Note:val('neNote')});['neSchool','neDegree','neProgram','neCertification','neYear','neCity','neState','neCountry','neNote'].forEach(id=>$(id).value='');renderNetworkLists();}
-function addCareer(){const row={Profession:val('ncProfession'),Industry:val('ncIndustry'),CompanyOrganization:val('ncCompany'),PositionTitle:val('ncPosition'),Specialty:val('ncSpecialty'),City:val('ncCity'),State:val('ncState'),Country:val('ncCountry'),StartYear:num('ncStart'),EndYear:num('ncEnd'),CurrentPosition:$('ncCurrent').checked?1:0,Note:val('ncNote')};if(!row.Profession&&!row.CompanyOrganization&&!row.PositionTitle){$('networkStatus').textContent='Enter a Profession, Company / Organization, or Position / Title.';return}networkCareer.push(row);['ncProfession','ncIndustry','ncCompany','ncPosition','ncSpecialty','ncCity','ncState','ncCountry','ncStart','ncEnd','ncNote'].forEach(id=>$(id).value='');$('ncCurrent').checked=false;renderNetworkLists();}
-function addItem(){const Description=val('niDescription');if(!Description){$('networkStatus').textContent='Description is required.';return}networkItems.push({ItemType:$('niType').value,Description,Detail:val('niDetail')});$('niDescription').value='';$('niDetail').value='';renderNetworkLists();}
-async function saveNetwork(){
-    const helpDetail=val('nhDetail');
-    const help=[...document.querySelectorAll('.nhCheck:checked')].map(c=>({HelpType:c.value,HelpDetail:helpDetail}));
-    const body={familyTreeCode,IncludeInSearch:$('nInclude').checked?1:0,NetworkNote:val('nNote'),PreferredContactType:val('nPreferred'),education:networkEducation,career:networkCareer,items:networkItems,help};
-    $('networkStatus').textContent='Saving...';
-    const r=await fetch(`${BASE_URL}/familytree/persons/${personID}/network`,{method:'PUT',headers:authHeaders(),body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to save Network information.');
-    $('networkStatus').textContent=d.message||'Network saved.';await loadNetwork();
-}
-async function deleteNetwork(){
-    if(!confirm('Delete all Network information for this Person?'))return;
-    const r=await fetch(`${BASE_URL}/familytree/persons/${personID}/network?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,{method:'DELETE',headers:authHeaders(false)});const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to delete Network information.');
-    $('networkStatus').textContent=d.message||'Network deleted.';await loadNetwork();
+
+async function deleteNetwork() {
+    if (!confirm('Delete all Network information for this Person?')) {
+        return;
+    }
+
+    const response = await fetch(
+        `${BASE_URL}/familytree/persons/${personID}/network` +
+        `?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,
+        {
+            method: 'DELETE',
+            headers: authHeaders(false)
+        }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Unable to delete Network information.'
+        );
+    }
+
+    $('networkStatus').textContent =
+        data.message || 'Network deleted.';
+
+    await loadNetwork();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1424,6 +1505,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .catch(error => setPageStatus(error.message));
     }
 
+    const searchNetworkingBtn = $('searchNetworkingBtn');
+    if (searchNetworkingBtn) {
+        searchNetworkingBtn.onclick = () => {
+            const query = new URLSearchParams({
+                PersonID: String(personID),
+                familyTreeCode
+            });
+
+            window.location.href =
+                `FTNetwork.html?${query.toString()}`;
+        };
+    }
+
     $('eventBtn').onclick = () =>
         navigateTo('FTEvent.html');
 
@@ -1493,16 +1587,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
     const networkCloseBtn = $('networkCloseBtn');
-    const educationAddBtn = $('neAdd');
-    const careerAddBtn = $('ncAdd');
-    const itemAddBtn = $('niAdd');
     const networkSaveBtn = $('networkSaveBtn');
     const networkDeleteBtn = $('networkDeleteBtn');
 
-    if (networkCloseBtn) networkCloseBtn.onclick = () => $('networkModal').classList.remove('show');
-    if (educationAddBtn) educationAddBtn.onclick = addEducation;
-    if (careerAddBtn) careerAddBtn.onclick = addCareer;
-    if (itemAddBtn) itemAddBtn.onclick = addItem;
+    if (networkCloseBtn) {
+        networkCloseBtn.onclick = () =>
+            $('networkModal').classList.remove('show');
+    }
     if (networkSaveBtn) {
         networkSaveBtn.onclick = () =>
             saveNetwork().catch(error => {

@@ -27,6 +27,11 @@
         .hero-icon-btn { width: 96px; height: 96px; padding: 8px; border: 2px solid #8ba5c7; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 96px; }
         .hero-icon-btn img { width: 76px; height: 76px; }
         .hero-label { font-size: 18px; font-weight: bold; line-height: 1.35; flex: 1 1 280px; }
+        .network-promo { margin: 8px 0 2px 114px; padding: 12px; border: 2px solid #4CAF50; background: #f4fff4; border-radius: 6px; }
+        .network-promo-title { margin: 0 0 8px; font-size: 18px; font-weight: bold; color: #256b29; }
+        .network-promo-copy { margin: 0 0 10px; line-height: 1.45; }
+        .network-promo-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+        .network-promo-buttons button { background: #d7e7fb; color: #111; border: 1px solid #8ba5c7; }
         .instruction-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
         .icon-btn { width: 46px; height: 46px; padding: 4px; border: 1px solid #8ba5c7; display: inline-flex; align-items: center; justify-content: center; }
         .icon-btn img { width: 34px; height: 34px; }
@@ -79,6 +84,9 @@
         .mini-button-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
         .mini-button { display:inline-block; padding:5px 8px; border:1px solid #8ba5c7; background:#d7e7fb; font-size:11px; }
         .mini-button.danger { background:#b42318; color:#fff; border-color:#b42318; }
+        .mini-button.network-highlight { background:#fff3cd; border:3px solid #b7791f; color:#111; font-weight:bold; }
+        .mini-action-stack { display:grid; gap:5px; align-content:start; }
+        .mini-network-callout { border:2px solid #b7791f; background:#fffbea; padding:8px; margin:10px 0; line-height:1.45; }
         .mini-life { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; padding:8px; }
         .mini-life-card { border:1px solid #bbb; text-align:center; padding:4px; font-size:10px; }
         .mini-life-card img { width:48px; height:58px; object-fit:contain; }
@@ -101,6 +109,7 @@
             .hero-instruction-row { align-items:flex-start; }
             .hero-icon-btn { width:88px; height:88px; flex-basis:88px; }
             .hero-icon-btn img { width:68px; height:68px; }
+            .network-promo { margin-left:0; }
             .mini-person-top,.mini-two-col { grid-template-columns:1fr; }
             .mini-life { grid-template-columns:repeat(2,1fr); }
         }
@@ -130,6 +139,15 @@
                     <img src="images/person.svg" alt="">
                 </button>
                 <div class="hero-label">Click Person button for instructions.</div>
+            </div>
+            <div class="network-promo">
+                <p class="network-promo-title">FAMILY NETWORKING</p>
+                <p class="network-promo-copy"><b>Networking connects you with blood relatives who may share business, professional, school, location, or other networking interests.</b></p>
+                <p class="network-promo-copy">Click either Networking button below for instructions.</p>
+                <div class="network-promo-buttons">
+                    <button id="networkingInfoBtn" type="button">NETWORKING</button>
+                    <button id="searchNetworkingInfoBtn" type="button">SEARCH NETWORKING</button>
+                </div>
             </div>
         </section>
 
@@ -272,9 +290,11 @@ function personInstructionsHtml() {
                             <span class="mini-button danger">DELETE PERSON</span>
                         </div>
                     </div>
-                    <div>
-                        <div class="mini-button">CONTACT</div><br>
+                    <div class="mini-action-stack">
+                        <div class="mini-button">CONTACT</div>
                         <div class="mini-button">EVENT</div>
+                        <div class="mini-button">NETWORKING</div>
+                        <div class="mini-button">SEARCH NETWORKING</div>
                     </div>
                 </div>
                 <div class="mini-life">
@@ -306,6 +326,77 @@ function personInstructionsHtml() {
         </ul>`;
 }
 
+function networkingInstructionsHtml(mode) {
+    const isSearch = mode === 'search';
+    const networkClass = isSearch ? '' : ' network-highlight';
+    const searchClass = isSearch ? ' network-highlight' : '';
+
+    const focusText = isSearch
+        ? `
+            <div class="mini-network-callout">
+                <b>SEARCH NETWORKING — Search the blood relatives of the Person whose page you are viewing.</b><br>
+                The displayed Person becomes the starting point for the search. Select one or more Networking interests. Wonderful Apps returns only verified Networking participants who are biological blood relatives of that Person.
+            </div>
+            <ul>
+                <li>Spouses or partners are not included merely because they are connected by marriage. The search follows biological family relationships.</li>
+                <li>Each result includes a <b>Person</b> symbol. Click it to open that relative's Person Page, review the information, and decide whether you want to make contact.</li>
+                <li>You are not limited to searching from your own Person Page. Open the Person Page of a child, parent, grandparent, or other relative and search that Person's blood line.</li>
+            </ul>`
+        : `
+            <div class="mini-network-callout">
+                <b>NETWORKING — Tell your relatives how this Person would like to network.</b><br>
+                Use Networking to decide whether the Person may appear in Family Networking searches, enter a Network Note and Preferred Contact Type, and select the Networking interests that apply.
+            </div>
+            <p><b>Family Networking is private to your family relationships—it is not a public networking directory.</b></p>
+            <p>A Person can select one or more of these interests:</p>
+            <ul>
+                <li>Business looking for a vendor.</li>
+                <li>Vendor looking for a business.</li>
+                <li>Looking for professional services.</li>
+                <li>Professional offering services.</li>
+                <li>Customer looking for a business.</li>
+                <li>Business looking for customers.</li>
+                <li>Looking to contact relatives in an area.</li>
+                <li>Looking for someone going to the same school.</li>
+            </ul>
+            <p>Before the Person can appear in Networking search results, the email address associated with that Person must be verified.</p>`;
+
+    return `
+        <p><b>The highlighted button below is the button you use on a Person Page.</b></p>
+        <div class="sample mini-person-page">
+            <div class="mini-section">
+                <div class="mini-section-title person-sample">PERSON ${miniTreeButton()}</div>
+                <div class="mini-person-top">
+                    <img class="photo" src="images/person-placeholder.svg" alt="">
+                    <div>
+                        <b>Sample Person</b><br>
+                        Born: 05/12/1968<br>
+                        Birth Place: Orlando, Florida<br>
+                        Current Home: Orlando, FL
+                        <div class="mini-button-row">
+                            <span class="mini-button">EDIT PERSON</span>
+                            <span class="mini-button danger">DELETE PERSON</span>
+                        </div>
+                    </div>
+                    <div class="mini-action-stack">
+                        <div class="mini-button">CONTACT</div>
+                        <div class="mini-button">EVENT</div>
+                        <div class="mini-button${networkClass}">NETWORKING</div>
+                        <div class="mini-button${searchClass}">SEARCH NETWORKING</div>
+                    </div>
+                </div>
+                <div class="mini-life">
+                    <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br><b>Profile Picture</b></div>
+                    <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 1</div>
+                    <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 2</div>
+                    <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 3</div>
+                    <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 4</div>
+                </div>
+            </div>
+        </div>
+        ${focusText}`;
+}
+
 function menuPageSample(key) {
     const pages = {
         newPerson: `
@@ -331,6 +422,10 @@ const openPersonInstructions = () => showModal('Person Button Instructions', per
 
 document.getElementById('treeHeroBtn').onclick = openTreeInstructions;
 document.getElementById('personHeroBtn').onclick = openPersonInstructions;
+document.getElementById('networkingInfoBtn').onclick = () =>
+    showModal('Networking Instructions', networkingInstructionsHtml('network'));
+document.getElementById('searchNetworkingInfoBtn').onclick = () =>
+    showModal('Search Networking Instructions', networkingInstructionsHtml('search'));
 
 document.querySelectorAll('#menuInstructionButtons [data-key]').forEach(button => {
     button.onclick = () => {

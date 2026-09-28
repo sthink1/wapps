@@ -385,6 +385,21 @@ footer {
     padding:10px;
     margin-top:12px
 }
+.network-choice-grid {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px 16px
+}
+.network-choice-grid label {
+    display:flex;
+    gap:8px;
+    align-items:flex-start;
+    line-height:1.35
+}
+.network-choice-grid input {
+    width:auto;
+    margin-top:2px
+}
 .network-row {
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -431,7 +446,7 @@ footer {
     width:auto
 }
 @media(max-width:620px) {
-    .network-row,.help-grid {
+    .network-row,.help-grid,.network-choice-grid {
         grid-template-columns:1fr
     }
 }
@@ -564,6 +579,9 @@ footer {
        </button>
        <button id="networkBtn">
         NETWORKING
+       </button>
+       <button id="searchNetworkingBtn">
+        SEARCH NETWORKING
        </button>
       </div>
       <div class="profile-col">
@@ -916,12 +934,27 @@ footer {
    </div>
   </div>
   <div class="modal" id="networkModal">
-   <div class="modal-box" style="width:min(980px,100%)">
+   <div class="modal-box" style="width:min(900px,100%)">
     <h2>
      NETWORKING INFORMATION
     </h2>
     <div id="networkPersonName" style="font-weight:bold;margin-bottom:8px">
     </div>
+
+    <div class="edit-actions" style="margin-top:0;margin-bottom:10px">
+     <button class="green" id="networkSaveBtn">
+      SAVE NETWORK
+     </button>
+     <button class="danger" id="networkDeleteBtn">
+      DELETE NETWORK
+     </button>
+     <button id="networkCloseBtn">
+      CLOSE
+     </button>
+    </div>
+    <div class="modal-status" id="networkStatus">
+    </div>
+
     <div class="network-block">
      <label>
       <input id="nInclude" style="width:auto" type="checkbox"/>
@@ -935,6 +968,7 @@ footer {
       </span>
      </div>
     </div>
+
     <div class="network-block">
      <div class="form-grid">
       <div class="field full">
@@ -969,125 +1003,48 @@ footer {
       </div>
      </div>
     </div>
+
     <div class="network-block">
      <h3>
-      EDUCATION
+      NETWORKING SEARCH CRITERIA
      </h3>
-     <div class="network-row">
-      <input id="neSchool" placeholder="School / Institution"/>
-      <input id="neDegree" placeholder="Degree"/>
-      <input id="neProgram" placeholder="Program / Field"/>
-      <input id="neCertification" placeholder="Certification"/>
-      <input id="neYear" max="2200" min="1900" placeholder="Graduation Year" type="number"/>
-      <input id="neCity" placeholder="City"/>
-      <input id="neState" placeholder="State"/>
-      <input id="neCountry" placeholder="Country"/>
-      <input id="neNote" placeholder="Note"/>
-     </div>
-     <div class="edit-actions">
-      <button id="neAdd">
-       ADD EDUCATION
-      </button>
-     </div>
-     <div id="neList">
-     </div>
-    </div>
-    <div class="network-block">
-     <h3>
-      CAREER / PROFESSION
-     </h3>
-     <div class="network-row">
-      <input id="ncProfession" placeholder="Profession"/>
-      <input id="ncIndustry" placeholder="Industry"/>
-      <input id="ncCompany" placeholder="Company / Organization"/>
-      <input id="ncPosition" placeholder="Position / Title"/>
-      <input id="ncSpecialty" placeholder="Specialty"/>
-      <input id="ncCity" placeholder="City"/>
-      <input id="ncState" placeholder="State"/>
-      <input id="ncCountry" placeholder="Country"/>
-      <input id="ncStart" max="2200" min="1900" placeholder="Start Year" type="number"/>
-      <input id="ncEnd" max="2200" min="1900" placeholder="End Year" type="number"/>
+     <p class="small">
+      Select every statement that applies to this Person.
+     </p>
+     <div class="network-choice-grid">
       <label>
-       <input id="ncCurrent" style="width:auto" type="checkbox"/>
-       Current Position
+       <input id="nBusinessSeekingVendor" type="checkbox"/>
+       I am a business looking for a vendor.
       </label>
-      <input id="ncNote" placeholder="Note"/>
-     </div>
-     <div class="edit-actions">
-      <button id="ncAdd">
-       ADD CAREER
-      </button>
-     </div>
-     <div id="ncList">
-     </div>
-    </div>
-    <div class="network-block">
-     <h3>
-      SKILLS / INTERESTS / ORGANIZATIONS
-     </h3>
-     <div class="network-row">
-      <select id="niType">
-       <option>
-        Skill
-       </option>
-       <option>
-        Interest
-       </option>
-       <option>
-        Professional Organization
-       </option>
-       <option>
-        Community Organization
-       </option>
-       <option>
-        Certification
-       </option>
-       <option>
-        Language
-       </option>
-       <option>
-        Hobby
-       </option>
-       <option>
-        Other
-       </option>
-      </select>
-      <input id="niDescription" placeholder="Description"/>
-      <input id="niDetail" placeholder="Detail / Note"/>
-     </div>
-     <div class="edit-actions">
-      <button id="niAdd">
-       ADD ITEM
-      </button>
-     </div>
-     <div id="niList">
-     </div>
-    </div>
-    <div class="network-block">
-     <h3>
-      CAN HELP RELATIVES WITH
-     </h3>
-     <div class="help-grid" id="nhChecks">
-     </div>
-     <div class="field" style="margin-top:8px">
       <label>
-       Additional Details
+       <input id="nVendorSeekingBusiness" type="checkbox"/>
+       I am a vendor looking for a business.
       </label>
-      <textarea id="nhDetail" maxlength="1000"></textarea>
+      <label>
+       <input id="nSeekingProfessionalServices" type="checkbox"/>
+       I am looking for professional services.
+      </label>
+      <label>
+       <input id="nProfessionalOfferingServices" type="checkbox"/>
+       I am a professional offering my services.
+      </label>
+      <label>
+       <input id="nCustomerSeekingBusiness" type="checkbox"/>
+       I am a customer looking for a business.
+      </label>
+      <label>
+       <input id="nBusinessSeekingCustomers" type="checkbox"/>
+       I am a business looking for customers.
+      </label>
+      <label>
+       <input id="nSeekingRelativesInArea" type="checkbox"/>
+       I am looking to contact relatives in an area.
+      </label>
+      <label>
+       <input id="nSeekingSchoolConnection" type="checkbox"/>
+       I am looking for someone going to my school.
+      </label>
      </div>
-    </div>
-    <div class="edit-actions">
-     <button class="green" id="networkSaveBtn">
-      SAVE NETWORK
-     </button>
-     <button class="danger" id="networkDeleteBtn">
-      DELETE NETWORK
-     </button>
-     <button id="networkCloseBtn">
-      CLOSE
-     </button>
-    </div>
-    <div class="modal-status" id="networkStatus">
     </div>
    </div>
   </div>
@@ -1348,7 +1305,7 @@ footer {
   <footer>
    Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
   </footer>
-  <script src="js/FTPerson.js?v=20260924-reviseft5">
+  <script src="js/FTPerson.js?v=20260927-network-person-search">
   </script>
   <script src="js/usageTracking.js?v=20260927-1">
   </script>
