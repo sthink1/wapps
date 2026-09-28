@@ -1,6 +1,6 @@
 # TechSummary.md – WonderfulApps Architecture & Technical Summary
 
-**Last updated:** September 22, 2026  
+**Last updated:** September 28, 2026  
 **Project:** WonderfulApps (WA)  
 **Database reference:** `wappsDump.sql`
 
@@ -20,19 +20,20 @@ The current system includes:
 - Amortization and utility pages
 - Contact/email functionality
 - **A multi-table Budget application**
-- **A multi-table Family Tree application**
+- **A multi-table Family Tree application with Family Networking**
 - **A hierarchical Subscription / Entitlement system with separate administrator grants**
 - **A centralized Notification / Consent system**
 - **Family Tree One Tree Merge with snapshot-based Undo One Tree Merge**
+- **Family Networking with consent verification and blood-relative search**
 
-The current `wappsDump.sql` contains **54 tables**, including:
+The current `wappsDump.sql` contains **56 tables**, including:
 
 - **8 subscription / entitlement tables**
 - **6 notification / consent tables**
 - **13 Budget tables**
-- **16 Family Tree tables**
+- **18 Family Tree tables**
 
-The current Family Tree implementation includes explicit `FTSiblingT` relationships and snapshot-based One Tree Merge history/Undo support through `FTTreeMergeT` and extended `FTPersonMergeT` records.
+The current Family Tree implementation includes explicit `FTSiblingT` relationships, snapshot-based One Tree Merge history/Undo support through `FTTreeMergeT` and extended `FTPersonMergeT` records, plus Family Networking through `FTNetworkT` and `FTNetworkVerificationT`.
 
 The frontend follows project-wide standards for:
 
@@ -128,7 +129,7 @@ Express server (server.js)
     v
 MySQL
     |
-    +-- 54 current tables
+    +-- 56 current tables
 
 Family Tree image/file workflow may also use:
 Express -> r2Storage.js -> S3-compatible object storage
@@ -146,7 +147,7 @@ Current `server.js` mounts:
 |---|---|---|
 | `/users` | `routes/users.js` | Registration/login/verification |
 | `/subscriptions` | `routes/subscriptions.js` | Authenticated subscription functions |
-| `/notifications` | `routes/notifications.js` | Preferences plus public token unsubscribe flow |
+| `/notifications` | `routes/notifications.js` | Preferences plus public token unsubscribe and Family Network verification flows |
 | `/track` | `routes/track.js` | Existing general usage tracking |
 | `/weights` | `routes/weights.js` | JWT + `weigh_in` |
 | `/activities` | `routes/activities.js` | JWT + `weigh_in` |
@@ -268,7 +269,7 @@ BudgetRecurrenceWeeklyDayT
 BudgetSubscriptionT
 ```
 
-### 4.8 Family Tree (16)
+### 4.8 Family Tree (18)
 
 ```text
 FamilyTreeT
@@ -279,6 +280,8 @@ FTFamilyTreeActivityT
 FTFamilyTreePersonT
 FTFamilyTreeUserT
 FTImageT
+FTNetworkT
+FTNetworkVerificationT
 FTNotificationT
 FTParentT
 FTPartnerT
@@ -289,11 +292,22 @@ FTSiblingT
 FTTreeMergeT
 ```
 
-**Total current tables: 53**
+**Total current tables: 56**
 
-`wappsDump.sql` already includes the current administrator subscription-grant, notification/consent, and Undo One Tree Merge schema changes. Historical implementation or migration dumps are not the current schema authority.
+`wappsDump.sql` already includes the current administrator subscription-grant, notification/consent, Undo One Tree Merge, and Family Networking schema changes. Historical implementation or migration dumps are not the current schema authority.
 
 The current `.gitignore` rule `*Dump.sql` intentionally excludes SQL dump files from normal Git tracking. A newly replaced local `wappsDump.sql` therefore may not appear as a VS Code/Git change and is not automatically propagated to GitHub/Render. The dump remains a local/Drive schema and recovery reference.
+
+### 4.9 UTC date/time standard
+
+WA standardizes database/application instants on UTC:
+
+- `dbConnection.js` configures the `mysql2` pool with `timezone: 'Z'` so JavaScript `Date` values are interpreted and written as UTC.
+- Every new MySQL connection executes `SET time_zone = '+00:00'`, so session functions such as `NOW()` and `CURRENT_TIMESTAMP` and `TIMESTAMP` conversion operate in UTC.
+- API timestamps should be transmitted as UTC/ISO-8601 values. Normal JSON serialization of JavaScript `Date` objects produces UTC ISO-8601 timestamps.
+- Browser pages may convert those UTC instants to the viewer's local timezone for presentation, such as `new Date(value).toLocaleString()`.
+- `APP_TIMEZONE` remains a business/reporting timezone where a provider API requires a calendar timezone; it does not control database storage.
+- Existing `TIMESTAMP` history is not rewritten as part of this change. Any migration of existing `DATETIME` data requires a separate field-by-field review before conversion.
 
 ---
 
@@ -588,9 +602,11 @@ GET  /notifications/preferences
 PUT  /notifications/preferences
 GET  /notifications/unsubscribe/:token
 POST /notifications/unsubscribe/:token
+GET  /notifications/network-verification/:token
+POST /notifications/network-verification/:token
 ```
 
-The preference routes require authentication. The token unsubscribe routes are public by design.
+The preference routes require authentication. The token unsubscribe routes and Family Network verification routes are public by design; Family Network verification is protected by expiring random tokens whose hashes are stored in `FTNetworkVerificationT`, plus current-email and participation checks.
 
 `PUBLIC_BASE_URL` is used to build public links. Production and local test environments must use the correct origin.
 
@@ -647,10 +663,124 @@ The Family Tree application is a first-class WA module with a large dedicated ba
 - `FTEventPersonT` – people associated with events
 - `FTContactT` – contact records
 - `FTImageT` – image metadata
+- `FTNetworkT` – Person-level Family Networking profile and search/verification state
+- `FTNetworkVerificationT` – Family Network consent verification requests/history
 - `FTNotificationT` – notifications
 - `FTFamilyTreeActivityT` – activity/audit-style data
 - `FTPersonMergeT` – person-merge data
 - `FTRecordArchiveT` – archived records
+
+### Family Networking
+
+Family Networking is a Family Tree subsystem implemented through `routes/familyTree.js`, `routes/notifications.js`, `FTPerson.html` / `FTPerson.js`, `FTNetwork.html` / `FTNetwork.js`, and `networkVerification.html`.
+
+#### Data model
+
+`FTNetworkT` stores one profile per Person and includes participation/search consent state, Network note/preferred contact type, ten Networking choices, verification status, verified email, verification timestamps, and create/update audit fields.
+
+The ten current Network choices are:
+
+```text
+BusinessSeekingVendor
+VendorSeekingBusiness
+SeekingProfessionalServices
+ProfessionalOfferingServices
+CustomerSeekingBusiness
+BusinessSeekingCustomers
+PeopleNeedJobs
+JobsNeedPeople
+SeekingRelativesInArea
+SeekingSchoolConnection
+```
+
+`FTNetworkVerificationT` records token-based verification attempts with:
+
+```text
+NetworkVerificationID
+PersonID
+FamilyTreeID
+EmailAddress
+TokenHash
+RequestedByUserID
+RequestedAt
+ExpiresAt
+RespondedAt
+Response
+```
+
+The token stored in the database is a SHA-256 hash, not the raw verification token.
+
+#### API surface
+
+Authenticated profile/search APIs:
+
+```text
+GET    /familytree/persons/:id/network
+PUT    /familytree/persons/:id/network
+DELETE /familytree/persons/:id/network
+GET    /familytree/network/search
+```
+
+Public verification APIs:
+
+```text
+GET  /notifications/network-verification/:token
+POST /notifications/network-verification/:token
+```
+
+The public verification page allows the recipient to confirm approval or decline without a WA login. Verification requests currently expire after seven days.
+
+#### Search eligibility and privacy rules
+
+Family Network search is not a public people directory. It begins from a focal Person in an authorized Family Tree and returns only qualifying biological blood relatives in that same Tree.
+
+The blood-line calculation uses:
+
+- non-adopted `FTParentT` parent relationships; and
+- explicit biological sibling edges in `FTSiblingT`.
+
+It includes descendants of biological ancestors and explicit sibling branches while avoiding spouses/co-parents that are connected only through partnership/shared-child relationships. The focal Person is removed from their own result set.
+
+A result candidate must:
+
+- belong to the selected Family Tree;
+- fall within the focal Person's calculated blood line;
+- be living;
+- have `FTNetworkT.IncludeInSearch=1`;
+- have effective `VerificationStatus='VERIFIED'`; and
+- still have an Email contact matching `FTNetworkT.VerifiedEmail`.
+
+Changing or removing the verified Email contact invalidates effective verification and requires a new verification before the Person can be returned by search.
+
+#### Matching model
+
+The first eight choices are complementary pairs:
+
+```text
+BusinessSeekingVendor        <-> VendorSeekingBusiness
+SeekingProfessionalServices  <-> ProfessionalOfferingServices
+CustomerSeekingBusiness      <-> BusinessSeekingCustomers
+PeopleNeedJobs               <-> JobsNeedPeople
+```
+
+The last two are mutual matches:
+
+```text
+SeekingRelativesInArea       <-> SeekingRelativesInArea
+SeekingSchoolConnection      <-> SeekingSchoolConnection
+```
+
+`FTNetwork.html` permits multiple criteria per search and returns the Person plus one or more "Why Matched" explanations.
+
+#### Verification and notification workflow
+
+When `IncludeInSearch` is enabled, `routes/familyTree.js` obtains the Person's current Email contact. If no Email exists, the Network profile is saved but remains unverified. Otherwise the route creates/supersedes a verification request as needed and sends the verification email through the centralized notification service using the `FAMILY_TREE` category.
+
+Approval requires that the Person is still marked for search and that the email being verified is still a current Email contact. Approval sets `VerificationStatus='VERIFIED'`, stores `VerifiedEmail`, and records `VerifiedAt`. Decline clears `IncludeInSearch`, sets `VerificationStatus='DECLINED'`, and records `DeclinedAt`.
+
+Network create/edit/delete operations are logged to Family Tree activity and use Family Tree notification handling. The current design treats Network as one logical change item for notifications rather than creating separate notification categories for individual Networking attributes.
+
+Networking is not available for deceased Persons. This restriction is enforced in both frontend behavior and backend profile/search routes.
 
 ### One Tree Merge and Undo One Tree Merge
 

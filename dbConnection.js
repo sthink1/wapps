@@ -23,15 +23,34 @@ const pool = mysqlPromise.createPool({
     connectionLimit: 50,
     queueLimit: 0,
     charset: 'utf8mb4',
-    dateStrings: ['DATE'],// // Return DATE fields as YYYY-MM-DD strings
+    // Standardize JavaScript Date <-> MySQL conversion on UTC.
+    timezone: 'Z',
+    dateStrings: ['DATE'], // Return DATE fields as YYYY-MM-DD strings
     // Removed acquireTimeout to suppress warning
 });
 
-// Test the database connection
+// Standardize every MySQL connection session on UTC.
+// This also makes NOW(), CURRENT_TIMESTAMP and TIMESTAMP reads/writes use UTC.
+pool.on('connection', (connection) => {
+    connection.query("SET time_zone = '+00:00'", (err) => {
+        if (err) {
+            logger.error('Unable to set MySQL session time zone to UTC: ' + err.message);
+        }
+    });
+});
+
+// Test the database connection and confirm its session time zone.
 (async () => {
     try {
         const connection = await pool.getConnection();
-        logger.info('Connected to the MySQL database!');
+        const [[timeZoneRow]] = await connection.query(
+            "SELECT @@session.time_zone AS SessionTimeZone, NOW() AS SessionNow, UTC_TIMESTAMP() AS UtcNow"
+        );
+        if (timeZoneRow.SessionTimeZone !== '+00:00') {
+            connection.release();
+            throw new Error(`MySQL session time zone is ${timeZoneRow.SessionTimeZone}, expected +00:00.`);
+        }
+        logger.info('Connected to the MySQL database with UTC session time.');
         connection.release();
     } catch (err) {
         logger.error('Error connecting to the MySQL database: ' + err.message);

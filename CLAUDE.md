@@ -1,6 +1,6 @@
 # CLAUDE.md – WonderfulApps Developer Onboarding Guide
 
-**Last updated:** September 22, 2026  
+**Last updated:** September 28, 2026  
 **Project:** WonderfulApps (WA)  
 **Database ground truth:** `wappsDump.sql`
 
@@ -64,9 +64,9 @@ The current WA project includes:
 - Contact/email functions
 - Notification preferences, consent history, suppression, and unsubscribe processing
 - **Budget application**
-- **Family Tree application**, including One Tree Merge and Undo One Tree Merge
+- **Family Tree application**, including One Tree Merge, Undo One Tree Merge, and Family Networking
 
-Budget, Family Tree, and Subscription are implemented WA components, not future placeholders.
+Budget, Family Tree, Family Networking, and Subscription are implemented WA components, not future placeholders.
 
 ---
 
@@ -96,7 +96,7 @@ Current `server.js` mounts the principal routes as follows:
 |---|---|---|
 | `/users` | `routes/users.js` | Authentication / user flow |
 | `/subscriptions` | `routes/subscriptions.js` | Authenticated subscription APIs |
-| `/notifications` | `routes/notifications.js` | Authenticated preference APIs plus public token unsubscribe endpoints |
+| `/notifications` | `routes/notifications.js` | Authenticated preference APIs plus public token unsubscribe and Family Network verification endpoints |
 | `/track` | `routes/track.js` | Existing general usage tracking |
 | `/weights` | `routes/weights.js` | `weigh_in` access required |
 | `/activities` | `routes/activities.js` | `weigh_in` access required |
@@ -139,7 +139,7 @@ All subscription routes require a valid JWT. The `/admin/...` routes additionall
 
 ## 5. Current Database
 
-The current `wappsDump.sql` is the database ground truth and contains **54 tables**. It includes the notification/consent schema, the Family Tree Undo One Tree Merge schema, and the administrator subscription-grant table.
+The current `wappsDump.sql` is the database ground truth and contains **56 tables**. It includes the notification/consent schema, the Family Tree Undo One Tree Merge schema, the Family Networking schema, and the administrator subscription-grant table.
 
 ### Core user / system tables (4)
 
@@ -214,7 +214,7 @@ BudgetRecurrenceWeeklyDayT
 BudgetSubscriptionT
 ```
 
-### Family Tree tables (16)
+### Family Tree tables (18)
 
 ```text
 FamilyTreeT
@@ -225,6 +225,8 @@ FTFamilyTreeActivityT
 FTFamilyTreePersonT
 FTFamilyTreeUserT
 FTImageT
+FTNetworkT
+FTNetworkVerificationT
 FTNotificationT
 FTParentT
 FTPartnerT
@@ -238,9 +240,11 @@ FTTreeMergeT
 ### Database rules
 
 - `wappsDump.sql` is the authoritative current schema reference.
-- The current dump already includes the implemented notification/consent, administrator subscription-grant, and Undo One Tree Merge table changes.
+- The current dump already includes the implemented notification/consent, administrator subscription-grant, Undo One Tree Merge, and Family Networking table changes.
 - Keep SQL compatible with the deployed MySQL 5.5 environment unless the database platform is intentionally changed.
 - Use `utf8mb4`.
+- **UTC time standard:** every MySQL connection session must run with `time_zone = '+00:00'`, and the `mysql2` pool must use `timezone: 'Z'`. Store and transmit instants in UTC. Browser UI may convert UTC timestamps to the viewer's local timezone for display (for example, with JavaScript `Date` plus `toLocaleString()`).
+- Do not rewrite existing `TIMESTAMP` history merely to adopt this standard; MySQL stores `TIMESTAMP` values internally in UTC. Any historical `DATETIME` migration requires separate evidence that the stored values are not already UTC.
 - Respect existing primary keys, unique keys, indexes, and foreign-key rules in `wappsDump.sql`.
 - Many user-owned tables use `UserID` and database-level cascading deletes to `UsersT`.
 - `UserSequenceT` supports user-scoped identifiers used by several WA modules.
@@ -489,6 +493,8 @@ Phone 1 remains required by the current registration implementation.
 
 `routes/notifications.js` provides authenticated preference endpoints and public token-based unsubscribe endpoints. Public unsubscribe links do not require login.
 
+It also provides the public Family Network verification endpoints used by `networkVerification.html`. These links do not require a WA login, but they are protected by random token values whose SHA-256 hashes are stored in `FTNetworkVerificationT` and are subject to expiration and current-email checks.
+
 `PUBLIC_BASE_URL` controls the public URL used when notification links are generated. Local testing should use the local server origin; production should use the production WA origin.
 
 ### 7.4 Family Tree notifications
@@ -554,6 +560,109 @@ The current schema includes support for:
 - Family Tree activity
 - Person merge operations
 - Archived records
+- **Family Networking profiles and search participation**
+- **Family Network email verification history**
+
+### Family Networking
+
+Family Networking is implemented as part of the Family Tree application. The principal frontend files are:
+
+```text
+httpdocs/FTPerson.html
+httpdocs/FTNetwork.html
+httpdocs/networkVerification.html
+httpdocs/js/FTPerson.js
+httpdocs/js/FTNetwork.js
+```
+
+The backend logic is split between `routes/familyTree.js` for authenticated profile/search functions and `routes/notifications.js` for public token-based verification responses.
+
+Current authenticated Family Networking endpoints are:
+
+```text
+GET    /familytree/persons/:id/network
+PUT    /familytree/persons/:id/network
+DELETE /familytree/persons/:id/network
+GET    /familytree/network/search
+```
+
+Current public verification endpoints are:
+
+```text
+GET  /notifications/network-verification/:token
+POST /notifications/network-verification/:token
+```
+
+`FTNetworkT` stores one Network profile per Person. Important fields include:
+
+```text
+PersonID
+IncludeInSearch
+NetworkNote
+PreferredContactType
+BusinessSeekingVendor
+VendorSeekingBusiness
+SeekingProfessionalServices
+ProfessionalOfferingServices
+CustomerSeekingBusiness
+BusinessSeekingCustomers
+PeopleNeedJobs
+JobsNeedPeople
+SeekingRelativesInArea
+SeekingSchoolConnection
+VerificationStatus
+VerifiedEmail
+VerificationRequestedAt
+VerifiedAt
+DeclinedAt
+CreatedByUserID / CreatedAt
+UpdatedByUserID / UpdatedAt
+```
+
+`FTNetworkVerificationT` stores verification requests and responses, including a SHA-256 token hash, requested email address, requesting user, request/expiration/response timestamps, and the response state.
+
+Important Networking behavior:
+
+- Networking is available only for living Persons. The Person page disables Networking and Search Networking for a deceased Person, and the backend independently rejects Networking changes/searches for a deceased Person.
+- A Network profile may exist even when `IncludeInSearch=0`. The Person page shows whether Networking information is active/inactive separately from verification state.
+- Selecting **Include this Person in Family Network Search** requires a current Email contact before the Person can become searchable.
+- Verification is tied to the specific email address that was verified. If the Person's Email contact changes, the prior verified state is not considered effective and a new verification is required.
+- Verification links use random tokens; only the SHA-256 token hash is stored in `FTNetworkVerificationT`. Current verification requests expire after seven days.
+- Approval sets the profile to `VERIFIED` for the verified email. Declining clears `IncludeInSearch` and marks the profile `DECLINED`. A newer request can supersede an older pending request.
+- Verification email delivery goes through the central notification service under the `FAMILY_TREE` category and therefore continues to honor central suppression/delivery rules.
+- Network add/edit/delete operations are logged in `FTFamilyTreeActivityT` and use Family Tree notification processing. Network information is treated as one logical Network item for change-notification purposes rather than separate Education/Career/Skill/etc. notification categories.
+
+Family Network search starts from a specific Person and a specific Family Tree. Search results are intentionally limited to verified participating biological blood relatives of that focal Person within that Tree.
+
+Blood-line scope is derived from non-adopted parent relationships plus explicit `FTSiblingT` biological-sibling links. It includes descendants of biological ancestors (for example parents, grandparents, siblings, cousins, children and grandchildren) while avoiding spouses/co-parents who are connected only by partnership/shared-child relationships. The focal Person is excluded from their own results. Search results also exclude deceased Persons.
+
+A candidate is searchable only when all of the following are true:
+
+1. the candidate is in the selected Family Tree;
+2. the candidate is in the focal Person's calculated biological blood line;
+3. the candidate is living;
+4. `IncludeInSearch=1`;
+5. `VerificationStatus='VERIFIED'`; and
+6. the verified email still matches a current Email contact for that Person.
+
+Networking matching uses complementary choices for four paired categories and mutual matching for two categories:
+
+| Search choice | Candidate match |
+|---|---|
+| Business looking for vendor | Vendor looking for business |
+| Vendor looking for business | Business looking for vendor |
+| Looking for professional services | Professional offering services |
+| Professional offering services | Looking for professional services |
+| Customer looking for business | Business looking for customers |
+| Business looking for customers | Customer looking for business |
+| People need jobs | Jobs need people |
+| Jobs need people | People need jobs |
+| Looking to contact relatives in an area | Same choice |
+| Looking for someone going to my school | Same choice |
+
+`FTNetwork.html` can accept multiple criteria in one search. A result may therefore contain more than one "Why Matched" reason.
+
+When changing Networking code, preserve the privacy boundary: Network search is not a public directory, verification consent is required, the search must stay within authorized Family Tree context, and only verified biological blood-line participants may be returned.
 
 ### One Tree Merge and Undo One Tree Merge
 
