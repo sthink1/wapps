@@ -27,6 +27,8 @@ const SEARCH_FIELDS = [
     'ProfessionalOfferingServices',
     'CustomerSeekingBusiness',
     'BusinessSeekingCustomers',
+    'PeopleNeedJobs',
+    'JobsNeedPeople',
     'SeekingRelativesInArea',
     'SeekingSchoolConnection'
 ];
@@ -198,6 +200,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
     $('clearBtn').onclick = clearSearch;
+    $('backBtn').onclick = () => {
+        window.history.back();
+    };
 
     try {
         await loadFocalPerson();

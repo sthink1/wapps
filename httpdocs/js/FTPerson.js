@@ -1252,6 +1252,8 @@ const NETWORK_PROFILE_FIELDS = [
     'ProfessionalOfferingServices',
     'CustomerSeekingBusiness',
     'BusinessSeekingCustomers',
+    'PeopleNeedJobs',
+    'JobsNeedPeople',
     'SeekingRelativesInArea',
     'SeekingSchoolConnection'
 ];

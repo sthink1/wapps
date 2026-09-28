@@ -7224,6 +7224,8 @@ const NETWORK_PROFILE_FIELDS = [
     'ProfessionalOfferingServices',
     'CustomerSeekingBusiness',
     'BusinessSeekingCustomers',
+    'PeopleNeedJobs',
+    'JobsNeedPeople',
     'SeekingRelativesInArea',
     'SeekingSchoolConnection'
 ];
@@ -7235,6 +7237,8 @@ const NETWORK_MATCH_FIELD = {
     ProfessionalOfferingServices: 'SeekingProfessionalServices',
     CustomerSeekingBusiness: 'BusinessSeekingCustomers',
     BusinessSeekingCustomers: 'CustomerSeekingBusiness',
+    PeopleNeedJobs: 'JobsNeedPeople',
+    JobsNeedPeople: 'PeopleNeedJobs',
     SeekingRelativesInArea: 'SeekingRelativesInArea',
     SeekingSchoolConnection: 'SeekingSchoolConnection'
 };
@@ -7246,6 +7250,8 @@ const NETWORK_FIELD_LABEL = {
     ProfessionalOfferingServices: 'I am a professional offering my services.',
     CustomerSeekingBusiness: 'I am a customer looking for a business.',
     BusinessSeekingCustomers: 'I am a business looking for customers.',
+    PeopleNeedJobs: 'People need jobs.',
+    JobsNeedPeople: 'Jobs need people.',
     SeekingRelativesInArea: 'I am looking to contact relatives in an area.',
     SeekingSchoolConnection: 'I am looking for someone going to my school.'
 };
@@ -7633,6 +7639,8 @@ router.put('/persons/:id/network', auth, async (req, res) => {
                         ProfessionalOfferingServices,
                         CustomerSeekingBusiness,
                         BusinessSeekingCustomers,
+                        PeopleNeedJobs,
+                        JobsNeedPeople,
                         SeekingRelativesInArea,
                         SeekingSchoolConnection,
                         VerificationStatus,
@@ -7642,7 +7650,7 @@ router.put('/persons/:id/network', auth, async (req, res) => {
                         UpdatedAt
                      )
                      VALUES
-                     (?,?,?,?,?,?,?,?,?,?,?,?,'NOT_REQUESTED',?,NOW(),NULL,NULL)`,
+                     (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'NOT_REQUESTED',?,NOW(),NULL,NULL)`,
                     [
                         personID,
                         body.IncludeInSearch ? 1 : 0,
@@ -7664,6 +7672,8 @@ router.put('/persons/:id/network', auth, async (req, res) => {
                             ProfessionalOfferingServices=?,
                             CustomerSeekingBusiness=?,
                             BusinessSeekingCustomers=?,
+                            PeopleNeedJobs=?,
+                            JobsNeedPeople=?,
                             SeekingRelativesInArea=?,
                             SeekingSchoolConnection=?,
                             UpdatedByUserID=?,
@@ -7959,6 +7969,8 @@ router.get('/network/search', auth, async (req, res) => {
                     n.ProfessionalOfferingServices,
                     n.CustomerSeekingBusiness,
                     n.BusinessSeekingCustomers,
+                    n.PeopleNeedJobs,
+                    n.JobsNeedPeople,
                     n.SeekingRelativesInArea,
                     n.SeekingSchoolConnection
                    FROM FTPersonT p
