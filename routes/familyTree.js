@@ -4045,6 +4045,31 @@ router.put('/persons/:id', auth, async (req, res) => {
                 ]
             );
 
+            if (b.Died || b.DeathDate) {
+                await c.query(
+                    `UPDATE FTNetworkT
+                        SET IncludeInSearch=0,
+                            VerificationStatus='NOT_REQUESTED',
+                            VerifiedEmail=NULL,
+                            VerificationRequestedAt=NULL,
+                            VerifiedAt=NULL,
+                            DeclinedAt=NULL,
+                            UpdatedByUserID=?,
+                            UpdatedAt=NOW()
+                      WHERE PersonID=?`,
+                    [userID, id]
+                );
+
+                await c.query(
+                    `UPDATE FTNetworkVerificationT
+                        SET RespondedAt=NOW(),
+                            Response='SUPERSEDED'
+                      WHERE PersonID=?
+                        AND RespondedAt IS NULL`,
+                    [id]
+                );
+            }
+
             const activityID = await logActivity(
                 c,
                 tree.FamilyTreeID,
@@ -7618,6 +7643,26 @@ router.put('/persons/:id/network', auth, async (req, res) => {
                 throw error;
             }
 
+            const [personRows] = await c.query(
+                `SELECT Died,DeathDate
+                   FROM FTPersonT
+                  WHERE PersonID=?
+                  LIMIT 1`,
+                [personID]
+            );
+
+            if (
+                !personRows.length ||
+                Number(personRows[0].Died) === 1 ||
+                personRows[0].DeathDate
+            ) {
+                const error = new Error(
+                    'Networking is not available for a deceased Person.'
+                );
+                error.status = 400;
+                throw error;
+            }
+
             const before =
                 await getNetworkProfileRow(c, personID);
 
@@ -7922,10 +7967,12 @@ router.get('/network/search', auth, async (req, res) => {
             );
 
             const [focalMembership] = await c.query(
-                `SELECT 1
-                   FROM FTFamilyTreePersonT
-                  WHERE FamilyTreeID=?
-                    AND PersonID=?
+                `SELECT p.Died,p.DeathDate
+                   FROM FTFamilyTreePersonT ftp
+                   JOIN FTPersonT p
+                     ON p.PersonID=ftp.PersonID
+                  WHERE ftp.FamilyTreeID=?
+                    AND ftp.PersonID=?
                   LIMIT 1`,
                 [
                     tree.FamilyTreeID,
@@ -7937,6 +7984,16 @@ router.get('/network/search', auth, async (req, res) => {
                 return res.status(404).json({
                     message:
                         'The selected Person is not in this Family Tree.'
+                });
+            }
+
+            if (
+                Number(focalMembership[0].Died) === 1 ||
+                focalMembership[0].DeathDate
+            ) {
+                return res.status(400).json({
+                    message:
+                        'Networking search is not available for a deceased Person.'
                 });
             }
 
@@ -7980,6 +8037,8 @@ router.get('/network/search', auth, async (req, res) => {
                    JOIN FTNetworkT n
                      ON n.PersonID=p.PersonID
                   WHERE p.PersonID IN (${placeholders})
+                    AND COALESCE(p.Died,0)=0
+                    AND p.DeathDate IS NULL
                     AND n.IncludeInSearch=1
                     AND n.VerificationStatus='VERIFIED'
                     AND EXISTS (

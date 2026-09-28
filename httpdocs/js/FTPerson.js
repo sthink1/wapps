@@ -93,6 +93,30 @@ function ageClass(person) {
     return isDeceased(person) ? 'deceased-age' : '';
 }
 
+function updatePersonActionAvailability() {
+    const deceased = isDeceased(currentPerson);
+    const contactButton = $('contactBtn');
+    const networkButton = $('networkBtn');
+    const searchNetworkingButton = $('searchNetworkingBtn');
+    const networkStatus = $('networkButtonStatus');
+
+    if (contactButton) {
+        contactButton.disabled = deceased;
+    }
+
+    if (networkButton) {
+        networkButton.disabled = deceased;
+    }
+
+    if (searchNetworkingButton) {
+        searchNetworkingButton.disabled = deceased;
+    }
+
+    if (networkStatus) {
+        networkStatus.style.display = deceased ? 'none' : '';
+    }
+}
+
 function nameOf(person) {
     const firstPart = [
         person.FirstName,
@@ -219,6 +243,7 @@ async function loadPerson() {
     $('Died').textContent = Number(currentPerson.Died) ? 'Yes' : 'No';
     $('CurrentHome').textContent = [currentPerson.CurrentCity, currentPerson.CurrentState].filter(Boolean).join(', ');
     $('FamilyTreeCode').textContent = familyTreeCode;
+    updatePersonActionAvailability();
 }
 
 async function loadRelationships() {
@@ -474,6 +499,10 @@ async function saveEdit() {
     $('editPersonModal').classList.remove('show');
     setPageStatus('Person changes saved.');
     await loadPerson();
+
+    if (!isDeceased(currentPerson)) {
+        await loadNetworkButtonStatus();
+    }
 }
 
 function clearPictureForm() {
@@ -1240,8 +1269,12 @@ window.addEventListener('pageshow', event => {
         loadContactEventCounts()
             .catch(error => setPageStatus(error.message));
 
-        loadNetworkButtonStatus()
-            .catch(() => {});
+        if (!isDeceased(currentPerson)) {
+            loadNetworkButtonStatus()
+                .catch(() => {});
+        } else {
+            updatePersonActionAvailability();
+        }
     }
 });
 
@@ -1461,8 +1494,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadContactEventCounts()
         ]);
 
-        loadNetworkButtonStatus()
-            .catch(() => {});
+        if (!isDeceased(currentPerson)) {
+            loadNetworkButtonStatus()
+                .catch(() => {});
+        }
         const coParentChildID = Number(params.get('askPartnerParentChildID') || 0);
         if (coParentChildID) {
             await askPartnerParent(coParentChildID);
@@ -1544,20 +1579,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('treeHeadingBtn').onclick = () =>
         navigateTo('FTAncestor.html');
 
-    $('contactBtn').onclick = () =>
+    $('contactBtn').onclick = () => {
+        if (isDeceased(currentPerson)) return;
         navigateTo('FTContact.html');
+    };
 
     const networkBtn = $('networkBtn');
     if (networkBtn) {
-        networkBtn.onclick = () =>
+        networkBtn.onclick = () => {
+            if (isDeceased(currentPerson)) return;
+
             loadNetwork()
                 .then(() => $('networkModal').classList.add('show'))
                 .catch(error => setPageStatus(error.message));
+        };
     }
 
     const searchNetworkingBtn = $('searchNetworkingBtn');
     if (searchNetworkingBtn) {
         searchNetworkingBtn.onclick = () => {
+            if (isDeceased(currentPerson)) return;
+
             const query = new URLSearchParams({
                 PersonID: String(personID),
                 familyTreeCode
