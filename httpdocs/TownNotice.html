@@ -52,7 +52,7 @@
             cursor: pointer; border-radius: 4px;
         }
         .button-group button:hover, .town-content button:hover { background-color: #45a049; }
-        .town-content { background-color: #CDE8FF; padding: 10px; }
+        .town-content { background-color: aqua; padding: 10px; }
         footer {
             background-color: lightgray; min-height: 30px; padding-top: 5px;
             position: fixed; bottom: 0; width: 100%; text-align: center; z-index: 10;
@@ -82,16 +82,21 @@
         </tr>
     </table>
 </footer>
-    
+
     <script>
         if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Service Worker registered'))
-      .catch(err => console.error('Service Worker registration failed:', err));
-  });
-}
-        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
+        }
+
+        const BASE_URL =
+            window.location.hostname === 'localhost' && window.location.port !== '8080'
+                ? 'http://localhost:8080'
+                : window.location.origin;
+
         let currentTown = '';
 
         // Function to update status message
@@ -99,16 +104,26 @@
             document.getElementById('status').textContent = `Status: ${message}`;
         }
 
-        // Function to get the user's current town
+        // Function to get the user's current town through the WA backend proxy
         function getTown(lat, lon) {
-            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
-                headers: {
-                    'User-Agent': 'TownNotificationApp/1.0 (sthink6386@gmail.com)' // NOTE:MUST CHANGE EMAIL ADDRESS IF NEW EMAIL USED
-                }
-            })
-                .then(response => response.json())
+            const url =
+                `${BASE_URL}/api/geocode/reverse` +
+                `?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Geocoding request failed (${response.status})`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    const town = data.address.town || data.address.city || data.address.village || 'Unknown town';
+                    const town =
+                        data.address?.town ||
+                        data.address?.city ||
+                        data.address?.village ||
+                        'Unknown town';
+
                     if (town !== currentTown) {
                         currentTown = town;
                         speak(`You have entered: ${town}`);
@@ -127,7 +142,7 @@
         function speak(message) {
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(message);
-                utterance.lang = 'en-US'; // Set language for better compatibility
+                utterance.lang = 'en-US';
                 speechSynthesis.speak(utterance);
             } else {
                 console.warn('Text-to-speech not supported in this browser.');
@@ -157,6 +172,5 @@
             }
         }
     </script>
-    <script src="js/usageTracking.js?v=20260927-1"></script>
 </body>
 </html>
