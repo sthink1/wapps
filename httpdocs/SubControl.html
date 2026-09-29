@@ -354,7 +354,7 @@
 
                 <div class="form-field">
                     <label for="grantEndDate">Access Through</label>
-                    <input id="grantEndDate" type="text" inputmode="numeric" maxlength="10" placeholder="MM/DD/YYYY" autocomplete="off" required>
+                    <input id="grantEndDate" type="text" inputmode="numeric" maxlength="10" placeholder="MMDDYYYY" autocomplete="off" required>
                 </div>
 
                 <div class="form-actions">
@@ -400,7 +400,7 @@
 
                 <div class="field">
                     <label for="editGrantEndDate">Access Through</label>
-                    <input id="editGrantEndDate" type="text" inputmode="numeric" maxlength="10" placeholder="MM/DD/YYYY" autocomplete="off" required>
+                    <input id="editGrantEndDate" type="text" inputmode="numeric" maxlength="10" placeholder="MMDDYYYY" autocomplete="off" required>
                 </div>
 
                 <div class="form-actions full-width">
@@ -477,6 +477,22 @@
             return `${match[2]}/${match[3]}/${match[1]}`;
         }
 
+        function formatAccessDateInput(value) {
+            const digits = String(value || '')
+                .replace(/\D/g, '')
+                .slice(0, 8);
+
+            if (digits.length <= 2) {
+                return digits;
+            }
+
+            if (digits.length <= 4) {
+                return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+            }
+
+            return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+        }
+
         function accessDateToIso(value) {
             const text = String(value || '').trim();
             let year;
@@ -489,13 +505,20 @@
                 day = Number(match[2]);
                 year = Number(match[3]);
             } else {
-                match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
-                if (!match) {
-                    throw new Error('Access Through must be entered as MM/DD/YYYY, for example 12/28/2030.');
+                match = /^(\d{2})(\d{2})(\d{4})$/.exec(text);
+                if (match) {
+                    month = Number(match[1]);
+                    day = Number(match[2]);
+                    year = Number(match[3]);
+                } else {
+                    match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
+                    if (!match) {
+                        throw new Error('Access Through must be entered as 8 numbers in MMDDYYYY order, for example 12282030.');
+                    }
+                    year = Number(match[1]);
+                    month = Number(match[2]);
+                    day = Number(match[3]);
                 }
-                year = Number(match[1]);
-                month = Number(match[2]);
-                day = Number(match[3]);
             }
 
             const date = new Date(Date.UTC(year, month - 1, day));
@@ -910,6 +933,14 @@
             } catch (error) {
                 setStatus('grantStatus', error.message, 'error');
             }
+        });
+
+        ['grantEndDate', 'editGrantEndDate'].forEach(id => {
+            const input = document.getElementById(id);
+
+            input.addEventListener('input', () => {
+                input.value = formatAccessDateInput(input.value);
+            });
         });
 
         document.addEventListener('DOMContentLoaded', async () => {
