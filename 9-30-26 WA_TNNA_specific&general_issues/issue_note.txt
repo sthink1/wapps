@@ -1,0 +1,3 @@
+The CLAUDE.md and TechSummary.md files summarize the WA project before the introduction of the TNNA project. The TNNA project is meant to make a native app of the Town Notification app in the WA project. The  TNNA_Node_NVM_Technical_Review.md summarizes the preliminary issues of the TNNA project as it relates to and/or reacts with the WA project. Please generate your response, as the design engineer for the project, in a .md file for review.
+
+Additionaly, after your response to the TNNA issue, please comment on any other design issues for the WA and TNNA project that need attention, in a seperate .md file.

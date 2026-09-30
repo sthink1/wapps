@@ -1,0 +1,23 @@
+design issue and recommended solution:
+
+> chat folder contains the .md summary of the issue
+
+> grok, claud, perplexity folder contain recommended solutions, and additional project potential issues
+
+> issue note: query to request .md responses
+
+Please review:
+
+Google Drive folder, Issues:
+Access Code: https://drive.google.com/drive/folders/1QSYRN78JiT8XA4pXPm2L1M9eDTMgHcB8?usp=sharing
+
+Please Review.
+Review Steps:
+1. review the issue summary in chat folder
+2. review the issue_note.txt to see request sent
+3. review each folder's responses to WA TNNA issue and WA_possible_Issues
+3. summarize:  A. the responses to WA TNNA issue and B, the WA_possible_Issues. C. generate response the A in a issue.md file, and B in a possible.md filel.  Combine both in one zip file for downloading.
+
+
+
+
