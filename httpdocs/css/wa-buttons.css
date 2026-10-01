@@ -1,0 +1,83 @@
+/* Wonderful Apps shared raised-button treatment
+   Created 2026-10-01.
+
+   Purpose:
+   - Give ordinary WA buttons the raised / bordered / pop-out appearance
+     approved for home.html and inspired by propertyInfo.html.
+   - Preserve each page's existing button colors, dimensions, and functions.
+   - Avoid changing specialized icon/information/password controls and
+     text-like table-header sort buttons.
+*/
+
+.wa-raised-buttons button:not(.app-info-btn):not(.menu-info-btn):not(.hero-icon-btn):not(.icon-action):not(.password-toggle):not(.display-password):not(.network-highlight),
+.wa-raised-buttons input[type="button"],
+.wa-raised-buttons input[type="submit"],
+.wa-raised-buttons input[type="reset"],
+.wa-raised-buttons a.btn {
+    box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.32),
+        2px 2px 5px rgba(0, 0, 0, 0.50);
+    transition:
+        background-color 0.3s,
+        color 0.3s,
+        transform 0.1s,
+        box-shadow 0.1s;
+}
+
+.wa-raised-buttons button:not(.app-info-btn):not(.menu-info-btn):not(.hero-icon-btn):not(.icon-action):not(.password-toggle):not(.display-password):not(.network-highlight):not(:disabled):hover,
+.wa-raised-buttons input[type="button"]:not(:disabled):hover,
+.wa-raised-buttons input[type="submit"]:not(:disabled):hover,
+.wa-raised-buttons input[type="reset"]:not(:disabled):hover,
+.wa-raised-buttons a.btn:hover {
+    transform: translateY(-1px);
+}
+
+.wa-raised-buttons button:not(.app-info-btn):not(.menu-info-btn):not(.hero-icon-btn):not(.icon-action):not(.password-toggle):not(.display-password):not(.network-highlight):not(:disabled):active,
+.wa-raised-buttons input[type="button"]:not(:disabled):active,
+.wa-raised-buttons input[type="submit"]:not(:disabled):active,
+.wa-raised-buttons input[type="reset"]:not(:disabled):active,
+.wa-raised-buttons a.btn:active {
+    transform: translateY(1px);
+    box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.32),
+        1px 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/* Disabled controls remain visibly disabled and do not lift/press. */
+.wa-raised-buttons button:disabled,
+.wa-raised-buttons input[type="button"]:disabled,
+.wa-raised-buttons input[type="submit"]:disabled,
+.wa-raised-buttons input[type="reset"]:disabled {
+    transform: none;
+}
+
+/* Preserve text-like table-header/sort controls as flat controls. */
+.wa-raised-buttons th button {
+    box-shadow: none;
+    transform: none;
+}
+
+/* Preserve specialized compact/icon controls that already have their own design. */
+.wa-raised-buttons .app-info-btn,
+.wa-raised-buttons .menu-info-btn,
+.wa-raised-buttons .hero-icon-btn,
+.wa-raised-buttons .icon-action,
+.wa-raised-buttons .password-toggle,
+.wa-raised-buttons .display-password,
+.wa-raised-buttons .network-highlight,
+.wa-raised-buttons [data-wa-flat] {
+    box-shadow: none;
+    transform: none;
+}
+
+/* Printing should not introduce button shadows. */
+@media print {
+    .wa-raised-buttons button,
+    .wa-raised-buttons input[type="button"],
+    .wa-raised-buttons input[type="submit"],
+    .wa-raised-buttons input[type="reset"],
+    .wa-raised-buttons a.btn {
+        box-shadow: none !important;
+        transform: none !important;
+    }
+}
