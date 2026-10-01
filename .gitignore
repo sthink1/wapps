@@ -11,3 +11,24 @@ logs/
 
 # database files
 *Dump.sql
+
+# TNNA / Capacitor dependencies
+TNNA/node_modules/
+
+# Android local/build files
+TNNA/android/.gradle/
+TNNA/android/build/
+TNNA/android/app/build/
+TNNA/android/local.properties
+
+# Android signing files
+*.jks
+*.keystore
+keystore.properties
+
+# IDE / OS temporary files
+.DS_Store
+Thumbs.db
+
+# test / coverage output
+coverage/
