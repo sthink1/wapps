@@ -498,6 +498,72 @@
             target.innerHTML = html;
         }
 
+        const etfApiPlanRows = [
+            {
+                service: 'Polygon / Massive',
+                currentPlan: 'Free',
+                planType: 'API',
+                currentCost: '$0',
+                billing: '—',
+                resource: 'ETF market/reference data; historical prices',
+                currentValue: null,
+                limitValue: null,
+                limitLabel: '~5 calls/min; 2 years historical data',
+                percentUsed: null,
+                status: 'provider',
+                nextPaidPlan: 'TBD',
+                nextPaidCost: 'TBD',
+                nextPaidLimit: 'TBD',
+                source: 'Polygon / Massive',
+                note: 'Current project planning reference. Production provider has not been selected.'
+            },
+            {
+                service: 'Finnhub',
+                currentPlan: 'Free',
+                planType: 'API',
+                currentCost: '$0',
+                billing: '—',
+                resource: 'Current ETF prices',
+                currentValue: null,
+                limitValue: null,
+                limitLabel: '~60 calls/min',
+                percentUsed: null,
+                status: 'provider',
+                nextPaidPlan: 'Enterprise / Commercial',
+                nextPaidCost: 'Contact Sales',
+                nextPaidLimit: 'Commercial / redistribution plan',
+                source: 'Finnhub',
+                note: 'Current project planning reference. Production provider has not been selected.'
+            },
+            {
+                service: 'Tiingo',
+                currentPlan: 'Free',
+                planType: 'API',
+                currentCost: '$0',
+                billing: '—',
+                resource: 'ETF closing-price history',
+                currentValue: null,
+                limitValue: null,
+                limitLabel: '50 calls/hour; 1,000 calls/day; 30 years closing history',
+                percentUsed: null,
+                status: 'provider',
+                nextPaidPlan: 'Startup Display / Redistribution',
+                nextPaidCost: 'About $250/month',
+                nextPaidLimit: 'Commercial display / redistribution',
+                source: 'Tiingo',
+                note: 'Current project planning reference. Production provider has not been selected.'
+            }
+        ];
+
+        function mergeEtfApiPlanRows(rows) {
+            const currentRows = Array.isArray(rows) ? rows.slice() : [];
+            const existing = new Set(currentRows.map(row => String(row.service || '').toLowerCase()));
+            etfApiPlanRows.forEach(row => {
+                if (!existing.has(row.service.toLowerCase())) currentRows.push(row);
+            });
+            return currentRows;
+        }
+
         async function loadCurrentPlans() {
             const status = document.getElementById('freeTierStatus');
             const updated = document.getElementById('freeTierUpdated');
@@ -506,7 +572,7 @@
 
             try {
                 const data = await apiGet('/track/current-plans');
-                renderCurrentPlansTable(data.rows);
+                renderCurrentPlansTable(mergeEtfApiPlanRows(data.rows));
                 status.textContent = '';
                 const usageUpdated = data.generatedAt
                     ? `Updated ${formatDate(data.generatedAt)}`

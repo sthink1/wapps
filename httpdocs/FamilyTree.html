@@ -53,10 +53,10 @@
             height: 76px;
         }
         .hero-label { font-size: 18px; font-weight: bold; line-height: 1.35; flex: 1 1 280px; }
-        .network-promo { margin: 8px 0 2px 114px; padding: 12px; border: 2px solid #4CAF50; background: #f4fff4; border-radius: 6px; }
-        .network-promo-title { margin: 0 0 8px; font-size: 18px; font-weight: bold; color: #256b29; }
+        .network-promo { margin: 8px 0 2px; padding: 0; }
         .network-promo-copy { margin: 0 0 10px; line-height: 1.45; }
-        .network-promo-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+        .network-promo-emphasis { font-weight: bold; text-decoration: underline; }
+        .network-promo-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
         .network-promo-buttons button { background: #d7e7fb; color: #111; border: 1px solid #8ba5c7; }
         .instruction-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
         .icon-btn { width: 46px; height: 46px; padding: 4px; border: 1px solid #8ba5c7; display: inline-flex; align-items: center; justify-content: center; }
@@ -135,7 +135,6 @@
             .hero-instruction-row { align-items:flex-start; }
             .hero-icon-btn { width:88px; height:88px; flex-basis:88px; }
             .hero-icon-btn img { width:68px; height:68px; }
-            .network-promo { margin-left:0; }
             .mini-person-top,.mini-two-col { grid-template-columns:1fr; }
             .mini-life { grid-template-columns:repeat(2,1fr); }
         }
@@ -174,7 +173,7 @@
 <body class="wa-raised-buttons">
 <div class="shell">
     <header>
-        <h1 class="welcome">Welcome to Family Tree</h1>
+        <h1 class="welcome">Welcome to Family Tree Instructions</h1>
         <div class="nav">
             <a class="btn secondary" href="home.html">HOME</a>
             <a class="btn" href="FamilyTree2.html">PROCEED TO FAMILY TREE</a>
@@ -190,16 +189,19 @@
                 </button>
                 <div class="hero-label">Click Tree button for instructions. <u>This is the button to click to see the ancestor tree.</u></div>
             </div>
+
+            <h2>HOW TO FIND A PERSON PAGE</h2>
             <div class="hero-instruction-row">
                 <button class="hero-icon-btn person-btn" id="personHeroBtn" type="button" aria-label="Person instructions" title="Person instructions">
                     <img src="images/person.svg" alt="">
                 </button>
-                <div class="hero-label">Click Person button for instructions.</div>
+                <div class="hero-label">Click Person button for instructions. <strong><u>This is the button to click to see a Person's page.</u></strong></div>
             </div>
+
+            <h2>HOW TO USE FAMILY NETWORKING</h2>
             <div class="network-promo">
-                <p class="network-promo-title">FAMILY NETWORKING</p>
-                <p class="network-promo-copy"><b>Networking connects you with blood relatives for business and social reasons. THIS IS NOT FOR FREE ADVISE OR PRO BONO WORK. Let's do business. Let's get together.</b></p>
                 <p class="network-promo-copy">Click either Networking button below for instructions.</p>
+                <p class="network-promo-copy network-promo-emphasis">Networking connects you with blood relatives for business and social reasons. THIS IS NOT FOR FREE ADVICE OR PRO BONO WORK. Let's do business. Let's get together.</p>
                 <div class="network-promo-buttons">
                     <button id="networkingInfoBtn" type="button">NETWORKING</button>
                     <button id="searchNetworkingInfoBtn" type="button">SEARCH NETWORKING</button>
@@ -217,6 +219,14 @@
             <p class="instruction-banner">Review these instructions to learn how to navigate Person Page and the Ancestor Tree.</p>
 
             <div class="instruction-subsection">
+                <h3>Current Family Tree Code</h3>
+                <div class="instruction-row">
+                    <button id="currentCodeBtn" class="code-button" type="button">FT-XU8EN6MA</button>
+                    <span>Click button for instructions.</span>
+                </div>
+            </div>
+
+            <div class="instruction-subsection">
                 <h3>Family Tree Menu Buttons</h3>
                 <p><b>Click each button for instructions.</b></p>
                 <div class="menu-grid" id="menuInstructionButtons">
@@ -226,14 +236,6 @@
                     <button type="button" data-key="searchPerson">SEARCH FOR PERSON</button>
                     <button type="button" class="secondary" data-key="changeTree">CHANGE TREE</button>
                     <button type="button" class="secondary" data-key="undoMerge">UNDO ONE TREE MERGE</button>
-                </div>
-            </div>
-
-            <div class="instruction-subsection">
-                <h3>Current Family Tree Code</h3>
-                <div class="instruction-row">
-                    <button id="currentCodeBtn" class="code-button" type="button">None associated</button>
-                    <span>Click button for instructions.</span>
                 </div>
             </div>
         </section>
