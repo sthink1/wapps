@@ -12,6 +12,27 @@
         .shell { width: min(1000px, 100%); margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px #0002; overflow: hidden; }
         header { text-align: center; padding: 18px; }
         .welcome { margin: 0 0 14px; font-size: 32px; }
+        .first-use-warning {
+            margin: 0 auto 10px;
+            max-width: 760px;
+            background: #000;
+            color: #fff;
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: 10px 14px;
+            border-radius: 4px;
+            line-height: 1.35;
+        }
+        .first-use-notice {
+            margin: 0 auto 14px;
+            max-width: 900px;
+            background: #000;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 4px;
+            line-height: 1.45;
+            text-align: left;
+        }
         .nav { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
         button,.btn { border: 0; border-radius: 4px; background: #4CAF50; color: #fff; padding: 10px 16px; font-size: 15px; cursor: pointer; text-decoration: none; }
         .secondary { background: #777; }
@@ -174,6 +195,10 @@
 <div class="shell">
     <header>
         <h1 class="welcome">Welcome to Family Tree Instructions</h1>
+        <div class="first-use-warning">Read This Before Proceeding!</div>
+        <div class="first-use-notice">
+            This is an instructional page. YOU HAVE NOT REACHED THE FAMILY TREE YET. YOU CAN NOT ENTER DATA OR SURF THE FAMILY TREE FROM THIS PAGE. This page is to instruct you to use the family tree buttons, and to navigate the family tree. Please look at this page, review instructions, and click the buttons to see what they do. Then you are ready to go to family tree by clicking the PROCEED TO FAMILY TREE button.
+        </div>
         <div class="nav">
             <a class="btn secondary" href="home.html">HOME</a>
             <a class="btn" href="FamilyTree2.html">PROCEED TO FAMILY TREE</a>

@@ -3400,7 +3400,23 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
 router.get('/tree-search', auth, async (req, res) => {
     const q = String(req.query.q || '').trim();
     if (!q) return res.json({ results: [] });
-    const like = `%${q}%`;
+
+    const searchTerms = q.split(/\s+/).filter(Boolean);
+    const searchablePersonSql = `CONCAT_WS(' ',
+        p.FirstName,
+        p.MiddleName,
+        p.LastName,
+        p.SuffixName,
+        p.NickName,
+        p.MaidenName,
+        p.BirthPlace,
+        IFNULL(p.BirthDate,'')
+    )`;
+    const whereSql = searchTerms
+        .map(() => `${searchablePersonSql} LIKE ?`)
+        .join(' AND ');
+    const params = searchTerms.map(term => `%${term}%`);
+
     try {
         const [rows] = await pool.query(
             `SELECT p.PersonID,p.FirstName,p.MiddleName,p.LastName,p.SuffixName,
@@ -3409,11 +3425,10 @@ router.get('/tree-search', auth, async (req, res) => {
                FROM FTPersonT p
                JOIN FTFamilyTreePersonT ftp ON ftp.PersonID=p.PersonID
                JOIN FamilyTreeT ft ON ft.FamilyTreeID=ftp.FamilyTreeID
-              WHERE CONCAT_WS(' ',p.FirstName,p.MiddleName,p.LastName,p.NickName,
-                              p.MaidenName,p.BirthPlace,IFNULL(p.BirthDate,'')) LIKE ?
+              WHERE ${whereSql}
               ORDER BY p.LastName,p.FirstName,p.PersonID
               LIMIT 50`,
-            [like]
+            params
         );
         res.json({ results: rows });
     } catch (e) {

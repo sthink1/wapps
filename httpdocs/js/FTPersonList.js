@@ -53,17 +53,25 @@ function dateUS(value) {
 function personMatchesFilter(person) {
     if (!filterText) return true;
 
-    return [
+    const searchableText = [
         person.PersonID,
         nameOf(person),
+        person.FirstName,
+        person.MiddleName,
+        person.LastName,
+        person.SuffixName,
+        person.NickName,
+        person.MaidenName,
         person.BirthDate,
         person.BirthPlace,
         person.DeathDate
     ]
         .filter(Boolean)
         .join(' ')
-        .toLowerCase()
-        .includes(filterText);
+        .toLowerCase();
+
+    const searchTerms = filterText.split(/\s+/).filter(Boolean);
+    return searchTerms.every(term => searchableText.includes(term));
 }
 
 function personMatchesLetter(person) {
