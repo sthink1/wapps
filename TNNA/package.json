@@ -3,12 +3,18 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "build:boundaries": "node tools/build-us-boundaries.mjs",
+    "sync:android": "npx cap sync android",
+    "open:android": "npx cap open android",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Town Notification Native App",
+  "engines": {
+    "node": ">=24"
+  },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
     "@capacitor/core": "^8.5.2"
