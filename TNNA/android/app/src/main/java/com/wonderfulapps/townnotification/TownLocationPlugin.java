@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 
 import androidx.core.content.ContextCompat;
 
@@ -26,6 +27,12 @@ import com.getcapacitor.annotation.PermissionCallback;
                 Manifest.permission.ACCESS_COARSE_LOCATION,
                 Manifest.permission.ACCESS_FINE_LOCATION
             }
+        ),
+        @Permission(
+            alias = "notifications",
+            strings = {
+                Manifest.permission.POST_NOTIFICATIONS
+            }
         )
     }
 )
@@ -37,7 +44,7 @@ public class TownLocationPlugin extends Plugin {
             requestPermissionForAlias("location", call, "locationPermissionCallback");
             return;
         }
-        startService(call);
+        continueAfterLocationPermission(call);
     }
 
     @PermissionCallback
@@ -46,6 +53,22 @@ public class TownLocationPlugin extends Plugin {
             call.reject("Location permission is required for Town Notification.");
             return;
         }
+        continueAfterLocationPermission(call);
+    }
+
+    private void continueAfterLocationPermission(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            getPermissionState("notifications") != PermissionState.GRANTED) {
+            requestPermissionForAlias("notifications", call, "notificationPermissionCallback");
+            return;
+        }
+        startService(call);
+    }
+
+    @PermissionCallback
+    private void notificationPermissionCallback(PluginCall call) {
+        // Notification permission is recommended but not required for TNNA to monitor
+        // location and speak town/city announcements. If denied, continue anyway.
         startService(call);
     }
 

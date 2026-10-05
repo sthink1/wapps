@@ -212,7 +212,7 @@ public class TownLocationService extends Service implements LocationListener, Te
         );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setSmallIcon(R.drawable.ic_stat_tnna)
             .setContentTitle("Town Notification is active")
             .setContentText(text)
             .setContentIntent(pendingIntent)

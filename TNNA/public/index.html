@@ -86,6 +86,12 @@
       min-height: 2.8em;
     }
 
+    .notification-note {
+      font-size: 13px;
+      line-height: 1.35;
+      margin: 8px 8px 2px;
+    }
+
     .wa-link-wrap {
       margin: 14px 0 4px;
     }
@@ -134,6 +140,9 @@
       <p>When you enter a different town or city, an audio notification will be triggered.</p>
       <h3 class="start-message">Click "Enable Location Alerts" to start!</h3>
       <button id="monitorButton" type="button">Enable Location Alerts</button>
+      <p class="notification-note">
+        Android may also ask permission to show a small ongoing status-bar notification while Town Notification is active in the background. This does not affect the spoken town announcement.
+      </p>
       <p id="status">Status: Waiting for location access...</p>
     </div>
 
@@ -221,7 +230,7 @@
         if (isRunning) {
           await plugin.stopMonitoring();
         } else {
-          updateStatus('Requesting location permission...');
+          updateStatus('Requesting location and notification permissions...');
           await plugin.startMonitoring();
         }
       } catch (error) {

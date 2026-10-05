@@ -124,10 +124,16 @@ function isActiveGovernment(funcstat) {
   return ['A', 'B', 'C', 'G'].includes(String(funcstat || '').toUpperCase());
 }
 
+function isWashingtonDc(props, kind) {
+  return kind === 'incorporated_place' &&
+    String(props.STATE || '') === '11' &&
+    String(props.GEOID || '') === '1150000';
+}
+
 function convertFeatures(rawFeatures, kind, priority) {
   return rawFeatures.map((feature) => {
     const props = feature.properties || {};
-    if (kind !== 'cdp' && !isActiveGovernment(props.FUNCSTAT)) return null;
+    if (kind !== 'cdp' && !isActiveGovernment(props.FUNCSTAT) && !isWashingtonDc(props, kind)) return null;
     if (kind === 'cdp' && String(props.FUNCSTAT || '').toUpperCase() !== 'S') return null;
 
     const polygons = normalizeGeometry(feature.geometry);

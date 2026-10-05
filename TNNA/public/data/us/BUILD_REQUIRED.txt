@@ -1,2 +1,0 @@
-Run `npm run build:boundaries` from the TNNA folder before `npx cap sync android`.
-This directory will then contain the nationwide 2026 Census boundary manifest and state files.
