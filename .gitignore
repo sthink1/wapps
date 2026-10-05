@@ -32,3 +32,6 @@ Thumbs.db
 
 # test / coverage output
 coverage/
+
+# TNNA development APKs
+/downloads/tnna/*.apk

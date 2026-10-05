@@ -53,69 +53,6 @@
         }
         .button-group button:hover, .town-content button:hover { background-color: #45a049; }
         .town-content { background-color: #CDE8FF; padding: 10px; }
-
-        .development-warning {
-            box-sizing: border-box;
-            background-color: #000000;
-            color: #ffffff;
-            border-radius: 7px;
-            font-weight: 700;
-            line-height: 1.4;
-            text-align: center;
-            padding: 12px 14px;
-            margin: 0 auto 14px;
-            max-width: 100%;
-        }
-
-        .development-warning .warning-title {
-            display: block;
-            font-size: 18px;
-            margin-bottom: 6px;
-        }
-
-        .native-download {
-            box-sizing: border-box;
-            background-color: #f2f2f2;
-            border: 2px solid #666666;
-            border-radius: 7px;
-            padding: 14px 16px;
-            margin: 14px auto 0;
-            max-width: 100%;
-        }
-
-        .native-download h2 {
-            margin: 0 0 8px;
-            font-size: 20px;
-        }
-
-        .native-download p {
-            line-height: 1.4;
-            margin: 8px 0;
-        }
-
-        .native-download .download-button {
-            display: inline-block;
-            background-color: #4CAF50;
-            color: #ffffff;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 20px;
-            margin: 8px 5px;
-            font-size: 16px;
-            font-weight: 700;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .native-download .download-button:hover {
-            background-color: #45a049;
-        }
-
-        .native-download .download-note {
-            font-size: 13px;
-            margin-bottom: 0;
-        }
-
         footer {
             background-color: lightgray; min-height: 30px; padding-top: 5px;
             position: fixed; bottom: 0; width: 100%; text-align: center; z-index: 10;
@@ -129,34 +66,12 @@
         <div class="button-group">
             <a href="home.html"><button>Home</button></a>
         </div>
-
-        <div class="development-warning">
-            <span class="warning-title">WARNING — DEVELOPMENT VERSION</span>
-            The Town Notification application is under development. During this development period, the browser version depends on an internet connection, and intermittent connectivity may cause location announcements to be delayed or missed. Download the native app to eliminate this internet-dependency issue.
-        </div>
-
         <div class="app-description">Receive a spoken notification when you cross into a different town or city. Especially useful while biking or traveling, the app uses your device location to announce the town you have entered.</div>
         <div class="town-content">
-            <p>When you enter a different town or city, an audio notification will be triggered.</p>
+            <p>When you change towns, an audio notification will be triggered.</p>
             <h3 style="background-color: yellow;">Click "Enable Location Alerts" to start!</h3>
             <button onclick="startGeolocation()">Enable Location Alerts</button>
             <p id="status">Status: Waiting for location access...</p>
-        </div>
-
-        <div class="native-download">
-            <h2>Download Town Notification Native App</h2>
-            <p><strong>Android Development Version</strong></p>
-            <p>
-                This development version is being provided for testing before release through the Google Play Store and Apple App Store. Android may display a security warning because this app is being installed directly rather than through an app store. Only install this file if you obtained it from Wonderful Apps Company.
-            </p>
-            <a
-                class="download-button"
-                href="/downloads/tnna/TownNotification-v1.0-development.apk"
-                download="TownNotification-v1.0-development.apk"
-            >Download Native App</a>
-            <p class="download-note">
-                Android only. App-store versions will follow.
-            </p>
         </div>
     </div>
 
