@@ -81,9 +81,15 @@
       background-color: yellow;
     }
 
-    #status {
+    #status,
+    #speechStatus {
       line-height: 1.4;
-      min-height: 2.8em;
+      min-height: 1.4em;
+    }
+
+    #speechStatus {
+      font-size: 13px;
+      margin-top: -4px;
     }
 
     .notification-note {
@@ -141,9 +147,10 @@
       <h3 class="start-message">Click "Enable Location Alerts" to start!</h3>
       <button id="monitorButton" type="button">Enable Location Alerts</button>
       <p class="notification-note">
-        Android may also ask permission to show a small ongoing status-bar notification while Town Notification is active in the background. This does not affect the spoken town announcement.
+        While Location Alerts are enabled, Android displays a small bold <strong>TN</strong> symbol in the status bar. The TN symbol confirms that Town Notification is continuing to monitor while another app is open or the screen is off. On Android 13 and later, notification permission is required so this background-running indicator can be shown.
       </p>
       <p id="status">Status: Waiting for location access...</p>
+      <p id="speechStatus">Speech: Not active</p>
     </div>
 
     <div class="wa-link-wrap">
@@ -166,6 +173,7 @@
   <script>
     const monitorButton = document.getElementById('monitorButton');
     const statusElement = document.getElementById('status');
+    const speechStatusElement = document.getElementById('speechStatus');
     const waLink = document.getElementById('waLink');
 
     let isRunning = false;
@@ -179,6 +187,10 @@
       statusElement.textContent = `Status: ${message}`;
     }
 
+    function updateSpeechStatus(message) {
+      speechStatusElement.textContent = `Speech: ${message}`;
+    }
+
     function setRunningState(running) {
       isRunning = Boolean(running);
       monitorButton.textContent = isRunning ? 'Stop Location Alerts' : 'Enable Location Alerts';
@@ -188,6 +200,7 @@
       const plugin = townPlugin();
       if (!plugin) {
         updateStatus('TNNA native location service is not available');
+        updateSpeechStatus('Not available');
         monitorButton.disabled = true;
         return;
       }
@@ -198,6 +211,8 @@
 
         if (result.error) {
           updateStatus(result.error);
+        } else if (!result.notificationsEnabled) {
+          updateStatus('Notifications are turned off — enable them so the TN status-bar symbol can be shown');
         } else if (result.running && result.currentArea) {
           const accuracy = Number.isFinite(result.accuracyMeters)
             ? ` (GPS accuracy about ${Math.round(result.accuracyMeters)} m)`
@@ -208,9 +223,20 @@
         } else {
           updateStatus('Waiting for location alerts to be enabled');
         }
+
+        if (result.ttsError) {
+          updateSpeechStatus(result.ttsError);
+        } else if (result.running && result.ttsReady) {
+          updateSpeechStatus('Ready');
+        } else if (result.running) {
+          updateSpeechStatus('Initializing...');
+        } else {
+          updateSpeechStatus('Not active');
+        }
       } catch (error) {
         console.error(error);
         updateStatus('Unable to read native location status');
+        updateSpeechStatus('Unable to read text-to-speech status');
       }
     }
 
@@ -230,7 +256,8 @@
         if (isRunning) {
           await plugin.stopMonitoring();
         } else {
-          updateStatus('Requesting location and notification permissions...');
+          updateStatus('Requesting required location and notification permissions...');
+          updateSpeechStatus('Initializing...');
           await plugin.startMonitoring();
         }
       } catch (error) {

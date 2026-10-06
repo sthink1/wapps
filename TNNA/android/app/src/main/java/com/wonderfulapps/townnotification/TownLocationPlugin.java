@@ -1,12 +1,15 @@
 package com.wonderfulapps.townnotification;
 
 import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSObject;
@@ -62,14 +65,47 @@ public class TownLocationPlugin extends Plugin {
             requestPermissionForAlias("notifications", call, "notificationPermissionCallback");
             return;
         }
-        startService(call);
+
+        continueAfterNotificationPermission(call);
     }
 
     @PermissionCallback
     private void notificationPermissionCallback(PluginCall call) {
-        // Notification permission is recommended but not required for TNNA to monitor
-        // location and speak town/city announcements. If denied, continue anyway.
+        if (getPermissionState("notifications") != PermissionState.GRANTED) {
+            call.reject(
+                "Notification permission is required so the TN status-bar symbol can show while Town Notification is monitoring in the background."
+            );
+            return;
+        }
+
+        continueAfterNotificationPermission(call);
+    }
+
+    private void continueAfterNotificationPermission(PluginCall call) {
+        if (!notificationsAvailable()) {
+            call.reject(
+                "Town Notification notifications are turned off. Enable notifications so the TN status-bar symbol can show while monitoring is active."
+            );
+            return;
+        }
+
         startService(call);
+    }
+
+    private boolean notificationsAvailable() {
+        Context context = getContext();
+
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            return false;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = context.getSystemService(NotificationManager.class);
+            NotificationChannel channel = manager.getNotificationChannel(TownLocationService.CHANNEL_ID);
+            return channel == null || channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
+        }
+
+        return true;
     }
 
     private void startService(PluginCall call) {
@@ -96,6 +132,9 @@ public class TownLocationPlugin extends Plugin {
         result.put("running", prefs.getBoolean(TownLocationService.KEY_RUNNING, false));
         result.put("currentArea", prefs.getString(TownLocationService.KEY_CURRENT_AREA, ""));
         result.put("error", prefs.getString(TownLocationService.KEY_ERROR, ""));
+        result.put("ttsReady", prefs.getBoolean(TownLocationService.KEY_TTS_READY, false));
+        result.put("ttsError", prefs.getString(TownLocationService.KEY_TTS_ERROR, ""));
+        result.put("notificationsEnabled", notificationsAvailable());
 
         float accuracy = prefs.getFloat(TownLocationService.KEY_ACCURACY, Float.NaN);
         if (!Float.isNaN(accuracy)) {
