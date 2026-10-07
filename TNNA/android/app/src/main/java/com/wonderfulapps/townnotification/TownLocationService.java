@@ -14,9 +14,14 @@ import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.AudioAttributes;
 import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -34,30 +39,47 @@ public class TownLocationService extends Service implements LocationListener, Te
     public static final String KEY_CURRENT_AREA = "currentArea";
     public static final String KEY_ERROR = "error";
     public static final String KEY_ACCURACY = "accuracy";
+    public static final String KEY_LOCATION_PROVIDER = "locationProvider";
+    public static final String KEY_LOCATION_TIME = "locationTime";
     public static final String KEY_TTS_READY = "ttsReady";
     public static final String KEY_TTS_ERROR = "ttsError";
+    public static final String KEY_TTS_STATE = "ttsState";
 
     public static final String CHANNEL_ID = "town_location_monitoring";
     private static final int NOTIFICATION_ID = 1001;
     private static final long MIN_TIME_MS = 2500L;
     private static final float MIN_DISTANCE_METERS = 8f;
+    private static final long LAST_KNOWN_MAX_AGE_MS = 30_000L;
+    private static final long SPEECH_START_TIMEOUT_MS = 4_000L;
+    private static final int MAX_SPEECH_RETRIES = 1;
 
     private LocationManager locationManager;
     private BoundaryIndex boundaryIndex;
     private TextToSpeech textToSpeech;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
     private boolean ttsReady = false;
     private String pendingSpeech = null;
     private String currentArea = "";
+
+    private long speechSequence = 0L;
+    private String activeUtteranceId = "";
+    private String activeSpeechMessage = null;
+    private boolean activeUtteranceStarted = false;
+    private int activeSpeechRetryCount = 0;
 
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
         boundaryIndex = new BoundaryIndex(this);
+
         prefs().edit()
             .putBoolean(KEY_TTS_READY, false)
             .putString(KEY_TTS_ERROR, "")
+            .putString(KEY_TTS_STATE, "Initializing")
             .apply();
+
         textToSpeech = new TextToSpeech(this, this);
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
     }
@@ -128,14 +150,97 @@ public class TownLocationService extends Service implements LocationListener, Te
                     this
                 );
             }
+
+            processRecentLastKnownLocation();
         } catch (SecurityException error) {
             stopForError("Location permission is not available to the monitoring service.");
         }
     }
 
+    private void processRecentLastKnownLocation() {
+        Location gps = null;
+        Location network = null;
+
+        try {
+            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                gps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            }
+
+            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                network = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            }
+        } catch (SecurityException ignored) {
+            return;
+        }
+
+        Location best = chooseRecentLastKnownLocation(gps, network);
+        if (best != null) {
+            processLocation(best);
+        }
+    }
+
+    private Location chooseRecentLastKnownLocation(Location first, Location second) {
+        Location a = isRecentLocation(first) ? first : null;
+        Location b = isRecentLocation(second) ? second : null;
+
+        if (a == null) return b;
+        if (b == null) return a;
+
+        long timeDifference = Math.abs(a.getTime() - b.getTime());
+        if (timeDifference > 10_000L) {
+            return a.getTime() >= b.getTime() ? a : b;
+        }
+
+        if (a.hasAccuracy() && b.hasAccuracy()) {
+            return a.getAccuracy() <= b.getAccuracy() ? a : b;
+        }
+
+        return a.getTime() >= b.getTime() ? a : b;
+    }
+
+    private boolean isRecentLocation(Location location) {
+        if (location == null || location.getTime() <= 0L) {
+            return false;
+        }
+
+        long age = System.currentTimeMillis() - location.getTime();
+        return age >= 0L && age <= LAST_KNOWN_MAX_AGE_MS;
+    }
+
     @Override
     public void onLocationChanged(@NonNull Location location) {
-        prefs().edit().putFloat(KEY_ACCURACY, location.getAccuracy()).apply();
+        processLocation(location);
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+        // Required for compatibility with older Android versions, including
+        // Android 8. No additional action is required for TNNA.
+    }
+
+    @Override
+    public void onProviderEnabled(@NonNull String provider) {
+        // No action is required. Live location updates continue normally.
+    }
+
+    @Override
+    public void onProviderDisabled(@NonNull String provider) {
+        if (LocationManager.GPS_PROVIDER.equals(provider)) {
+            writeError("Phone GPS/location services are turned off.");
+        }
+    }
+
+    private void processLocation(Location location) {
+        SharedPreferences.Editor locationEditor = prefs().edit()
+            .putLong(KEY_LOCATION_TIME, location.getTime())
+            .putString(KEY_LOCATION_PROVIDER, location.getProvider() == null ? "" : location.getProvider());
+
+        if (location.hasAccuracy()) {
+            locationEditor.putFloat(KEY_ACCURACY, location.getAccuracy());
+        } else {
+            locationEditor.remove(KEY_ACCURACY);
+        }
+        locationEditor.apply();
 
         if (!boundaryIndex.isReady()) {
             return;
@@ -143,8 +248,6 @@ public class TownLocationService extends Service implements LocationListener, Te
 
         String area = boundaryIndex.findArea(location.getLatitude(), location.getLongitude());
         if (area == null || area.trim().isEmpty()) {
-            // Silence is intentional outside a recognized town/city/community.
-            // Clear currentArea so re-entering the same place later is announced again.
             currentArea = "";
             pendingSpeech = null;
             prefs().edit()
@@ -170,31 +273,129 @@ public class TownLocationService extends Service implements LocationListener, Te
 
     private void speak(String message) {
         if (!ttsReady) {
-            // TTS initialization is asynchronous. Keep the newest announcement
-            // and speak it as soon as Android reports that TTS is ready.
             pendingSpeech = message;
             return;
         }
 
-        speakNow(message);
+        speakNow(message, 0);
     }
 
-    private void speakNow(String message) {
+    private void speakNow(String message, int retryCount) {
         if (textToSpeech == null) {
             setTtsError("Text-to-speech is not available.");
             return;
         }
 
+        activeSpeechMessage = message;
+        activeSpeechRetryCount = retryCount;
+        activeUtteranceStarted = false;
+        activeUtteranceId = "tnna-town-change-" + (++speechSequence);
+        final String utteranceId = activeUtteranceId;
+
+        prefs().edit()
+            .putString(KEY_TTS_STATE, retryCount > 0 ? "Retrying announcement" : "Announcement queued")
+            .putString(KEY_TTS_ERROR, "")
+            .apply();
+
         int result = textToSpeech.speak(
             message,
             TextToSpeech.QUEUE_FLUSH,
             null,
-            "tnna-town-change"
+            utteranceId
         );
 
         if (result == TextToSpeech.ERROR) {
-            setTtsError("Android text-to-speech could not start the town announcement.");
+            handleSpeechFailure(utteranceId, "Android text-to-speech could not start the town announcement.");
+            return;
         }
+
+        mainHandler.postDelayed(() -> {
+            if (utteranceId.equals(activeUtteranceId) && !activeUtteranceStarted) {
+                handleSpeechFailure(
+                    utteranceId,
+                    "Android text-to-speech accepted the announcement but did not start speaking."
+                );
+            }
+        }, SPEECH_START_TIMEOUT_MS);
+    }
+
+    private void configureTextToSpeech() {
+        if (textToSpeech == null) return;
+
+        textToSpeech.setAudioAttributes(
+            new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+        );
+
+        textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override
+            public void onStart(String utteranceId) {
+                if (!utteranceId.equals(activeUtteranceId)) return;
+
+                activeUtteranceStarted = true;
+                prefs().edit()
+                    .putString(KEY_TTS_STATE, "Speaking")
+                    .putString(KEY_TTS_ERROR, "")
+                    .apply();
+            }
+
+            @Override
+            public void onDone(String utteranceId) {
+                if (!utteranceId.equals(activeUtteranceId)) return;
+
+                prefs().edit()
+                    .putString(KEY_TTS_STATE, "Ready")
+                    .putString(KEY_TTS_ERROR, "")
+                    .apply();
+
+                activeUtteranceId = "";
+                activeSpeechMessage = null;
+                activeUtteranceStarted = false;
+                activeSpeechRetryCount = 0;
+            }
+
+            @Override
+            public void onError(String utteranceId) {
+                handleSpeechFailure(
+                    utteranceId,
+                    "Android text-to-speech reported an error while speaking the town announcement."
+                );
+            }
+        });
+    }
+
+    private void handleSpeechFailure(String utteranceId, String finalError) {
+        if (!utteranceId.equals(activeUtteranceId)) {
+            return;
+        }
+
+        if (activeSpeechMessage != null && activeSpeechRetryCount < MAX_SPEECH_RETRIES) {
+            final String message = activeSpeechMessage;
+            final int nextRetryCount = activeSpeechRetryCount + 1;
+
+            prefs().edit()
+                .putString(KEY_TTS_STATE, "Retrying announcement")
+                .apply();
+
+            mainHandler.postDelayed(() -> {
+                if (textToSpeech == null) {
+                    setTtsError("Text-to-speech is not available.");
+                    return;
+                }
+
+                textToSpeech.stop();
+                speakNow(message, nextRetryCount);
+            }, 500L);
+            return;
+        }
+
+        activeUtteranceId = "";
+        activeSpeechMessage = null;
+        activeUtteranceStarted = false;
+        activeSpeechRetryCount = 0;
+        setTtsError(finalError);
     }
 
     @Override
@@ -215,16 +416,19 @@ public class TownLocationService extends Service implements LocationListener, Te
             return;
         }
 
+        configureTextToSpeech();
+
         ttsReady = true;
         prefs().edit()
             .putBoolean(KEY_TTS_READY, true)
             .putString(KEY_TTS_ERROR, "")
+            .putString(KEY_TTS_STATE, "Ready")
             .apply();
 
         if (pendingSpeech != null && !pendingSpeech.isEmpty()) {
             String message = pendingSpeech;
             pendingSpeech = null;
-            speakNow(message);
+            speakNow(message, 0);
         }
     }
 
@@ -233,6 +437,7 @@ public class TownLocationService extends Service implements LocationListener, Te
         prefs().edit()
             .putBoolean(KEY_TTS_READY, false)
             .putString(KEY_TTS_ERROR, error)
+            .putString(KEY_TTS_STATE, "Error")
             .apply();
     }
 
@@ -241,8 +446,13 @@ public class TownLocationService extends Service implements LocationListener, Te
             locationManager.removeUpdates(this);
         }
 
+        mainHandler.removeCallbacksAndMessages(null);
         pendingSpeech = null;
         currentArea = "";
+        activeUtteranceId = "";
+        activeSpeechMessage = null;
+        activeUtteranceStarted = false;
+        activeSpeechRetryCount = 0;
 
         prefs().edit()
             .putBoolean(KEY_RUNNING, false)
@@ -250,7 +460,10 @@ public class TownLocationService extends Service implements LocationListener, Te
             .putString(KEY_ERROR, "")
             .putBoolean(KEY_TTS_READY, false)
             .putString(KEY_TTS_ERROR, "")
+            .putString(KEY_TTS_STATE, "Not active")
             .remove(KEY_ACCURACY)
+            .remove(KEY_LOCATION_PROVIDER)
+            .remove(KEY_LOCATION_TIME)
             .apply();
 
         stopForeground(STOP_FOREGROUND_REMOVE);
@@ -262,14 +475,21 @@ public class TownLocationService extends Service implements LocationListener, Te
             locationManager.removeUpdates(this);
         }
 
+        mainHandler.removeCallbacksAndMessages(null);
         pendingSpeech = null;
         currentArea = "";
+        activeUtteranceId = "";
+        activeSpeechMessage = null;
+        activeUtteranceStarted = false;
+        activeSpeechRetryCount = 0;
 
         prefs().edit()
             .putBoolean(KEY_RUNNING, false)
             .putString(KEY_CURRENT_AREA, "")
             .putString(KEY_ERROR, error)
             .remove(KEY_ACCURACY)
+            .remove(KEY_LOCATION_PROVIDER)
+            .remove(KEY_LOCATION_TIME)
             .apply();
 
         stopForeground(STOP_FOREGROUND_REMOVE);
@@ -344,14 +564,20 @@ public class TownLocationService extends Service implements LocationListener, Te
         if (locationManager != null) {
             locationManager.removeUpdates(this);
         }
+
+        mainHandler.removeCallbacksAndMessages(null);
+
         if (textToSpeech != null) {
             textToSpeech.stop();
             textToSpeech.shutdown();
         }
+
         prefs().edit()
             .putBoolean(KEY_RUNNING, false)
             .putBoolean(KEY_TTS_READY, false)
+            .putString(KEY_TTS_STATE, "Not active")
             .apply();
+
         super.onDestroy();
     }
 

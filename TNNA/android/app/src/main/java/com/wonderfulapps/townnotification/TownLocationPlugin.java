@@ -129,16 +129,31 @@ public class TownLocationPlugin extends Plugin {
     public void getStatus(PluginCall call) {
         SharedPreferences prefs = getContext().getSharedPreferences(TownLocationService.PREFS_NAME, Context.MODE_PRIVATE);
         JSObject result = new JSObject();
+
         result.put("running", prefs.getBoolean(TownLocationService.KEY_RUNNING, false));
         result.put("currentArea", prefs.getString(TownLocationService.KEY_CURRENT_AREA, ""));
         result.put("error", prefs.getString(TownLocationService.KEY_ERROR, ""));
         result.put("ttsReady", prefs.getBoolean(TownLocationService.KEY_TTS_READY, false));
         result.put("ttsError", prefs.getString(TownLocationService.KEY_TTS_ERROR, ""));
+        result.put("ttsState", prefs.getString(TownLocationService.KEY_TTS_STATE, ""));
         result.put("notificationsEnabled", notificationsAvailable());
 
         float accuracy = prefs.getFloat(TownLocationService.KEY_ACCURACY, Float.NaN);
         if (!Float.isNaN(accuracy)) {
             result.put("accuracyMeters", accuracy);
+        }
+
+        long locationTime = prefs.getLong(TownLocationService.KEY_LOCATION_TIME, 0L);
+        result.put("hasLocation", locationTime > 0L);
+
+        if (locationTime > 0L) {
+            result.put(
+                "locationProvider",
+                prefs.getString(TownLocationService.KEY_LOCATION_PROVIDER, "")
+            );
+
+            long ageMillis = Math.max(0L, System.currentTimeMillis() - locationTime);
+            result.put("locationAgeSeconds", ageMillis / 1000.0);
         }
 
         call.resolve(result);

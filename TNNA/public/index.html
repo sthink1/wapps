@@ -6,14 +6,8 @@
   <meta name="color-scheme" content="only light">
   <title>Town Notification</title>
   <style>
-    :root {
-      color-scheme: only light;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
+    :root { color-scheme: only light; }
+    * { box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       display: flex;
@@ -24,7 +18,6 @@
       background-color: #f4f4f4;
       padding: max(20px, env(safe-area-inset-top)) 0 max(55px, calc(45px + env(safe-area-inset-bottom)));
     }
-
     .container {
       text-align: center;
       background-color: white;
@@ -34,7 +27,6 @@
       width: 460px;
       max-width: calc(100% - 40px);
     }
-
     .app-description {
       background-color: #ffffff;
       border: 3px solid #a66a00;
@@ -47,12 +39,7 @@
       margin: 0 auto 14px;
       max-width: 100%;
     }
-
-    .town-content {
-      background-color: #CDE8FF;
-      padding: 10px;
-    }
-
+    .town-content { background-color: #CDE8FF; padding: 10px; }
     .town-content button {
       background-color: #4CAF50;
       color: white;
@@ -66,49 +53,17 @@
       box-shadow: 0 3px 0 #2f7f34, 0 4px 7px rgba(0, 0, 0, 0.25);
       transform: translateY(0);
     }
-
     .town-content button:active {
       box-shadow: 0 1px 0 #2f7f34, 0 2px 4px rgba(0, 0, 0, 0.25);
       transform: translateY(2px);
     }
-
-    .town-content button:disabled {
-      opacity: 0.65;
-      cursor: default;
-    }
-
-    .start-message {
-      background-color: yellow;
-    }
-
-    #status,
-    #speechStatus {
-      line-height: 1.4;
-      min-height: 1.4em;
-    }
-
-    #speechStatus {
-      font-size: 13px;
-      margin-top: -4px;
-    }
-
-    .notification-note {
-      font-size: 13px;
-      line-height: 1.35;
-      margin: 8px 8px 2px;
-    }
-
-    .wa-link-wrap {
-      margin: 14px 0 4px;
-    }
-
-    .wa-link {
-      color: #0645ad;
-      font-weight: 700;
-      text-decoration: underline;
-      cursor: pointer;
-    }
-
+    .town-content button:disabled { opacity: 0.65; cursor: default; }
+    .start-message { background-color: yellow; }
+    #status, #speechStatus { line-height: 1.4; min-height: 1.4em; }
+    #speechStatus { font-size: 13px; margin-top: -4px; }
+    .notification-note { font-size: 13px; line-height: 1.35; margin: 8px 8px 2px; }
+    .wa-link-wrap { margin: 14px 0 4px; }
+    .wa-link { color: #0645ad; font-weight: 700; text-decoration: underline; cursor: pointer; }
     footer {
       background-color: lightgray;
       min-height: 30px;
@@ -122,16 +77,8 @@
       z-index: 10;
       font-size: 12px;
     }
-
-    footer table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    footer td:last-child {
-      text-align: center;
-      border: 1px solid black;
-    }
+    footer table { width: 100%; border-collapse: collapse; }
+    footer td:last-child { text-align: center; border: 1px solid black; }
   </style>
 </head>
 <body>
@@ -139,7 +86,7 @@
     <h1>Verbal Town Notification</h1>
 
     <div class="app-description">
-      Receive a spoken notification when you cross into a different town or city. Especially useful while biking or traveling, the app uses your device location to announce the town you have entered.
+      To receive Town Notification location alerts while using another app, such as Ride with GPS, first open Town Notification and click “Enable Location Alerts.” Then open the other app. Town Notification will continue monitoring your location in the background and will announce when you enter a different town or city.
     </div>
 
     <div class="town-content">
@@ -154,9 +101,7 @@
     </div>
 
     <div class="wa-link-wrap">
-      <a id="waLink" class="wa-link" href="https://wonderfulappscompany.com" rel="noopener noreferrer">
-        WonderfulAppsCompany.com
-      </a>
+      <a id="waLink" class="wa-link" href="https://wonderfulappscompany.com" rel="noopener noreferrer">WonderfulAppsCompany.com</a>
     </div>
   </div>
 
@@ -179,21 +124,23 @@
     let isRunning = false;
     let actionPending = false;
 
-    function townPlugin() {
-      return window.Capacitor?.Plugins?.TownLocation || null;
-    }
-
-    function updateStatus(message) {
-      statusElement.textContent = `Status: ${message}`;
-    }
-
-    function updateSpeechStatus(message) {
-      speechStatusElement.textContent = `Speech: ${message}`;
-    }
-
+    function townPlugin() { return window.Capacitor?.Plugins?.TownLocation || null; }
+    function updateStatus(message) { statusElement.textContent = `Status: ${message}`; }
+    function updateSpeechStatus(message) { speechStatusElement.textContent = `Speech: ${message}`; }
     function setRunningState(running) {
       isRunning = Boolean(running);
       monitorButton.textContent = isRunning ? 'Stop Location Alerts' : 'Enable Location Alerts';
+    }
+
+    function locationDetails(result) {
+      const details = [];
+      if (result.locationProvider) details.push(`${String(result.locationProvider).toUpperCase()} fix`);
+      if (Number.isFinite(result.accuracyMeters)) details.push(`accuracy about ${Math.round(result.accuracyMeters)} m`);
+      if (Number.isFinite(result.locationAgeSeconds)) {
+        const age = Math.max(0, Math.round(result.locationAgeSeconds));
+        details.push(`fix ${age} s ago`);
+      }
+      return details.length ? ` (${details.join('; ')})` : '';
     }
 
     async function refreshStatus() {
@@ -214,10 +161,9 @@
         } else if (!result.notificationsEnabled) {
           updateStatus('Notifications are turned off — enable them so the TN status-bar symbol can be shown');
         } else if (result.running && result.currentArea) {
-          const accuracy = Number.isFinite(result.accuracyMeters)
-            ? ` (GPS accuracy about ${Math.round(result.accuracyMeters)} m)`
-            : '';
-          updateStatus(`Monitoring — ${result.currentArea}${accuracy}`);
+          updateStatus(`Monitoring — ${result.currentArea}${locationDetails(result)}`);
+        } else if (result.running && result.hasLocation) {
+          updateStatus(`Monitoring — no named town/city detected${locationDetails(result)}`);
         } else if (result.running) {
           updateStatus('Monitoring — waiting for GPS location...');
         } else {
@@ -227,9 +173,9 @@
         if (result.ttsError) {
           updateSpeechStatus(result.ttsError);
         } else if (result.running && result.ttsReady) {
-          updateSpeechStatus('Ready');
+          updateSpeechStatus(result.ttsState || 'Ready');
         } else if (result.running) {
-          updateSpeechStatus('Initializing...');
+          updateSpeechStatus(result.ttsState || 'Initializing...');
         } else {
           updateSpeechStatus('Not active');
         }
