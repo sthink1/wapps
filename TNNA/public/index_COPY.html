@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="only light">
+  <title>Town Notification</title>
+  <style>
+    :root { color-scheme: only light; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f4f4f4;
+      padding: max(20px, env(safe-area-inset-top)) 0 max(55px, calc(45px + env(safe-area-inset-bottom)));
+    }
+    .container {
+      text-align: center;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      width: 460px;
+      max-width: calc(100% - 40px);
+    }
+    .app-description {
+      background-color: #ffffff;
+      border: 3px solid #a66a00;
+      border-radius: 7px;
+      color: #654500;
+      font-weight: 700;
+      line-height: 1.4;
+      text-align: center;
+      padding: 14px 16px;
+      margin: 0 auto 14px;
+      max-width: 100%;
+    }
+    .town-content { background-color: #CDE8FF; padding: 10px; }
+    .town-content button {
+      background-color: #4CAF50;
+      color: white;
+      border: 1px solid #2f7f34;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: 700;
+      margin: 5px;
+      cursor: pointer;
+      box-shadow: 0 3px 0 #2f7f34, 0 4px 7px rgba(0, 0, 0, 0.25);
+      transform: translateY(0);
+    }
+    .town-content button:active {
+      box-shadow: 0 1px 0 #2f7f34, 0 2px 4px rgba(0, 0, 0, 0.25);
+      transform: translateY(2px);
+    }
+    .town-content button:disabled { opacity: 0.65; cursor: default; }
+    .start-message { background-color: yellow; }
+    #status, #speechStatus { line-height: 1.4; min-height: 1.4em; }
+    #speechStatus { font-size: 13px; margin-top: -4px; }
+    .notification-note { font-size: 13px; line-height: 1.35; margin: 8px 8px 2px; }
+    .wa-link-wrap { margin: 14px 0 4px; }
+    .wa-link { color: #0645ad; font-weight: 700; text-decoration: underline; cursor: pointer; }
+    footer {
+      background-color: lightgray;
+      min-height: 30px;
+      padding-top: 5px;
+      padding-bottom: env(safe-area-inset-bottom);
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      z-index: 10;
+      font-size: 12px;
+    }
+    footer table { width: 100%; border-collapse: collapse; }
+    footer td:last-child { text-align: center; border: 1px solid black; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Verbal Town Notification</h1>
+
+    <div class="app-description">
+      To receive Town Notification location alerts while using another app, such as Ride with GPS, first open Town Notification and click “Enable Location Alerts.” Then open the other app. Town Notification will continue monitoring your location in the background and will announce when you enter a different town or city.
+    </div>
+
+    <div class="town-content">
+      <p>When you enter a different town or city, an audio notification will be triggered.</p>
+      <h3 class="start-message">Click "Enable Location Alerts" to start!</h3>
+      <button id="monitorButton" type="button">Enable Location Alerts</button>
+      <p class="notification-note">
+        While Location Alerts are enabled, Android displays a small bold <strong>TN</strong> symbol in the status bar. The TN symbol confirms that Town Notification is continuing to monitor while another app is open or the screen is off. On Android 13 and later, notification permission is required so this background-running indicator can be shown.
+      </p>
+      <p id="status">Status: Waiting for location access...</p>
+      <p id="speechStatus">Speech: Not active</p>
+    </div>
+
+    <div class="wa-link-wrap">
+      <a id="waLink" class="wa-link" href="https://wonderfulappscompany.com" rel="noopener noreferrer">WonderfulAppsCompany.com</a>
+    </div>
+  </div>
+
+  <footer>
+    <table>
+      <tr>
+        <td>Copyright © 2026 Wonderful Apps Company - All Rights Reserved</td>
+        <td>Designed by MPG Jr</td>
+      </tr>
+    </table>
+  </footer>
+
+  <script src="config.js"></script>
+  <script>
+    const monitorButton = document.getElementById('monitorButton');
+    const statusElement = document.getElementById('status');
+    const speechStatusElement = document.getElementById('speechStatus');
+    const waLink = document.getElementById('waLink');
+
+    let isRunning = false;
+    let actionPending = false;
+
+    function townPlugin() { return window.Capacitor?.Plugins?.TownLocation || null; }
+    function updateStatus(message) { statusElement.textContent = `Status: ${message}`; }
+    function updateSpeechStatus(message) { speechStatusElement.textContent = `Speech: ${message}`; }
+    function setRunningState(running) {
+      isRunning = Boolean(running);
+      monitorButton.textContent = isRunning ? 'Stop Location Alerts' : 'Enable Location Alerts';
+    }
+
+    function locationDetails(result) {
+      const details = [];
+      if (result.locationProvider) details.push(`${String(result.locationProvider).toUpperCase()} fix`);
+      if (Number.isFinite(result.accuracyMeters)) details.push(`accuracy about ${Math.round(result.accuracyMeters)} m`);
+      if (Number.isFinite(result.locationAgeSeconds)) {
+        const age = Math.max(0, Math.round(result.locationAgeSeconds));
+        details.push(`fix ${age} s ago`);
+      }
+      return details.length ? ` (${details.join('; ')})` : '';
+    }
+
+    async function refreshStatus() {
+      const plugin = townPlugin();
+      if (!plugin) {
+        updateStatus('TNNA native location service is not available');
+        updateSpeechStatus('Not available');
+        monitorButton.disabled = true;
+        return;
+      }
+
+      try {
+        const result = await plugin.getStatus();
+        setRunningState(result.running);
+
+        if (result.error) {
+          updateStatus(result.error);
+        } else if (!result.notificationsEnabled) {
+          updateStatus('Notifications are turned off — enable them so the TN status-bar symbol can be shown');
+        } else if (result.running && result.currentArea) {
+          updateStatus(`Monitoring — ${result.currentArea}${locationDetails(result)}`);
+        } else if (result.running && result.hasLocation) {
+          updateStatus(`Monitoring — no named town/city detected${locationDetails(result)}`);
+        } else if (result.running) {
+          updateStatus('Monitoring — waiting for GPS location...');
+        } else {
+          updateStatus('Waiting for location alerts to be enabled');
+        }
+
+        if (result.ttsError) {
+          updateSpeechStatus(result.ttsError);
+        } else if (result.running && result.ttsReady) {
+          updateSpeechStatus(result.ttsState || 'Ready');
+        } else if (result.running) {
+          updateSpeechStatus(result.ttsState || 'Initializing...');
+        } else {
+          updateSpeechStatus('Not active');
+        }
+      } catch (error) {
+        console.error(error);
+        updateStatus('Unable to read native location status');
+        updateSpeechStatus('Unable to read text-to-speech status');
+      }
+    }
+
+    monitorButton.addEventListener('click', async () => {
+      if (actionPending) return;
+
+      const plugin = townPlugin();
+      if (!plugin) {
+        updateStatus('TNNA native location service is not available');
+        return;
+      }
+
+      actionPending = true;
+      monitorButton.disabled = true;
+
+      try {
+        if (isRunning) {
+          await plugin.stopMonitoring();
+        } else {
+          updateStatus('Requesting required location and notification permissions...');
+          updateSpeechStatus('Initializing...');
+          await plugin.startMonitoring();
+        }
+      } catch (error) {
+        console.error(error);
+        updateStatus(error?.message || 'Unable to change location monitoring');
+      } finally {
+        actionPending = false;
+        monitorButton.disabled = false;
+        await refreshStatus();
+      }
+    });
+
+    waLink.addEventListener('click', async (event) => {
+      const plugin = townPlugin();
+      if (!plugin) return;
+
+      event.preventDefault();
+      try {
+        await plugin.openWebsite({ url: window.TNNA_CONFIG.websiteUrl });
+      } catch (error) {
+        console.error(error);
+        window.location.href = window.TNNA_CONFIG.websiteUrl;
+      }
+    });
+
+    refreshStatus();
+    setInterval(refreshStatus, 2000);
+  </script>
+</body>
+</html>

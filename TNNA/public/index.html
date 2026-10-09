@@ -23,60 +23,52 @@
       background-color: white;
       padding: 20px;
       border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      width: 460px;
-      max-width: calc(100% - 40px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      width: 500px;
+      max-width: calc(100% - 28px);
     }
     .app-description {
-      background-color: #ffffff;
+      background-color: #fff;
       border: 3px solid #a66a00;
       border-radius: 7px;
       color: #654500;
       font-weight: 700;
       line-height: 1.4;
-      text-align: center;
       padding: 14px 16px;
       margin: 0 auto 14px;
-      max-width: 100%;
     }
-    .town-content { background-color: #CDE8FF; padding: 10px; }
-    .town-content button {
-      background-color: #4CAF50;
-      color: white;
-      border: 1px solid #2f7f34;
-      border-radius: 6px;
-      padding: 10px 20px;
-      font-size: 16px;
-      font-weight: 700;
-      margin: 5px;
-      cursor: pointer;
-      box-shadow: 0 3px 0 #2f7f34, 0 4px 7px rgba(0, 0, 0, 0.25);
-      transform: translateY(0);
+    .panel { border: 1px solid #bbb; border-radius: 7px; padding: 14px; margin: 12px 0; text-align: left; }
+    .panel h2, .panel h3 { text-align: center; margin-top: 0; }
+    .hidden { display: none !important; }
+    label { display: block; margin-top: 9px; font-weight: 700; }
+    input[type="text"], input[type="password"], input[type="email"], input[type="tel"] {
+      width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #aaa; border-radius: 4px;
     }
-    .town-content button:active {
-      box-shadow: 0 1px 0 #2f7f34, 0 2px 4px rgba(0, 0, 0, 0.25);
-      transform: translateY(2px);
+    .choice { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; line-height: 1.35; }
+    .choice input { margin-top: 3px; }
+    .password-field { display: flex; gap: 8px; align-items: stretch; }
+    .password-field input { flex: 1; min-width: 0; }
+    .password-toggle { flex: 0 0 auto; margin: 4px 0 0; padding: 10px 12px; }
+    button, .button-link {
+      background-color: #4CAF50; color: #fff; border: 1px solid #2f7f34; border-radius: 6px;
+      padding: 10px 16px; font-size: 16px; font-weight: 700; margin: 8px 4px; cursor: pointer;
+      box-shadow: 0 3px 0 #2f7f34, 0 4px 7px rgba(0,0,0,.25); text-decoration: none; display: inline-block;
     }
-    .town-content button:disabled { opacity: 0.65; cursor: default; }
+    button:active, .button-link:active { box-shadow: 0 1px 0 #2f7f34, 0 2px 4px rgba(0,0,0,.25); transform: translateY(2px); }
+    button:disabled { opacity: .6; cursor: default; }
+    .secondary { background-color: #667; border-color: #445; box-shadow: 0 3px 0 #445, 0 4px 7px rgba(0,0,0,.2); }
+    .error { color: #b00020; font-weight: 700; min-height: 1.2em; }
+    .info { color: #333; line-height: 1.4; }
+    .town-content { background-color: #CDE8FF; padding: 10px; text-align: center; }
     .start-message { background-color: yellow; }
     #status, #speechStatus { line-height: 1.4; min-height: 1.4em; }
     #speechStatus { font-size: 13px; margin-top: -4px; }
     .notification-note { font-size: 13px; line-height: 1.35; margin: 8px 8px 2px; }
+    .account-line { font-size: 13px; margin: 4px 0 10px; }
+    .update-box { background: #fff7c2; border: 2px solid #a66a00; border-radius: 7px; padding: 10px; margin: 10px 0; text-align: center; }
     .wa-link-wrap { margin: 14px 0 4px; }
     .wa-link { color: #0645ad; font-weight: 700; text-decoration: underline; cursor: pointer; }
-    footer {
-      background-color: lightgray;
-      min-height: 30px;
-      padding-top: 5px;
-      padding-bottom: env(safe-area-inset-bottom);
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      text-align: center;
-      z-index: 10;
-      font-size: 12px;
-    }
+    footer { background-color: lightgray; min-height: 30px; padding-top: 5px; padding-bottom: env(safe-area-inset-bottom); position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; z-index: 10; font-size: 12px; }
     footer table { width: 100%; border-collapse: collapse; }
     footer td:last-child { text-align: center; border: 1px solid black; }
   </style>
@@ -89,148 +81,253 @@
       To receive Town Notification location alerts while using another app, such as Ride with GPS, first open Town Notification and click “Enable Location Alerts.” Then open the other app. Town Notification will continue monitoring your location in the background and will announce when you enter a different town or city.
     </div>
 
-    <div class="town-content">
-      <p>When you enter a different town or city, an audio notification will be triggered.</p>
-      <h3 class="start-message">Click "Enable Location Alerts" to start!</h3>
-      <button id="monitorButton" type="button">Enable Location Alerts</button>
-      <p class="notification-note">
-        While Location Alerts are enabled, Android displays a small bold <strong>TN</strong> symbol in the status bar. The TN symbol confirms that Town Notification is continuing to monitor while another app is open or the screen is off. On Android 13 and later, notification permission is required so this background-running indicator can be shown.
-      </p>
-      <p id="status">Status: Waiting for location access...</p>
-      <p id="speechStatus">Speech: Not active</p>
-    </div>
+    <section id="authPanel" class="panel">
+      <h2>Wonderful Apps Account</h2>
+      <p class="info">Town Notification requires a Wonderful Apps account. Register once, then log in. After a successful login, this phone will normally keep you logged in.</p>
 
-    <div class="wa-link-wrap">
-      <a id="waLink" class="wa-link" href="https://wonderfulappscompany.com" rel="noopener noreferrer">WonderfulAppsCompany.com</a>
-    </div>
+      <div id="authChoice">
+        <div style="text-align:center;">
+          <button id="showLoginButton" type="button">Log In</button>
+          <button id="showRegisterButton" type="button">Register</button>
+        </div>
+      </div>
+
+      <div id="loginSection" class="hidden">
+        <h3>Log In</h3>
+        <label for="loginUsername">User Name</label>
+        <input id="loginUsername" type="text" autocomplete="username">
+        <label for="loginPassword">Password</label>
+        <div class="password-field">
+          <input id="loginPassword" type="password" autocomplete="current-password">
+          <button id="loginPasswordToggle" class="secondary password-toggle" type="button" aria-label="Show password" aria-pressed="false">SHOW</button>
+        </div>
+        <div style="text-align:center;">
+          <button id="loginButton" type="button">Log In</button>
+          <button class="secondary authBack" type="button">Back</button>
+        </div>
+        <p id="loginError" class="error"></p>
+      </div>
+
+      <div id="verifySection" class="hidden">
+        <h3>Email Verification</h3>
+        <p class="info">A 6-digit verification code was sent to your Wonderful Apps email address.</p>
+        <label for="verificationCode">Verification Code</label>
+        <input id="verificationCode" type="text" inputmode="numeric" maxlength="6" placeholder="000000">
+        <label class="choice" for="loginUpdateEmail">
+          <input id="loginUpdateEmail" type="checkbox">
+          <span>Email me when important Town Notification updates are available.</span>
+        </label>
+        <div style="text-align:center;">
+          <button id="verifyButton" type="button">Verify</button>
+          <button id="verifyBackButton" class="secondary" type="button">Back to Login</button>
+        </div>
+        <p id="verifyError" class="error"></p>
+      </div>
+
+      <div id="registerSection" class="hidden">
+        <h3>Register for Wonderful Apps</h3>
+        <label for="regUsername">User Name</label><input id="regUsername" type="text" autocomplete="username">
+        <label for="regPassword">Password</label><input id="regPassword" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+        <label for="regConfirm">Confirm Password</label><input id="regConfirm" type="password" autocomplete="new-password">
+        <label for="regEmail">Email</label><input id="regEmail" type="email" autocomplete="email">
+        <label for="regPhone1">Phone 1</label><input id="regPhone1" type="tel" autocomplete="tel">
+        <label for="regPhone2">Phone 2 (optional)</label><input id="regPhone2" type="tel">
+        <label class="choice" for="regMarketingEmail"><input id="regMarketingEmail" type="checkbox"><span>Send me Wonderful Apps news, feature announcements, and other updates by email.</span></label>
+        <label class="choice" for="regMarketingSMS"><input id="regMarketingSMS" type="checkbox"><span>Send me Wonderful Apps news, feature announcements, and other updates by text message at Phone 1. Message and data rates may apply.</span></label>
+        <label class="choice" for="regTerms"><input id="regTerms" type="checkbox"><span>I have read and agree to the Wonderful Apps <a href="#" id="termsLink">Terms of Use</a> and <a href="#" id="privacyLink">Privacy Policy</a>.</span></label>
+        <div style="text-align:center;">
+          <button id="registerButton" type="button">Register</button>
+          <button class="secondary authBack" type="button">Back</button>
+        </div>
+        <p id="registerError" class="error"></p>
+      </div>
+    </section>
+
+    <section id="appPanel" class="hidden">
+      <p id="accountLine" class="account-line"></p>
+      <div id="updateBox" class="update-box hidden">
+        <strong id="updateTitle">Town Notification Update Available</strong>
+        <p id="updateText"></p>
+        <button id="updateButton" type="button">Download Update</button>
+      </div>
+
+      <div class="town-content">
+        <p>When you enter a different town or city, an audio notification will be triggered.</p>
+        <h3 class="start-message">Click "Enable Location Alerts" to start!</h3>
+        <button id="monitorButton" type="button">Enable Location Alerts</button>
+        <p class="notification-note">While Location Alerts are enabled, Android displays a small bold <strong>TN</strong> symbol in the status bar. The TN symbol confirms that Town Notification is continuing to monitor while another app is open or the screen is off. On Android 13 and later, notification permission is required so this background-running indicator can be shown.</p>
+        <p id="status">Status: Waiting for location access...</p>
+        <p id="speechStatus">Speech: Not active</p>
+      </div>
+
+      <section class="panel">
+        <h3>Account & Updates</h3>
+        <label class="choice" for="updateEmailPreference"><input id="updateEmailPreference" type="checkbox"><span>Email me when important Town Notification updates are available.</span></label>
+        <div style="text-align:center;"><button id="logoutButton" class="secondary" type="button">Log Out</button></div>
+        <p id="accountMessage" class="info"></p>
+      </section>
+    </section>
+
+    <div class="wa-link-wrap"><a id="waLink" class="wa-link" href="https://wonderfulappscompany.com" rel="noopener noreferrer">WonderfulAppsCompany.com</a></div>
   </div>
 
-  <footer>
-    <table>
-      <tr>
-        <td>Copyright © 2026 Wonderful Apps Company - All Rights Reserved</td>
-        <td>Designed by MPG Jr</td>
-      </tr>
-    </table>
-  </footer>
+  <footer><table><tr><td>Copyright © 2026 Wonderful Apps Company - All Rights Reserved</td><td>Designed by MPG Jr</td></tr></table></footer>
 
   <script src="config.js"></script>
   <script>
-    const monitorButton = document.getElementById('monitorButton');
-    const statusElement = document.getElementById('status');
-    const speechStatusElement = document.getElementById('speechStatus');
-    const waLink = document.getElementById('waLink');
-
+    const apiBase = window.TNNA_CONFIG.apiBaseUrl;
+    const accountPlugin = () => window.Capacitor?.Plugins?.TnnaAccount || null;
+    const townPlugin = () => window.Capacitor?.Plugins?.TownLocation || null;
+    const $ = id => document.getElementById(id);
+    let accessToken = '';
+    let currentUser = null;
+    let tempToken = '';
+    let deviceId = '';
     let isRunning = false;
     let actionPending = false;
 
-    function townPlugin() { return window.Capacitor?.Plugins?.TownLocation || null; }
-    function updateStatus(message) { statusElement.textContent = `Status: ${message}`; }
-    function updateSpeechStatus(message) { speechStatusElement.textContent = `Speech: ${message}`; }
-    function setRunningState(running) {
-      isRunning = Boolean(running);
-      monitorButton.textContent = isRunning ? 'Stop Location Alerts' : 'Enable Location Alerts';
+    function showOnly(sectionId) {
+      ['authChoice','loginSection','verifySection','registerSection'].forEach(id => $(id).classList.toggle('hidden', id !== sectionId));
+    }
+    function setAuthVisible(visible) { $('authPanel').classList.toggle('hidden', !visible); $('appPanel').classList.toggle('hidden', visible); }
+    function setError(id, message='') { $(id).textContent = message; }
+    function saveOfflineIdentity(user) { localStorage.setItem('tnnaLastAuthAt', String(Date.now())); localStorage.setItem('tnnaUsername', user.username || ''); localStorage.setItem('tnnaUpdateEmailOptIn', user.updateEmailOptIn ? '1' : '0'); }
+    function clearOfflineIdentity() { ['tnnaLastAuthAt','tnnaUsername','tnnaUpdateEmailOptIn'].forEach(k => localStorage.removeItem(k)); }
+    async function fetchJson(url, options={}, timeoutMs=8000) {
+      const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, {...options, signal: controller.signal});
+        let data = {}; try { data = await response.json(); } catch (_) {}
+        if (!response.ok) { const e = new Error(data.error || `Request failed (${response.status})`); e.status = response.status; throw e; }
+        return data;
+      } finally { clearTimeout(timer); }
+    }
+    async function openExternal(url) {
+      const plugin = townPlugin();
+      if (plugin?.openWebsite) { try { await plugin.openWebsite({url}); return; } catch (_) {} }
+      window.location.href = url;
+    }
+    async function getDeviceId() {
+      const plugin = accountPlugin();
+      if (!plugin) throw new Error('TNNA secure account service is unavailable.');
+      const result = await plugin.getOrCreateDeviceId(); deviceId = result.deviceId; return deviceId;
+    }
+    async function saveRefreshToken(token) { await accountPlugin().saveRefreshToken({refreshToken: token}); }
+    async function readRefreshToken() { return (await accountPlugin().getRefreshToken()).refreshToken || ''; }
+    async function clearRefreshToken() { if (accountPlugin()) await accountPlugin().clearRefreshToken(); }
+
+    function enterApp(user, offline=false) {
+      currentUser = user; setAuthVisible(false);
+      $('accountLine').textContent = offline ? `Signed in as ${user.username} — offline mode` : `Signed in as ${user.username}`;
+      $('updateEmailPreference').checked = Boolean(user.updateEmailOptIn);
+      if (!offline) saveOfflineIdentity(user);
+      refreshStatus(); checkVersion();
     }
 
-    function locationDetails(result) {
-      const details = [];
-      if (result.locationProvider) details.push(`${String(result.locationProvider).toUpperCase()} fix`);
-      if (Number.isFinite(result.accuracyMeters)) details.push(`accuracy about ${Math.round(result.accuracyMeters)} m`);
-      if (Number.isFinite(result.locationAgeSeconds)) {
-        const age = Math.max(0, Math.round(result.locationAgeSeconds));
-        details.push(`fix ${age} s ago`);
-      }
-      return details.length ? ` (${details.join('; ')})` : '';
+    async function restoreSession() {
+      try {
+        await getDeviceId();
+        const refreshToken = await readRefreshToken();
+        if (!refreshToken) { setAuthVisible(true); showOnly('authChoice'); return; }
+        try {
+          const data = await fetchJson(`${apiBase}/tnna/refresh`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({refreshToken, deviceId, platform:'Android', appVersion:window.TNNA_CONFIG.version, versionCode:window.TNNA_CONFIG.versionCode})});
+          accessToken = data.accessToken; await saveRefreshToken(data.refreshToken); enterApp(data.user, false);
+        } catch (error) {
+          if (error.status === 401) { await clearRefreshToken(); clearOfflineIdentity(); setAuthVisible(true); showOnly('loginSection'); setError('loginError','Your saved login expired. Please log in again.'); return; }
+          const lastAuth = Number(localStorage.getItem('tnnaLastAuthAt') || 0);
+          const maxAge = window.TNNA_CONFIG.offlineLoginMaxDays * 86400000;
+          const username = localStorage.getItem('tnnaUsername');
+          if (username && lastAuth && Date.now() - lastAuth <= maxAge) {
+            enterApp({username, updateEmailOptIn: localStorage.getItem('tnnaUpdateEmailOptIn') === '1'}, true);
+          } else { setAuthVisible(true); showOnly('loginSection'); setError('loginError','Internet access is required to complete login.'); }
+        }
+      } catch (error) { setAuthVisible(true); showOnly('authChoice'); setError('loginError', error.message); }
     }
 
-    async function refreshStatus() {
-      const plugin = townPlugin();
-      if (!plugin) {
-        updateStatus('TNNA native location service is not available');
-        updateSpeechStatus('Not available');
-        monitorButton.disabled = true;
-        return;
-      }
+    $('showLoginButton').onclick = () => showOnly('loginSection');
+    $('showRegisterButton').onclick = () => showOnly('registerSection');
+    document.querySelectorAll('.authBack').forEach(b => b.onclick = () => showOnly('authChoice'));
+    $('verifyBackButton').onclick = () => showOnly('loginSection');
+    $('loginPasswordToggle').onclick = () => {
+      const passwordInput = $('loginPassword');
+      const showPassword = passwordInput.type === 'password';
+      passwordInput.type = showPassword ? 'text' : 'password';
+      $('loginPasswordToggle').textContent = showPassword ? 'HIDE' : 'SHOW';
+      $('loginPasswordToggle').setAttribute('aria-pressed', String(showPassword));
+      $('loginPasswordToggle').setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
+    };
 
+    $('loginButton').onclick = async () => {
+      setError('loginError');
+      const username = $('loginUsername').value.trim().toLowerCase(); const password = $('loginPassword').value;
+      if (!username || !password) return setError('loginError','Enter your user name and password.');
+      $('loginButton').disabled = true;
       try {
-        const result = await plugin.getStatus();
-        setRunningState(result.running);
+        const data = await fetchJson(`${apiBase}/users/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password})});
+        tempToken = data.tempToken; showOnly('verifySection'); $('verificationCode').focus();
+      } catch (e) { setError('loginError',e.message); } finally { $('loginButton').disabled = false; }
+    };
 
-        if (result.error) {
-          updateStatus(result.error);
-        } else if (!result.notificationsEnabled) {
-          updateStatus('Notifications are turned off — enable them so the TN status-bar symbol can be shown');
-        } else if (result.running && result.currentArea) {
-          updateStatus(`Monitoring — ${result.currentArea}${locationDetails(result)}`);
-        } else if (result.running && result.hasLocation) {
-          updateStatus(`Monitoring — no named town/city detected${locationDetails(result)}`);
-        } else if (result.running) {
-          updateStatus('Monitoring — waiting for GPS location...');
-        } else {
-          updateStatus('Waiting for location alerts to be enabled');
-        }
+    $('verifyButton').onclick = async () => {
+      setError('verifyError'); const verificationCode = $('verificationCode').value.trim();
+      if (!/^\d{6}$/.test(verificationCode)) return setError('verifyError','Enter the 6-digit verification code.');
+      $('verifyButton').disabled = true;
+      try {
+        if (!deviceId) await getDeviceId();
+        const data = await fetchJson(`${apiBase}/tnna/verify-code`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tempToken, verificationCode, deviceId, platform:'Android', appVersion:window.TNNA_CONFIG.version, versionCode:window.TNNA_CONFIG.versionCode, updateEmailOptIn:$('loginUpdateEmail').checked})});
+        accessToken = data.accessToken; await saveRefreshToken(data.refreshToken); enterApp(data.user, false);
+      } catch (e) { setError('verifyError',e.message); } finally { $('verifyButton').disabled = false; }
+    };
 
-        if (result.ttsError) {
-          updateSpeechStatus(result.ttsError);
-        } else if (result.running && result.ttsReady) {
-          updateSpeechStatus(result.ttsState || 'Ready');
-        } else if (result.running) {
-          updateSpeechStatus(result.ttsState || 'Initializing...');
-        } else {
-          updateSpeechStatus('Not active');
-        }
-      } catch (error) {
-        console.error(error);
-        updateStatus('Unable to read native location status');
-        updateSpeechStatus('Unable to read text-to-speech status');
-      }
+    $('registerButton').onclick = async () => {
+      setError('registerError');
+      const username=$('regUsername').value.trim(), password=$('regPassword').value, confirm=$('regConfirm').value, email=$('regEmail').value.trim(), phone1=$('regPhone1').value.trim(), phone2=$('regPhone2').value.trim();
+      if (!username || !password || !email || !phone1) return setError('registerError','User Name, password, email, and Phone 1 are required.');
+      if (password.length < 8) return setError('registerError','Password must be at least 8 characters.');
+      if (password !== confirm) return setError('registerError','Passwords do not match.');
+      if (!$('regTerms').checked) return setError('registerError','You must agree to the Terms of Use and Privacy Policy.');
+      $('registerButton').disabled = true;
+      try {
+        await fetchJson(`${apiBase}/users/register`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password,email,phone1,phone2,marketingEmail:$('regMarketingEmail').checked,marketingSMS:$('regMarketingSMS').checked,termsAccepted:true})});
+        $('loginUsername').value = username.toLowerCase(); $('loginPassword').value = ''; showOnly('loginSection'); setError('loginError','Registration successful. Log in to continue.');
+      } catch (e) { setError('registerError',e.message); } finally { $('registerButton').disabled = false; }
+    };
+
+    $('termsLink').onclick = e => { e.preventDefault(); openExternal(`${window.TNNA_CONFIG.websiteUrl}/terms.html`); };
+    $('privacyLink').onclick = e => { e.preventDefault(); openExternal(`${window.TNNA_CONFIG.websiteUrl}/privacy.html`); };
+
+    $('logoutButton').onclick = async () => {
+      const refreshToken = await readRefreshToken();
+      try { if (refreshToken) await fetchJson(`${apiBase}/tnna/logout`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({refreshToken})}, 5000); } catch (_) {}
+      await clearRefreshToken(); clearOfflineIdentity(); accessToken=''; currentUser=null; setAuthVisible(true); showOnly('loginSection');
+    };
+
+    $('updateEmailPreference').onchange = async () => {
+      if (!accessToken) { $('accountMessage').textContent='Preference will update the next time you are online.'; localStorage.setItem('tnnaUpdateEmailOptIn',$('updateEmailPreference').checked?'1':'0'); return; }
+      try {
+        const data = await fetchJson(`${apiBase}/tnna/update-email-preference`, {method:'PUT', headers:{'Content-Type':'application/json','Authorization':`Bearer ${accessToken}`}, body:JSON.stringify({updateEmailOptIn:$('updateEmailPreference').checked})});
+        if (currentUser) currentUser.updateEmailOptIn = data.updateEmailOptIn; saveOfflineIdentity(currentUser); $('accountMessage').textContent='Update-email preference saved.';
+      } catch (e) { $('accountMessage').textContent=`Unable to save preference: ${e.message}`; }
+    };
+
+    async function checkVersion() {
+      try {
+        const v = await fetchJson(`${apiBase}/tnna/version`, {}, 5000);
+        if (Number(v.versionCode) > Number(window.TNNA_CONFIG.versionCode)) {
+          $('updateBox').classList.remove('hidden'); $('updateTitle').textContent=`Town Notification ${v.versionName} Update Available`; $('updateText').textContent=v.releaseNotes || 'A newer version is available.'; $('updateButton').onclick=()=>openExternal(v.downloadUrl || window.TNNA_CONFIG.downloadPageUrl);
+        } else $('updateBox').classList.add('hidden');
+      } catch (_) { $('updateBox').classList.add('hidden'); }
     }
 
-    monitorButton.addEventListener('click', async () => {
-      if (actionPending) return;
-
-      const plugin = townPlugin();
-      if (!plugin) {
-        updateStatus('TNNA native location service is not available');
-        return;
-      }
-
-      actionPending = true;
-      monitorButton.disabled = true;
-
-      try {
-        if (isRunning) {
-          await plugin.stopMonitoring();
-        } else {
-          updateStatus('Requesting required location and notification permissions...');
-          updateSpeechStatus('Initializing...');
-          await plugin.startMonitoring();
-        }
-      } catch (error) {
-        console.error(error);
-        updateStatus(error?.message || 'Unable to change location monitoring');
-      } finally {
-        actionPending = false;
-        monitorButton.disabled = false;
-        await refreshStatus();
-      }
-    });
-
-    waLink.addEventListener('click', async (event) => {
-      const plugin = townPlugin();
-      if (!plugin) return;
-
-      event.preventDefault();
-      try {
-        await plugin.openWebsite({ url: window.TNNA_CONFIG.websiteUrl });
-      } catch (error) {
-        console.error(error);
-        window.location.href = window.TNNA_CONFIG.websiteUrl;
-      }
-    });
-
-    refreshStatus();
-    setInterval(refreshStatus, 2000);
+    const monitorButton = $('monitorButton'), statusElement = $('status'), speechStatusElement = $('speechStatus'), waLink = $('waLink');
+    function updateStatus(message){statusElement.textContent=`Status: ${message}`;} function updateSpeechStatus(message){speechStatusElement.textContent=`Speech: ${message}`;}
+    function setRunningState(running){isRunning=Boolean(running);monitorButton.textContent=isRunning?'Stop Location Alerts':'Enable Location Alerts';}
+    function locationDetails(result){const d=[];if(result.locationProvider)d.push(`${String(result.locationProvider).toUpperCase()} fix`);if(Number.isFinite(result.accuracyMeters))d.push(`accuracy about ${Math.round(result.accuracyMeters)} m`);if(Number.isFinite(result.locationAgeSeconds)){const age=Math.max(0,Math.round(result.locationAgeSeconds));d.push(`fix ${age} s ago`);}return d.length?` (${d.join('; ')})`:'';}
+    async function refreshStatus(){if($('appPanel').classList.contains('hidden'))return;const plugin=townPlugin();if(!plugin){updateStatus('TNNA native location service is not available');updateSpeechStatus('Not available');monitorButton.disabled=true;return;}try{const result=await plugin.getStatus();setRunningState(result.running);if(result.error)updateStatus(result.error);else if(!result.notificationsEnabled)updateStatus('Notifications are turned off — enable them so the TN status-bar symbol can be shown');else if(result.running&&result.currentArea)updateStatus(`Monitoring — ${result.currentArea}${locationDetails(result)}`);else if(result.running&&result.hasLocation)updateStatus(`Monitoring — no named town/city detected${locationDetails(result)}`);else if(result.running)updateStatus('Monitoring — waiting for GPS location...');else updateStatus('Waiting for location alerts to be enabled');if(result.ttsError)updateSpeechStatus(result.ttsError);else if(result.running&&result.ttsReady)updateSpeechStatus(result.ttsState||'Ready');else if(result.running)updateSpeechStatus(result.ttsState||'Initializing...');else updateSpeechStatus('Not active');}catch(e){updateStatus('Unable to read native location status');updateSpeechStatus('Unable to read text-to-speech status');}}
+    monitorButton.onclick=async()=>{if(actionPending)return;const plugin=townPlugin();if(!plugin)return updateStatus('TNNA native location service is not available');actionPending=true;monitorButton.disabled=true;try{if(isRunning)await plugin.stopMonitoring();else{updateStatus('Requesting required location and notification permissions...');updateSpeechStatus('Initializing...');await plugin.startMonitoring();}}catch(e){updateStatus(e?.message||'Unable to change location monitoring');}finally{actionPending=false;monitorButton.disabled=false;await refreshStatus();}};
+    waLink.onclick=e=>{e.preventDefault();openExternal(window.TNNA_CONFIG.websiteUrl);};
+    setInterval(refreshStatus,2000);
+    restoreSession();
   </script>
 </body>
 </html>

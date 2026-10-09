@@ -21,6 +21,7 @@ const budgetRoutes = require('./routes/budget');
 const familyTreeRoutes = require('./routes/familyTree');
 const subscriptionRoutes = require('./routes/subscriptions');
 const notificationRoutes = require('./routes/notifications');
+const tnnaRoutes = require('./routes/tnna');
 const { authenticateToken, requireAppAccess } = require('./middleware/subscriptionAccess');
 const usageActivity = require('./middleware/usageActivity');
 
@@ -93,6 +94,7 @@ app.use('/users', userRoutes);
 app.use('/subscriptions', subscriptionRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/track', trackRoutes);
+app.use('/tnna', tnnaRoutes);
 
 // Subscription-protected data/API applications.  The browser UI also disables
 // unavailable buttons, but these server checks are the actual cost/security gate.
