@@ -1,6 +1,6 @@
 # TechSummary.md – WonderfulApps Architecture & Technical Summary
 
-**Last updated:** September 28, 2026  
+**Last updated:** October 9, 2026  
 **Project:** WonderfulApps (WA)  
 **Database reference:** `wappsDump.sql`
 
@@ -25,13 +25,15 @@ The current system includes:
 - **A centralized Notification / Consent system**
 - **Family Tree One Tree Merge with snapshot-based Undo One Tree Merge**
 - **Family Networking with consent verification and blood-relative search**
+- **Town Notification Native App (TNNA) V1.1 for Android with secure WA login, persistent native sessions, offline local town/city detection, foreground-service background location monitoring, Android TTS announcements, and server-driven update checking**
 
-The current `wappsDump.sql` contains **56 tables**, including:
+The current `wappsDump.sql` contains **60 tables**, including:
 
 - **8 subscription / entitlement tables**
 - **6 notification / consent tables**
 - **13 Budget tables**
 - **18 Family Tree tables**
+- **4 TNNA account/device/version tables**
 
 The current Family Tree implementation includes explicit `FTSiblingT` relationships, snapshot-based One Tree Merge history/Undo support through `FTTreeMergeT` and extended `FTPersonMergeT` records, plus Family Networking through `FTNetworkT` and `FTNetworkVerificationT`.
 
@@ -57,6 +59,16 @@ The frontend follows project-wide standards for:
 - Browser `localStorage` for client-side state such as authentication tokens where currently used
 - DOMPurify-backed client-side sanitization on applicable pages
 - Shared sanitization helper: `httpdocs/js/inputSanitizer.js`
+
+### Native Android / TNNA
+
+- Capacitor `8.5.2`
+- Android application ID `com.wonderfulapps.townnotification`
+- Native Java Capacitor plugins/services for secure account storage and foreground location monitoring
+- Android `LocationManager` GPS + network-provider updates
+- Android `TextToSpeech` using navigation-guidance audio attributes
+- Android Keystore AES/GCM protection for the persisted refresh token
+- Local packaged boundary lookup through `BoundaryIndex`
 
 ### Backend
 
@@ -92,14 +104,15 @@ The frontend follows project-wide standards for:
 ## 2. High-Level Architecture
 
 ```text
-Browser / PWA / future WebView-native wrapper
+Browser / PWA                         Native Android TNNA (Capacitor)
     |
-    | HTML + CSS + JavaScript
-    | input sanitization + safe output rendering
-    | subscription-aware UI
-    | JSON / multipart HTTP requests
-    | Authorization: Bearer <JWT>
-    v
+    | HTML + CSS + JavaScript              | Web UI + native Java plugins/services
+    | input sanitization + safe output      | local boundary lookup + Android TTS
+    | subscription-aware UI                 | secure refresh token in Android Keystore
+    | JSON / multipart HTTP requests        | HTTPS account/version requests
+    | Authorization: Bearer <JWT>           | TNNA access JWT / rotating refresh token
+    +----------------------+-----------------+
+                           v
 Express server (server.js)
     |
     +-- authentication / subscription middleware
@@ -118,6 +131,7 @@ Express server (server.js)
     |     +-- budget
     |     +-- familyTree
     |     +-- track
+    |     +-- tnna
     |     +-- geocode
     |
     +-- services/
@@ -129,7 +143,7 @@ Express server (server.js)
     v
 MySQL
     |
-    +-- 56 current tables
+    +-- 60 current tables
 
 Family Tree image/file workflow may also use:
 Express -> r2Storage.js -> S3-compatible object storage
@@ -149,6 +163,7 @@ Current `server.js` mounts:
 | `/subscriptions` | `routes/subscriptions.js` | Authenticated subscription functions |
 | `/notifications` | `routes/notifications.js` | Preferences plus public token unsubscribe and Family Network verification flows |
 | `/track` | `routes/track.js` | Existing general usage tracking |
+| `/tnna` | `routes/tnna.js` | Native TNNA login/session/device/version/update APIs |
 | `/weights` | `routes/weights.js` | JWT + `weigh_in` |
 | `/activities` | `routes/activities.js` | JWT + `weigh_in` |
 | `/weightActivities` | `routes/weightActivities.js` | JWT + `weigh_in` |
@@ -308,6 +323,17 @@ WA standardizes database/application instants on UTC:
 - Browser pages may convert those UTC instants to the viewer's local timezone for presentation, such as `new Date(value).toLocaleString()`.
 - `APP_TIMEZONE` remains a business/reporting timezone where a provider API requires a calendar timezone; it does not control database storage.
 - Existing `TIMESTAMP` history is not rewritten as part of this change. Any migration of existing `DATETIME` data requires a separate field-by-field review before conversion.
+
+### 4.10 TNNA (4)
+
+```text
+TNNADeviceT
+TNNARefreshTokenT
+TNNAUserT
+TNNAVersionT
+```
+
+These tables extend the existing WA `UsersT` identity for the native application. `TNNARefreshTokenT.TokenHash` stores the SHA-256 server representation of refresh credentials; device-side plaintext refresh tokens are encrypted by the native Android account plugin. `TNNAVersionT` is the server source for native update availability.
 
 ---
 
@@ -882,7 +908,120 @@ Merge/move logic in `routes/familyTree.js` now carries sibling relationships wit
 
 ---
 
-## 10. Authentication and Frontend Security
+
+## 10. Town Notification Native App (TNNA)
+
+### 10.1 Purpose and native architecture
+
+TNNA is the Android-native Town Notification application under `TNNA/`. Capacitor packages the UI from `TNNA/public/`, while native Java components implement capabilities that a normal browser page cannot reliably provide during a ride:
+
+```text
+TNNA/public/index.html
+    |
+    +-- TnnaAccount plugin -> device UUID + Android Keystore encrypted refresh token
+    |
+    +-- TownLocation plugin -> runtime permission checks + service control/status
+                                |
+                                v
+                        TownLocationService
+                                |
+                                +-- GPS / network LocationManager updates
+                                +-- BoundaryIndex local named-area lookup
+                                +-- Android TextToSpeech
+                                +-- foreground TN status notification
+```
+
+Current release identifiers:
+
+```text
+applicationId = com.wonderfulapps.townnotification
+versionCode   = 2
+versionName   = 1.1
+config version = 1.1.0
+apiBaseUrl     = https://wonderfulappscompany.com
+```
+
+The native monitoring service uses GPS plus the network location provider when available. A cached last-known position is used only when it is no more than 30 seconds old. Monitoring runs as an Android foreground location service and is designed to continue when Ride with GPS or another application is in front and while the screen is off.
+
+The service retains legacy `LocationListener` callbacks required by Android 8. Those callbacks are part of the supported-device compatibility baseline.
+
+### 10.2 Local boundary lookup and speech
+
+Named-area determination is local to the installed app through `BoundaryIndex`. TNNA does not need a ride-time reverse-geocoding API call to determine the current town/city. When the named area changes, native TTS speaks:
+
+```text
+You have entered: <area>
+```
+
+When no named town/city is found, monitoring continues silently. V1.1 does not announce counties.
+
+Speech uses Android `TextToSpeech` with `USAGE_ASSISTANCE_NAVIGATION_GUIDANCE` and `CONTENT_TYPE_SPEECH`. The service tracks TTS initialization, queue/start/completion, retry, and error status for display in the UI. Bluetooth/Android Auto output still depends partly on Android/car audio routing and should be tested on target hardware after speech-related changes.
+
+### 10.3 WA account integration and persistent login
+
+TNNA shares the existing Wonderful Apps account system:
+
+```text
+POST /users/register            optional new account creation
+POST /users/login               username/password + send 6-digit email code
+POST /tnna/verify-code          finish TNNA login; create native session
+POST /tnna/refresh              rotate refresh token; issue new access JWT
+POST /tnna/logout               revoke refresh token
+GET  /tnna/me                   current TNNA account information
+PUT  /tnna/update-email-preference
+```
+
+The TNNA access JWT lasts 8 hours. Refresh tokens are configured for 180 days and are rotated after every successful refresh. MySQL stores only a SHA-256 token hash. The native plaintext refresh token is AES/GCM-encrypted with a key in `AndroidKeyStore`; JavaScript/localStorage does not store the refresh credential. A generated UUID identifies the device and is checked during refresh.
+
+If the refresh call cannot reach the server, TNNA can continue in offline authenticated mode for up to 30 days from the last successful online authentication. A server HTTP 401 is treated differently: the invalid/expired saved login is cleared and the user must authenticate again.
+
+Explicit Log Out attempts server revocation and clears the local secure refresh token and offline identity state.
+
+### 10.4 Server-side TNNA data
+
+TNNA adds four database tables:
+
+- `TNNAUserT` — WA user linkage, update-email opt-in, first registration, last seen;
+- `TNNADeviceT` — device ID, user, platform, app/version information, first/last seen;
+- `TNNARefreshTokenT` — hashed rotating refresh tokens, expiry/use/revocation state;
+- `TNNAVersionT` — current version code/name, minimum supported code, download URL, release notes/date.
+
+The native location service is intentionally local. Account/device/version data are sent to WA; precise ride coordinates and ride history are not part of the TNNA server data model.
+
+### 10.5 Version detection and update path
+
+`GET /tnna/version` exposes the current server release metadata. After login/session restore, the native UI checks this endpoint. If the returned `versionCode` is higher than the installed `TNNA_CONFIG.versionCode`, an update panel is shown and **Download Update** opens the configured `TownNotice.html` download page.
+
+A release must keep four pieces synchronized:
+
+```text
+TNNA/android/app/build.gradle     versionCode + versionName
+TNNA/public/config.js             version + versionCode
+TNNAVersionT                      server current-version metadata
+httpdocs/downloads/tnna/...apk    signed downloadable APK
+```
+
+The package ID and permanent signing key must remain unchanged for Android to perform an in-place update. `keystore.properties` and signing passwords remain local/ignored.
+
+### 10.6 Update notifications and administration
+
+TNNA includes a specific opt-in for important native-app update emails. The preference can be selected during TNNA verification or changed later. Changes flow through the central notification consent history.
+
+Administrator endpoints:
+
+```text
+GET  /tnna/admin/users
+POST /tnna/admin/send-update
+```
+
+The user listing includes device/version information. The send-update endpoint emails eligible TNNA users who opted in and links them to the current `TNNAVersionT.DownloadUrl`.
+
+### 10.7 Current tested baseline
+
+As of October 9, 2026, V1.1 has been tested on Android 15 and Android 8. The validation baseline includes email verification, persistent login after app close and full phone restart, foreground/background location monitoring, spoken town announcements, and road testing while Ride with GPS is also used. Android recognized the signed V1.1 APK as an update to V1.0.
+
+---
+## 11. Authentication and Frontend Security
 
 Typical authenticated flow:
 
@@ -967,7 +1106,7 @@ Dynamic `src` and `href` values must also be constrained or validated.
 
 ---
 
-## 11. Request Processing
+## 12. Request Processing
 
 A subscription-controlled API request follows:
 
@@ -989,7 +1128,7 @@ Family Tree multipart uploads remain a special case: `server.js` bypasses the ge
 
 ---
 
-## 12. Transaction Guidance
+## 13. Transaction Guidance
 
 Transactions should be used whenever multiple writes form one logical operation.
 
@@ -1008,7 +1147,7 @@ The transaction boundary should cover the complete logical unit of work.
 
 ---
 
-## 13. HTML / Frontend Source Standard
+## 14. HTML / Frontend Source Standard
 
 ### Pretty formatting is mandatory
 
@@ -1049,7 +1188,7 @@ This prevents browser-generated dark-mode recoloring from altering the intended 
 
 ---
 
-## 14. Frontend Design and API Contract
+## 15. Frontend Design and API Contract
 
 - Preserve existing page appearance unless redesign is requested.
 - Use current WA navigation/header/footer patterns where practical.
@@ -1062,7 +1201,7 @@ This prevents browser-generated dark-mode recoloring from altering the intended 
 
 ---
 
-## 15. Current Package Baseline
+## 16. Current Package Baseline
 
 Current `package.json` identifies WonderfulApps version `1.0.0`.
 
@@ -1090,7 +1229,7 @@ Check `package.json` before changing dependency assumptions.
 
 ---
 
-## 16. Deployment and Environment
+## 17. Deployment and Environment
 
 Current CORS origins in `server.js` include:
 
@@ -1116,7 +1255,7 @@ Subscription plan definitions and development-entitlement controls belong in the
 
 ---
 
-## 17. Static Files and Caching
+## 18. Static Files and Caching
 
 `server.js` serves `httpdocs/` as static content.
 
@@ -1137,7 +1276,7 @@ When diagnosing apparent frontend inconsistency, distinguish:
 
 ---
 
-## 18. Project Structure
+## 19. Project Structure
 
 ```text
 wonderfulApp/
@@ -1187,6 +1326,11 @@ wonderfulApp/
 │       ├── inputSanitizer.js
 │       ├── FTPerson.js
 │       └── FTOneTreeMerge.js
+├── TNNA/
+│   ├── public/
+│   │   ├── config.js
+│   │   └── index.html
+│   └── android/
 ├── docs/
 ├── logs/
 └── skills/
@@ -1196,7 +1340,7 @@ This is intentionally a high-level architecture view rather than a complete inve
 
 ---
 
-## 19. Development Checklist
+## 20. Development Checklist
 
 ```text
 [ ] Read current source files before editing
@@ -1218,12 +1362,16 @@ This is intentionally a high-level architecture view rather than a complete inve
 [ ] Test expired entitlement behavior where relevant
 [ ] Test promo-code limits/duplicate redemption when promo logic changes
 [ ] Update the local/reference wappsDump.sql for intentional schema changes (SQL dumps are Git-ignored)
+[ ] For TNNA releases, synchronize build.gradle, public/config.js, TNNAVersionT, and the signed APK
+[ ] Preserve the TNNA package ID and permanent signing key for in-place updates
+[ ] Re-test Android 8 after native location-service changes
+[ ] Verify persistent login survives app close/reopen and device restart
 [ ] Update CLAUDE.md / TechSummary.md for architectural changes
 ```
 
 ---
 
-## 20. Current Documentation Principles
+## 21. Current Documentation Principles
 
 1. Current executable code is authoritative for behavior.
 2. `wappsDump.sql` is authoritative for the database schema; under the current `*Dump.sql` ignore rule it is a local/Drive reference rather than a normal Git-tracked deployment file.
@@ -1241,9 +1389,13 @@ This is intentionally a high-level architecture view rather than a complete inve
 14. HTML source remains pretty formatted.
 15. WA currently uses an intentional light visual design.
 16. Native/WebView packaging must preserve the same security rules.
-17. Record major architecture changes in both `CLAUDE.md` and `TechSummary.md`.
-18. Instructions for Budget global Description dropdown values: Budget global Description dropdown values are controlled by BudgetDescriptionT. Before changing global Budget descriptions, review docs/ BudgetDescription_Global_List.sql. Do not hard-code global Description values in HTML forms.
-19. HTML Formatting Standard: All new or revised HTML files must be saved in readable, pretty-formatted form. Do not minify or compact HTML, CSS, or inline JavaScript. Formatting changes must preserve existing functionality, IDs, classes, event handlers, script references, and page structure.
+17. TNNA uses the existing WA identity with an 8-hour access JWT plus rotating device-bound refresh credentials; plaintext refresh tokens belong only in Android Keystore-protected storage.
+18. TNNA town/city lookup and ride monitoring are local; do not add server GPS/ride-history collection without an explicit architecture/privacy decision.
+19. TNNA release version metadata must stay synchronized across Android build configuration, `public/config.js`, `TNNAVersionT`, and the signed downloadable APK.
+20. Keep the TNNA package ID/signing key stable for ordinary in-place updates.
+21. Record major architecture changes in both `CLAUDE.md` and `TechSummary.md`.
+22. Instructions for Budget global Description dropdown values: Budget global Description dropdown values are controlled by BudgetDescriptionT. Before changing global Budget descriptions, review docs/ BudgetDescription_Global_List.sql. Do not hard-code global Description values in HTML forms.
+23. HTML Formatting Standard: All new or revised HTML files must be saved in readable, pretty-formatted form. Do not minify or compact HTML, CSS, or inline JavaScript. Formatting changes must preserve existing functionality, IDs, classes, event handlers, script references, and page structure.
 
 ---
 
