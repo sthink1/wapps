@@ -159,6 +159,25 @@
             .mini-person-top,.mini-two-col { grid-template-columns:1fr; }
             .mini-life { grid-template-columns:repeat(2,1fr); }
         }
+
+        /* Illustrations of the actual Contact, Event and Add Picture interfaces. */
+        .instruction-focus { border:3px solid #b7791f !important; background:#fff3cd !important; color:#111 !important; font-weight:bold !important; }
+        .example-page { border:1px solid #a3b1bd; background:#eef7ff; padding:12px; margin:12px 0; border-radius:5px; }
+        .example-page h3 { text-align:center; margin:4px 0 12px; }
+        .example-form { background:white; border:1px solid #bbb; padding:12px; margin:10px 0; }
+        .example-form h4 { margin:0 0 12px; }
+        .example-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+        .example-field { min-width:0; font-size:13px; font-weight:bold; }
+        .example-field.wide { grid-column:1 / -1; }
+        .example-value { border:1px solid #aaa; padding:8px; min-height:34px; margin-top:4px; background:#fff; font-size:13px; font-weight:normal; overflow-wrap:anywhere; }
+        .example-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; }
+        .example-actions .mini-button { padding:8px 12px; font-size:12px; }
+        .example-table-wrap { overflow-x:auto; }
+        .example-table { width:100%; min-width:540px; border-collapse:collapse; background:white; font-size:12px; }
+        .example-table th,.example-table td { border:1px solid #aaa; padding:7px; text-align:left; }
+        .example-table th { background:#e4edf5; }
+        .example-caption { font-size:12px; color:#444; margin:5px 0; }
+        @media(max-width:620px) { .example-fields { grid-template-columns:1fr; } }
     </style>
     <link rel="stylesheet" href="css/wa-buttons.css">
     <style>
@@ -189,6 +208,34 @@
                 inset 0 0 0 1px rgba(0, 0, 0, 0.32),
                 1px 1px 2px rgba(0, 0, 0, 0.45);
         }
+
+        /* Single-page instructions layout transcribed from Instruction Page.pdf */
+        .guide-card {border-radius:3px; border-top:1px solid #777; padding:22px 18px; margin-bottom:16px;}
+        .guide-heading {text-align:center; font-size:23px; line-height:1.25; margin:0 0 20px;}
+        .guide-heading small {display:block; font-size:20px; font-weight:600;}
+        .guide-subheading {text-align:center; font-size:20px; margin:28px 0 16px;}
+        .page-entry {display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:10px 0; font-size:18px; line-height:1.4;}
+        .page-entry .page-description {flex:1 1 290px;}
+        .page-entry .page-number {flex:0 0 25px; text-align:right;}
+        .sample-nav {min-width:160px; padding:12px 17px; box-shadow:2px 3px 5px #0005; font-weight:bold;}
+        .page-icon {height:96px; width:96px; padding:8px; flex:0 0 96px;}
+        .pdf-action {width:min(470px,100%); text-align:center; display:block; margin:8px 0; box-shadow:2px 2px 5px #0005;}
+        .find-person-list {margin:12px 0 24px; max-width:630px;}
+        .find-person-row {display:flex; align-items:center; gap:12px;}
+        .find-person-row .page-number {width:26px; text-align:right; flex:none;}
+        .find-person-row .pdf-action {flex:1;}
+        .or-label {margin:16px 0; font-size:19px;}
+        .instruction-example {display:flex; gap:15px; align-items:center; flex-wrap:wrap; margin:14px 0;}
+        .instruction-example .example-label {font-size:17px; flex:1 1 240px;}
+        .instruction-example button:not(.hero-icon-btn) {background:#d7e7fb;color:#222;border:2px solid #8ba5c7; box-shadow:2px 2px 5px #0005; min-width:130px;}
+        .instruction-example .danger-example {background:#b42318 !important;color:white !important; border-color:#981d14 !important;}
+        .instruction-example .key-example {width:96px;height:96px;min-width:96px !important; padding:10px; background:#d9efff !important; border:2px solid #8ba5c7; display:inline-flex;justify-content:center;align-items:center;}
+        .key-example svg {width:72px;height:72px;}
+        .instruction-example .network-active {display:block; color:#1d8b24; font-size:12px; font-weight:bold;}
+        .picture-info p {line-height:1.5; font-size:17px;}
+        .picture-info h3 {margin-top:25px;}
+        .guide-section-divider {border:0; border-top:1px solid #999; margin:24px 0;}
+        @media(max-width:620px){.guide-card{padding:16px 12px}.guide-heading{font-size:20px}.guide-heading small{font-size:18px}.page-entry{font-size:16px}.page-entry .page-description{flex-basis:190px}}
     </style>
 </head>
 <body class="wa-raised-buttons">
@@ -206,54 +253,29 @@
     </header>
 
     <main>
-        <section class="card how-tree">
-            <h2>HOW TO SEE YOUR ANCESTOR TREE</h2>
-            <div class="hero-instruction-row">
-                <button class="hero-icon-btn tree-btn" id="treeHeroBtn" type="button" aria-label="Tree instructions" title="Tree instructions">
-                    <img src="images/tree.svg" alt="">
-                </button>
-                <div class="hero-label">Click Tree button for instructions. <u>This is the button to click to see the ancestor tree.</u></div>
-            </div>
-
-            <h2>HOW TO FIND A PERSON PAGE</h2>
-            <div class="hero-instruction-row">
-                <button class="hero-icon-btn person-btn" id="personHeroBtn" type="button" aria-label="Person instructions" title="Person instructions">
-                    <img src="images/person.svg" alt="">
-                </button>
-                <div class="hero-label">Click Person button for instructions. <strong><u>This is the button to click to see a Person's page.</u></strong></div>
-            </div>
-
-            <h2>HOW TO USE FAMILY NETWORKING</h2>
-            <div class="network-promo">
-                <p class="network-promo-copy">Click either Networking button below for instructions.</p>
-                <p class="network-promo-copy network-promo-emphasis">Networking connects you with blood relatives for business and social reasons. THIS IS NOT FOR FREE ADVICE OR PRO BONO WORK. Let's do business. Let's get together.</p>
-                <div class="network-promo-buttons">
-                    <button id="networkingInfoBtn" type="button">NETWORKING</button>
-                    <button id="searchNetworkingInfoBtn" type="button">SEARCH NETWORKING</button>
-                </div>
-            </div>
+        <section class="card guide-card" aria-labelledby="pagesHeading">
+            <h2 class="guide-heading" id="pagesHeading">FAMILY TREE PAGES<small>HOW TO SEE YOUR ANCESTOR TREE!!</small></h2>
+            <p style="font-size:18px;">Family Tree has four pages:</p>
+            <div class="page-entry"><span class="page-number">1&gt;</span><button class="secondary sample-nav" type="button" id="instructionsPageBtn">INSTRUCTIONS</button><span class="page-description">Instructions - The page you are on now. Learn how the other three pages work to increase your enjoyment of the Family Tree site.</span></div>
+            <div class="page-entry"><span class="page-number">2&gt;</span><button class="sample-nav" type="button" id="menuPageBtn">MENU</button><span class="page-description">Menu – To create or find a Person. You have to find a Person to reach the Ancestor Tree.</span></div>
+            <div class="page-entry"><span class="page-number">3&gt;</span><button class="hero-icon-btn person-btn page-icon" id="personPageOverviewBtn" type="button" aria-label="Person page instructions"><img src="images/person.svg" alt="Person"></button><span class="page-description">Person – Entrance to Ancestor Tree. Person’s information.</span></div>
+            <div class="page-entry"><span class="page-number">4&gt;</span><button class="hero-icon-btn tree-btn page-icon" id="treePageOverviewBtn" type="button" aria-label="Ancestor Tree instructions"><img src="images/tree.svg" alt="Tree"></button><span class="page-description">Ancestor Tree – with branches and roots!</span></div>
         </section>
 
-        <section class="card app-description">
-            <p class="lead">FamilyTree records biological family relationships only.</p>
-            <p>Parents, children, siblings and ancestry shown in FamilyTree are biological relationships. Adoptive, step and other non-biological parent-child relationships are not included.</p>
-        </section>
-
-        <section class="card">
-            <h2>Instructions</h2>
-            <p class="instruction-banner">Review these instructions to learn how to navigate Person Page and the Ancestor Tree.</p>
-
-            <div class="instruction-subsection">
-                <h3>Current Family Tree Code</h3>
-                <div class="instruction-row">
-                    <button id="currentCodeBtn" class="code-button" type="button">FT-XU8EN6MA</button>
-                    <span>Click button for instructions.</span>
-                </div>
+        <section class="card guide-card" aria-labelledby="importantHeading">
+            <h2 class="guide-heading" id="importantHeading">MENU PAGE IMPORTANT BUTTONS</h2>
+            <p style="font-size:18px;"><b>MOST IMPORTANT</b> - You have to find a Person to get to a Person page and the Ancestor Tree.</p>
+            <p style="font-size:18px;">Use these buttons to find a Person:</p>
+            <div class="find-person-list">
+                <div class="find-person-row"><span class="page-number">1&gt;</span><button class="pdf-action" type="button" data-key="personList">PERSON LIST</button></div>
+                <div class="find-person-row"><span class="page-number">2&gt;</span><button class="pdf-action" type="button" data-key="searchPerson">SEARCH FOR PERSON</button></div>
+                <p class="or-label">.... OR....</p>
+                <div class="find-person-row"><button class="pdf-action" type="button" data-key="newPerson">NEW PERSON</button><span>Create a Person</span></div>
             </div>
-
-            <div class="instruction-subsection">
-                <h3>Family Tree Menu Buttons</h3>
-                <p><b>Click each button for instructions.</b></p>
+            <hr class="guide-section-divider">
+            <h2 class="guide-heading">THE MENU PAGE WITH INSTRUCTIONS</h2>
+            <div class="instruction-subsection"><h3>Current Family Tree Code</h3><div class="instruction-row"><button id="currentCodeBtn" class="code-button" type="button">FT-XU8EN6MA</button><span>Click button for instructions.</span></div></div>
+            <div class="instruction-subsection"><h3>Family Tree Menu Buttons</h3><p><b>Click each button for instructions.</b></p>
                 <div class="menu-grid" id="menuInstructionButtons">
                     <button type="button" data-key="newPerson">NEW PERSON</button>
                     <button type="button" data-key="personList">PERSON LIST</button>
@@ -263,6 +285,40 @@
                     <button type="button" class="secondary" data-key="undoMerge">UNDO ONE TREE MERGE</button>
                 </div>
             </div>
+        </section>
+
+        <section class="card guide-card" aria-labelledby="otherPagesHeading">
+            <h2 class="guide-heading" id="otherPagesHeading">OTHER TWO PAGES:<small>PERSON PAGE &amp; ANCESTOR TREE PAGE</small></h2>
+            <div class="how-tree" style="padding:14px;">
+                <h2>HOW TO SEE YOUR ANCESTOR TREE</h2>
+                <div class="hero-instruction-row"><button class="hero-icon-btn tree-btn" id="treeHeroBtn" type="button" aria-label="Tree instructions" title="Tree instructions"><img src="images/tree.svg" alt=""></button><div class="hero-label">Click Tree button for instructions. <u>This is the button to click to see the ancestor tree.</u></div></div>
+                <h2>HOW TO FIND A PERSON PAGE</h2>
+                <div class="hero-instruction-row"><button class="hero-icon-btn person-btn" id="personHeroBtn" type="button" aria-label="Person instructions" title="Person instructions"><img src="images/person.svg" alt=""></button><div class="hero-label">Click Person button for instructions. <strong><u>This is the button to click to see a Person's page.</u></strong></div></div>
+            </div>
+        </section>
+
+        <section class="card guide-card" aria-labelledby="buttonInstructionsHeading">
+            <h2 class="guide-heading" id="buttonInstructionsHeading">INSTRUCTIONS FOR BUTTONS YOU WILL FIND<small>CLICK BUTTON FOR INSTRUCTIONS</small></h2>
+            <div class="instruction-example"><button class="key-example" type="button" data-extra="privacy" aria-label="Privacy Lock instructions"><svg viewBox="0 0 80 80" role="img" aria-label="Key"><circle cx="27" cy="25" r="17" fill="none" stroke="#1774B5" stroke-width="9"/><path d="M39 38 L69 68 M56 55 L65 46 M62 61 L71 52" fill="none" stroke="#1774B5" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="example-label">PRIVACY LOCK</span></div>
+            <div class="instruction-example"><button type="button" data-extra="contact">CONTACT (2)</button><span class="example-label">CONTACT</span></div>
+            <div class="instruction-example"><button type="button" data-extra="event">EVENT (4)</button><span class="example-label">EVENT</span></div>
+            <div class="instruction-example"><button id="networkingInfoBtn" type="button">NETWORKING<span class="network-active">Active</span></button><span class="example-label">NETWORKING</span></div>
+            <div class="instruction-example"><button id="searchNetworkingInfoBtn" type="button">SEARCH NETWORKING</button><span class="example-label">SEARCH NETWORKING</span></div>
+            <div class="instruction-example"><button type="button" data-extra="editPerson">EDIT PERSON</button><span class="example-label">EDIT PERSON</span></div>
+            <div class="instruction-example"><button type="button" class="danger-example" data-extra="deletePerson">DELETE PERSON</button><span class="example-label">DELETE PERSON</span></div>
+            <div class="instruction-example"><button type="button" data-extra="addPicture">ADD PICTURE</button><span class="example-label">ADD PICTURE</span></div>
+            <div class="instruction-example"><button type="button" class="danger-example" data-extra="deletePicture">DELETE PICTURE</button><span class="example-label">DELETE PICTURE</span></div>
+        </section>
+
+        <section class="card guide-card picture-info" aria-labelledby="picturesHeading">
+            <h2 class="guide-heading" id="picturesHeading">INSTRUCTIONS FOR PICTURES YOU WILL FIND</h2>
+            <h3>Personal Pictures:</h3><p>Each person can upload five personal pictures. One of which will be their Profile Picture. The other four are for pictures of YOU at various stages of life.</p><p>You can right click on a picture to make it the Profile Picture or to Zoom In.</p>
+            <h3>Favorite Pet Pictures:</h3><p>One picture per pet.</p><p>You can right click on a picture to Zoom In.</p>
+        </section>
+
+        <section class="card app-description">
+            <p class="lead">FamilyTree records biological family relationships only.</p>
+            <p>Parents, children, siblings and ancestry shown in FamilyTree are biological relationships. Adoptive, step and other non-biological parent-child relationships are not included.</p>
         </section>
     </main>
 </div>
@@ -512,10 +568,88 @@ document.getElementById('networkingInfoBtn').onclick = () =>
 document.getElementById('searchNetworkingInfoBtn').onclick = () =>
     showModal('Search Networking Instructions', networkingInstructionsHtml('search'));
 
-document.querySelectorAll('#menuInstructionButtons [data-key]').forEach(button => {
+document.querySelectorAll('[data-key]').forEach(button => {
     button.onclick = () => {
         const item = window.FT_INSTRUCTIONS[button.dataset.key];
         showModal(item.title, `<p>${item.description}</p><div class="sample">${menuPageSample(button.dataset.key)}</div>`);
+    };
+});
+
+
+// All example buttons on this page explain the action; only HOME and the top MENU navigate.
+document.getElementById('instructionsPageBtn').onclick = () => showModal('Instructions Page', '<p>You are on the Family Tree Instructions page. Read the examples and click the sample buttons to learn about the other three pages. Use the MENU button at the top when ready.</p>');
+document.getElementById('menuPageBtn').onclick = () => showModal('Menu Page', '<p>The Menu page helps you create or find a Person. Start with PERSON LIST or SEARCH FOR PERSON, or choose NEW PERSON to create a record. Select a Person to reach that Person Page and the Ancestor Tree.</p>');
+document.getElementById('personPageOverviewBtn').onclick = openPersonInstructions;
+document.getElementById('treePageOverviewBtn').onclick = openTreeInstructions;
+
+// Static, non-editable demonstrations of the actual Family Tree interfaces.
+// The examples deliberately do not connect to the database or upload files.
+function personActionExample(which) {
+    const contact = which === 'contact';
+    const picture = which === 'picture';
+    const label = contact ? 'CONTACT (1)' : picture ? 'ADD PICTURE' : 'EVENT (1)';
+    const choices = picture
+        ? `<div class="mini-button-row"><span class="mini-button">ADD PICTURE</span><span class="mini-button">DELETE PICTURE</span></div>`
+        : `<div class="mini-action-stack"><span class="mini-button${contact ? ' instruction-focus' : ''}">CONTACT (1)</span><span class="mini-button${!contact ? ' instruction-focus' : ''}">EVENT (1)</span><span class="mini-button">NETWORKING</span><span class="mini-button">SEARCH NETWORKING</span></div>`;
+    return `<div class="sample mini-person-page">
+      <div class="mini-section">
+       <div class="mini-section-title person-sample">PERSON ${miniTreeButton()}</div>
+       <div class="mini-person-top"><img class="photo" src="images/person-placeholder.svg" alt="Sample Person">
+        <div><b>Sample Person</b><p>Born: 05/12/1968<br>Birth Place: Orlando, Florida</p>${picture ? '<span class="mini-button instruction-focus">ADD PICTURE</span>' : ''}</div>
+        ${picture ? '<div class="mini-action-stack"><span class="mini-button">CONTACT (1)</span><span class="mini-button">EVENT (1)</span></div>' : choices}
+       </div>
+       ${picture ? `<div class="mini-life"><div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Profile Picture</div><div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 1</div><div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 2</div><div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 3</div><div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 4</div></div>` : ''}
+      </div></div>`;
+}
+function sampleField(label, value, wide=false) {
+    return `<div class="example-field${wide ? ' wide' : ''}">${label}<div class="example-value">${value}</div></div>`;
+}
+function contactInstructionsHtml() {
+    return `<p>On a Person Page, click the highlighted <b>CONTACT</b> button to open that person's Contact page. The number in parentheses indicates the number of contacts recorded.</p>
+      ${personActionExample('contact')}
+      <p><b>Example of the CONTACT page:</b> The fields and table below follow the layout of FTContact.html. All information is illustrative.</p>
+      <div class="example-page"><h3>CONTACT</h3><div class="example-form"><h4>ADD CONTACT</h4>
+       <div class="example-fields">${sampleField('Contact Type *','Email')}${sampleField('Contact Value *','sample@example.com')}${sampleField('Contact Note','Preferred email for family updates',true)}${sampleField('Primary Contact','☑ Primary Contact')}</div>
+       <div class="example-actions"><span class="mini-button instruction-focus">SAVE CONTACT</span><span class="mini-button">CLEAR</span></div>
+      </div><div class="example-form"><h4>CONTACTS</h4><p class="example-caption">Email and Mobile contacts may later be used for FamilyTree notifications.</p>
+       <div class="example-table-wrap"><table class="example-table"><thead><tr><th>Contact #</th><th>Type</th><th>Value</th><th>Note</th><th>Primary</th><th>Edit</th><th>Delete</th></tr></thead><tbody><tr><td>1</td><td>Email</td><td>sample@example.com</td><td>Preferred email</td><td>Yes</td><td>Edit</td><td>Delete</td></tr></tbody></table></div></div></div>
+      <p>Select a <b>Contact Type</b>, enter the required <b>Contact Value</b>, and optionally provide a note or mark the contact as primary. Click <b>SAVE CONTACT</b>. The CONTACTS table lists saved information; use its Edit or Delete controls to maintain an existing entry. <b>CLEAR</b> resets the entry fields.</p>`;
+}
+function eventInstructionsHtml() {
+    return `<p>On a Person Page, click the highlighted <b>EVENT</b> button to open that person's Event page. The number in parentheses indicates the number of events recorded.</p>
+      ${personActionExample('event')}
+      <p><b>Example of the EVENT page:</b> The fields and table below follow the layout of FTEvent.html. All information is illustrative.</p>
+      <div class="example-page"><h3>EVENT</h3><div class="example-form"><h4>ADD EVENT</h4>
+       <div class="example-fields">${sampleField('Event Type','Graduation')}${sampleField('Event Date','06/15/1990')}${sampleField('Event Place','Orlando, Florida',true)}${sampleField('Event Description','Graduated from college',true)}</div>
+       <div class="example-actions"><span class="mini-button instruction-focus">SAVE EVENT</span><span class="mini-button">CLEAR</span></div>
+      </div><div class="example-form"><h4>EVENTS</h4><div class="example-table-wrap"><table class="example-table"><thead><tr><th>Event #</th><th>Type</th><th>Date</th><th>Age</th><th>Place</th><th>Description</th><th>Edit</th><th>Delete</th></tr></thead><tbody><tr><td>1</td><td>Graduation</td><td>06/15/1990</td><td>22</td><td>Orlando, FL</td><td>Graduated from college</td><td>Edit</td><td>Delete</td></tr></tbody></table></div></div></div>
+      <p>Choose an <b>Event Type</b> and enter the date, place, and description as appropriate, then select <b>SAVE EVENT</b>. The EVENTS table shows recorded events, including the age where available. Use Edit or Delete on the relevant row to change or remove an event. <b>CLEAR</b> resets the form.</p>`;
+}
+function addPictureInstructionsHtml() {
+    return `<p>On the Person Page, select the highlighted <b>ADD PICTURE</b> button to open the picture upload dialog.</p>
+      ${personActionExample('picture')}
+      <p><b>Example of the ADD PICTURE dialog:</b> This is an instructional representation, not an active uploader.</p>
+      <div class="example-page"><div class="example-form"><h3>ADD PICTURE</h3>
+       <p>A person may have up to five pictures. If no Profile Picture exists, the first picture becomes the Profile Picture. Otherwise, a new picture is added with the other pictures.</p>
+       <div class="example-fields">${sampleField('Picture file','Choose File — sample-photo.jpg',true)}</div>
+       <div class="example-actions"><span class="mini-button instruction-focus">SAVE PICTURE</span><span class="mini-button">CANCEL</span></div>
+      </div></div>
+      <p>Choose the intended image, then click <b>SAVE PICTURE</b>. One picture serves as the Profile Picture; up to four other pictures can show the person at different stages of life. The Person Page also provides picture viewing and Profile Picture controls. The separate Favorite Pet Pictures section is not counted among these five personal pictures.</p>`;
+}
+
+const extraInstructions = {
+    privacy: ['Privacy Lock Instructions', '<p>The Privacy Lock symbol identifies privacy-related controls for a Person. Check the available privacy choices on the Person Page before changing or sharing information.</p>'],
+    contact: ['Contact Instructions', contactInstructionsHtml()],
+    event: ['Event Instructions', eventInstructionsHtml()],
+    editPerson: ['Edit Person Instructions', '<p>EDIT PERSON is used to revise an existing Person’s information. Review changes carefully before saving.</p>'],
+    deletePerson: ['Delete Person Instructions', '<p>DELETE PERSON is used to remove a Person record. Review the confirmation and any implications for family relationships before proceeding.</p>'],
+    addPicture: ['Add Picture Instructions', addPictureInstructionsHtml()],
+    deletePicture: ['Delete Picture Instructions', '<p>DELETE PICTURE is used to remove a picture. Confirm that you selected the intended picture before deleting.</p>']
+};
+document.querySelectorAll('[data-extra]').forEach(button => {
+    button.onclick = () => {
+        const [heading, html] = extraInstructions[button.dataset.extra];
+        showModal(heading, html);
     };
 });
 

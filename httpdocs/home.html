@@ -329,6 +329,39 @@
                 padding: 24px 20px;
             }
         }
+
+        /* Family Tree entry selector: preserves the existing Home button and access rules. */
+        #familyTreeStartModal .modal-content {
+            max-width: 570px;
+            text-align: left;
+            max-height: calc(100vh - 36px);
+            overflow-y: auto;
+        }
+        #familyTreeStartTitle { font-size: 21px; text-align: center; line-height: 1.3; }
+        .ft-start-choice { margin: 20px 0 24px; }
+        .ft-start-prompt { display: flex; gap: 10px; align-items: flex-start; color: #111; line-height: 1.4; }
+        .ft-start-arrow { flex: 0 0 auto; font-size: 21px; line-height: 1; }
+        .ft-start-choice button {
+            display: block;
+            margin: 7px 0 0 30px;
+            min-width: 175px;
+            padding: 12px 20px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #777;
+            color: #fff;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 2px 3px 5px #0005;
+        }
+        .ft-start-choice button:hover { background: #666; transform: translateY(-1px); }
+        .ft-start-choice button:active { transform: translateY(1px); }
+        .ft-start-choice button.ft-start-menu { background: #4CAF50; border-color: #39883c; }
+        .ft-start-choice button.ft-start-menu:hover { background: #45a049; }
+        .ft-start-close { display: flex; justify-content: center; padding-top: 4px; }
+        .ft-start-close button { background: #777; color: white; border: 0; border-radius: 4px; padding: 10px 24px; cursor: pointer; }
+        .ft-start-close button:hover { background: #666; }
     </style>
 </head>
 
@@ -629,6 +662,27 @@
         </div>
     </div>
 
+
+    <!-- Authorized Family Tree visitors choose instructions or the Family Tree menu. -->
+    <div id="familyTreeStartModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="familyTreeStartTitle">
+        <div class="modal-content">
+            <h2 id="familyTreeStartTitle">FAMILY TREE — WHERE WOULD YOU LIKE TO START?</h2>
+            <div class="ft-start-choice">
+                <div class="ft-start-prompt"><span class="ft-start-arrow" aria-hidden="true">➢</span><span>I am new to Family Tree and need instructions</span></div>
+                <button type="button" data-ft-destination="FamilyTree.html">INSTRUCTIONS</button>
+            </div>
+            <div class="ft-start-choice">
+                <div class="ft-start-prompt"><span class="ft-start-arrow" aria-hidden="true">➢</span><span>I am not new to Family Tree but could use refresh instructions</span></div>
+                <button type="button" data-ft-destination="FamilyTree.html">INSTRUCTIONS</button>
+            </div>
+            <div class="ft-start-choice">
+                <div class="ft-start-prompt"><span class="ft-start-arrow" aria-hidden="true">➢</span><span>I know my way around Family Tree</span></div>
+                <button class="ft-start-menu" type="button" data-ft-destination="FamilyTree2.html">MENU</button>
+            </div>
+            <div class="ft-start-close"><button type="button" onclick="closeFamilyTreeStartModal()">CLOSE</button></div>
+        </div>
+    </div>
+
     <footer>
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
@@ -877,6 +931,23 @@
             modal.classList.remove('show');
         }
 
+
+        function closeFamilyTreeStartModal() {
+            document.getElementById('familyTreeStartModal').classList.remove('show');
+        }
+
+        function showFamilyTreeStartModal() {
+            document.getElementById('familyTreeStartModal').classList.add('show');
+            document.querySelector('#familyTreeStartModal [data-ft-destination]').focus();
+        }
+
+        document.querySelectorAll('#familyTreeStartModal [data-ft-destination]').forEach(button => {
+            button.addEventListener('click', function() {
+                // Only fixed, local destinations are authored in the page markup.
+                window.location.href = this.dataset.ftDestination;
+            });
+        });
+
         // Close either modal when the user clicks outside its content.
         window.addEventListener('click', function(event) {
             const accessDeniedModal =
@@ -892,6 +963,10 @@
             if (event.target === appInfoModal) {
                 closeAppInfoModal();
             }
+
+            if (event.target === document.getElementById('familyTreeStartModal')) {
+                closeFamilyTreeStartModal();
+            }
         });
 
         // Escape closes an open modal.
@@ -899,6 +974,7 @@
             if (event.key === 'Escape') {
                 closeAccessDeniedModal();
                 closeAppInfoModal();
+                closeFamilyTreeStartModal();
             }
         });
 
@@ -1085,8 +1161,12 @@
                                     this.dataset.appKey
                                 );
 
+                                if (this.dataset.appKey === 'family_tree') {
+                                    showFamilyTreeStartModal();
+                                } else {
                                 window.location.href =
                                     this.dataset.page;
+                                }
                             }
                         }
                     );
