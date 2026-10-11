@@ -33,6 +33,7 @@ let familyTreeCode = params.get('familyTreeCode') || sessionStorage.getItem('fam
 let editEventID = null;
 let events = [];
 let currentPerson = null;
+let historyOpen = false;
 
 function nullable(value) {
     const text = String(value ?? '').trim();
@@ -80,6 +81,9 @@ function ageClass(person) {
 
 function clearForm() {
     editEventID = null;
+    $('eventType').disabled = false;
+    $('eventDate').disabled = false;
+    $('eventPlace').disabled = false;
     $('eventType').value = '';
     $('eventDate').value = '';
     $('eventPlace').value = '';
@@ -98,6 +102,10 @@ function fillEdit(eventID) {
     $('eventDate').value = dateInputValue(event.EventDate);
     $('eventPlace').value = event.EventPlace || '';
     $('eventDescription').value = event.EventDescription || '';
+    if (event.AutoPersonID) { $('formStatus').textContent = 'Change this Birth/Death date and place on the Person page. The event description remains editable here.'; }
+    $('eventType').disabled = !!event.AutoPersonID;
+    $('eventDate').disabled = !!event.AutoPersonID;
+    $('eventPlace').disabled = !!event.AutoPersonID;
     $('formTitle').textContent = 'EDIT EVENT';
     $('saveEventBtn').textContent = 'SAVE CHANGES';
     $('cancelEditBtn').style.display = 'inline-block';
@@ -148,18 +156,41 @@ async function loadEvents() {
                 <td>${escapeHtml(event.EventPlace || '')}</td>
                 <td>${escapeHtml(event.EventDescription || '')}</td>
                 <td><button class="edit-event" data-id="${event.EventID}" type="button">EDIT</button></td>
-                <td><button class="delete-event" data-id="${event.EventID}" type="button">DELETE</button></td>
+                <td>${event.AutoPersonID ? '<span title="Managed on Person page">PERSON PAGE</span>' : `<button class="delete-event" data-id="${event.EventID}" type="button">DELETE</button>`}</td>
             </tr>`).join('')
         : '<tr><td colspan="8">No events entered.</td></tr>';
     $('listStatus').textContent = `${events.length} event${events.length === 1 ? '' : 's'} displayed.`;
+    if (historyOpen) renderHistory();
     document.querySelectorAll('.edit-event').forEach(button => button.onclick = () => fillEdit(Number(button.dataset.id)));
     document.querySelectorAll('.delete-event').forEach(button => {
         button.onclick = () => deleteEvent(Number(button.dataset.id)).catch(error => $('listStatus').textContent = error.message);
     });
 }
 
+function renderHistory() {
+    // ISO date strings sort chronologically; null/undated rows come last.
+    const ordered = [...events].sort((a,b) => {
+        const ad = a.EventDate ? String(a.EventDate).slice(0,10) : null;
+        const bd = b.EventDate ? String(b.EventDate).slice(0,10) : null;
+        if (ad && !bd) return -1;
+        if (!ad && bd) return 1;
+        return (ad && bd ? ad.localeCompare(bd) : 0) || Number(a.EventID)-Number(b.EventID);
+    });
+    $('historyEventBody').innerHTML = ordered.length ? ordered.map((event,index) => `
+      <tr><td>${index+1}</td><td>${escapeHtml(event.EventType||'')}</td><td>${dateUS(event.EventDate)}</td>
+      <td class="${ageClass(currentPerson)}">${ageAtEvent(event.EventDate)}</td><td>${escapeHtml(event.EventPlace||'')}</td>
+      <td>${escapeHtml(event.EventDescription||'')}</td>
+      <td><button type="button" class="history-edit-event" data-id="${event.EventID}">EDIT</button></td>
+      <td>${event.AutoPersonID ? 'PERSON PAGE' : `<button type="button" class="history-delete-event" data-id="${event.EventID}">DELETE</button>`}</td></tr>`).join('') : '<tr><td colspan="8">No events entered.</td></tr>';
+    document.querySelectorAll('.history-edit-event').forEach(b=>b.onclick=()=>{closeHistory();fillEdit(Number(b.dataset.id));});
+    document.querySelectorAll('.history-delete-event').forEach(b=>b.onclick=()=>deleteEvent(Number(b.dataset.id)).catch(err=>$('listStatus').textContent=err.message));
+}
+function openHistory() { historyOpen=true; renderHistory(); $('eventsHistoryModal').style.display='flex'; }
+function closeHistory() { historyOpen=false; $('eventsHistoryModal').style.display='none'; }
+
 async function saveEvent() {
     const wasEditing = !!editEventID;
+    const existingAuto = editEventID && events.find(e=>Number(e.EventID)===editEventID && e.AutoPersonID);
     const body = {
         familyTreeCode,
         eventType: nullable($('eventType').value),
@@ -167,6 +198,7 @@ async function saveEvent() {
         eventPlace: nullable($('eventPlace').value),
         eventDescription: nullable($('eventDescription').value)
     };
+    if (existingAuto) { body.eventType=existingAuto.EventType; body.eventDate=dateInputValue(existingAuto.EventDate)||null; body.eventPlace=existingAuto.EventPlace||null; }
     if (!body.eventType) return $('formStatus').textContent = 'Event Type is required.';
     const url = editEventID
         ? `${BASE_URL}/familytree/persons/${personID}/events/${editEventID}`
@@ -186,6 +218,7 @@ async function saveEvent() {
 async function deleteEvent(eventID) {
     const event = events.find(item => Number(item.EventID) === Number(eventID));
     if (!event) return;
+    if (event.AutoPersonID) { $('listStatus').textContent='Birth/Death events managed by the Person page cannot be deleted here.'; return; }
     if (!window.confirm(`Delete ${event.EventType || 'this event'}${event.EventDate ? ` dated ${dateUS(event.EventDate)}` : ''}?`)) return;
     const response = await fetch(
         `${BASE_URL}/familytree/persons/${personID}/events/${eventID}?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,
@@ -205,6 +238,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('saveEventBtn').onclick = () => saveEvent().catch(error => $('formStatus').textContent = error.message);
     $('clearBtn').onclick = clearForm;
     $('cancelEditBtn').onclick = clearForm;
+    $('showHistoryBtn').onclick = openHistory;
+    $('closeHistoryBtn').onclick = closeHistory;
+    $('eventsHistoryModal').onclick = event => { if(event.target === $('eventsHistoryModal')) closeHistory(); };
+    document.addEventListener('keydown', event => { if(event.key === 'Escape') closeHistory(); });
     try {
         await loadPerson();
         await loadEvents();

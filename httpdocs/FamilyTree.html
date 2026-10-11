@@ -178,7 +178,14 @@
         .example-table th { background:#e4edf5; }
         .example-caption { font-size:12px; color:#444; margin:5px 0; }
         @media(max-width:620px) { .example-fields { grid-template-columns:1fr; } }
-    </style>
+    
+/* Four instructional page markers use the existing Welcome font style. */
+.ft-page-heading {text-align:center; font-weight:700; margin:12px 0 18px;}
+header .ft-page-heading {margin:0 0 14px;}
+.ft-four-page-intro {font-size:23px; font-weight:bold; text-align:center; margin:16px 0 20px;}
+.page-entry .page-number { flex:0 0 75px; text-align:left; white-space:nowrap; font-weight:bold; }
+@media(max-width:620px){.ft-four-page-intro{font-size:20px}.page-entry .page-number{flex-basis:66px}}
+</style>
     <link rel="stylesheet" href="css/wa-buttons.css">
     <style>
         /* FamilyTree-specific override: make the two large instruction icon buttons raised. */
@@ -242,6 +249,7 @@
 <div class="shell">
     <header>
         <h1 class="welcome">Welcome to Family Tree Instructions</h1>
+        <h2 class="welcome ft-page-heading">PAGE 1</h2>
         <div class="first-use-warning">Read This Before Proceeding!</div>
         <div class="first-use-notice">
             This is an instructional page. YOU HAVE NOT REACHED THE FAMILY TREE YET. YOU CAN NOT ENTER DATA OR SURF THE FAMILY TREE FROM THIS PAGE. This page is to instruct you to use the family tree buttons, and to navigate the family tree. Please look at this page, review instructions, and click the buttons to see what they do. Then you are ready to go to family tree by clicking the MENU button.
@@ -255,13 +263,14 @@
     <main>
         <section class="card guide-card" aria-labelledby="pagesHeading">
             <h2 class="guide-heading" id="pagesHeading">FAMILY TREE PAGES<small>HOW TO SEE YOUR ANCESTOR TREE!!</small></h2>
-            <p style="font-size:18px;">Family Tree has four pages:</p>
-            <div class="page-entry"><span class="page-number">1&gt;</span><button class="secondary sample-nav" type="button" id="instructionsPageBtn">INSTRUCTIONS</button><span class="page-description">Instructions - The page you are on now. Learn how the other three pages work to increase your enjoyment of the Family Tree site.</span></div>
-            <div class="page-entry"><span class="page-number">2&gt;</span><button class="sample-nav" type="button" id="menuPageBtn">MENU</button><span class="page-description">Menu – To create or find a Person. You have to find a Person to reach the Ancestor Tree.</span></div>
-            <div class="page-entry"><span class="page-number">3&gt;</span><button class="hero-icon-btn person-btn page-icon" id="personPageOverviewBtn" type="button" aria-label="Person page instructions"><img src="images/person.svg" alt="Person"></button><span class="page-description">Person – Entrance to Ancestor Tree. Person’s information.</span></div>
-            <div class="page-entry"><span class="page-number">4&gt;</span><button class="hero-icon-btn tree-btn page-icon" id="treePageOverviewBtn" type="button" aria-label="Ancestor Tree instructions"><img src="images/tree.svg" alt="Tree"></button><span class="page-description">Ancestor Tree – with branches and roots!</span></div>
+            <p class="ft-four-page-intro">Family Tree has four pages:</p>
+            <div class="page-entry"><span class="page-number">Page 1</span><button class="secondary sample-nav" type="button" id="instructionsPageBtn">INSTRUCTIONS</button><span class="page-description">Instructions - The page you are on now. Learn how the other three pages work to increase your enjoyment of the Family Tree site.</span></div>
+            <div class="page-entry"><span class="page-number">Page 2</span><button class="sample-nav" type="button" id="menuPageBtn">MENU</button><span class="page-description">Menu – To create or find a Person. You have to find a Person to reach the Ancestor Tree.</span></div>
+            <div class="page-entry"><span class="page-number">Page 3</span><button class="hero-icon-btn person-btn page-icon" id="personPageOverviewBtn" type="button" aria-label="Person page instructions"><img src="images/person.svg" alt="Person"></button><span class="page-description">Person – Entrance to Ancestor Tree. Person’s information.</span></div>
+            <div class="page-entry"><span class="page-number">Page 4</span><button class="hero-icon-btn tree-btn page-icon" id="treePageOverviewBtn" type="button" aria-label="Ancestor Tree instructions"><img src="images/tree.svg" alt="Tree"></button><span class="page-description">Ancestor Tree – with branches and roots!</span></div>
         </section>
 
+        <h2 class="welcome ft-page-heading">PAGE 2 MENU</h2>
         <section class="card guide-card" aria-labelledby="importantHeading">
             <h2 class="guide-heading" id="importantHeading">MENU PAGE IMPORTANT BUTTONS</h2>
             <p style="font-size:18px;"><b>MOST IMPORTANT</b> - You have to find a Person to get to a Person page and the Ancestor Tree.</p>
@@ -287,13 +296,19 @@
             </div>
         </section>
 
-        <section class="card guide-card" aria-labelledby="otherPagesHeading">
-            <h2 class="guide-heading" id="otherPagesHeading">OTHER TWO PAGES:<small>PERSON PAGE &amp; ANCESTOR TREE PAGE</small></h2>
+        <h2 class="welcome ft-page-heading">PAGE 3 PERSON</h2>
+        <section class="card guide-card" aria-labelledby="personPageGuideHeading">
             <div class="how-tree" style="padding:14px;">
-                <h2>HOW TO SEE YOUR ANCESTOR TREE</h2>
-                <div class="hero-instruction-row"><button class="hero-icon-btn tree-btn" id="treeHeroBtn" type="button" aria-label="Tree instructions" title="Tree instructions"><img src="images/tree.svg" alt=""></button><div class="hero-label">Click Tree button for instructions. <u>This is the button to click to see the ancestor tree.</u></div></div>
-                <h2>HOW TO FIND A PERSON PAGE</h2>
+                <h2 class="guide-heading" id="personPageGuideHeading">HOW TO FIND A PERSON PAGE</h2>
                 <div class="hero-instruction-row"><button class="hero-icon-btn person-btn" id="personHeroBtn" type="button" aria-label="Person instructions" title="Person instructions"><img src="images/person.svg" alt=""></button><div class="hero-label">Click Person button for instructions. <strong><u>This is the button to click to see a Person's page.</u></strong></div></div>
+            </div>
+        </section>
+
+        <h2 class="welcome ft-page-heading">PAGE 4 ANCESTOR TREE</h2>
+        <section class="card guide-card" aria-labelledby="ancestorPageGuideHeading">
+            <div class="how-tree" style="padding:14px;">
+                <h2 class="guide-heading" id="ancestorPageGuideHeading">HOW TO SEE YOUR ANCESTOR TREE</h2>
+                <div class="hero-instruction-row"><button class="hero-icon-btn tree-btn" id="treeHeroBtn" type="button" aria-label="Tree instructions" title="Tree instructions"><img src="images/tree.svg" alt=""></button><div class="hero-label">Click Tree button for instructions. <u>This is the button to click to see the ancestor tree.</u></div></div>
             </div>
         </section>
 
@@ -302,6 +317,7 @@
             <div class="instruction-example"><button class="key-example" type="button" data-extra="privacy" aria-label="Privacy Lock instructions"><svg viewBox="0 0 80 80" role="img" aria-label="Key"><circle cx="27" cy="25" r="17" fill="none" stroke="#1774B5" stroke-width="9"/><path d="M39 38 L69 68 M56 55 L65 46 M62 61 L71 52" fill="none" stroke="#1774B5" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="example-label">PRIVACY LOCK</span></div>
             <div class="instruction-example"><button type="button" data-extra="contact">CONTACT (2)</button><span class="example-label">CONTACT</span></div>
             <div class="instruction-example"><button type="button" data-extra="event">EVENT (4)</button><span class="example-label">EVENT</span></div>
+            <div class="instruction-example"><button type="button" class="green" data-extra="showHistory">SHOW HISTORY</button><span class="example-label">SHOW HISTORY</span></div>
             <div class="instruction-example"><button id="networkingInfoBtn" type="button">NETWORKING<span class="network-active">Active</span></button><span class="example-label">NETWORKING</span></div>
             <div class="instruction-example"><button id="searchNetworkingInfoBtn" type="button">SEARCH NETWORKING</button><span class="example-label">SEARCH NETWORKING</span></div>
             <div class="instruction-example"><button type="button" data-extra="editPerson">EDIT PERSON</button><span class="example-label">EDIT PERSON</span></div>
@@ -625,6 +641,21 @@ function eventInstructionsHtml() {
       </div><div class="example-form"><h4>EVENTS</h4><div class="example-table-wrap"><table class="example-table"><thead><tr><th>Event #</th><th>Type</th><th>Date</th><th>Age</th><th>Place</th><th>Description</th><th>Edit</th><th>Delete</th></tr></thead><tbody><tr><td>1</td><td>Graduation</td><td>06/15/1990</td><td>22</td><td>Orlando, FL</td><td>Graduated from college</td><td>Edit</td><td>Delete</td></tr></tbody></table></div></div></div>
       <p>Choose an <b>Event Type</b> and enter the date, place, and description as appropriate, then select <b>SAVE EVENT</b>. The EVENTS table shows recorded events, including the age where available. Use Edit or Delete on the relevant row to change or remove an event. <b>CLEAR</b> resets the form.</p>`;
 }
+function showHistoryInstructionsHtml() {
+    return `<p>On the <b>EVENT</b> page, find <b>SHOW HISTORY</b> immediately to the right of the EVENTS heading. Click it to open a chronological history of this Person's events.</p>
+    <p><b>Example of the EVENT page — SHOW HISTORY location:</b></p>
+    <div class="example-page"><h3>EVENT</h3><div class="example-form"><h4 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">EVENTS <span class="mini-button instruction-focus" style="font-size:13px;">SHOW HISTORY</span></h4>
+    <div class="example-table-wrap"><table class="example-table"><thead><tr><th>Event #</th><th>Type</th><th>Date</th><th>Age</th><th>Place</th><th>Description</th><th>Edit</th><th>Delete</th></tr></thead><tbody>
+    <tr><td>1</td><td>Birth</td><td>05/12/1968</td><td>0</td><td>Orlando, FL</td><td></td><td>—</td><td>—</td></tr>
+    <tr><td>2</td><td>Graduation</td><td>06/15/1990</td><td>22</td><td>Orlando, FL</td><td>College graduation</td><td>EDIT</td><td>DELETE</td></tr></tbody></table></div></div></div>
+    <p><b>Example of the EVENTS HISTORY modal:</b></p>
+    <div class="example-page"><h3 style="text-align:center">EVENTS HISTORY</h3><div class="example-actions" style="justify-content:center"><span class="mini-button">CLOSE</span></div><div class="example-table-wrap"><table class="example-table"><thead><tr><th>Event #</th><th>Type</th><th>Date</th><th>Age</th><th>Place</th><th>Description</th><th>Edit</th><th>Delete</th></tr></thead><tbody>
+    <tr><td>1</td><td>Birth</td><td>05/12/1968</td><td>0</td><td>Orlando, FL</td><td></td><td>—</td><td>—</td></tr>
+    <tr><td>2</td><td>Graduation</td><td>06/15/1990</td><td>22</td><td>Orlando, FL</td><td>College graduation</td><td>EDIT</td><td>DELETE</td></tr>
+    <tr><td>3</td><td>Death</td><td>09/05/2050</td><td>82</td><td>Tampa, FL</td><td></td><td>—</td><td>—</td></tr>
+    <tr><td>4</td><td>Other</td><td></td><td></td><td></td><td>Undated event</td><td>EDIT</td><td>DELETE</td></tr></tbody></table></div></div>
+    <p>Events with dates appear <b>oldest to newest</b>; undated events follow, ordered by Event #. Birth and Death records are automatically maintained from the Person page. Their dates and places are edited on the Person page, not here. Other events may be edited or deleted using their controls. This illustrated example contains fictional events.</p>`;
+}
 function addPictureInstructionsHtml() {
     return `<p>On the Person Page, select the highlighted <b>ADD PICTURE</b> button to open the picture upload dialog.</p>
       ${personActionExample('picture')}
@@ -641,6 +672,7 @@ const extraInstructions = {
     privacy: ['Privacy Lock Instructions', '<p>The Privacy Lock symbol identifies privacy-related controls for a Person. Check the available privacy choices on the Person Page before changing or sharing information.</p>'],
     contact: ['Contact Instructions', contactInstructionsHtml()],
     event: ['Event Instructions', eventInstructionsHtml()],
+    showHistory: ['Show History Instructions', showHistoryInstructionsHtml()],
     editPerson: ['Edit Person Instructions', '<p>EDIT PERSON is used to revise an existing Person’s information. Review changes carefully before saving.</p>'],
     deletePerson: ['Delete Person Instructions', '<p>DELETE PERSON is used to remove a Person record. Review the confirmation and any implications for family relationships before proceeding.</p>'],
     addPicture: ['Add Picture Instructions', addPictureInstructionsHtml()],

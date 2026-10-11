@@ -238,6 +238,7 @@ async function loadPerson() {
 
     $('BirthDate').textContent = dateUS(currentPerson.BirthDate);
     $('DeathDate').textContent = dateUS(currentPerson.DeathDate);
+    $('DeathPlace').textContent = currentPerson.DeathPlace || '';
     $('Age').textContent = ageOf(currentPerson);
     $('Age').classList.toggle('deceased-age', isDeceased(currentPerson));
     $('Died').textContent = Number(currentPerson.Died) ? 'Yes' : 'No';
@@ -441,6 +442,8 @@ function fillEditForm() {
     $('eCurrentState').value = currentPerson.CurrentState || '';
     $('eDied').checked = Number(currentPerson.Died) === 1;
     $('eDeathDate').value = dateInputValue(currentPerson.DeathDate);
+    $('eDeathPlace').value = currentPerson.DeathPlace || '';
+    $('eDeathPlace').disabled = !$('eDied').checked;
     $('eDeathDate').disabled = !$('eDied').checked;
     $('editStatus').textContent = '';
 }
@@ -462,7 +465,8 @@ async function saveEdit() {
         Died: $('eDied').checked ? 1 : 0,
         DeathDate: $('eDied').checked
             ? nullable($('eDeathDate').value)
-            : null
+            : null,
+        DeathPlace: $('eDied').checked ? nullable($('eDeathPlace').value) : null
     };
 
     if (!body.FirstName && !body.LastName) {
@@ -710,7 +714,8 @@ function relatedPersonData() {
         CurrentCity: nullable($('rCurrentCity').value),
         CurrentState: nullable($('rCurrentState').value),
         Died: $('rDied').checked ? 1 : 0,
-        DeathDate: $('rDied').checked ? nullable($('rDeathDate').value) : null
+        DeathDate: $('rDied').checked ? nullable($('rDeathDate').value) : null,
+        DeathPlace: $('rDied').checked ? nullable($('rDeathPlace').value) : null
     };
 }
 
@@ -726,7 +731,8 @@ function clearRelatedForm() {
         'rBirthPlace',
         'rCurrentCity',
         'rCurrentState',
-        'rDeathDate'
+        'rDeathDate',
+        'rDeathPlace'
     ].forEach(id => {
         $(id).value = '';
     });
@@ -734,6 +740,7 @@ function clearRelatedForm() {
     $('rGender').value = '';
     $('rDied').checked = false;
     $('rDeathDate').disabled = true;
+    $('rDeathPlace').disabled = true;
     $('rDupWrap').classList.add('hidden');
     $('rDupBody').innerHTML = '';
     $('rStatus').textContent = '';
@@ -1539,7 +1546,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     $('rDied').onchange = () => {
         $('rDeathDate').disabled = !$('rDied').checked;
-        if (!$('rDied').checked) $('rDeathDate').value = '';
+        $('rDeathPlace').disabled = !$('rDied').checked;
+        if (!$('rDied').checked) { $('rDeathDate').value = ''; $('rDeathPlace').value = ''; }
     };
 
     document.querySelectorAll('[data-addrel]').forEach(button => {
@@ -1621,11 +1629,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('cancelEditBtn').onclick = () =>
         $('editPersonModal').classList.remove('show');
 
+    document.querySelectorAll('[data-clear-date]').forEach(button => {
+        button.addEventListener('click', () => {
+            const target = $(button.dataset.clearDate);
+            if (target && !target.disabled) {
+                target.value = '';
+                target.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    });
+
     $('eDied').onchange = () => {
         $('eDeathDate').disabled = !$('eDied').checked;
+        $('eDeathPlace').disabled = !$('eDied').checked;
 
         if (!$('eDied').checked) {
             $('eDeathDate').value = '';
+            $('eDeathPlace').value = '';
         }
     };
 

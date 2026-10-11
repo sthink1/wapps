@@ -24,6 +24,47 @@ const upload = multer({
     }
 });
 
+
+// Automatically maintained birth/death events. Existing manual entries are preserved.
+async function syncPersonMilestoneEvents(c, personID, userID) {
+    const [[p]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1', [personID]);
+    if (!p) return;
+    for (const item of [
+        {type:'Birth',date:p.BirthDate,place:p.BirthPlace},
+        {type:'Death',date:(Number(p.Died)===1 ? p.DeathDate : null),place:p.DeathPlace}
+    ]) {
+        const [[auto]] = await c.query(
+            'SELECT EventID FROM FTEventT WHERE AutoPersonID=? AND AutoEventType=? LIMIT 1',
+            [personID,item.type]
+        );
+        if (!item.date) {
+            if (auto) {
+                await c.query('DELETE FROM FTEventPersonT WHERE EventID=? AND PersonID=?',[auto.EventID,personID]);
+                const [[remaining]] = await c.query('SELECT COUNT(*) AS n FROM FTEventPersonT WHERE EventID=?',[auto.EventID]);
+                if (!Number(remaining.n)) await c.query('DELETE FROM FTEventT WHERE EventID=?',[auto.EventID]);
+            }
+            continue;
+        }
+        if (auto) {
+            await c.query('UPDATE FTEventT SET EventDate=?,EventPlace=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE EventID=?',
+                [item.date,item.place||null,userID,auto.EventID]);
+        } else {
+            // Do not duplicate or replace manual Birth/Death records: review discrepancies separately.
+            const [[manual]] = await c.query(
+                `SELECT e.EventID FROM FTEventPersonT ep JOIN FTEventT e ON e.EventID=ep.EventID
+                 WHERE ep.PersonID=? AND e.EventType=? LIMIT 1`,[personID,item.type]);
+            if (manual) continue;
+            const [newEvent] = await c.query(
+                `INSERT INTO FTEventT (EventType,EventDate,EventPlace,EventDescription,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt,AutoPersonID,AutoEventType)
+                 VALUES (?,?,?,NULL,?,NOW(),NULL,NULL,?,?)`,
+                [item.type,item.date,item.place||null,userID,personID,item.type]);
+            await c.query(
+                `INSERT INTO FTEventPersonT (EventID,PersonID,PersonRole,AddedByUserID,AddedAt)
+                 VALUES (?,?,NULL,?,NOW())`,[newEvent.insertId,personID,userID]);
+        }
+    }
+}
+
 async function withTx(work) {
     const c = await pool.getConnection();
     const afterCommit = [];
@@ -363,7 +404,8 @@ const PERSON_EDIT_FIELDS = [
     ['CurrentCity', 'Current City'],
     ['CurrentState', 'Current State'],
     ['Died', 'Died'],
-    ['DeathDate', 'Death Date']
+    ['DeathDate', 'Death Date'],
+    ['DeathPlace', 'Death Place']
 ];
 
 function normalizedPersonValue(field, value) {
@@ -382,6 +424,7 @@ function normalizedPersonValue(field, value) {
 function incomingPersonValue(field, body) {
     if (field === 'Died') return body.Died ? 1 : 0;
     if (field === 'DeathDate') return body.Died ? (body.DeathDate || null) : null;
+    if (field === 'DeathPlace') return body.Died ? (body.DeathPlace || null) : null;
     return body[field] || null;
 }
 
@@ -704,6 +747,7 @@ function personSelectSql(extraWhere = '') {
           p.CurrentState,
           p.Died,
           p.DeathDate,
+          p.DeathPlace,
           (
               SELECT ft2.FamilyTreeCode
               FROM FTFamilyTreePersonT ftp2
@@ -1795,7 +1839,8 @@ const ONE_TREE_PERSON_FIELDS = [
     'CurrentCity',
     'CurrentState',
     'Died',
-    'DeathDate'
+    'DeathDate',
+    'DeathPlace'
 ];
 
 function normalizeCompareValue(value) {
@@ -2040,7 +2085,7 @@ async function findGlobalDuplicateCandidates(c, input, options = {}) {
         `SELECT DISTINCT
             p.PersonID,p.FirstName,p.MiddleName,p.LastName,p.SuffixName,
             p.NickName,p.MaidenName,p.Gender,p.BirthDate,p.BirthPlace,p.CurrentCity,p.CurrentState,
-            p.Died,p.DeathDate,p.CreatedByUserID,p.CreatedAt,
+            p.Died,p.DeathDate,p.DeathPlace,p.CreatedByUserID,p.CreatedAt,
             ft.FamilyTreeID,ft.FamilyTreeCode,ft.CreatedAt AS FamilyTreeCreatedAt,
             (
                 SELECT i.StorageKey
@@ -2382,8 +2427,8 @@ async function restorePersonFromSnapshot(c, person) {
     await c.query(
         `INSERT INTO FTPersonT
          (PersonID,FirstName,MiddleName,LastName,SuffixName,NickName,MaidenName,Gender,
-          BirthDate,BirthPlace,CurrentCity,CurrentState,Died,DeathDate,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          BirthDate,BirthPlace,CurrentCity,CurrentState,Died,DeathDate,DeathPlace,CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
             person.PersonID,
             person.FirstName || null,
@@ -2399,6 +2444,7 @@ async function restorePersonFromSnapshot(c, person) {
             person.CurrentState || null,
             Number(person.Died) ? 1 : 0,
             person.DeathDate ? dateOnly(person.DeathDate) : null,
+            person.DeathPlace || null,
             person.CreatedByUserID,
             mysqlDateTimeValue(person.CreatedAt),
             person.UpdatedByUserID || null,
@@ -2656,13 +2702,13 @@ async function safelyRevertSurvivingPersonFields(c, personMergeRow, userID) {
     await c.query(
         `UPDATE FTPersonT
          SET FirstName=?,MiddleName=?,LastName=?,SuffixName=?,NickName=?,MaidenName=?,
-             Gender=?,BirthDate=?,BirthPlace=?,CurrentCity=?,CurrentState=?,Died=?,DeathDate=?,UpdatedByUserID=?,UpdatedAt=NOW()
+             Gender=?,BirthDate=?,BirthPlace=?,CurrentCity=?,CurrentState=?,Died=?,DeathDate=?,DeathPlace=?,UpdatedByUserID=?,UpdatedAt=NOW()
          WHERE PersonID=?`,
         [
             next.FirstName || null,next.MiddleName || null,next.LastName || null,
             next.SuffixName || null,next.NickName || null,next.MaidenName || null,
             next.Gender || null,next.BirthDate || null,next.BirthPlace || null,next.CurrentCity || null,next.CurrentState || null,
-            Number(next.Died) ? 1 : 0,next.DeathDate || null,userID,
+            Number(next.Died) ? 1 : 0,next.DeathDate || null,next.DeathPlace || null,userID,
             personMergeRow.SurvivingPersonID
         ]
     );
@@ -3058,7 +3104,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
     await c.query(
         `UPDATE FTPersonT
          SET FirstName=?,MiddleName=?,LastName=?,SuffixName=?,NickName=?,MaidenName=?,
-             Gender=?,BirthDate=?,BirthPlace=?,CurrentCity=?,CurrentState=?,Died=?,DeathDate=?,UpdatedByUserID=?,UpdatedAt=NOW()
+             Gender=?,BirthDate=?,BirthPlace=?,CurrentCity=?,CurrentState=?,Died=?,DeathDate=?,DeathPlace=?,UpdatedByUserID=?,UpdatedAt=NOW()
          WHERE PersonID=?`,
         [
             update.FirstName || null,
@@ -3074,6 +3120,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
             update.CurrentState || null,
             Number(update.Died) ? 1 : 0,
             update.DeathDate || null,
+            update.DeathPlace || null,
             userID,
             olderPersonID
         ]
@@ -3834,12 +3881,13 @@ router.post('/persons', auth, async (req, res) => {
                     CurrentState,
                     Died,
                     DeathDate,
+                    DeathPlace,
                     CreatedByUserID,
                     CreatedAt,
                     UpdatedByUserID,
                     UpdatedAt
                  )
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, ?,NOW(),NULL,NULL)`,
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,NOW(),NULL,NULL)`,
                 [
                     b.FirstName || null,
                     b.MiddleName || null,
@@ -3853,7 +3901,8 @@ router.post('/persons', auth, async (req, res) => {
                     b.CurrentCity || null,
                     b.CurrentState || null,
                     b.Died ? 1 : 0,
-                    b.DeathDate || null,
+                    b.Died ? (b.DeathDate || null) : null,
+                    b.Died ? (b.DeathPlace || null) : null,
                     userID
                 ]
             );
@@ -3876,6 +3925,8 @@ router.post('/persons', auth, async (req, res) => {
                     userID
                 ]
             );
+
+            await syncPersonMilestoneEvents(c,p.insertId,userID);
 
             await logActivity(
                 c,
@@ -4036,6 +4087,7 @@ router.put('/persons/:id', auth, async (req, res) => {
                      CurrentState=?,
                      Died=?,
                      DeathDate=?,
+                     DeathPlace=?,
                      UpdatedByUserID=?,
                      UpdatedAt=NOW()
                  WHERE PersonID=?`,
@@ -4055,10 +4107,13 @@ router.put('/persons/:id', auth, async (req, res) => {
                     b.Died
                         ? (b.DeathDate || null)
                         : null,
+                    b.Died ? (b.DeathPlace || null) : null,
                     userID,
                     id
                 ]
             );
+
+            await syncPersonMilestoneEvents(c,id,userID);
 
             if (b.Died || b.DeathDate) {
                 await c.query(
@@ -4195,6 +4250,7 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
                     p.BirthDate,
                     p.Died,
                     p.DeathDate,
+          p.DeathPlace,
                     p.CurrentCity,
                     p.CurrentState,
                     (
@@ -4832,9 +4888,9 @@ router.post('/related-person', auth, async (req, res) => {
 
             const [personResult] = await c.query(
                 `INSERT INTO FTPersonT
-                 (FirstName,MiddleName,LastName,SuffixName,NickName,MaidenName,Gender,BirthDate,BirthPlace,CurrentCity,CurrentState,Died,DeathDate,
+                 (FirstName,MiddleName,LastName,SuffixName,NickName,MaidenName,Gender,BirthDate,BirthPlace,CurrentCity,CurrentState,Died,DeathDate,DeathPlace,
                   CreatedByUserID,CreatedAt,UpdatedByUserID,UpdatedAt)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NULL,NULL)`,
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NULL,NULL)`,
                 [
                     b.FirstName || null,
                     b.MiddleName || null,
@@ -4849,11 +4905,13 @@ router.post('/related-person', auth, async (req, res) => {
                     b.CurrentState || null,
                     b.Died ? 1 : 0,
                     b.Died ? (b.DeathDate || null) : null,
+                    b.Died ? (b.DeathPlace || null) : null,
                     userID
                 ]
             );
 
             const related = personResult.insertId;
+            await syncPersonMilestoneEvents(c,related,userID);
 
             await c.query(
                 `INSERT INTO FTFamilyTreePersonT
@@ -5248,7 +5306,9 @@ router.get('/persons/:id/events', auth, async (req, res) => {
                     e.EventType,
                     e.EventDate,
                     e.EventPlace,
-                    e.EventDescription
+                    e.EventDescription,
+                    e.AutoPersonID,
+                    e.AutoEventType
                  FROM FTEventPersonT ep
                  JOIN FTEventT e
                    ON e.EventID=ep.EventID
@@ -5281,6 +5341,10 @@ router.post('/persons/:id/events', auth, async (req, res) => {
         const result = await withTx(async c => {
             const tree = await requireTree(c, b.familyTreeCode, userID);
 
+            if (['Birth','Death'].includes(b.eventType)) {
+                const err=new Error('Birth and Death events are managed on the Person page.');
+                err.status=400; throw err;
+            }
             const [ev] = await c.query(
                 `INSERT INTO FTEventT
                  (
@@ -5348,9 +5412,16 @@ router.put('/persons/:id/events/:eventID', auth, async (req,res)=>{
     try{
         const result=await withTx(async c=>{
             const tree=await requireTree(c,b.familyTreeCode,userID);
-            const [existing]=await c.query(`SELECT e.EventID FROM FTEventPersonT ep JOIN FTEventT e ON e.EventID=ep.EventID WHERE ep.PersonID=? AND e.EventID=? LIMIT 1`,[id,eventID]);
+            const [existing]=await c.query(`SELECT e.EventID,e.AutoPersonID FROM FTEventPersonT ep JOIN FTEventT e ON e.EventID=ep.EventID WHERE ep.PersonID=? AND e.EventID=? LIMIT 1`,[id,eventID]);
             if(!existing.length){const e=new Error('Event not found.');e.status=404;throw e;}
-            await c.query(`UPDATE FTEventT SET EventType=?,EventDate=?,EventPlace=?,EventDescription=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE EventID=?`,[b.eventType,b.eventDate||null,b.eventPlace||null,b.eventDescription||null,userID,eventID]);
+            if(existing[0].AutoPersonID){
+                await c.query('UPDATE FTEventT SET EventDescription=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE EventID=?',[b.eventDescription||null,userID,eventID]);
+            } else {
+                if (['Birth','Death'].includes(b.eventType)) {
+                    const err=new Error('Birth and Death events are managed on the Person page.'); err.status=400; throw err;
+                }
+                await c.query(`UPDATE FTEventT SET EventType=?,EventDate=?,EventPlace=?,EventDescription=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE EventID=?`,[b.eventType,b.eventDate||null,b.eventPlace||null,b.eventDescription||null,userID,eventID]);
+            }
             await logActivity(c,tree.FamilyTreeID,userID,'EDIT','FTEventT',eventID,id,'Edited life event');
             return {message:'Event changes saved.'};
         });
@@ -5363,8 +5434,9 @@ router.delete('/persons/:id/events/:eventID', auth, async (req,res)=>{
     try{
         const result=await withTx(async c=>{
             const tree=await requireTree(c,code,userID);
-            const [link]=await c.query(`SELECT EventPersonID FROM FTEventPersonT WHERE EventID=? AND PersonID=? LIMIT 1`,[eventID,id]);
+            const [link]=await c.query(`SELECT ep.EventPersonID,e.AutoPersonID FROM FTEventPersonT ep JOIN FTEventT e ON e.EventID=ep.EventID WHERE ep.EventID=? AND ep.PersonID=? LIMIT 1`,[eventID,id]);
             if(!link.length){const e=new Error('Event not found for this person.');e.status=404;throw e;}
+            if(link[0].AutoPersonID){const err=new Error('Automatically managed Birth/Death events must be changed on the Person page.');err.status=409;throw err;}
             await c.query(`DELETE FROM FTEventPersonT WHERE EventID=? AND PersonID=?`,[eventID,id]);
             const [[remaining]]=await c.query(`SELECT COUNT(*) AS n FROM FTEventPersonT WHERE EventID=?`,[eventID]);
             if(Number(remaining.n)===0) await c.query(`DELETE FROM FTEventT WHERE EventID=?`,[eventID]);

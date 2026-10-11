@@ -463,7 +463,16 @@ footer {
         grid-template-columns:1fr
     }
 }
-  </style>
+  
+/* Edit Person: compact, aligned death fields and accessible date clearing. */
+.ft-death-row { grid-column:1/-1; display:grid; grid-template-columns:90px minmax(145px,1fr) minmax(145px,1.4fr); align-items:end; gap:10px 14px; }
+.ft-death-row .ft-death-checkbox {align-self:center;}
+.ft-date-control {display:flex; align-items:center; gap:6px; min-width:0;}
+.ft-date-control input {flex:1 1 auto; min-width:0;}
+.ft-clear-date {flex:0 0 auto; white-space:nowrap; padding:7px 8px; font-size:12px;}
+@media(max-width:620px) {.ft-death-row {grid-template-columns:1fr 1fr;} .ft-death-checkbox {grid-column:1/-1;} .ft-death-place {grid-column:1/-1;}}
+@media(max-width:420px) {.ft-date-control {flex-wrap:wrap;} }
+</style>
      <link rel="stylesheet" href="css/wa-buttons.css">
 </head>
  <body class="wa-raised-buttons">
@@ -549,6 +558,11 @@ footer {
          Birth Place
         </label>
         <div class="person-value" id="BirthPlace">
+        </div>
+        <label class="pair-label">
+         Death Place
+        </label>
+        <div class="person-value pair-value" id="DeathPlace">
         </div>
         <label class="pair-label">
          Age
@@ -885,6 +899,10 @@ footer {
       </label>
       <input disabled="" id="rDeathDate" type="date"/>
      </div>
+     <div class="field full">
+      <label>Death Place</label>
+      <input id="rDeathPlace" maxlength="255"/>
+     </div>
     </div>
     <div class="actions">
      <button id="rCheckBtn">
@@ -1140,7 +1158,7 @@ footer {
       <label>
        Birth Date
       </label>
-      <input id="eBirthDate" type="date"/>
+      <div class="ft-date-control"><input id="eBirthDate" type="date"/><button type="button" class="ft-clear-date" data-clear-date="eBirthDate">CLEAR DATE</button></div>
      </div>
      <div class="field full">
       <label>
@@ -1160,7 +1178,8 @@ footer {
       </label>
       <input id="eCurrentState"/>
      </div>
-     <div class="field">
+     <div class="ft-death-row">
+     <div class="field ft-death-checkbox">
       <label>
        <input id="eDied" style="width:auto" type="checkbox"/>
        Died
@@ -1170,7 +1189,12 @@ footer {
       <label>
        Death Date
       </label>
-      <input id="eDeathDate" type="date"/>
+      <div class="ft-date-control"><input id="eDeathDate" type="date"/><button type="button" class="ft-clear-date" data-clear-date="eDeathDate">CLEAR DATE</button></div>
+     </div>
+     <div class="field ft-death-place">
+      <label>Death Place</label>
+      <input id="eDeathPlace" maxlength="255"/>
+     </div>
      </div>
     </div>
     <div class="edit-actions">
@@ -1330,7 +1354,7 @@ footer {
   <footer>
    Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
   </footer>
-  <script src="js/FTPerson.js?v=20260928-deceased-controls">
+  <script src="js/FTPerson.js?v=20261010-events1">
   </script>
   <script src="js/usageTracking.js?v=20260927-1">
   </script>
