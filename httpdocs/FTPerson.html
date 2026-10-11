@@ -644,6 +644,19 @@ footer {
     </section>
     <div class="rule">
     </div>
+    <section class="section" id="favoritePetsSection">
+     <div class="section-title">FAVORITE PETS - 4 Pet Limit (<span id="petCount">0</span>)</div>
+     <div class="table-wrap"><table class="grid" id="petsTable"><thead><tr><th>Picture</th><th>Birth / Death</th><th>Age</th><th>Name / Edit</th><th>Comment</th></tr></thead><tbody id="petsBody"><tr><td colspan="5">Loading pets...</td></tr></tbody></table></div>
+     <div class="image-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button type="button" class="green" id="addPetBtn">ADD PET</button>
+      <button type="button" class="danger" id="deletePetBtn">DELETE PET</button>
+      <button type="button" id="addPetPictureBtn">ADD PICTURES</button>
+      <button type="button" id="deletePetPictureBtn">DELETE PICTURES</button>
+     </div>
+     <div class="picture-instruction" style="margin:0 8px 8px;">To delete a pet, add a picture, or delete a picture, first click the pet's row in the table above to select that pet. Then click the appropriate button. The ADD PET button does not require selecting a pet.</div>
+     <div class="status" id="petStatus" aria-live="polite"></div>
+    </section>
+    <div class="rule"></div>
     <section class="section">
      <div class="section-title">
       BIOLOGICAL PARENTS
@@ -1354,6 +1367,7 @@ footer {
   <footer>
    Copyright © 2026 Wonderful Apps Company - All Rights Reserved | Designed by MPG Jr
   </footer>
+  <script src="js/FTPets.js?v=20261011-1"></script>
   <script src="js/FTPerson.js?v=20261010-events1">
   </script>
   <script src="js/usageTracking.js?v=20260927-1">

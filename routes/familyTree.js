@@ -6725,6 +6725,17 @@ router.delete('/persons/:id', auth, async (req, res) => {
                 await c.query('DELETE FROM FTNetworkVerificationT WHERE PersonID=?', [id]);
                 await c.query('DELETE FROM FTNetworkT WHERE PersonID=?', [id]);
 
+                // Pets are Person-owned; remove their records when a Person is globally deleted.
+                const [deletedPetPictures] = await c.query(
+                    'SELECT PictureStorageKey FROM FTPetT WHERE PersonID=?', [id]
+                );
+                await c.query('DELETE FROM FTPetT WHERE PersonID=?', [id]);
+                // R2 deletion is best-effort, matching the existing image cleanup strategy.
+                for (const petPicture of deletedPetPictures) {
+                    if (petPicture.PictureStorageKey) {
+                        c._ftAfterCommit.push(() => safelyDeleteImage(petPicture.PictureStorageKey));
+                    }
+                }
                 await c.query(
                     `DELETE FROM FTPersonT
                       WHERE PersonID=?`,
@@ -8194,6 +8205,97 @@ router.get('/network/search', auth, async (req, res) => {
     }
 });
 
+
+/* FAVORITE PETS: per Person, no family tree linkage or Person image limit impact. */
+const petHandler = async (req, res, action) => {
+    const personID = Number(req.params.id);
+    if (!Number.isInteger(personID) || personID < 1) return res.status(400).json({message:'Invalid PersonID.'});
+    const c = await pool.getConnection();
+    try {
+        const code = String(req.method === 'GET' ? req.query.familyTreeCode : ((req.body && req.body.familyTreeCode) || req.query.familyTreeCode) || '');
+        const tree = await requireTree(c, code, req.user.userId);
+        if (!(await treeHasPerson(c, tree.FamilyTreeID, personID))) return res.status(404).json({message:'Person not found in this Family Tree.'});
+        await action(c, personID);
+    } catch (e) {
+        console.error('Favorite Pets:', e);
+        res.status(e.status || 500).json({message:e.message || 'Favorite Pets request failed.'});
+    } finally {c.release();}
+};
+const parsePetDate = (value) => {
+    if (value == null || value === '') return null;
+    const text = String(value);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw Object.assign(new Error('Enter a valid date.'),{status:400});
+    const d = new Date(text + 'T00:00:00Z');
+    if (Number.isNaN(d.getTime()) || d.toISOString().slice(0,10) !== text) throw Object.assign(new Error('Enter a valid date.'),{status:400});
+    return text;
+};
+const petValues = (body) => {
+    const name = String(body.name || '').trim();
+    const comment = String(body.comment || '').trim();
+    const birth = parsePetDate(body.birthDate);
+    const death = parsePetDate(body.deathDate);
+    const died = body.died === true || body.died === 'true' || body.died === '1' || body.died === 1 || !!death;
+    if (!name || name.length > 100) throw Object.assign(new Error('Pet name is required (maximum 100 characters).'),{status:400});
+    if (comment.length > 500) throw Object.assign(new Error('Comments may not exceed 500 characters.'),{status:400});
+    if (birth && death && death < birth) throw Object.assign(new Error('Death date cannot precede birth date.'),{status:400});
+    if (!died && death) throw Object.assign(new Error('Death date requires Died.'),{status:400});
+    return {name, comment:comment||null, birth, death, died:died?1:0};
+};
+router.get('/persons/:id/pets', auth, (req,res) => petHandler(req,res,async(c,id)=>{
+    const [rows] = await c.query('SELECT PetID, PetName, BirthDate, Died, DeathDate, Comment, PictureStorageKey FROM FTPetT WHERE PersonID=? ORDER BY PetID',[id]);
+    const pets = await Promise.all(rows.map(async row=>({
+        petID:row.PetID, name:row.PetName, birthDate:row.BirthDate ? String(row.BirthDate instanceof Date?row.BirthDate.toISOString():row.BirthDate).slice(0,10):null,
+        died:Boolean(row.Died), deathDate:row.DeathDate ? String(row.DeathDate instanceof Date?row.DeathDate.toISOString():row.DeathDate).slice(0,10):null,
+        comment:row.Comment, pictureUrl:row.PictureStorageKey ? await publicImageUrl(row.PictureStorageKey):null
+    })));
+    res.json({pets});
+}));
+router.post('/persons/:id/pets', auth, (req,res)=>petHandler(req,res,async(c,id)=>{
+    const v = petValues(req.body || {});
+    await c.beginTransaction();
+    try {
+        const [person] = await c.query('SELECT PersonID FROM FTPersonT WHERE PersonID=? FOR UPDATE',[id]);
+        if(!person.length) throw Object.assign(new Error('Person not found.'),{status:404});
+        const [[count]] = await c.query('SELECT COUNT(*) AS total FROM FTPetT WHERE PersonID=?',[id]);
+        if(count.total>=4) throw Object.assign(new Error('Maximum of four pets per Person.'),{status:409});
+        const [result] = await c.query('INSERT INTO FTPetT (PersonID,PetName,BirthDate,Died,DeathDate,Comment,CreatedByUserID,CreatedAt) VALUES (?,?,?,?,?,?,?,NOW())',[id,v.name,v.birth,v.died,v.death,v.comment,req.user.userId]);
+        await c.commit();res.status(201).json({message:'Pet added.',petID:result.insertId});
+    } catch(e){await c.rollback();throw e;}
+}));
+router.put('/persons/:id/pets/:petID', auth,(req,res)=>petHandler(req,res,async(c,id)=>{
+    const v=petValues(req.body||{});
+    const [result] = await c.query('UPDATE FTPetT SET PetName=?, BirthDate=?, Died=?, DeathDate=?, Comment=?, UpdatedByUserID=?, UpdatedAt=NOW() WHERE PetID=? AND PersonID=?',[v.name,v.birth,v.died,v.death,v.comment,req.user.userId,Number(req.params.petID),id]);
+    if(!result.affectedRows) return res.status(404).json({message:'Pet not found.'});
+    res.json({message:'Pet updated.'});
+}));
+router.delete('/persons/:id/pets/:petID',auth,(req,res)=>petHandler(req,res,async(c,id)=>{
+    const [rows]=await c.query('SELECT PictureStorageKey FROM FTPetT WHERE PersonID=? AND PetID=?',[id,Number(req.params.petID)]);
+    if(!rows.length) return res.status(404).json({message:'Pet not found.'});
+    await c.query('DELETE FROM FTPetT WHERE PersonID=? AND PetID=?',[id,Number(req.params.petID)]);
+    await safelyDeleteImage(rows[0].PictureStorageKey);
+    res.json({message:'Pet deleted.'});
+}));
+router.post('/persons/:id/pets/:petID/picture',auth,upload.single('picture'),(req,res)=>petHandler(req,res,async(c,id)=>{
+    if(!req.file) throw Object.assign(new Error('Choose a JPG, PNG, or WEBP image.'),{status:400});
+    const petID=Number(req.params.petID);
+    const [rows]=await c.query('SELECT PictureStorageKey FROM FTPetT WHERE PersonID=? AND PetID=?',[id,petID]);
+    if(!rows.length) return res.status(404).json({message:'Pet not found.'});
+    const key='ft-pets/'+id+'/'+petID+'-'+crypto.randomBytes(8).toString('hex')+'.jpg';
+    const optimized=await optimizeFamilyTreeImage(req.file.buffer);
+    await putImage(key,optimized);
+    try {
+        await c.query('UPDATE FTPetT SET PictureStorageKey=?, UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=? AND PetID=?',[key,req.user.userId,id,petID]);
+    } catch(e){await safelyDeleteImage(key);throw e;}
+    await safelyDeleteImage(rows[0].PictureStorageKey);
+    res.json({message:'Pet picture saved.'});
+}));
+router.delete('/persons/:id/pets/:petID/picture',auth,(req,res)=>petHandler(req,res,async(c,id)=>{
+    const [rows]=await c.query('SELECT PictureStorageKey FROM FTPetT WHERE PersonID=? AND PetID=?',[id,Number(req.params.petID)]);
+    if(!rows.length) return res.status(404).json({message:'Pet not found.'});
+    await c.query('UPDATE FTPetT SET PictureStorageKey=NULL,UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=? AND PetID=?',[req.user.userId,id,Number(req.params.petID)]);
+    await safelyDeleteImage(rows[0].PictureStorageKey);
+    res.json({message:'Pet picture deleted.'});
+}));
 
 router.use((err, req, res, next) => {
     if (

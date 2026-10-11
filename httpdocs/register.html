@@ -185,7 +185,11 @@
             </div>
 
             <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
+            <input type="email" id="email" name="email" autocomplete="email" required>
+
+            <label for="confirmEmail">Confirm Email:</label>
+            <input type="email" id="confirmEmail" name="confirmEmail" autocomplete="off" aria-describedby="emailMatchWarning" required>
+            <div id="emailMatchWarning" role="alert" aria-live="polite" style="color:#b00020;font-weight:bold;min-height:18px;"></div>
 
             <label for="phone1">Phone 1:</label>
             <input type="text" id="phone1" name="phone1" required>
@@ -274,6 +278,29 @@
             });
         });
 
+        const emailInput = document.getElementById('email');
+        const confirmEmailInput = document.getElementById('confirmEmail');
+        const emailMatchWarning = document.getElementById('emailMatchWarning');
+
+        function checkEmailMatch() {
+            const email = emailInput.value.trim();
+            const confirmation = confirmEmailInput.value.trim();
+            const mismatch = confirmation !== '' && email !== confirmation;
+            emailMatchWarning.textContent = mismatch ? 'Email addresses do not match.' : '';
+            confirmEmailInput.setCustomValidity(mismatch ? 'Email addresses do not match.' : '');
+            confirmEmailInput.setAttribute('aria-invalid', mismatch ? 'true' : 'false');
+            return !mismatch;
+        }
+        emailInput.addEventListener('input', checkEmailMatch);
+        confirmEmailInput.addEventListener('input', checkEmailMatch);
+        confirmEmailInput.addEventListener('blur', () => {
+            if (confirmEmailInput.value.trim() === '' && emailInput.value.trim() !== '') {
+                emailMatchWarning.textContent = 'Please confirm your email address.';
+            } else {
+                checkEmailMatch();
+            }
+        });
+
         document.getElementById('registerForm').addEventListener('submit', function (e) {
             e.preventDefault();
 
@@ -281,6 +308,7 @@
             const password = document.getElementById('password').value.trim();
             const confirmPassword = document.getElementById('confirmPassword').value.trim();
             const email = document.getElementById('email').value.trim();
+            const confirmEmail = document.getElementById('confirmEmail').value.trim();
             const phone1 = document.getElementById('phone1').value.trim();
             const phone2 = document.getElementById('phone2').value.trim();
             const marketingEmail = document.getElementById('marketingEmail').checked;
@@ -315,6 +343,10 @@
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
                 errors.push('Please provide a valid email.');
+            }
+            if (email !== confirmEmail) {
+                errors.push('Email addresses do not match.');
+                checkEmailMatch();
             }
 
             if (phone1 === '') {

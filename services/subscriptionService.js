@@ -343,7 +343,22 @@ async function redeemPromoCode(userId, rawCode) {
                  VALUES (?, ?, 'PROMO', CURDATE(), ?, 1, ?, NOW())`,
                 [userId, promo.PlanID, endDate, promo.PromoCodeID]
             );
+        } else if (current.AccessType === 'DEVELOPMENT_TRIAL') {
+            // A promotional entitlement replaces the temporary Platinum development trial;
+            // never carry trial privileges into a lower-level, longer-running promo.
+            await connection.query(
+                `UPDATE UserSubscriptionT
+                    SET PlanID = ?, StartDate = CURDATE(), EndDate = ?, Active = 1,
+                        AccessType = 'PROMO', PromoCodeID = ?, ModifiedDate = NOW()
+                  WHERE UserID = ?`,
+                [promo.PlanID, endDate, promo.PromoCodeID, userId]
+            );
         } else {
+            // A paid subscription cannot be safely combined with a promo inside
+            // the single base-subscription row. Preserve paid access unchanged.
+            if (current.Active && ['PAID', 'PAYMENT', 'STRIPE'].includes(String(current.AccessType || '').toUpperCase())) {
+                throw Object.assign(new Error('A paid subscription is already active. Please contact support before applying a promotional code.'), { status: 400 });
+            }
             const currentEnd = current.EndDate ? toDateOnly(current.EndDate) : null;
             const upgradedPlanId = Number(promo.PlanLevel) > Number(current.PlanLevel) ? promo.PlanID : current.PlanID;
             const laterEnd = !currentEnd || endDate > currentEnd ? endDate : currentEnd;
@@ -579,6 +594,35 @@ async function getAdminUserSubscription(userId) {
     };
 }
 
+// Read-only history of redeemed promotion codes for administrators.
+async function listAdminPromoRedemptions() {
+    const [rows] = await pool.query(
+        `SELECT r.PromoRedemptionID, r.UserID, u.UserName,
+                pc.Code, p.PlanName, pc.EndDate AS PromoEndDate,
+                r.RedeemedDate,
+                us.AccessType AS CurrentAccessType,
+                currentPlan.PlanName AS CurrentPlanName
+           FROM PromoRedemptionT r
+           JOIN UsersT u ON u.UserID = r.UserID
+           JOIN PromoCodeT pc ON pc.PromoCodeID = r.PromoCodeID
+           JOIN SubscriptionPlanT p ON p.PlanID = pc.PlanID
+           LEFT JOIN UserSubscriptionT us ON us.UserID = r.UserID
+           LEFT JOIN SubscriptionPlanT currentPlan ON currentPlan.PlanID = us.PlanID
+          ORDER BY r.RedeemedDate DESC, r.PromoRedemptionID DESC`
+    );
+    return { redemptions: rows.map(row => ({
+        redemptionId: row.PromoRedemptionID,
+        userId: row.UserID,
+        username: row.UserName,
+        promoCode: row.Code,
+        promoPlan: row.PlanName,
+        promoEndDate: toDateOnly(row.PromoEndDate),
+        redeemedDate: row.RedeemedDate,
+        currentPlan: row.CurrentPlanName,
+        currentAccessType: row.CurrentAccessType
+    })) };
+}
+
 async function listAdminFreeGrants() {
     const [rows] = await pool.query(
         `SELECT g.AdminSubscriptionGrantID, g.UserID, u.UserName, u.Email,
@@ -811,6 +855,7 @@ module.exports = {
     updateAdminPromoCode,
     getAdminUserSubscription,
     listAdminFreeGrants,
+    listAdminPromoRedemptions,
     grantAdminFreeUsage,
     updateAdminFreeGrant,
     revokeAdminFreeGrant

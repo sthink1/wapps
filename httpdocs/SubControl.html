@@ -410,6 +410,16 @@
                 </div>
             </form>
             <div id="grantEditStatus" class="status"></div>
+            <h3 style="margin-top: 30px;">Current Promo Redemptions</h3>
+            <p class="note">Read-only history of redeemed promo codes. The promo plan is the plan specified by the code, which can differ from a user's current subscription. Administrator grants remain listed separately above.</p>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>User ID</th><th>User Name</th><th>Promo Code</th><th>Promo Plan</th><th>Redeemed</th><th>Promo Expires</th><th>Current Subscription</th></tr></thead>
+                    <tbody id="promoRedemptionsBody"></tbody>
+                </table>
+            </div>
+            <div id="promoRedemptionsStatus" class="status"></div>
+
         </section>
     </div>
 
@@ -749,6 +759,41 @@
             });
         }
 
+        async function loadPromoRedemptions() {
+            setStatus('promoRedemptionsStatus', 'Loading...');
+            try {
+                const response = await fetch(`${BASE_URL}/subscriptions/admin/promo-redemptions`, {
+                    headers: authHeaders()
+                });
+                const data = await readJson(response);
+                const tbody = document.getElementById('promoRedemptionsBody');
+                tbody.replaceChildren();
+                const redemptions = data.redemptions || [];
+                if (!redemptions.length) {
+                    const row = tbody.insertRow();
+                    const cell = row.insertCell();
+                    cell.colSpan = 7;
+                    cell.textContent = 'No promotional redemptions recorded.';
+                }
+                redemptions.forEach(item => {
+                    const row = tbody.insertRow();
+                    const cells = [
+                        item.userId, item.username, item.promoCode,
+                        item.promoPlan, item.redeemedDate ? String(item.redeemedDate).replace('T', ' ').slice(0, 19) : '',
+                        formatAccessDate(item.promoEndDate),
+                        item.currentPlan ? `${item.currentPlan} (${item.currentAccessType || 'Unknown'})` : 'None'
+                    ];
+                    cells.forEach(value => {
+                        const cell = row.insertCell();
+                        cell.textContent = value == null ? '' : String(value);
+                    });
+                });
+                setStatus('promoRedemptionsStatus', `${redemptions.length} redemption(s) found.`);
+            } catch (error) {
+                setStatus('promoRedemptionsStatus', error.message, 'error');
+            }
+        }
+
         async function loadGrants() {
             setStatus('grantListStatus', 'Loading...');
             try {
@@ -949,6 +994,7 @@
                 if (!(await verifyAdmin())) return;
                 await loadPromoData();
                 await loadGrants();
+                await loadPromoRedemptions();
             } catch (error) {
                 setStatus('pageStatus', error.message, 'error');
             }

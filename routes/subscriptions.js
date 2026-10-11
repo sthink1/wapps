@@ -11,6 +11,7 @@ const {
     updateAdminPromoCode,
     getAdminUserSubscription,
     listAdminFreeGrants,
+    listAdminPromoRedemptions,
     grantAdminFreeUsage,
     updateAdminFreeGrant,
     revokeAdminFreeGrant
@@ -100,6 +101,14 @@ router.get('/admin/user/:userId', requireAdmin, async (req, res, next) => {
     }
 });
 
+
+router.get('/admin/promo-redemptions', requireAdmin, async (req, res, next) => {
+    try {
+        res.json(await listAdminPromoRedemptions());
+    } catch (error) {
+        next(error);
+    }
+});
 
 router.get('/admin/grants', requireAdmin, async (req, res, next) => {
     try {
