@@ -5196,6 +5196,92 @@ router.post('/children/:childID/partner-parent', auth, async (req, res) => {
     }
 });
 
+/* CONTACT EMAIL VERIFICATION -- stage 1. Email ownership only; not privacy authorization. */
+function emailIsValidForVerification(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||'').trim()); }
+async function createContactEmailVerification(c, personID, contactID, email, userID) {
+    const cleaned = String(email||'').trim().toLowerCase();
+    if (!emailIsValidForVerification(cleaned)) {
+        const e = new Error('A valid email address is required.'); e.status=400; throw e;
+    }
+    await c.query(`UPDATE FTContactEmailVerificationT SET RespondedAt=NOW(),Response='SUPERSEDED'
+        WHERE ContactID=? AND RespondedAt IS NULL`,[contactID]);
+    const rawToken=crypto.randomBytes(32).toString('hex');
+    const hash=crypto.createHash('sha256').update(rawToken).digest('hex');
+    await c.query(`INSERT INTO FTContactEmailVerificationT
+       (ContactID,PersonID,EmailAddress,TokenHash,RequestedByUserID,RequestedAt,ExpiresAt,RespondedAt,Response)
+       VALUES (?,?,?,?,?,NOW(),DATE_ADD(NOW(),INTERVAL 24 HOUR),NULL,NULL)`,
+       [contactID,personID,cleaned,hash,userID]);
+    return {rawToken, email:cleaned, personID};
+}
+async function sendContactVerification(pending) {
+    if(!pending) return;
+    const base=typeof networkPublicBaseUrl==='function' ? networkPublicBaseUrl() : '';
+    const url=`${base}/FTEmailVerification.html?token=${encodeURIComponent(pending.rawToken)}`;
+    await sendNotification({recipientEmail:pending.email,category:'FAMILY_TREE',channel:'EMAIL',
+      subject:'Verify your Wonderful Apps Family Tree contact email',
+      message:'Please verify that this email address belongs to you. The verification request expires in 24 hours. If you did not request this, ignore the email.',
+      templateName:'FAMILY_TREE_CONTACT_EMAIL_VERIFICATION',relatedApp:'FAMILY_TREE',relatedRecordID:pending.personID,
+      actionButtons:[{label:'VERIFY EMAIL',url,kind:'approve'}]});
+}
+async function getContactVerificationState(c, contactID, email) {
+    const [rows]=await c.query(`SELECT EmailAddress,ExpiresAt,Response,RespondedAt FROM FTContactEmailVerificationT
+     WHERE ContactID=? ORDER BY VerificationID DESC LIMIT 1`,[contactID]);
+    if(!rows.length || String(rows[0].EmailAddress).toLowerCase()!==String(email||'').trim().toLowerCase()) return 'UNVERIFIED';
+    if(rows[0].Response==='VERIFIED') return 'VERIFIED';
+    if(!rows[0].RespondedAt && new Date(rows[0].ExpiresAt)>new Date()) return 'PENDING';
+    return 'UNVERIFIED';
+}
+router.get('/contact-email-verification/:token', async(req,res)=>{
+ try {
+   const hash=crypto.createHash('sha256').update(String(req.params.token)).digest('hex');
+   const [rows]=await pool.query(`SELECT v.VerificationID,v.EmailAddress,v.ExpiresAt,v.RespondedAt,v.Response,
+       c.ContactValue,c.ContactType FROM FTContactEmailVerificationT v
+       LEFT JOIN FTContactT c ON c.ContactID=v.ContactID
+       WHERE v.TokenHash=? LIMIT 1`,[hash]);
+   if(!rows.length) return res.status(404).json({message:'Verification request not found.'});
+   const x=rows[0];
+   const valid=!x.RespondedAt && new Date(x.ExpiresAt)>new Date() && x.ContactType==='Email' &&
+         String(x.ContactValue||'').trim().toLowerCase()===String(x.EmailAddress).toLowerCase();
+   res.json({valid, message:valid?'Email verification request is ready.':'This verification request is no longer valid.'});
+ }catch(e){res.status(500).json({message:e.message});}
+});
+router.post('/contact-email-verification/:token',async(req,res)=>{
+ try {
+   const hash=crypto.createHash('sha256').update(String(req.params.token)).digest('hex');
+   const result=await withTx(async c=>{
+      const [rows]=await c.query(`SELECT v.VerificationID,v.EmailAddress,v.ContactID,v.ExpiresAt,v.RespondedAt,
+         c.ContactValue,c.ContactType FROM FTContactEmailVerificationT v
+         LEFT JOIN FTContactT c ON c.ContactID=v.ContactID
+         WHERE v.TokenHash=? LIMIT 1 FOR UPDATE`,[hash]);
+      if(!rows.length) {const e=new Error('Request not found.');e.status=404;throw e;}
+      const x=rows[0];
+      if(x.RespondedAt || new Date(x.ExpiresAt)<=new Date() || x.ContactType!=='Email' ||
+        String(x.ContactValue||'').trim().toLowerCase()!==String(x.EmailAddress).toLowerCase()) {
+        const e=new Error('Verification request is expired or no longer valid.');e.status=400;throw e;
+      }
+      await c.query(`UPDATE FTContactEmailVerificationT SET RespondedAt=NOW(),Response='VERIFIED'
+       WHERE VerificationID=?`,[x.VerificationID]);
+      return {message:'Contact email verified successfully.'};
+   });
+   res.json(result);
+ }catch(e){res.status(e.status||500).json({message:e.message});}
+});
+router.post('/persons/:id/contacts/:contactID/resend-verification',auth,async(req,res)=>{
+ const personID=Number(req.params.id),contactID=Number(req.params.contactID),userID=req.user.userId;
+ try{
+   const pending=await withTx(async c=>{
+     const tree=await requireTree(c,String((req.body||{}).familyTreeCode||''),userID);
+     const [m]=await c.query('SELECT 1 FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=? LIMIT 1',[tree.FamilyTreeID,personID]);
+     if(!m.length){const e=new Error('Person not in Family Tree.');e.status=404;throw e;}
+     const [rows]=await c.query('SELECT ContactValue,ContactType FROM FTContactT WHERE PersonID=? AND ContactID=? LIMIT 1',[personID,contactID]);
+     if(!rows.length || rows[0].ContactType!=='Email'){const e=new Error('Email contact not found.');e.status=404;throw e;}
+     return createContactEmailVerification(c,personID,contactID,rows[0].ContactValue,userID);
+   });
+   await sendContactVerification(pending);
+   res.json({message:'Verification email requested.'});
+ }catch(e){res.status(e.status||500).json({message:e.message});}
+});
+
 /* ============================================================================
    CONTACTS
    ============================================================================ */
@@ -5217,6 +5303,11 @@ router.get('/persons/:id/contacts', auth, async (req, res) => {
                   ORDER BY ContactType,ContactValue,ContactID`,
                 [id]
             );
+            for (const contact of rows) {
+                contact.EmailVerificationStatus = contact.ContactType === 'Email'
+                    ? await getContactVerificationState(c,contact.ContactID,contact.ContactValue)
+                    : null;
+            }
             res.json({ contacts: rows });
         } finally { c.release(); }
     } catch (e) { res.status(e.status || 500).json({ message: e.message }); }
@@ -5227,6 +5318,7 @@ router.post('/persons/:id/contacts', auth, async (req, res) => {
     if (!b.ContactType) return res.status(400).json({ message: 'Contact Type is required.' });
     if (!b.ContactValue) return res.status(400).json({ message: 'Contact Value is required.' });
     try {
+        let pendingEmail = null;
         const result = await withTx(async c => {
             const tree = await requireTree(c, b.familyTreeCode, userID);
             const [member] = await c.query(`SELECT 1 FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=? LIMIT 1`, [tree.FamilyTreeID, id]);
@@ -5239,9 +5331,11 @@ router.post('/persons/:id/contacts', auth, async (req, res) => {
                  VALUES(?,?,?,?,?,?,NOW(),NULL,NULL)`,
                 [id,b.ContactType,b.ContactValue,b.ContactNote||null,b.IsPrimary?1:0,userID]
             );
+            if (b.ContactType === 'Email') pendingEmail = await createContactEmailVerification(c,id,r.insertId,b.ContactValue,userID);
             await logActivity(c,tree.FamilyTreeID,userID,'CREATE','FTContactT',r.insertId,id,`Added ${b.ContactType} contact`);
             return { ContactID:r.insertId, message:'Contact saved.' };
         });
+        if (pendingEmail) await sendContactVerification(pendingEmail);
         res.status(201).json(result);
     } catch (e) { res.status(e.status || 500).json({ message:e.message }); }
 });
@@ -5251,17 +5345,26 @@ router.put('/persons/:id/contacts/:contactID', auth, async (req, res) => {
     if (!b.ContactType) return res.status(400).json({ message:'Contact Type is required.' });
     if (!b.ContactValue) return res.status(400).json({ message:'Contact Value is required.' });
     try {
+        let pendingEmail = null;
         const result=await withTx(async c=>{
             const tree=await requireTree(c,b.familyTreeCode,userID);
-            const [existing]=await c.query(`SELECT ContactID FROM FTContactT WHERE ContactID=? AND PersonID=? LIMIT 1`,[contactID,id]);
+            const [existing]=await c.query(`SELECT ContactID,ContactType,ContactValue FROM FTContactT WHERE ContactID=? AND PersonID=? LIMIT 1`,[contactID,id]);
             if(!existing.length){const e=new Error('Contact not found.');e.status=404;throw e;}
             if(b.IsPrimary){
                 await c.query(`UPDATE FTContactT SET IsPrimary=0,UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=? AND ContactType=? AND ContactID<>?`,[userID,id,b.ContactType,contactID]);
             }
             await c.query(`UPDATE FTContactT SET ContactType=?,ContactValue=?,ContactNote=?,IsPrimary=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE ContactID=? AND PersonID=?`,[b.ContactType,b.ContactValue,b.ContactNote||null,b.IsPrimary?1:0,userID,contactID,id]);
+            if (b.ContactType === 'Email' && (existing[0].ContactType !== 'Email' ||
+                 String(existing[0].ContactValue).trim().toLowerCase() !== String(b.ContactValue).trim().toLowerCase())) {
+                pendingEmail = await createContactEmailVerification(c,id,contactID,b.ContactValue,userID);
+            } else if (b.ContactType !== 'Email') {
+                await c.query(`UPDATE FTContactEmailVerificationT SET RespondedAt=NOW(),Response='SUPERSEDED'
+                  WHERE ContactID=? AND RespondedAt IS NULL`,[contactID]);
+            }
             await logActivity(c,tree.FamilyTreeID,userID,'EDIT','FTContactT',contactID,id,`Edited ${b.ContactType} contact`);
             return { message:'Contact changes saved.' };
         });
+        if(pendingEmail) await sendContactVerification(pendingEmail);
         res.json(result);
     } catch(e){res.status(e.status||500).json({message:e.message});}
 });

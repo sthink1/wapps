@@ -103,6 +103,17 @@ app.use('/activities', authenticateToken, requireAppAccess('weigh_in'), usageAct
 app.use('/weightActivities', authenticateToken, requireAppAccess('weigh_in'), usageActivity('weigh_in'), weightActivitiesRoutes);
 app.use('/interestEarned', authenticateToken, requireAppAccess('interest_earned'), usageActivity('interest_earned'), interestEarnedRoutes);
 app.use('/budget', authenticateToken, requireAppAccess('budget'), usageActivity('budget'), budgetRoutes);
+// Email ownership confirmation is a one-time public-token workflow. A recipient
+// may open the emailed link without having logged into Wonderful Apps.
+// Only these exact GET/POST paths bypass authentication; all other Family Tree
+// endpoints remain subject to the existing subscription and login protections.
+app.use('/familytree', (req, res, next) => {
+  const isEmailVerification =
+    (req.method === 'GET' || req.method === 'POST') &&
+    /^\/contact-email-verification\/[0-9a-f]{64}$/i.test(req.path);
+  if (isEmailVerification) return familyTreeRoutes(req, res, next);
+  next();
+});
 app.use('/familytree', authenticateToken, requireAppAccess('family_tree'), usageActivity('family_tree'), familyTreeRoutes);
 app.use('/etf', authenticateToken, requireAppAccess('etf_investing'), usageActivity('etf_investing'), etfRoutes);
 

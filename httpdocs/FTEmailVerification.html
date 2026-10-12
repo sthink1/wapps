@@ -1,0 +1,9 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verify Family Tree Email</title><style>body{font:16px Arial,sans-serif;background:#f4f4f4;padding:30px}main{max-width:540px;margin:auto;background:#fff;border:1px solid #aaa;padding:25px;border-radius:6px}button{padding:10px 18px;background:#4CAF50;color:#fff;border:0;border-radius:4px;cursor:pointer}button:disabled{opacity:.5}</style></head><body><main><h1>VERIFY CONTACT EMAIL</h1><p id="status">Checking verification request...</p><button type="button" id="verify" disabled>VERIFY EMAIL</button></main><script>
+const token=new URLSearchParams(location.search).get('token');
+const button=document.getElementById('verify');const status=document.getElementById('status');
+(async()=>{try {if(!/^[0-9a-f]{64}$/.test(token||'')) throw new Error('Invalid verification link.');
+const r=await fetch('/familytree/contact-email-verification/'+encodeURIComponent(token));
+const d=await r.json();status.textContent=d.message||'Request unavailable.';button.disabled=!r.ok||!d.valid;
+}catch(e){status.textContent=e.message;}})();
+button.onclick=async()=>{button.disabled=true;try{const r=await fetch('/familytree/contact-email-verification/'+encodeURIComponent(token),{method:'POST'});const d=await r.json();status.textContent=d.message||'Unable to verify.';}catch(e){status.textContent=e.message;}};
+</script></body></html>

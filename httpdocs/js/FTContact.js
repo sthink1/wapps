@@ -109,11 +109,24 @@ async function loadContacts() {
                 <td>${escapeHtml(contact.ContactValue || '')}</td>
                 <td>${escapeHtml(contact.ContactNote || '')}</td>
                 <td>${Number(contact.IsPrimary) === 1 ? 'Yes' : ''}</td>
+                <td>${contact.ContactType === 'Email' ? escapeHtml(contact.EmailVerificationStatus || 'UNVERIFIED') + (contact.EmailVerificationStatus !== 'VERIFIED' ? ` <button class="resend-email" data-id="${contact.ContactID}" type="button">RESEND</button>` : '') : ''}</td>
                 <td><button class="edit-contact" data-id="${contact.ContactID}" type="button">EDIT</button></td>
                 <td><button class="delete-contact" data-id="${contact.ContactID}" type="button">DELETE</button></td>
             </tr>`).join('')
-        : '<tr><td colspan="7">No contacts entered.</td></tr>';
+        : '<tr><td colspan="8">No contacts entered.</td></tr>';
     $('listStatus').textContent = `${contacts.length} contact${contacts.length === 1 ? '' : 's'} displayed.`;
+    document.querySelectorAll('.resend-email').forEach(button => {
+        button.onclick = async () => {
+            try {
+                const resp = await fetch(`${BASE_URL}/familytree/persons/${personID}/contacts/${button.dataset.id}/resend-verification`,
+                    {method:'POST',headers:authHeaders(),body:JSON.stringify({familyTreeCode})});
+                const result=await resp.json();
+                if(!resp.ok) throw new Error(result.message||'Unable to resend.');
+                $('listStatus').textContent=result.message;
+                await loadContacts();
+            }catch(err){$('listStatus').textContent=err.message;}
+        };
+    });
     document.querySelectorAll('.edit-contact').forEach(button => {
         button.onclick = () => fillEdit(Number(button.dataset.id));
     });

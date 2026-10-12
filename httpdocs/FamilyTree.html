@@ -235,6 +235,7 @@ header .ft-page-heading {margin:0 0 14px;}
         .instruction-example {display:flex; gap:15px; align-items:center; flex-wrap:wrap; margin:14px 0;}
         .instruction-example .example-label {font-size:17px; flex:1 1 240px;}
         .instruction-example button:not(.hero-icon-btn) {background:#d7e7fb;color:#222;border:2px solid #8ba5c7; box-shadow:2px 2px 5px #0005; min-width:130px;}
+        .instruction-example button.green[data-extra="showHistory"] { background:#4CAF50 !important; color:#fff !important; border-color:#328b38 !important; }
         .instruction-example .danger-example {background:#b42318 !important;color:white !important; border-color:#981d14 !important;}
         .instruction-example .key-example {width:96px;height:96px;min-width:96px !important; padding:10px; background:#d9efff !important; border:2px solid #8ba5c7; display:inline-flex;justify-content:center;align-items:center;}
         .key-example svg {width:72px;height:72px;}
@@ -276,8 +277,8 @@ header .ft-page-heading {margin:0 0 14px;}
             <p style="font-size:18px;"><b>MOST IMPORTANT</b> - You have to find a Person to get to a Person page and the Ancestor Tree.</p>
             <p style="font-size:18px;">Use these buttons to find a Person:</p>
             <div class="find-person-list">
-                <div class="find-person-row"><span class="page-number">1&gt;</span><button class="pdf-action" type="button" data-key="personList">PERSON LIST</button></div>
-                <div class="find-person-row"><span class="page-number">2&gt;</span><button class="pdf-action" type="button" data-key="searchPerson">SEARCH FOR PERSON</button></div>
+                <div class="find-person-row"><button class="pdf-action" type="button" data-key="personList">PERSON LIST</button></div>
+                <div class="find-person-row"><button class="pdf-action" type="button" data-key="searchPerson">SEARCH FOR PERSON</button></div>
                 <p class="or-label">.... OR....</p>
                 <div class="find-person-row"><button class="pdf-action" type="button" data-key="newPerson">NEW PERSON</button><span>Create a Person</span></div>
             </div>
