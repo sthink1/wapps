@@ -167,6 +167,11 @@ function setPageStatus(message) {
 }
 
 function compactFamilyRow(person) {
+    if (person.IsPrivate) return `<tr>
+       <td><button class="person-link icon-action" data-id="${person.PersonID}" type="button" title="Privacy Lock"><img src="images/privacy-key.svg" alt="Privacy Lock"></button></td>
+       <td><button class="tree-link icon-action" data-id="${person.PersonID}" type="button" title="View Ancestor Tree"><img src="images/tree.svg" alt="Tree"></button></td>
+       <td></td><td></td><td style="white-space:normal;min-width:220px">${escapeHtml(nameOf(person))}</td>
+       </tr>`;
     return `
         <tr>
             <td><button class="person-link icon-action" data-id="${person.PersonID}" type="button" title="View Person" aria-label="View Person"><img src="images/person.svg" alt=""></button></td>
@@ -180,7 +185,7 @@ function compactFamilyRow(person) {
 function wirePersonLinks() {
     document.querySelectorAll('.person-link').forEach(button => {
         button.onclick = () => {
-            window.location.href = `FTPerson.html?PersonID=${encodeURIComponent(button.dataset.id)}&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
+            window.FTPrivacy.openPerson(Number(button.dataset.id), familyTreeCode);
         };
     });
     document.querySelectorAll('.tree-link').forEach(button => {
@@ -1494,7 +1499,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
+        if (!await window.FTPrivacy.ensurePageAccess(personID, familyTreeCode)) {
+            setPageStatus('Private Person access was not authorized.');
+            return;
+        }
         await loadPerson();
+        window.FTPrivacy.buildControl(personID, familyTreeCode);
         await Promise.all([
             loadRelationships(),
             loadImages(),

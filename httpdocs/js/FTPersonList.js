@@ -119,9 +119,7 @@ function openPerson(personID, familyTreeCode) {
      * Opening a person is read-only navigation. It does not call enter-code,
      * change IsActive, or merge/switch Trees.
      */
-    window.location.href =
-        `FTPerson.html?PersonID=${encodeURIComponent(personID)}` +
-        `&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
+    window.FTPrivacy.openPerson(personID, familyTreeCode);
 }
 
 function showSplitNotice() {
@@ -169,12 +167,12 @@ function renderTreeSections() {
                             data-code="${escapeHtml(tree.FamilyTreeCode)}"
                             title="View Person"
                             aria-label="View Person"
-                        ><img src="images/person.svg" alt=""></button>
+                        ><img src="${person.IsPrivate ? 'images/privacy-key.svg' : 'images/person.svg'}" alt=""></button>
                     </td>
                     <td>${escapeHtml(nameOf(person))}</td>
-                    <td>${escapeHtml(dateUS(person.BirthDate))}</td>
-                    <td>${escapeHtml(person.BirthPlace || '')}</td>
-                    <td>${escapeHtml(dateUS(person.DeathDate))}</td>
+                    <td>${person.IsPrivate ? '' : escapeHtml(dateUS(person.BirthDate))}</td>
+                    <td>${person.IsPrivate ? '' : escapeHtml(person.BirthPlace || '')}</td>
+                    <td>${person.IsPrivate ? '' : escapeHtml(dateUS(person.DeathDate))}</td>
                     <td>${escapeHtml(tree.FamilyTreeCode)}</td>
                 </tr>
             `).join('')

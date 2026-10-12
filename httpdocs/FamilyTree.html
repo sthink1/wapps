@@ -430,41 +430,47 @@ function treeInstructionsHtml() {
 
 function personInstructionsHtml() {
     return `
-        <p><b>The Person button opens the Person Page.</b></p>
+        <p><b>The Person button opens the Person Page.</b> If the Person is private, a blue <b>Privacy Lock key</b> replaces the Person symbol. Click the key and enter that Person's privacy code. The code is required every time you open the private Person Page, including on a return visit or browser refresh.</p>
+        <p><b>Person Page illustration:</b> The yellow PERSON heading now includes GO PRIVATE and a privacy-status indicator. The example below shows a Person who is <b>Verified — Private</b> and whose privacy code has already been accepted.</p>
         <div class="sample mini-person-page">
             <div class="mini-section">
-                <div class="mini-section-title person-sample">PERSON ${miniTreeButton()}</div>
-                <div class="mini-person-top">
-                    <img class="photo" src="images/person-placeholder.svg" alt="">
-                    <div>
-                        <b>Sample Person</b><br>
-                        Born: 05/12/1968<br>
-                        Birth Place: Orlando, Florida<br>
-                        Current Home: Orlando, FL
-                        <div class="mini-button-row">
-                            <span class="mini-button">EDIT PERSON</span>
-                            <span class="mini-button danger">DELETE PERSON</span>
-                        </div>
+                <div class="mini-section-title person-sample" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                    PERSON ${miniTreeButton()}
+                    <span style="margin-left:auto;display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;font:13px Arial,sans-serif;">
+                        <label style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">GO PRIVATE <input type="checkbox" checked disabled style="width:auto;margin:0;" aria-label="Illustration: GO PRIVATE checked"></label>
+                        <span style="background:#fce4e4;color:#a51c16;border:1px solid #b42318;padding:3px 6px;font-weight:bold;">Verified — Private</span>
+                    </span>
+                </div>
+                <div style="font:12px Arial,sans-serif;padding:5px 8px;background:#fff3cd;line-height:1.45;">To GO PRIVATE, check GO PRIVATE. To GO PUBLIC, uncheck GO PRIVATE. Both privacy changes require approval through the verified primary Contact email.</div>
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 125px 120px;gap:10px;padding:8px;align-items:start;">
+                    <div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:5px 8px;font-size:12px;">
+                        <span>Person ID</span><strong>101</strong>
+                        <span>Gender</span><span>Female</span>
+                        <span>First Name</span><span>Sample</span>
+                        <span>Last Name</span><span>Person</span>
+                        <span>Born</span><span>05/12/1968</span>
+                        <span>Birth Place</span><span>Orlando, Florida</span>
+                        <span>Current Home</span><span>Orlando, FL</span>
+                        <span>FamilyTreeCode</span><span>FT-EXAMPLE</span>
+                        <div class="mini-button-row" style="grid-column:1/-1;"><span class="mini-button">EDIT PERSON</span><span class="mini-button danger">DELETE PERSON</span></div>
                     </div>
                     <div class="mini-action-stack">
-                        <div class="mini-button">CONTACT</div>
-                        <div class="mini-button">EVENT</div>
-                        <div class="mini-button">NETWORKING</div>
-                        <div class="mini-button">SEARCH NETWORKING</div>
+                        <span class="mini-button">CONTACT (1)</span>
+                        <span class="mini-button">EVENT (2)</span>
+                        <span class="mini-button">NETWORKING</span>
+                        <span class="mini-button">SEARCH NETWORKING</span>
                     </div>
+                    <div style="text-align:center;font-size:11px;"><img class="photo" style="width:100%;height:120px;" src="images/person-placeholder.svg" alt="Sample profile picture"><div>Profile Picture</div></div>
                 </div>
                 <div class="mini-life">
-                    <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br><b>Profile Picture</b></div>
                     <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 1</div>
                     <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 2</div>
                     <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 3</div>
                     <div class="mini-life-card"><img src="images/person-placeholder.svg" alt=""><br>Life Stage 4</div>
                 </div>
-                <div class="mini-button-row" style="padding:0 8px 8px;">
-                    <span class="mini-button">ADD PICTURE</span>
-                    <span class="mini-button danger">DELETE PICTURE</span>
-                </div>
+                <div class="mini-button-row" style="padding:0 8px 8px;"><span class="mini-button">ADD PICTURE</span><span class="mini-button danger">DELETE PICTURE</span></div>
             </div>
+            <div class="mini-section"><div class="mini-section-title gray">FAVORITE PETS - 4 Pet Limit</div><div class="mini-button-row" style="padding:6px;"><span class="mini-button">ADD PET</span><span class="mini-button">ADD PICTURE</span><span class="mini-button danger">DELETE PICTURE</span></div></div>
             <div class="mini-section">
                 <div class="mini-section-title gray">BIOLOGICAL PARENTS</div>
                 <table class="mini-table"><tr><th>Person</th><th>Tree</th><th>Gender</th><th>Age</th><th>Name</th></tr><tr><td>${miniPersonButton()}</td><td>${miniTreeButton()}</td><td>Female</td><td>78</td><td>Sample Parent</td></tr></table>
@@ -475,10 +481,11 @@ function personInstructionsHtml() {
             <div class="mini-section"><div class="mini-section-title gray">BIOLOGICAL CHILDREN</div><div class="mini-button-row" style="padding:6px;"><span class="mini-button">ADD BIOLOGICAL CHILD</span></div></div>
         </div>
         <ul>
-            <li><b>Person section:</b> Review the person's information. Use <b>Edit Person</b> to change it and <b>Delete Person</b> to delete the Person record. Use Contact and Event to work with those records. The Tree symbol opens the Ancestor Tree for this person.</li>
-            <li><b>Pictures:</b> One picture is the Profile Picture. Up to four additional pictures are intended to show the person at different stages of life. Placeholder images show where a picture has not yet been entered.</li>
-            <li><b>Biological Parents, Biological Siblings, Partners, and Biological Children:</b> Each section lists the related people and provides an Add button for adding the appropriate relationship.</li>
-            <li>Within relationship lists, click <b>Person</b> to open the relative's Person Page or <b>Tree</b> to view that relative as the focus person of the Ancestor Tree.</li>
+            <li><b>GO PRIVATE / GO PUBLIC:</b> Check GO PRIVATE to request privacy; uncheck it to request returning to public. Anyone who has opened the Person Page may submit the request. A verified primary Contact email recipient must approve the change within 24 hours. Until approval, the existing privacy setting remains in effect. Pending requests are displayed in yellow; approved private status is displayed in red. A public Person has no extra Public status label.</li>
+            <li><b>Privacy code:</b> To GO PRIVATE, choose and confirm a case-sensitive code of at least four characters, using letters, numbers, symbols, or any combination. Private Persons display a blue key instead of the Person symbol in Family Tree lists and ancestor displays. Every attempt to open their Person Page requires entering the code, and after successful entry the full page is displayed.</li>
+            <li><b>Person section:</b> Review the person's information. Use <b>EDIT PERSON</b> to change information and <b>DELETE PERSON</b> to delete the record. <b>CONTACT</b> and <b>EVENT</b> open those records. The Tree symbol opens the Ancestor Tree.</li>
+            <li><b>Pictures and pets:</b> The profile picture appears at the right of the Person details, with up to four additional life-stage pictures below. The FAVORITE PETS section follows the Person section and allows up to four pets.</li>
+            <li><b>Biological Parents, Biological Siblings, Partners, and Biological Children:</b> Each section shows related people and provides the relevant Add controls. Click a Person symbol to open a public relative's page, a blue key to unlock a private relative's page, or the Tree symbol to view that relative's Ancestor Tree.</li>
         </ul>`;
 }
 
@@ -670,7 +677,7 @@ function addPictureInstructionsHtml() {
 }
 
 const extraInstructions = {
-    privacy: ['Privacy Lock Instructions', '<p>The Privacy Lock symbol identifies privacy-related controls for a Person. Check the available privacy choices on the Person Page before changing or sharing information.</p>'],
+    privacy: ['Privacy Lock Instructions', '<p>When a Person is private, the blue key replaces their Person symbol. Family Tree members click the key and enter that Person’s code (at least four characters) each time they open the Person page. On the Person page, check GO PRIVATE to request privacy or uncheck it to GO PUBLIC. A verified primary Contact email must approve either change within 24 hours. Pending requests do not change existing access. The Private status appears in red. Contact an administrator for help recovering a lost key.</p>'],
     contact: ['Contact Instructions', contactInstructionsHtml()],
     event: ['Event Instructions', eventInstructionsHtml()],
     showHistory: ['Show History Instructions', showHistoryInstructionsHtml()],

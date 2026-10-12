@@ -19,6 +19,7 @@ const interestEarnedRoutes = require('./routes/interestEarned');
 const etfRoutes = require('./routes/etf');
 const budgetRoutes = require('./routes/budget');
 const familyTreeRoutes = require('./routes/familyTree');
+const ftPrivacy = require('./routes/ftPrivacy');
 const subscriptionRoutes = require('./routes/subscriptions');
 const notificationRoutes = require('./routes/notifications');
 const tnnaRoutes = require('./routes/tnna');
@@ -38,7 +39,7 @@ if (!fs.existsSync(logDirectory)) {
 app.use(cors({
   origin: ['http://localhost', 'http://localhost:8080', 'https://localhost', 'capacitor://localhost', 'https://wapps.helioho.st', 'https://wapps-ypez.onrender.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-FT-Page-Token'],
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -114,7 +115,12 @@ app.use('/familytree', (req, res, next) => {
   if (isEmailVerification) return familyTreeRoutes(req, res, next);
   next();
 });
-app.use('/familytree', authenticateToken, requireAppAccess('family_tree'), usageActivity('family_tree'), familyTreeRoutes);
+// Token-based approval must be reachable from email without a login. This is limited to one public endpoint.
+app.use('/familytree/privacy-verify', ftPrivacy.publicRouter);
+app.use('/familytree/privacy', authenticateToken, requireAppAccess('family_tree'), ftPrivacy.privateRouter);
+// Full Family Tree stays protected by existing auth and subscription access.
+app.use('/familytree', authenticateToken, requireAppAccess('family_tree'), usageActivity('family_tree'), ftPrivacy.protection, familyTreeRoutes);
+
 app.use('/etf', authenticateToken, requireAppAccess('etf_investing'), usageActivity('etf_investing'), etfRoutes);
 
 // Property Info is currently classified as Standard/local-low-cost.

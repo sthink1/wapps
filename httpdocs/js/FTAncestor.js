@@ -93,7 +93,7 @@ function homeOf(person) {
 }
 
 function openPerson(id) {
-    location.href = `FTPerson.html?PersonID=${encodeURIComponent(id)}&familyTreeCode=${encodeURIComponent(familyTreeCode)}`;
+    window.FTPrivacy.openPerson(id, familyTreeCode);
 }
 
 function makeFocus(id) {
@@ -102,6 +102,10 @@ function makeFocus(id) {
 
 function card(person, isFocus = false) {
     if (!person) return '<div class="ancestor-card empty"></div>';
+    if (person.IsPrivate) return `<div class="ancestor-card">
+      <div class="name">${escapeHtml(nameOf(person))}</div>
+      <div class="icon-row"><button class="icon-action person-link" data-id="${person.PersonID}" type="button" title="Privacy Lock"><img src="images/privacy-key.svg" alt="Privacy Lock"></button>
+      <button class="icon-action tree-link" data-id="${person.PersonID}" type="button" ${isFocus?'disabled':''}><img src="images/tree.svg" alt="Tree"></button></div></div>`;
     const photo = person.ProfileImageUrl
         ? safeImageUrl(person.ProfileImageUrl)
         : 'images/person-placeholder.svg';
@@ -119,6 +123,10 @@ function card(person, isFocus = false) {
 }
 
 function personTableRow(person) {
+    if (person.IsPrivate) return `<tr><td class="photo-cell"></td>
+    <td class="icon-cell"><button class="icon-action person-link" data-id="${person.PersonID}" type="button" title="Privacy Lock"><img src="images/privacy-key.svg" alt="Privacy Lock"></button></td>
+    <td class="icon-cell"><button class="icon-action tree-link" data-id="${person.PersonID}" type="button" title="View Ancestor Tree"><img src="images/tree.svg" alt="Tree"></button></td>
+    <td></td><td></td><td>${escapeHtml(nameOf(person))}</td></tr>`;
     const photo = person.ProfileImageUrl
         ? safeImageUrl(person.ProfileImageUrl)
         : 'images/person-placeholder.svg';
