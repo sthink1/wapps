@@ -120,11 +120,73 @@
             background-color: lightgray; min-height: 30px; padding-top: 5px;
             position: fixed; bottom: 0; width: 100%; text-align: center; z-index: 10;
         }
+        /* Development notices: large/visible to small/faint in one-second steps,
+           then back again. The fixed-height row prevents title movement. */
+        .development-notices {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            height: 30px;
+            margin: 0 0 10px;
+            color: #596574;
+        }
+
+        .development-notices span {
+            box-sizing: border-box;
+            width: 49%;
+            background-color: #ffe1e1;
+            border-radius: 4px;
+            padding: 4px 3px;
+            font-size: 20px;
+            line-height: 1.15;
+            font-weight: 800;
+            opacity: 1;
+            animation: development-notice-shrink 10s steps(1, end) infinite;
+        }
+
+        .development-notices span:first-child { text-align: left; }
+        .development-notices span:last-child { text-align: right; }
+
+        @keyframes development-notice-shrink {
+            0%, 100% { font-size: 20px; font-weight: 800; opacity: 1; }
+            10%, 90% { font-size: 18px; font-weight: 700; opacity: .82; }
+            20%, 80% { font-size: 16px; font-weight: 700; opacity: .64; }
+            30%, 70% { font-size: 14px; font-weight: 600; opacity: .46; }
+            40%, 60% { font-size: 12px; font-weight: 500; opacity: .28; }
+            50% { font-size: 10px; font-weight: 400; opacity: .12; }
+        }
+
+        @media (max-width: 520px) {
+            .development-notices { height: 26px; }
+            .development-notices span { animation-name: development-notice-shrink-mobile; }
+            @keyframes development-notice-shrink-mobile {
+                0%, 100% { font-size: 16px; font-weight: 800; opacity: 1; }
+                10%, 90% { font-size: 14.4px; font-weight: 700; opacity: .82; }
+                20%, 80% { font-size: 12.8px; font-weight: 700; opacity: .64; }
+                30%, 70% { font-size: 11.2px; font-weight: 600; opacity: .46; }
+                40%, 60% { font-size: 9.6px; font-weight: 500; opacity: .28; }
+                50% { font-size: 8px; font-weight: 400; opacity: .12; }
+            }
+        }
+
+        /* Animation intentionally remains enabled because this is an explicitly
+           requested animated status label. No reduced-motion override. */
+
+        /* Remove the h1's default top margin so the notice-to-title gap
+           is controlled solely by the 10px margin above. */
+        .development-notices + h1, .development-notices + h2, .development-notices + .property-header-title { margin-top: 0; }
+
+
 </style>
     <link rel="stylesheet" href="css/wa-buttons.css">
 </head>
 <body class="wa-raised-buttons">
     <div class="container">
+        <div class="development-notices" aria-label="Website development status">
+            <span>Under Construction</span>
+            <span>Development Stage</span>
+        </div>
         <h1>Verbal Town Notification</h1>
         <div class="button-group">
             <a href="home.html"><button>Home</button></a>
