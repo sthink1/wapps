@@ -1,6 +1,6 @@
 # CLAUDE.md – WonderfulApps Developer Onboarding Guide
 
-**Last updated:** October 9, 2026  
+**Last updated:** October 13, 2026  
 **Project:** WonderfulApps (WA)  
 **Database ground truth:** `wappsDump.sql`
 
@@ -1168,6 +1168,38 @@ Before changing an existing feature:
 ## 20. HTML Formatting Standard
 
 - All new or revised HTML files must be saved in readable, pretty-formatted form. Do not minify or compact HTML, CSS, or inline JavaScript. Formatting changes must preserve existing functionality, IDs, classes, event handlers, script references, and page structure.
+
+---
+
+
+## Family Tree Phase 1 and Phase 2 — October 2026 Implementation Record
+
+**Source of truth:** Google Drive current `httpdocs/`, `httpdocs/js/`, `routes/`, `server.js`, and `wappsDump.sql`. The phase headings here refer specifically to the October 10–12 Family Tree work, not older Family Networking or One Tree Merge development.
+
+### Phase 1 — Favorite Pets and introductory Family Tree labels
+
+- `home.html` Family Tree button includes **with Networking**, **Privacy Locks**, and **Favorite Pets**. Contact Us button includes **Suggestions, Comments, Inquiries**. Those introductory button/text adjustments require no database or backend migration.
+- `httpdocs/FTPerson.html` contains a **FAVORITE PETS** section between PERSON and BIOLOGICAL PARENTS; UI describes a **four-pet limit** and displays picture, birth/death, age, name/edit, and comment fields.
+- `httpdocs/js/FTPets.js` implements the pet-related client interactions; `routes/familyTree.js` contains the pet list/create/update/delete endpoints and picture upload/removal endpoints (`/persons/:id/pets` and `/persons/:id/pets/:petID/picture`).
+- `FTPetT` in `wappsDump.sql` stores `PersonID`, pet name, birth/death details, a **varchar(500)** comment, picture storage key, and auditing fields. The interface limits pictures to **one per pet** and comments to 500 characters.
+- **Follow-up verification:** exercise pet associations and picture-storage lifecycle across Person moves, tree splits, merges, and deletes; do not claim these pathways fully tested based solely on the pet CRUD implementation.
+
+### Phase 2 — Person Privacy Locks
+
+- The controls use **GO PRIVATE** as a toggle; unchecking means **GO PUBLIC**. Avoid adding a separate `Public` checkbox or contradicting the user-facing instructions.
+- The request flow in `httpdocs/js/FTPrivacy.js` and `routes/ftPrivacy.js` supports requesting a privacy-state change, approval/decline by the verified primary contact email, and private-person key entry. Privacy does not change just because the request was submitted.
+- Approval requests have a **24-hour** expiration in the current route. A valid private key is required for **each fresh private Person-page opening**; a prior unlock is not a permanent bypass. The route creates a per-visit page token, and server-side protected data access must enforce that token rather than trusting client controls or a direct URL.
+- An administrator exception exists in the current backend; maintain it without bypassing the normal protections for other users. Incorrect key attempts are logged.
+- Current implementation files include `routes/ftPrivacy.js`, `httpdocs/js/FTPrivacy.js`, `httpdocs/FTPrivacyVerification.html`, `httpdocs/FTPerson.html`, and `server.js` routing.
+- The schema already includes `FTPersonPrivacyT`, `FTPrivacyRequestT`, `FTPrivacyAttemptT`, and `FTPrivacyUnlockT`. **No SQL schema changes are requested or generated for this documentation update.** Do not store private keys in a browser or expose them through unrestricted endpoints; verify this remains true when changing the implementation.
+- **Test checklist:** anonymous/direct URL behavior, signed-in non-administrator access, private key rejection/acceptance, close-and-reopen requiring a fresh code, request approval/decline/expiration, protected API calls without a valid page token, administrator access, and person/tree ownership rules. Existing code evidence does not substitute for completed end-to-end test results.
+
+### Shared animated development notices (October 13)
+
+- The accepted Draft 6 design places **Under Construction** at left and **Development Stage** at right in lightly red-backed labels above the existing page title.
+- CSS-only, **10-second repeating stepped animation**: initially large/bold/visible; shrinks and fades during the first five seconds, then grows/brightens over the next five. Mobile labels scale smaller; hold header geometry stable and keep the gap immediately below the labels tight (Draft 6 corrected excess space).
+- `home.html` was the approved prototype; the same design was prepared for `weighIn.html`, `amortization.html`, `propertyInfo.html`, `InterestEarned.html`, `TownNotice.html`, `etf.html`, `budget.html`, `FamilyTree.html`, `FamilyTree2.html`, `subscription.html`, `notificationPreferences.html`, and `ContactUs.html`.
+- Changes are presentation-only. Preserve existing main titles, form controls, JavaScript and routing; do not infer production deployment from prepared replacement files alone.
 
 ---
 
