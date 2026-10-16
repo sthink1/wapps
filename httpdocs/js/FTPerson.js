@@ -542,7 +542,7 @@ async function saveNewPicture() {
     formData.append('caption', $('newPictureCaption').value);
 
     const response = await fetch(
-        `${BASE_URL}/familytree/persons/${personID}/pictures`,
+        `${BASE_URL}/familytree/persons/${personID}/pictures?familyTreeCode=${encodeURIComponent(familyTreeCode)}`,
         {
             method: 'POST',
             headers: {
