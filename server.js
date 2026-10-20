@@ -26,6 +26,9 @@ const tnnaRoutes = require('./routes/tnna');
 const { authenticateToken, requireAppAccess } = require('./middleware/subscriptionAccess');
 const usageActivity = require('./middleware/usageActivity');
 
+const { pool: rateCleanupPool } = require('./dbConnection');
+const resetRateCleanup = require('./services/passwordResetRateCleanup');
+
 const app = express();
 const port = process.env.PORT || 8080;
 
@@ -147,6 +150,8 @@ app.use((err, req, res, next) => {
 
 // Start the server
 app.listen(port, () => {
+  // Daily, bounded password-reset counter maintenance (test-only Stage 6A).
+  resetRateCleanup.start(rateCleanupPool, logger);
   logger.info(`Server running at http://localhost:${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Server is running on port ${port}`);

@@ -263,7 +263,30 @@ const sendFamilyTreeNotification = async ({ email, subject, message, unsubscribe
   });
 };
 
+
+async function sendPasswordResetLink({email,username,resetUrl}) {
+  if(!email||!resetUrl)throw new Error('Password reset delivery information missing');
+  const {error}=await resend.emails.send({
+    from: `${process.env.MAIL_FROM_NAME} <${process.env.MAIL_FROM_ADDRESS}>`,
+    to: email,
+    subject: 'Wonderful Apps — Reset your password',
+    text: `Hello ${username},\n\nReset your password with this link (valid for 30 minutes):\n${resetUrl}\n\nIf you did not request this, ignore the message.`,
+    html: `<p>Hello ${escapeHtml(username)},</p><p>Use this link within 30 minutes to reset your password:</p><p><a href="${escapeHtml(resetUrl)}">Reset Password</a></p><p>If you did not request this, ignore the message.</p>`
+  });
+  if(error)throw Error('Unable to send password reset email');
+}
+async function sendPasswordChangedNotice({email,username}){
+  const {error}=await resend.emails.send({
+    from: `${process.env.MAIL_FROM_NAME} <${process.env.MAIL_FROM_ADDRESS}>`,
+    to:email,subject:'Wonderful Apps — Password changed',
+    text:`Hello ${username},\n\nYour Wonderful Apps password was changed. If you did not make this change, contact support immediately.`,
+    html:`<p>Hello ${escapeHtml(username)},</p><p>Your Wonderful Apps password was changed. If this was not you, contact support immediately.</p>`
+  });
+  if(error)throw Error('Unable to send password change notice');
+}
 module.exports = {
+  sendPasswordResetLink,
+  sendPasswordChangedNotice,
   sendEmail,
   sendVerificationCode,
   sendNotificationEmail,

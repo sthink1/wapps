@@ -6,8 +6,10 @@ const { pool } = require('../dbConnection');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { handleDbError } = require('../utils');
-const { sendVerificationCode } = require('../send_email');
+const { sendVerificationCode, sendPasswordResetLink, sendPasswordChangedNotice } = require('../send_email');
 const crypto = require('crypto');
+const sessions = require('../services/browserSession');
+const auth = require('../middleware/auth');
 const { getOrCreateDevelopmentTrial } = require('../services/subscriptionService');
 const { getActiveConsentVersion, logConsent } = require('../services/notificationService');
 
@@ -177,6 +179,7 @@ router.post('/register', [
             ]
         );
 
+        await c.query('INSERT INTO UserSecurityT (UserID,SecurityVersion,UpdatedAt) VALUES (?,1,UTC_TIMESTAMP())',[userID]);
         await c.commit();
 
         // Registration does not log the user in. The user must complete the
@@ -240,12 +243,46 @@ router.post('/login', async (req, res) => {
     }
 });
 
-router.post('/logout', (req, res) => {
-    res.status(200).json({ message: 'Logged out successfully' });
+router.post('/logout', auth, async (req,res)=>{
+  if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});
+  try { await sessions.revokeCurrent(pool,req.user);sessions.clearCookie(res,req);res.json({message:'Logged out successfully'}); }
+  catch(e){handleDbError(e,res,'Error logging out');}
 });
 
+router.post('/refresh-session',async(req,res)=>{
+  try { sessions.requireOrigin(req);const result=await sessions.rotate(pool,sessions.cookie(req));sessions.setCookie(res,req,result.refresh.secret,result.refresh.expires);res.set('Cache-Control','no-store');res.json({token:result.token}); }
+  catch(e){res.status(e.status||503).json({error:e.status?e.message:'AUTH_SERVICE_UNAVAILABLE'});}
+});
+
+router.get('/session-status',auth,(req,res)=>{
+  if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});res.set('Cache-Control','no-store');res.json({authenticated:true,userId:req.user.userId,username:req.user.username,client:req.user.client});});
+
+router.post('/change-password',auth,async(req,res)=>{
+  if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});
+  try {sessions.requireOrigin(req);}catch(e){return res.status(403).json({error:'ORIGIN_NOT_ALLOWED'});}
+  const {currentPassword,newPassword,confirmPassword}=req.body||{};
+  if(typeof currentPassword!=='string'||typeof newPassword!=='string'||newPassword.length<8||newPassword!==confirmPassword)
+    return res.status(400).json({error:'Current password and matching new password of at least eight characters required.'});
+  const c=await pool.getConnection();
+  try {
+    await c.beginTransaction();
+    const [users]=await c.query('SELECT PasswordHash FROM UsersT WHERE UserID=? LIMIT 1 FOR UPDATE',[req.user.userId]);
+    if(!users.length||!(await bcrypt.compare(currentPassword,users[0].PasswordHash))){await c.rollback();return res.status(401).json({error:'Incorrect current password.'});}
+    if(await bcrypt.compare(newPassword,users[0].PasswordHash)){await c.rollback();return res.status(400).json({error:'New password must differ from current password.'});}
+    const passwordHash=await bcrypt.hash(newPassword,10);
+    await c.query('UPDATE UsersT SET PasswordHash=? WHERE UserID=?',[passwordHash,req.user.userId]);
+    await sessions.revokeAll(c,req.user.userId);
+    await c.commit();sessions.clearCookie(res,req);res.set('Cache-Control','no-store');
+    try{const [info]=await pool.query('SELECT Email,UserName FROM UsersT WHERE UserID=?',[req.user.userId]);if(info.length)await sendPasswordChangedNotice({email:info[0].Email,username:info[0].UserName});}
+    catch(mailErr){console.error('Password-change confirmation email failed:',mailErr.message);}
+    res.json({message:'Password changed. Please log in again.'});
+  } catch(e){try{await c.rollback();}catch(_){}handleDbError(e,res,'Error changing password');}
+  finally{c.release();}
+});
+
+
 router.post('/verify-code', async (req, res) => {
-    const { tempToken, verificationCode } = req.body;
+    const { tempToken, verificationCode, keepMeLoggedIn = false } = req.body;
 
     if (!tempToken || !verificationCode) {
         return res.status(400).json({ error: 'Temporary token and verification code are required.(be)' });
@@ -271,38 +308,33 @@ router.post('/verify-code', async (req, res) => {
         }
 
         // Check if code matches
-        if (verificationCode !== verification.VerificationCode) {
+        if (String(verificationCode) !== String(verification.VerificationCode)) {
             return res.status(401).json({ error: 'Invalid verification code.(be)' });
         }
 
-        // Code is valid - mark as verified
-        await pool.query(
-            'UPDATE LoginVerificationT SET IsVerified = 1 WHERE VerificationID = ?',
-            [verification.VerificationID]
-        );
-
-        // Get user info
-        const [users] = await pool.query(
-            'SELECT UserID, UserName FROM UsersT WHERE UserID = ?',
-            [verification.UserID]
-        );
-
-        if (users.length === 0) {
-            return res.status(401).json({ error: 'User not found.(be)' });
-        }
-
-        const user = users[0];
-
-        // On the first successful login only, create the user's 30-day
-        // Platinum development entitlement. Existing subscriptions are never reset.
+        // Preserve subscription entitlements and original redirect behavior.
+        const [users] = await pool.query('SELECT UserID, UserName FROM UsersT WHERE UserID = ?', [verification.UserID]);
+        if (users.length === 0) return res.status(401).json({ error: 'User not found.(be)' });
+        const user=users[0];
         const entitlement = await getOrCreateDevelopmentTrial(user.UserID);
 
-        // Generate final JWT token with 8-hour expiration
-        const token = jwt.sign(
-            { userId: user.UserID, username: user.UserName },
-            process.env.JWT_SECRET,
-            { expiresIn: '8h' }
-        );
+        // Single transaction: consume the email code and create session together.
+        const conn=await pool.getConnection();let issued;
+        try {
+          await conn.beginTransaction();
+          const [used]=await conn.query(
+            'UPDATE LoginVerificationT SET IsVerified=1 WHERE VerificationID=? AND IsVerified=0 AND ExpiresAt>UTC_TIMESTAMP() AND VerificationCode=?',
+            [verification.VerificationID,String(verificationCode)]
+          );
+          if(used.affectedRows!==1){const e=Error('VERIFICATION_ALREADY_USED_OR_EXPIRED');e.status=401;throw e;}
+          issued=await sessions.create(conn,user,keepMeLoggedIn===true);
+          await conn.commit();
+        }catch(e){try{await conn.rollback();}catch(_){}if(e.status)return res.status(e.status).json({error:e.message});throw e;}
+        finally{conn.release();}
+        const token=issued.token;
+        if(issued.refresh){sessions.setCookie(res,req,issued.refresh.secret,issued.refresh.expires);}
+        else sessions.clearCookie(res,req);
+        res.set('Cache-Control','no-store');
 
         // First-time users see the subscription page so the development entitlement
         // is explained. Expired users also go there so they can enter a promo code.
@@ -321,33 +353,97 @@ router.post('/verify-code', async (req, res) => {
     }
 });
 
-router.get('/is-admin', (req, res) => {
-    try {
-        // Extract token from Authorization header
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-        
-        if (!token) {
-            return res.status(401).json({ error: 'Access denied. No token provided.' });
-        }
 
-        // Verify and decode the token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
-        // Get admin username from environment variables
-        const adminUsername = process.env.ADMIN_USERNAME;
-        
-        if (!adminUsername) {
-            return res.status(500).json({ error: 'Admin username not configured.' });
-        }
-        
-        // Check if the current user is the admin
-        const isAdmin = decoded.username === adminUsername;
-        
-        res.status(200).json({ isAdmin, username: decoded.username });
-    } catch (error) {
-        console.error('Error checking admin status:', error.message);
-        res.status(401).json({ error: 'Invalid token or token verification failed.' });
+// Stage 6A — shared MySQL 5.5-compatible limiter; no in-memory counters.
+const resetLimiter = require('../services/passwordResetLimiter');
+function resetHash(v){return crypto.createHash('sha256').update(v,'utf8').digest('hex');}
+const GENERIC_RESET_MESSAGE='If an account matches, password reset instructions will be sent.';
+router.post('/forgot-password',async(req,res)=>{
+  res.set('Cache-Control','no-store');
+  try {sessions.requireOrigin(req);}catch(_){return res.status(403).json({error:'ORIGIN_NOT_ALLOWED'});}
+  const email=String(req.body?.email||'').trim().toLowerCase();
+  if(!email||email.length>254)return res.status(200).json({message:GENERIC_RESET_MESSAGE});
+  const c=await pool.getConnection();let mail=null;
+  try {
+    await c.beginTransaction();
+    // Count requests even for unknown email addresses; keys never store raw PII.
+    // Keep counter increments committed even for blocked requests.
+    const allowed=await resetLimiter.allow(c,email,req.ip||req.socket?.remoteAddress||'unknown');
+    if(!allowed){
+      await c.commit();
+      return res.status(200).json({message:GENERIC_RESET_MESSAGE});
     }
+    const [users]=await c.query('SELECT UserID,UserName,Email FROM UsersT WHERE Email=? LIMIT 1 FOR UPDATE',[email]);
+    if(users.length){
+      const user=users[0];const secret=crypto.randomBytes(48).toString('hex');
+      await c.query('UPDATE PasswordResetT SET RevokedAt=UTC_TIMESTAMP() WHERE UserID=? AND UsedAt IS NULL AND RevokedAt IS NULL',[user.UserID]);
+      await c.query('INSERT INTO PasswordResetT (UserID,TokenHash,CreatedAt,ExpiresAt,UsedAt,RevokedAt) VALUES (?,?,UTC_TIMESTAMP(),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 30 MINUTE),NULL,NULL)',[user.UserID,resetHash(secret)]);
+      mail={email:user.Email,username:user.UserName,secret};
+    }
+    await c.commit();
+  }catch(e){try{await c.rollback();}catch(_){}return handleDbError(e,res,'Error preparing password reset');}
+  finally{c.release();}
+  if(mail){
+    try{
+      const base=process.env.APP_PUBLIC_ORIGIN;
+      if(!base||!/^https?:\/\//.test(base))throw new Error('APP_PUBLIC_ORIGIN not configured');
+      const url=new URL('/forgotPassWord.html',base);url.searchParams.set('token',mail.secret);
+      await sendPasswordResetLink({email:mail.email,username:mail.username,resetUrl:url.toString()});
+    }catch(e){console.error('Password reset delivery failed:',e.message);}
+  }
+  res.json({message:GENERIC_RESET_MESSAGE});
+});
+
+// Read-only status check for a link opened from the password-reset email.
+// Never consumes a token, changes a password, or discloses account details.
+router.post('/validate-reset-token',async(req,res)=>{
+  res.set('Cache-Control','no-store');
+  try{sessions.requireOrigin(req);}catch(_){return res.status(403).json({error:'ORIGIN_NOT_ALLOWED'});}
+  const token=req.body?.token;
+  if(typeof token!=='string'||!/^[0-9a-f]{96}$/.test(token))
+    return res.status(401).json({valid:false});
+  try{
+    const [rows]=await pool.query(`SELECT PasswordResetID FROM PasswordResetT
+      WHERE TokenHash=? AND UsedAt IS NULL AND RevokedAt IS NULL
+      AND ExpiresAt>UTC_TIMESTAMP() LIMIT 1`,[resetHash(token)]);
+    if(!rows.length)return res.status(401).json({valid:false});
+    return res.json({valid:true});
+  }catch(e){return handleDbError(e,res,'Error validating password reset link');}
+});
+
+router.post('/reset-password',async(req,res)=>{
+  res.set('Cache-Control','no-store');
+  try {sessions.requireOrigin(req);}catch(_){return res.status(403).json({error:'ORIGIN_NOT_ALLOWED'});}
+  const {token,newPassword,confirmPassword}=req.body||{};
+  if(typeof token!=='string'||!/^[0-9a-f]{96}$/.test(token)||typeof newPassword!=='string'||newPassword.length<8||newPassword!==confirmPassword)
+    return res.status(400).json({error:'Invalid reset link or password confirmation.'});
+  const c=await pool.getConnection();let userEmail=null;
+  try{
+    await c.beginTransaction();
+    const [rows]=await c.query(`SELECT p.PasswordResetID,p.UserID,u.Email,u.UserName,u.PasswordHash
+       FROM PasswordResetT p JOIN UsersT u ON u.UserID=p.UserID
+       WHERE p.TokenHash=? AND p.UsedAt IS NULL AND p.RevokedAt IS NULL AND p.ExpiresAt>UTC_TIMESTAMP() LIMIT 1 FOR UPDATE`,[resetHash(token)]);
+    if(!rows.length){await c.rollback();return res.status(401).json({error:'RESET_EXPIRED_OR_USED'});}
+    const row=rows[0];
+    if(await bcrypt.compare(newPassword,row.PasswordHash)){await c.rollback();return res.status(400).json({error:'New password must differ from current password.'});}
+    const passwordHash=await bcrypt.hash(newPassword,10);
+    await c.query('UPDATE UsersT SET PasswordHash=? WHERE UserID=?',[passwordHash,row.UserID]);
+    await c.query('UPDATE PasswordResetT SET UsedAt=UTC_TIMESTAMP() WHERE PasswordResetID=?',[row.PasswordResetID]);
+    await c.query('UPDATE PasswordResetT SET RevokedAt=UTC_TIMESTAMP() WHERE UserID=? AND UsedAt IS NULL AND RevokedAt IS NULL',[row.UserID]);
+    await sessions.revokeAll(c,row.UserID);
+    await c.commit();userEmail={email:row.Email,username:row.UserName};
+  }catch(e){try{await c.rollback();}catch(_){}return handleDbError(e,res,'Error resetting password');}
+  finally{c.release();}
+  sessions.clearCookie(res,req);
+  try{await sendPasswordChangedNotice(userEmail);}catch(e){console.error('Password change notice failed:',e.message);}
+  res.json({message:'Password reset successful. Please log in again.'});
+});
+
+router.get('/is-admin',auth,(req,res)=>{
+  if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});
+  const adminUsername=process.env.ADMIN_USERNAME;
+  if(!adminUsername)return res.status(500).json({error:'Admin username not configured.'});
+  res.json({isAdmin:req.user.username===adminUsername,username:req.user.username});
 });
 
 module.exports = router;

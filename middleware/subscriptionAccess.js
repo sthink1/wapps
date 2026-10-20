@@ -8,17 +8,8 @@ function isAdminUser(user) {
     return Number(user.userId) === 1 || (adminUsername && username === adminUsername);
 }
 
-function authenticateToken(req, res, next) {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'Access denied. No token provided.' });
-
-    try {
-        req.user = jwt.verify(token, process.env.JWT_SECRET);
-        next();
-    } catch (error) {
-        return res.status(401).json({ error: 'Invalid or expired login token.' });
-    }
-}
+const auth = require('./auth');
+function authenticateToken(req,res,next){return auth(req,res,()=>{if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});next();});}
 
 function requireAppAccess(appKey) {
     return async (req, res, next) => {

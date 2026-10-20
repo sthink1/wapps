@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { pool } = require('../dbConnection');
+const {securityVersion}=require('../services/browserSession');
 const auth = require('../middleware/auth');
 const { handleDbError } = require('../utils');
 const { sendNotificationEmail } = require('../send_email');
@@ -26,9 +27,9 @@ function refreshExpiry() {
     return new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000);
 }
 
-function createAccessToken(user) {
+function createAccessToken(user, version) {
     return jwt.sign(
-        { userId: user.UserID, username: user.UserName, client: 'tnna' },
+        { userId: user.UserID, username: user.UserName, client: 'tnna', securityVersion:version },
         process.env.JWT_SECRET,
         { expiresIn: ACCESS_TOKEN_TTL }
     );
@@ -212,7 +213,7 @@ router.post('/verify-code', async (req, res) => {
         });
 
         const refreshToken = await issueRefreshToken(c, user.UserID, deviceId);
-        const accessToken = createAccessToken(user);
+        const accessToken = createAccessToken(user,await securityVersion(c,user.UserID));
         await c.commit();
 
         const version = await getCurrentVersion();
@@ -299,7 +300,7 @@ router.post('/refresh', async (req, res) => {
         });
 
         const rotatedRefreshToken = await issueRefreshToken(c, row.UserID, deviceId);
-        const accessToken = createAccessToken({ UserID: row.UserID, UserName: row.UserName });
+        const accessToken = createAccessToken({ UserID: row.UserID, UserName: row.UserName },await securityVersion(c,row.UserID));
         await c.commit();
 
         res.json({

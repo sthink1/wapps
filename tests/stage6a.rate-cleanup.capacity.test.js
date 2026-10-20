@@ -1,0 +1,31 @@
+'use strict';
+const assert = require('node:assert/strict');
+if (process.env.DB_NAME !== 'sql5838929' || process.env.NODE_ENV === 'production') throw Error('Test DB required');
+const {cleanupOnce,DELETE_SQL,BATCH,MAX_BATCHES} = require('../services/passwordResetRateCleanup');
+const quiet={info(){},error(){}};
+assert.equal(BATCH,250);
+assert.equal(MAX_BATCHES,12);
+assert.match(DELETE_SQL,/WindowStart\s*<\s*DATE_SUB\(UTC_TIMESTAMP\(\),\s*INTERVAL 48 HOUR\)/i);
+assert.match(DELETE_SQL,/ORDER BY WindowStart ASC LIMIT 250/i);
+async function run(){
+  let calls=0;
+  const small=await cleanupOnce({query:async()=>{calls++;return [{affectedRows: calls===1?250:33}]}},quiet);
+  assert.deepEqual(small,{ok:true,deleted:283,batches:2,mayHaveMore:false});
+  assert.equal(calls,2);
+  console.log('PASS backlog of 283: two bounded batches and stop.');
+  calls=0;
+  const full=await cleanupOnce({query:async()=>{calls++;return [{affectedRows:250}]}},quiet);
+  assert.deepEqual(full,{ok:true,deleted:3000,batches:12,mayHaveMore:true});
+  assert.equal(calls,12);
+  console.log('PASS large backlog: capped at 12 queries / 3,000 deletions per run.');
+  calls=0;
+  const empty=await cleanupOnce({query:async()=>{calls++;return [{affectedRows:0}]}},quiet);
+  assert.equal(empty.deleted,0);assert.equal(calls,1);
+  console.log('PASS empty backlog: one query.');
+  calls=0;
+  const failed=await cleanupOnce({query:async()=>{calls++;if(calls===2)throw Error('injected outage');return [{affectedRows:250}]}},quiet);
+  assert.equal(failed.ok,false);assert.equal(failed.deleted,250);assert.equal(calls,2);
+  console.log('PASS mid-run database error: returns failure and preserves accurate partial count.');
+  console.log('LIMITATION: unit tests use a simulated DB; live SQL deletion not yet verified.');
+}
+run().catch(e=>{console.error(e);process.exitCode=1});

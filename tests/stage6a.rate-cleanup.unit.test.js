@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict');
+assert.equal(process.env.DB_NAME,'sql5838929');
+const cleanup=require('../services/passwordResetRateCleanup');
+(async()=>{
+  assert.match(cleanup.DELETE_SQL,/WindowStart < DATE_SUB\(UTC_TIMESTAMP\(\), INTERVAL 48 HOUR\)/);
+  assert.match(cleanup.DELETE_SQL,/ORDER BY WindowStart ASC LIMIT 250/);
+  console.log('PASS SQL: only counters older than 48 hours, bounded to 250 indexed rows per run.');
+  let calls=0;
+  const info=[];const errors=[];
+  let res=await cleanup.cleanupOnce({query:async(q)=>{calls++;assert.equal(q,cleanup.DELETE_SQL);return [{affectedRows:17}]}},{info:(x)=>info.push(x)});
+  assert.deepEqual(res,{ok:true,deleted:17});assert.equal(calls,1);
+  console.log('PASS cleanup: one bounded DELETE, affected rows reported.');
+  res=await cleanup.cleanupOnce({query:async()=>{throw Error('simulated outage')}},{error:(...a)=>errors.push(a)});
+  assert.equal(res.ok,false);assert.equal(errors.length,1);
+  console.log('PASS failure handling: DB outage reported, no crash and no rate-limit bypass.');
+  assert.equal(cleanup.DAY_MS,86400000);assert.equal(cleanup.START_DELAY_MS,60000);
+  console.log('PASS timing configuration: first run delayed one minute, recurring daily.');
+  console.log('LIMITATION: unit tests use mock pool; no actual database deletion in this test.');
+})().catch(e=>{console.error('FAIL',e);process.exitCode=1});
