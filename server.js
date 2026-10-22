@@ -1,5 +1,7 @@
 // Load environment variables
 require('dotenv').config();
+// Test-only Group 0d guard: execute before importing any routes or opening MySQL.
+const stage6Env = require('./services/stage6Environment');
 
 // Import required modules
 const express = require('express');
@@ -26,7 +28,7 @@ const tnnaRoutes = require('./routes/tnna');
 const { authenticateToken, requireAppAccess } = require('./middleware/subscriptionAccess');
 const usageActivity = require('./middleware/usageActivity');
 
-const { pool: rateCleanupPool } = require('./dbConnection');
+const { pool: rateCleanupPool, ready: dbReady } = require('./dbConnection');
 const resetRateCleanup = require('./services/passwordResetRateCleanup');
 
 const app = express();
@@ -39,10 +41,18 @@ if (!fs.existsSync(logDirectory)) {
 }
 
 // Middleware Configuration
-app.use(cors({
-  origin: ['http://localhost', 'http://localhost:8080', 'https://localhost', 'capacitor://localhost', 'https://wapps.helioho.st', 'https://wapps-ypez.onrender.com'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-FT-Page-Token'],
+// Existing public/native CORS origins remain readable, but credentialed browser
+// requests are authorized only from the ONE explicitly configured WA origin.
+app.use(cors((req, callback) => {
+  const origin = req.get('Origin');
+  const browserAllowed = Boolean(origin && stage6Env.current.allowedOrigins.includes(origin));
+  const legacyAllowed = Boolean(origin && stage6Env.LEGACY_CORS_ORIGINS.includes(origin));
+  callback(null, {
+    origin: browserAllowed || legacyAllowed ? origin : false,
+    credentials: browserAllowed,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-FT-Page-Token'],
+  });
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -148,12 +158,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start the server
-app.listen(port, () => {
-  // Daily, bounded password-reset counter maintenance (test-only Stage 6A).
-  resetRateCleanup.start(rateCleanupPool, logger);
-  logger.info(`Server running at http://localhost:${port}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Server is running on port ${port}`);
-  console.log(`Server logs are located at: ${logDirectory}`);
+// Do not listen or start maintenance until connected DB identity and UTC are proven.
+async function start() {
+  await dbReady;
+  await stage6Env.verifyDatabaseIdentity(rateCleanupPool);
+  app.listen(port, () => {
+    resetRateCleanup.start(rateCleanupPool, logger);
+    logger.info(`Server running at http://localhost:${port} (WA_ENV=${stage6Env.current.mode}; test DB verified)`);
+    console.log(`Stage 6 environment: ${stage6Env.current.mode}; test DB verified`);
+  });
+}
+start().catch(err => {
+  console.error(`Stage 6 startup refused: ${err.message}`);
+  rateCleanupPool.end().catch(()=>{}).finally(()=>{ process.exitCode=1; });
 });

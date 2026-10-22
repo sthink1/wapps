@@ -39,23 +39,19 @@ pool.on('connection', (connection) => {
     });
 });
 
-// Test the database connection and confirm its session time zone.
-(async () => {
+// Stage 6B Group 0d: startup waits for this identity check before accepting HTTP.
+const ready = (async () => {
+    const connection = await pool.getConnection();
     try {
-        const connection = await pool.getConnection();
         const [[timeZoneRow]] = await connection.query(
             "SELECT @@session.time_zone AS SessionTimeZone, NOW() AS SessionNow, UTC_TIMESTAMP() AS UtcNow"
         );
         if (timeZoneRow.SessionTimeZone !== '+00:00') {
-            connection.release();
             throw new Error(`MySQL session time zone is ${timeZoneRow.SessionTimeZone}, expected +00:00.`);
         }
         logger.info('Connected to the MySQL database with UTC session time.');
-        connection.release();
-    } catch (err) {
-        logger.error('Error connecting to the MySQL database: ' + err.message);
-        process.exit(1);
-    }
+        return timeZoneRow;
+    } finally { connection.release(); }
 })();
 
 // Log pool statistics every 5 minutes (simplified)
@@ -108,5 +104,6 @@ async function getNextUserSpecificID(userId, tableName, columnName) {
 
 module.exports = {
     pool,
+    ready,
     getNextUserSpecificID
 };

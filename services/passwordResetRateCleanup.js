@@ -1,8 +1,6 @@
 'use strict';
-// Stage 6A cleanup — test environment only; keep production unchanged.
-if (process.env.DB_NAME !== 'sql5838929' || process.env.NODE_ENV === 'production') {
-  throw new Error('Reset cleanup restricted to nonproduction sql5838929');
-}
+// Fail closed unless the explicit Group 0d test-only environment contract passes.
+require('./stage6Environment');
 const DAY_MS = 24 * 60 * 60 * 1000;
 const START_DELAY_MS = 60 * 1000;
 const BATCH = 250;

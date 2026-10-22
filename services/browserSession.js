@@ -1,8 +1,5 @@
 'use strict';
-// Test-only package: production credentials are deliberately rejected.
-if (process.env.DB_NAME !== 'sql5838929') {
-  throw new Error('Stage 6A local-testing package is restricted to test database sql5838929');
-}
+const {current: stage6Env} = require('./stage6Environment');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const ACCESS_MS = 8*60*60*1000;
@@ -14,19 +11,16 @@ const newSecret = () => crypto.randomBytes(48).toString('hex');
 const nowDate = () => new Date();
 const soonest = (a,b) => new Date(Math.min(a.getTime(),b.getTime()));
 function cookieOptions(req, maxAge) {
-  return { httpOnly:true, secure: process.env.NODE_ENV === 'production', sameSite:'lax', path:'/users', ...(maxAge===undefined?{}:{maxAge}) };
+  return { httpOnly:true, secure: stage6Env.secureCookie, sameSite:'lax', path:'/users', ...(maxAge===undefined?{}:{maxAge}) };
 }
 function setCookie(res,req,secret,expires) { res.cookie(COOKIE, secret, cookieOptions(req,Math.max(0,expires-Date.now()))); }
 function clearCookie(res,req) { res.clearCookie(COOKIE,cookieOptions(req)); }
 function cookie(req) { const m=(req.headers.cookie||'').match(/(?:^|;\s*)wa_refresh=([a-f0-9]{96})(?:;|$)/);return m?m[1]:null; }
 function requireOrigin(req) {
-  const origin=req.get('Origin');
-  if (!origin) { const e=new Error('ORIGIN_REQUIRED');e.status=403;throw e; }
-  const expected=`${req.protocol}://${req.get('host')}`;
-  // Render terminates TLS upstream: deployed host is HTTPS even if local proxy connection is HTTP.
-  const deployExpected=`https://${req.get('host')}`;
-  if (origin !== expected && !(process.env.NODE_ENV==='production' && origin===deployExpected)) {
-    const e=new Error('ORIGIN_NOT_ALLOWED');e.status=403;throw e;
+  const origin = req.get('Origin');
+  if (!origin) { const e=Error('ORIGIN_REQUIRED');e.status=403;throw e; }
+  if (origin !== stage6Env.publicOrigin) {
+    const e=Error('ORIGIN_NOT_ALLOWED');e.status=403;throw e;
   }
 }
 async function securityVersion(c,userId) {

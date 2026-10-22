@@ -1,10 +1,7 @@
 'use strict';
 const crypto=require('crypto');
-// Testing only. Production rollout requires removing the separate Stage 6A
-// DB guard in browserSession.js and validating proxy/IP settings.
-if(process.env.DB_NAME!=='sql5838929'||process.env.NODE_ENV==='production') {
-  throw Error('Password reset limiter is restricted to local sql5838929 testing');
-}
+// Fail closed unless the explicit Group 0d test-only environment contract passes.
+require('./stage6Environment');
 const EMAIL_LIMIT=5;
 const IP_LIMIT=20;
 // Conservative starting point for WA; this shared ceiling is subject to
