@@ -432,7 +432,8 @@
 
         <div class="button-group">
             <a href="login.html"><button>Login</button></a>
-            <a href="register.html"><button>Register</button></a>
+            <a href="register.html"><button>Create Account</button></a>
+            <a id="changePasswordLink" href="changePassword.html" style="display:none"><button type="button">Change Password</button></a>
             <button id="logoutBtn">Logout</button>
         </div>
 
@@ -1324,6 +1325,7 @@
                         'userDisplay'
                     );
 
+                document.getElementById('changePasswordLink').style.display = token ? '' : 'none';
                 if (token) {
                     const decodedToken =
                         getCurrentUser();

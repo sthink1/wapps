@@ -9,6 +9,7 @@ const { handleDbError } = require('../utils');
 const { sendVerificationCode, sendPasswordResetLink, sendPasswordChangedNotice } = require('../send_email');
 const crypto = require('crypto');
 const sessions = require('../services/browserSession');
+const fence = require('../services/credentialFence');
 const auth = require('../middleware/auth');
 const { getOrCreateDevelopmentTrial } = require('../services/subscriptionService');
 const { getActiveConsentVersion, logConsent } = require('../services/notificationService');
@@ -208,16 +209,24 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Credentials are valid - generate 6-digit verification code
-        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+        // Password validation above is optimistic. Revalidate under the account lock
+        // so a concurrent password change cannot leave a valid old challenge.
+        const verificationCode = crypto.randomInt(100000,1000000).toString();
         const tempToken = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
-
-        // Store verification code in database
-        await pool.query(
-            'INSERT INTO LoginVerificationT SET UserID = ?, VerificationCode = ?, TempToken = ?, ExpiresAt = ?, IsVerified = 0',
-            [user.UserID, verificationCode, tempToken, expiresAt]
-        );
+        const expiresAt = new Date(Date.now() + 10*60*1000);
+        const c = await pool.getConnection();
+        try {
+            await c.beginTransaction();
+            const version = await fence.lock(c,user.UserID);
+            const [fresh] = await c.query('SELECT PasswordHash FROM UsersT WHERE UserID=? LIMIT 1 FOR UPDATE',[user.UserID]);
+            if (!fresh.length || fresh[0].PasswordHash!==user.PasswordHash) {
+                await c.rollback(); return res.status(401).json({error:'Invalid credentials'});
+            }
+            await c.query('INSERT INTO LoginVerificationT (UserID,VerificationCode,TempToken,ExpiresAt,IsVerified,SecurityVersion) VALUES (?,?,?,?,0,?)',
+                [user.UserID,verificationCode,tempToken,expiresAt,version]);
+            await c.commit();
+        } catch(e) { try{await c.rollback();}catch(_){} throw e; }
+        finally {c.release();}
 
         // Send verification code via email
         try {
@@ -266,6 +275,7 @@ router.post('/change-password',auth,async(req,res)=>{
   const c=await pool.getConnection();
   try {
     await c.beginTransaction();
+    await fence.lock(c,req.user.userId);
     const [users]=await c.query('SELECT PasswordHash FROM UsersT WHERE UserID=? LIMIT 1 FOR UPDATE',[req.user.userId]);
     if(!users.length||!(await bcrypt.compare(currentPassword,users[0].PasswordHash))){await c.rollback();return res.status(401).json({error:'Incorrect current password.'});}
     if(await bcrypt.compare(newPassword,users[0].PasswordHash)){await c.rollback();return res.status(400).json({error:'New password must differ from current password.'});}
@@ -281,78 +291,37 @@ router.post('/change-password',auth,async(req,res)=>{
 });
 
 
-router.post('/verify-code', async (req, res) => {
-    const { tempToken, verificationCode, keepMeLoggedIn = false } = req.body;
-
-    if (!tempToken || !verificationCode) {
-        return res.status(400).json({ error: 'Temporary token and verification code are required.(be)' });
+router.post('/verify-code',async(req,res)=>{
+  const {tempToken,verificationCode,keepMeLoggedIn=false}=req.body||{};
+  if(typeof tempToken!=='string'||typeof verificationCode!=='string')return res.status(400).json({error:'Verification required'});
+  const [candidates]=await pool.query('SELECT UserID FROM LoginVerificationT WHERE TempToken=? AND IsVerified=0 ORDER BY VerificationID DESC LIMIT 1',[tempToken]);
+  if(!candidates.length)return res.status(401).json({error:'Invalid or expired verification request.'});
+  const c=await pool.getConnection();let issued,user;
+  try {
+    await c.beginTransaction();
+    const current=await fence.lock(c,candidates[0].UserID);
+    const [grants]=await c.query('SELECT VerificationID,UserID,SecurityVersion,VerificationCode FROM LoginVerificationT WHERE TempToken=? AND IsVerified=0 AND ExpiresAt>UTC_TIMESTAMP() ORDER BY VerificationID DESC LIMIT 1 FOR UPDATE',[tempToken]);
+    if(!grants.length||grants[0].UserID!==candidates[0].UserID||!fence.matches(grants[0].SecurityVersion,current)||String(grants[0].VerificationCode)!==verificationCode){
+      await c.rollback();return res.status(401).json({error:'Invalid or expired verification request.'});
     }
-
-    try {
-        // Find the verification record
-        const [verifications] = await pool.query(
-            'SELECT * FROM LoginVerificationT WHERE TempToken = ? AND IsVerified = 0 ORDER BY VerificationID DESC LIMIT 1',
-            [tempToken]
-        );
-
-        if (verifications.length === 0) {
-            return res.status(401).json({ error: 'Invalid or expired verification request.(be)' });
-        }
-
-        const verification = verifications[0];
-
-        // Check if code has expired
-        const now = new Date();
-        if (now > new Date(verification.ExpiresAt)) {
-            return res.status(401).json({ error: 'Verification code has expired. Please log in again.(be)' });
-        }
-
-        // Check if code matches
-        if (String(verificationCode) !== String(verification.VerificationCode)) {
-            return res.status(401).json({ error: 'Invalid verification code.(be)' });
-        }
-
-        // Preserve subscription entitlements and original redirect behavior.
-        const [users] = await pool.query('SELECT UserID, UserName FROM UsersT WHERE UserID = ?', [verification.UserID]);
-        if (users.length === 0) return res.status(401).json({ error: 'User not found.(be)' });
-        const user=users[0];
-        const entitlement = await getOrCreateDevelopmentTrial(user.UserID);
-
-        // Single transaction: consume the email code and create session together.
-        const conn=await pool.getConnection();let issued;
-        try {
-          await conn.beginTransaction();
-          const [used]=await conn.query(
-            'UPDATE LoginVerificationT SET IsVerified=1 WHERE VerificationID=? AND IsVerified=0 AND ExpiresAt>UTC_TIMESTAMP() AND VerificationCode=?',
-            [verification.VerificationID,String(verificationCode)]
-          );
-          if(used.affectedRows!==1){const e=Error('VERIFICATION_ALREADY_USED_OR_EXPIRED');e.status=401;throw e;}
-          issued=await sessions.create(conn,user,keepMeLoggedIn===true);
-          await conn.commit();
-        }catch(e){try{await conn.rollback();}catch(_){}if(e.status)return res.status(e.status).json({error:e.message});throw e;}
-        finally{conn.release();}
-        const token=issued.token;
-        if(issued.refresh){sessions.setCookie(res,req,issued.refresh.secret,issued.refresh.expires);}
-        else sessions.clearCookie(res,req);
-        res.set('Cache-Control','no-store');
-
-        // First-time users see the subscription page so the development entitlement
-        // is explained. Expired users also go there so they can enter a promo code.
-        const redirectTo = entitlement.created || !entitlement.status.active
-            ? 'subscription.html'
-            : 'home.html';
-
-        res.status(200).json({
-            message: 'Login successful',
-            token,
-            redirectTo,
-            subscription: entitlement.status
-        });
-    } catch (error) {
-        handleDbError(error, res, 'Error during code verification');
-    }
+    const [users]=await c.query('SELECT UserID,UserName FROM UsersT WHERE UserID=? LIMIT 1',[candidates[0].UserID]);
+    if(!users.length){await c.rollback();return res.status(401).json({error:'User not found.'});}
+    user=users[0];
+    const [used]=await c.query('UPDATE LoginVerificationT SET IsVerified=1 WHERE VerificationID=? AND IsVerified=0 AND SecurityVersion=?',[grants[0].VerificationID,current]);
+    if(used.affectedRows!==1)throw Error('CHALLENGE_ALREADY_USED');
+    issued=await sessions.create(c,user,keepMeLoggedIn===true);
+    await c.commit();
+  }catch(e){try{await c.rollback();}catch(_){}return handleDbError(e,res,'Error during code verification');}
+  finally{c.release();}
+  if(issued.refresh)sessions.setCookie(res,req,issued.refresh.secret,issued.refresh.expires);
+  else sessions.clearCookie(res,req);
+  res.set('Cache-Control','no-store');
+  // Subscription work happens after security issuance; preserve previous redirect.
+  try {
+    const entitlement=await getOrCreateDevelopmentTrial(user.UserID);
+    return res.json({message:'Login successful',token:issued.token,redirectTo:entitlement.created||!entitlement.status.active?'subscription.html':'home.html',subscription:entitlement.status});
+  }catch(e){return handleDbError(e,res,'Error reading subscription after login');}
 });
-
 
 // Stage 6A — shared MySQL 5.5-compatible limiter; no in-memory counters.
 const resetLimiter = require('../services/passwordResetLimiter');
@@ -373,11 +342,16 @@ router.post('/forgot-password',async(req,res)=>{
       await c.commit();
       return res.status(200).json({message:GENERIC_RESET_MESSAGE});
     }
-    const [users]=await c.query('SELECT UserID,UserName,Email FROM UsersT WHERE Email=? LIMIT 1 FOR UPDATE',[email]);
+    const [candidate]=await c.query('SELECT UserID FROM UsersT WHERE Email=? LIMIT 1',[email]);
+    let users=[], version=0;
+    if(candidate.length){
+      version=await fence.lock(c,candidate[0].UserID);
+      [users]=await c.query('SELECT UserID,UserName,Email FROM UsersT WHERE UserID=? AND Email=? LIMIT 1 FOR UPDATE',[candidate[0].UserID,email]);
+    }
     if(users.length){
       const user=users[0];const secret=crypto.randomBytes(48).toString('hex');
       await c.query('UPDATE PasswordResetT SET RevokedAt=UTC_TIMESTAMP() WHERE UserID=? AND UsedAt IS NULL AND RevokedAt IS NULL',[user.UserID]);
-      await c.query('INSERT INTO PasswordResetT (UserID,TokenHash,CreatedAt,ExpiresAt,UsedAt,RevokedAt) VALUES (?,?,UTC_TIMESTAMP(),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 30 MINUTE),NULL,NULL)',[user.UserID,resetHash(secret)]);
+      await c.query('INSERT INTO PasswordResetT (UserID,TokenHash,CreatedAt,ExpiresAt,UsedAt,RevokedAt,SecurityVersion) VALUES (?,?,UTC_TIMESTAMP(),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 30 MINUTE),NULL,NULL,?)',[user.UserID,resetHash(secret),version]);
       mail={email:user.Email,username:user.UserName,secret};
     }
     await c.commit();
@@ -403,9 +377,10 @@ router.post('/validate-reset-token',async(req,res)=>{
   if(typeof token!=='string'||!/^[0-9a-f]{96}$/.test(token))
     return res.status(401).json({valid:false});
   try{
-    const [rows]=await pool.query(`SELECT PasswordResetID FROM PasswordResetT
-      WHERE TokenHash=? AND UsedAt IS NULL AND RevokedAt IS NULL
-      AND ExpiresAt>UTC_TIMESTAMP() LIMIT 1`,[resetHash(token)]);
+    const [rows]=await pool.query(`SELECT p.PasswordResetID FROM PasswordResetT p JOIN UserSecurityT s ON s.UserID=p.UserID
+      WHERE p.TokenHash=? AND p.UsedAt IS NULL AND p.RevokedAt IS NULL
+      AND p.SecurityVersion>0 AND p.SecurityVersion=s.SecurityVersion
+      AND p.ExpiresAt>UTC_TIMESTAMP() LIMIT 1`,[resetHash(token)]);
     if(!rows.length)return res.status(401).json({valid:false});
     return res.json({valid:true});
   }catch(e){return handleDbError(e,res,'Error validating password reset link');}
@@ -420,11 +395,15 @@ router.post('/reset-password',async(req,res)=>{
   const c=await pool.getConnection();let userEmail=null;
   try{
     await c.beginTransaction();
-    const [rows]=await c.query(`SELECT p.PasswordResetID,p.UserID,u.Email,u.UserName,u.PasswordHash
+    const [candidate]=await c.query('SELECT UserID FROM PasswordResetT WHERE TokenHash=? LIMIT 1',[resetHash(token)]);
+    if(!candidate.length){await c.rollback();return res.status(401).json({error:'RESET_EXPIRED_OR_USED'});}
+    const current=await fence.lock(c,candidate[0].UserID);
+    const [rows]=await c.query(`SELECT p.PasswordResetID,p.UserID,p.SecurityVersion,u.Email,u.UserName,u.PasswordHash
        FROM PasswordResetT p JOIN UsersT u ON u.UserID=p.UserID
        WHERE p.TokenHash=? AND p.UsedAt IS NULL AND p.RevokedAt IS NULL AND p.ExpiresAt>UTC_TIMESTAMP() LIMIT 1 FOR UPDATE`,[resetHash(token)]);
     if(!rows.length){await c.rollback();return res.status(401).json({error:'RESET_EXPIRED_OR_USED'});}
     const row=rows[0];
+    if(row.UserID!==candidate[0].UserID||!fence.matches(row.SecurityVersion,current)){await c.rollback();return res.status(401).json({error:'RESET_EXPIRED_OR_USED'});}
     if(await bcrypt.compare(newPassword,row.PasswordHash)){await c.rollback();return res.status(400).json({error:'New password must differ from current password.'});}
     const passwordHash=await bcrypt.hash(newPassword,10);
     await c.query('UPDATE UsersT SET PasswordHash=? WHERE UserID=?',[passwordHash,row.UserID]);

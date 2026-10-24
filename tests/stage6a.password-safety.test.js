@@ -28,7 +28,7 @@ check('Reset Password requires unused, unrevoked, unexpired token under row lock
 check('Reset Password consumes link, revokes remaining links, and revokes credentials before commit',()=>{const a=reset.indexOf('SET UsedAt=UTC_TIMESTAMP()'),b=reset.indexOf('SET RevokedAt=UTC_TIMESTAMP()'),c=reset.indexOf('sessions.revokeAll(c,row.UserID)'),d=reset.indexOf('await c.commit()');assert(a>=0&&b>a&&c>b&&d>c)});
 check('Password reset uses transactional rollback and sends change confirmation',()=>{assert.match(reset,/await c\.rollback\(\)/);assert.match(reset,/sendPasswordChangedNotice/)});
 check('Account-wide revocation targets web sessions, TNNA refresh tokens, and SecurityVersion',()=>{assert.match(sessions,/UPDATE WebSessionT SET RevokedAt/);assert.match(sessions,/UPDATE TNNARefreshTokenT SET RevokedAt/);assert.match(sessions,/SecurityVersion=SecurityVersion\+1/)});
-check('Local reset throttle is identified as unsuitable for production',()=>{assert.match(users,/LOCAL TEST ONLY: best-effort abuse throttle/);assert.match(users,/Production requires distributed rate limiting/)});
+check('Forgot Password uses database-backed shared limiter and credential-version fence',()=>{assert.match(users,/passwordResetLimiter/);assert.match(forgot,/resetLimiter\.allow\(c,email/);assert.match(forgot,/fence\.lock\(c,candidate\[0\]\.UserID\)/);assert.match(forgot,/INSERT INTO PasswordResetT[^\n]*SecurityVersion/)});
 (async()=>{
   // Dynamically exercise just revokeAll with an in-memory, SQL-recording adapter.
   // Replace JWT module only during module loading. No real database dependency.

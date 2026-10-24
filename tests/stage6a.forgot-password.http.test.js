@@ -15,9 +15,10 @@ const pool={getConnection:async()=>({
  beginTransaction:async()=>{},
  commit:async()=>{commits++},rollback:async()=>{rollbacks++},release:()=>{releases++},
  query:async(sql,params)=>{
-  if(sql.startsWith('SELECT UserID,UserName,Email FROM UsersT'))return [[params[0]===realEmail?{UserID:99999,UserName:'synthetic',Email:realEmail}:null].filter(Boolean)];
+  if(sql.startsWith('SELECT UserID FROM UsersT WHERE Email='))return [[params[0]===realEmail?{UserID:99999}:null].filter(Boolean)];
+  if(sql.startsWith('SELECT UserID,UserName,Email FROM UsersT'))return [[params[1]===realEmail && params[0]===99999?{UserID:99999,UserName:'synthetic',Email:realEmail}:null].filter(Boolean)];
   if(sql.startsWith('UPDATE PasswordResetT'))return [{affectedRows:1}];
-  if(sql.startsWith('INSERT INTO PasswordResetT')){inserted++;return [{insertId:inserted}];}
+  if(sql.startsWith('INSERT INTO PasswordResetT')){assert.equal(params.at(-1),4,'Password reset must store credential version');inserted++;return [{insertId:inserted}];}
   throw Error('Unexpected SQL '+sql);
  }
 })};
@@ -33,6 +34,7 @@ const stubs={
  '../send_email':{sendVerificationCode:async()=>{},sendPasswordResetLink:async(details)=>{emails.push(details)},sendPasswordChangedNotice:async()=>{}},
  '../services/browserSession':{requireOrigin:reqOrigin},
  '../services/passwordResetLimiter':limiter,
+ '../services/credentialFence':{lock:async(conn,userId)=>{assert.equal(userId,99999);return 4;},matches:(a,b)=>a===b},
  '../middleware/auth':(req,res,next)=>next(),
  '../services/subscriptionService':{getOrCreateDevelopmentTrial:async()=>({})},
  '../services/notificationService':{getActiveConsentVersion:async()=>1,logConsent:async()=>{}},

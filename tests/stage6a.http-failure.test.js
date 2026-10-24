@@ -15,7 +15,8 @@ function makeCase(route, failure){
     async beginTransaction(){assert.equal(state.active,false);state.active=true;working={...database};},
     async query(sql,args=[]){assert(state.active,'query outside transaction');state.queries.push(sql);
       if(sql.includes('SELECT PasswordHash FROM UsersT'))return [[{PasswordHash:working.hash}]];
-      if(sql.includes('FROM PasswordResetT p JOIN UsersT u'))return [[{PasswordResetID:999,UserID:777,Email:'test@example.invalid',UserName:'isolated',PasswordHash:working.hash}]];
+      if(sql.startsWith('SELECT UserID FROM PasswordResetT WHERE TokenHash='))return [[{UserID:777}]];
+      if(sql.includes('FROM PasswordResetT p JOIN UsersT u'))return [[{PasswordResetID:999,UserID:777,SecurityVersion:working.version,Email:'test@example.invalid',UserName:'isolated',PasswordHash:working.hash}]];
       if(sql.startsWith('UPDATE UsersT SET PasswordHash=')){working.hash=args[0];return [{affectedRows:1}];}
       if(sql.startsWith('UPDATE PasswordResetT SET UsedAt=')){working.resetUsed=true;return [{affectedRows:1}];}
       if(sql.startsWith('UPDATE PasswordResetT SET RevokedAt=')){working.resetRevoked=true;return [{affectedRows:1}];}
@@ -34,7 +35,8 @@ function makeCase(route, failure){
     '../utils':{handleDbError:(error,res)=>res.status(expectedStatus).json({error:'DB_OPERATION_FAILED'})},
     '../send_email':{sendVerificationCode:async()=>{},sendPasswordResetLink:async()=>{},sendPasswordChangedNotice:async()=>{state.emails++;}},
     '../services/browserSession':{requireOrigin:()=>{},revokeAll:async()=>{assert(state.active);working.webRevoked=true;working.tnnaRevoked=true;working.version++;if(failure==='revocation')throw Error('SIMULATED_DB_REVOCATION_ERROR');},clearCookie:()=>{state.cookieClears++;}},
-    '../middleware/auth':(req,res,next)=>next(), '../services/subscriptionService':{getOrCreateDevelopmentTrial:async()=>{}},
+    '../services/credentialFence':{lock:async(conn,userId)=>{assert.equal(userId,777);return working.version;},matches:(a,b)=>a===b},
+    '../services/passwordResetLimiter':{allow:async()=>true}, '../middleware/auth':(req,res,next)=>next(), '../services/subscriptionService':{getOrCreateDevelopmentTrial:async()=>{}},
     '../services/notificationService':{getActiveConsentVersion:async()=>1,logConsent:async()=>{}},'dotenv':{config:()=>{}},crypto
   };
   const sandbox={require:name=>{if(Object.hasOwn(mocks,name))return mocks[name];throw Error('Unexpected require: '+name);},module:{exports:{}},exports:{},process:{env:{JWT_SECRET:'in-memory-test-only'}},console,URL,Date,Map,String,Error,Buffer,setTimeout};

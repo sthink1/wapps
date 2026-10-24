@@ -2,6 +2,7 @@
 const {current: stage6Env} = require('./stage6Environment');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const fence = require('./credentialFence');
 const ACCESS_MS = 8*60*60*1000;
 const SLIDE_MS = 180*24*60*60*1000;
 const ABS_MS = 365*24*60*60*1000;
@@ -40,10 +41,14 @@ async function rotate(pool,secret) {
   if(!/^[a-f0-9]{96}$/.test(secret||'')) {const e=Error('REFRESH_INVALID');e.status=401;throw e;}
   const c=await pool.getConnection();try {
     await c.beginTransaction();
+    const [candidate]=await c.query('SELECT s.UserID FROM WebRefreshTokenT r JOIN WebSessionT s ON s.WebSessionID=r.WebSessionID WHERE r.TokenHash=? LIMIT 1',[hash(secret)]);
+    if(!candidate.length){const e=Error('REFRESH_INVALID');e.status=401;throw e;}
+    const current=await fence.lock(c,candidate[0].UserID);
     const [rows]=await c.query(`SELECT r.WebRefreshTokenID,r.WebSessionID,r.ConsumedAt,r.RevokedAt,r.ExpiresAt AS TokenExpires,s.UserID,s.IsRemembered,s.RevokedAt AS SessionRevoked,s.AbsoluteExpiresAt,s.ExpiresAt AS SessionExpires,s.SessionPublicID,u.UserName,sec.SecurityVersion
       FROM WebRefreshTokenT r JOIN WebSessionT s ON s.WebSessionID=r.WebSessionID JOIN UsersT u ON u.UserID=s.UserID JOIN UserSecurityT sec ON sec.UserID=u.UserID
       WHERE r.TokenHash=? LIMIT 1 FOR UPDATE`,[hash(secret)]);
     const r=rows[0], now=nowDate();
+    if(r&&(r.UserID!==candidate[0].UserID||Number(r.SecurityVersion)!==current)){const e=Error('REFRESH_INVALID');e.status=401;throw e;}
     if(!r||r.ConsumedAt||r.RevokedAt||r.SessionRevoked||!r.IsRemembered||new Date(r.TokenExpires)<=now||new Date(r.SessionExpires)<=now||new Date(r.AbsoluteExpiresAt)<=now){const e=Error('REFRESH_INVALID');e.status=401;throw e;}
     const nextExpiry=soonest(new Date(now.getTime()+SLIDE_MS),new Date(r.AbsoluteExpiresAt));
     const [consumed]=await c.query('UPDATE WebRefreshTokenT SET ConsumedAt=UTC_TIMESTAMP() WHERE WebRefreshTokenID=? AND ConsumedAt IS NULL',[r.WebRefreshTokenID]);

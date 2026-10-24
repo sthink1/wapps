@@ -57,6 +57,10 @@
             margin-left: 10px;
             width: auto;
         }
+        .login-options { margin: 12px 0; text-align: left; font-size: 14px; }
+        .login-options label { cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+        .login-options input { width: auto; margin: 0; }
+        .forgot-link { display: block; margin: 4px 0 14px; font-size: 14px; text-align: center; }
         .error-message {
             color: red;
         }
@@ -77,7 +81,9 @@
                 <input type="password" id="password" name="password" required>
                 <button type="button" class="display-password">Show</button>
                 
+                <div class="login-options"><label for="keepMeLoggedIn"><input type="checkbox" id="keepMeLoggedIn" name="keepMeLoggedIn"> Keep Me Logged In on This Device</label></div>
                 <button type="submit">Login</button>
+                <a class="forgot-link" href="forgotPassWord.html">Forgot Password?</a>
             </form>
             <div id="errorMessage" class="error-message"></div>
         </div>
@@ -108,6 +114,7 @@
 
         let tempToken = null;
         let userId = null;
+        let keepMeLoggedIn = false;
 
         // Step 1: Handle credentials form submission
         document.getElementById('loginForm').addEventListener('submit', function(e) {
@@ -115,6 +122,7 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const errorMessage = document.getElementById('errorMessage');
+            keepMeLoggedIn = document.getElementById('keepMeLoggedIn').checked;
             
             errorMessage.textContent = ''; // Clear previous error messages
 
@@ -173,7 +181,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ tempToken, verificationCode }),
+                body: JSON.stringify({ tempToken, verificationCode, keepMeLoggedIn }),
             })
             .then(response => {
                 if (!response.ok) {
@@ -213,6 +221,7 @@
             document.getElementById('verificationError').textContent = '';
             tempToken = null;
             userId = null;
+            keepMeLoggedIn = false;
         });
 
         // Functionality for the "Show" button

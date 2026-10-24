@@ -9,7 +9,7 @@ const cleanup=require('../services/passwordResetRateCleanup');
   let calls=0;
   const info=[];const errors=[];
   let res=await cleanup.cleanupOnce({query:async(q)=>{calls++;assert.equal(q,cleanup.DELETE_SQL);return [{affectedRows:17}]}},{info:(x)=>info.push(x)});
-  assert.deepEqual(res,{ok:true,deleted:17});assert.equal(calls,1);
+  assert.deepEqual(res,{ok:true,deleted:17,batches:1,mayHaveMore:false});assert.equal(calls,1);
   console.log('PASS cleanup: one bounded DELETE, affected rows reported.');
   res=await cleanup.cleanupOnce({query:async()=>{throw Error('simulated outage')}},{error:(...a)=>errors.push(a)});
   assert.equal(res.ok,false);assert.equal(errors.length,1);

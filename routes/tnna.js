@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { pool } = require('../dbConnection');
 const {securityVersion}=require('../services/browserSession');
+const fence = require('../services/credentialFence');
 const auth = require('../middleware/auth');
 const { handleDbError } = require('../utils');
 const { sendNotificationEmail } = require('../send_email');
@@ -151,22 +152,21 @@ router.post('/verify-code', async (req, res) => {
     try {
         await c.beginTransaction();
 
+        const [candidate] = await c.query('SELECT UserID FROM LoginVerificationT WHERE TempToken=? AND IsVerified=0 ORDER BY VerificationID DESC LIMIT 1',[tempToken]);
+        if (!candidate.length) { await c.rollback(); return res.status(401).json({error:'Invalid verification request.'}); }
+        const current=await fence.lock(c,candidate[0].UserID);
         const [verifications] = await c.query(
-            `SELECT VerificationID, UserID, VerificationCode, ExpiresAt
-               FROM LoginVerificationT
-              WHERE TempToken = ? AND IsVerified = 0
-              ORDER BY VerificationID DESC
-              LIMIT 1
-              FOR UPDATE`,
-            [tempToken]
-        );
-
+            `SELECT VerificationID,UserID,VerificationCode,ExpiresAt,SecurityVersion FROM LoginVerificationT
+             WHERE TempToken=? AND IsVerified=0 ORDER BY VerificationID DESC LIMIT 1 FOR UPDATE`,[tempToken]);
         if (!verifications.length) {
             await c.rollback();
             return res.status(401).json({ error: 'Invalid or expired verification request.(be)' });
         }
 
         const verification = verifications[0];
+        if(verification.UserID!==candidate[0].UserID||!fence.matches(verification.SecurityVersion,current)){
+            await c.rollback();return res.status(401).json({error:'Verification request is no longer valid.'});
+        }
         if (new Date() > new Date(verification.ExpiresAt)) {
             await c.rollback();
             return res.status(401).json({ error: 'Verification code has expired. Please log in again.(be)' });
@@ -213,7 +213,7 @@ router.post('/verify-code', async (req, res) => {
         });
 
         const refreshToken = await issueRefreshToken(c, user.UserID, deviceId);
-        const accessToken = createAccessToken(user,await securityVersion(c,user.UserID));
+        const accessToken = createAccessToken(user,current);
         await c.commit();
 
         const version = await getCurrentVersion();
@@ -259,6 +259,9 @@ router.post('/refresh', async (req, res) => {
         await c.beginTransaction();
 
         const tokenHash = hashToken(refreshToken);
+        const [candidate] = await c.query('SELECT UserID FROM TNNARefreshTokenT WHERE TokenHash=? LIMIT 1',[tokenHash]);
+        if(!candidate.length){await c.rollback();return res.status(401).json({error:'TNNA login expired'});}
+        const current=await fence.lock(c,candidate[0].UserID);
         const [tokens] = await c.query(
             `SELECT r.RefreshTokenID, r.UserID, r.DeviceID, r.ExpiresAt,
                     u.UserName, u.Email, t.UpdateEmailOptIn
@@ -279,6 +282,7 @@ router.post('/refresh', async (req, res) => {
         }
 
         const row = tokens[0];
+        if(row.UserID!==candidate[0].UserID){await c.rollback();return res.status(401).json({error:'TNNA login expired'});}
         if (row.DeviceID && row.DeviceID !== String(deviceId).slice(0, 64)) {
             await c.rollback();
             return res.status(401).json({ error: 'TNNA login is not valid for this device.(be)' });
@@ -300,7 +304,7 @@ router.post('/refresh', async (req, res) => {
         });
 
         const rotatedRefreshToken = await issueRefreshToken(c, row.UserID, deviceId);
-        const accessToken = createAccessToken({ UserID: row.UserID, UserName: row.UserName },await securityVersion(c,row.UserID));
+        const accessToken = createAccessToken({ UserID: row.UserID, UserName: row.UserName },current);
         await c.commit();
 
         res.json({
