@@ -263,8 +263,27 @@ router.post('/refresh-session',async(req,res)=>{
   catch(e){res.status(e.status||503).json({error:e.status?e.message:'AUTH_SERVICE_UNAVAILABLE'});}
 });
 
-router.get('/session-status',auth,(req,res)=>{
-  if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});res.set('Cache-Control','no-store');res.json({authenticated:true,userId:req.user.userId,username:req.user.username,client:req.user.client});});
+router.get('/session-status', auth, async (req, res) => {
+  if (req.user.client !== 'web') return res.status(403).json({ error: 'WEB_SESSION_REQUIRED' });
+  res.set('Cache-Control', 'no-store');
+  try {
+    // Query the validated current session; never infer KMLI from browser storage.
+    const [rows] = await pool.query(
+      'SELECT IsRemembered FROM WebSessionT WHERE UserID=? AND SessionPublicID=? AND RevokedAt IS NULL LIMIT 1',
+      [req.user.userId, req.user.sessionPublicId]
+    );
+    if (rows.length !== 1) return res.status(401).json({ error: 'SESSION_INVALID' });
+    return res.json({
+      authenticated: true,
+      userId: req.user.userId,
+      username: req.user.username,
+      client: req.user.client,
+      keepMeLoggedIn: Number(rows[0].IsRemembered) === 1
+    });
+  } catch (error) {
+    return handleDbError(error, res, 'Error checking session status');
+  }
+});
 
 router.post('/change-password',auth,async(req,res)=>{
   if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});

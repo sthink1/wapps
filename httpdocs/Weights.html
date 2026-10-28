@@ -639,6 +639,7 @@
     </table>
 </footer>
 
+    <script src="js/waPlatform.js"></script>
     <script>
 
         function escapeHtml(value) {
@@ -655,7 +656,6 @@
   });
 }
         const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
-        const token = localStorage.getItem('token');
         let dateRangeSelection = localStorage.getItem('dateRangeSelection') || 'all';
         let startDate = localStorage.getItem('startDate');
         let endDate = localStorage.getItem('endDate');
@@ -678,33 +678,35 @@
         // Store activities fetched from server
         let activities = [];
 
-        // Function to make authenticated requests
-        function makeAuthenticatedRequest(url, options = {}) {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('Please log in to perform this action');
+        // Stage 6: preserve caller contract, delegate authentication to shared WA API.
+        function waLocalPath(url) {
+            const u = new URL(url, window.location.origin);
+            if (u.origin !== window.location.origin) throw new Error('SAME_ORIGIN_REQUIRED');
+            return u.pathname + u.search;
+        }
+        function waOptions(options = {}) {
+            const headers = new Headers(options.headers || {});
+            headers.delete('Authorization');
+            if (options.body !== undefined && !headers.has('Content-Type')) {
+                headers.set('Content-Type', 'application/json');
             }
-            options.headers = {
-                ...options.headers,
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            };
-            return fetch(url, options)
-                .then(response => {
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            localStorage.removeItem('token');
-                            throw new Error('Unauthorized - please log in again');
-                        }
-                        return response.json().then(errorData => {
-                            throw new Error(errorData.error || 'Request failed');
-                        });
-                    }
-                    if (response.status === 204) {
-                        return { success: true };
-                    }
-                    return response.json();
-                });
+            return { ...options, headers };
+        }
+        function authenticatedResponse(url, options = {}) {
+            return WA.api.request(waLocalPath(url), waOptions(options));
+        }
+        async function makeAuthenticatedRequest(url, options = {}) {
+            const response = await authenticatedResponse(url, options);
+            if (!response.ok) {
+                let details = {};
+                try { details = await response.clone().json(); } catch (_) {}
+                const error = new Error(response.status === 401 ? 'Please log in to use Weights.'
+                    : response.status === 403 ? 'Your subscription does not include Weights.'
+                    : details.error || `Request failed (HTTP ${response.status})`);
+                error.status = response.status;
+                throw error;
+            }
+            return response.status === 204 ? { success: true } : response.json();
         }
 
         // Function to fetch and render data
@@ -718,25 +720,25 @@
     }
 
     try {
-        const response = await fetch(url, {
+        const response = await authenticatedResponse(url, {
             headers: {
-                'Authorization': `Bearer ${token}`
+
             }
         });
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw Object.assign(new Error(response.status === 401 ? 'Please log in to use Weights.' : response.status === 403 ? 'Your subscription does not include Weights.' : `Unable to load weight data (HTTP ${response.status}).`), {status:response.status});
         }
         const data = await response.json();
 
         const [weightActivities, activitiesResponse] = await Promise.all([
-            fetch(`${BASE_URL}/weightActivities`, {
+            authenticatedResponse(`${BASE_URL}/weightActivities`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
+
                 }
             }).then(res => res.json()),
-            fetch(`${BASE_URL}/activities`, {
+            authenticatedResponse(`${BASE_URL}/activities`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
+
                 }
             }).then(res => res.json())
         ]);
@@ -870,7 +872,8 @@
             <path d="${pathData}" class="line"></path>
         `;
     } catch (error) {
-        console.error('Error fetching data:', error);
+        if (error.status === 401 || error.status === 403) console.info('Weights access:', error.message);
+        else console.error('Error fetching data:', error);
     }
 }
         // Initial data load
@@ -1027,9 +1030,9 @@
         // Fetch all activities for dropdowns
         async function fetchAllActivities() {
             try {
-                const response = await fetch(`${BASE_URL}/activities?choice=all`, {
+                const response = await authenticatedResponse(`${BASE_URL}/activities?choice=all`, {
                     headers: {
-                        'Authorization': `Bearer ${token}`
+
                     }
                 });
                 if (!response.ok) throw new Error('Failed to fetch activities');
@@ -1316,9 +1319,9 @@
         // Fetch activities for dropdowns in add modal
         async function fetchActivities() {
             try {
-                const response = await fetch(`${BASE_URL}/activities?choice=all`, {
+                const response = await authenticatedResponse(`${BASE_URL}/activities?choice=all`, {
                     headers: {
-                        'Authorization': `Bearer ${token}`
+
                     }
                 });
                 if (!response.ok) throw new Error('Failed to fetch activities');
@@ -1465,11 +1468,11 @@
             if (hasError) return;
 
             try {
-                const response = await fetch(`${BASE_URL}/activities`, {
+                const response = await authenticatedResponse(`${BASE_URL}/activities`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+
                     },
                     body: JSON.stringify({
                         activity: activityName
@@ -1544,11 +1547,11 @@
             if (hasError) return;
 
             try {
-                const response = await fetch(`${BASE_URL}/weights`, {
+                const response = await authenticatedResponse(`${BASE_URL}/weights`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+
                     },
                     body: JSON.stringify({
                         DateWeight: dateWeight,
@@ -1592,16 +1595,15 @@
         }
 
         // Existing tracking logic
-        document.addEventListener('DOMContentLoaded', (event) => {
-            if (!token) {
-                return;
-            }
+        document.addEventListener('DOMContentLoaded', async (event) => {
+            const session = await WA.session.restore();
+            if (!session.authenticated) return;
             const page = window.location.pathname;
-            fetch(`${BASE_URL}/track/log/page`, {
+            WA.api.request('/track/log/page', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    // WA.api supplies the current access token
                 },
                 body: JSON.stringify({ page })
             })
@@ -1622,16 +1624,17 @@
             window.addEventListener('beforeunload', () => {
                 const duration = Math.floor((Date.now() - startTime) / 1000);
                 if (duration > 0) {
+                    const liveToken = WA.session.getAccessToken();
+                    if (!liveToken) return;
                     fetch(`${BASE_URL}/track/log/time-spent`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
+                            // WA.api supplies the current access token
                         },
                         body: JSON.stringify({
                             page: window.location.pathname,
-                            duration: duration,
-                            token: token
+                            duration: duration
                         })
                     })
                     .then(response => response.json())
@@ -1789,9 +1792,9 @@ function enforceSingleCheckbox() {
 // Populate activity dropdown
 async function populateActivityDropdown() {
     try {
-        const response = await fetch(`${BASE_URL}/activities?choice=all`, {
+        const response = await authenticatedResponse(`${BASE_URL}/activities?choice=all`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+
             }
         });
         if (!response.ok) throw new Error('Failed to fetch activities');
@@ -1954,7 +1957,8 @@ printResultsBtn.onclick = () => {
 
 
 // Close results
-closeResultsBtn.onclick = () => {
+const closeResultsBtn = document.getElementById('closeResultsBtn');
+if (closeResultsBtn) closeResultsBtn.onclick = () => {
     searchModal.style.display = 'none';
 };
 

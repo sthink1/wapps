@@ -758,6 +758,7 @@
         </table>
     </footer>
 
+    <script src="js/waPlatform.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -820,14 +821,14 @@
 
         // Helper function to check if user is logged in.
         function isUserLoggedIn() {
-            return localStorage.getItem('token') !== null;
+            return window.waHomeAuthenticated === true;
         }
 
         // Helper function to check if user is admin.
         async function isUserAdmin() {
             const token = localStorage.getItem('token');
 
-            if (!token) {
+            if (!window.waHomeAuthenticated || !token) {
                 return false;
             }
 
@@ -1041,7 +1042,8 @@
         });
 
         async function loadSubscriptionAccess() {
-            const token = localStorage.getItem('token');
+            const token = window.waHomeAuthenticated === true
+                ? localStorage.getItem('token') : null;
 
             const statusDisplay =
                 document.getElementById('subscriptionStatus');
@@ -1062,9 +1064,11 @@
                 );
 
                 if (!response.ok) {
-                    throw new Error(
-                        'Unable to load subscription status.'
-                    );
+                    if (response.status === 401) {
+                        window.waHomeAuthenticated = false;
+                        localStorage.removeItem('token');
+                    }
+                    throw new Error('Unable to load subscription status.');
                 }
 
                 const data = await response.json();
@@ -1129,6 +1133,11 @@
                     }
                 });
             } catch (error) {
+                // Fail closed: permission lookup did not complete successfully.
+                document.querySelectorAll('.restricted-btn').forEach(button => {
+                    button.disabled = true;
+                    button.title = 'Application access could not be verified.';
+                });
                 console.error(
                     'Subscription status error:',
                     error
@@ -1170,6 +1179,21 @@
         document.addEventListener(
             'DOMContentLoaded',
             async function() {
+                const waRestore = await WA.session.restore();
+                // Trust the server-backed session check, not a decoded stale JWT.
+                window.waHomeAuthenticated = waRestore.authenticated === true;
+                // Only a verified server-side WebSessionT.IsRemembered value may
+                // trigger the KMLI label. Failure to read it never means KMLI.
+                window.waHomeKMLI = false;
+                if (window.waHomeAuthenticated) {
+                    try {
+                        const sessionInfo = await WA.api.json('/users/session-status', { cache: 'no-store' });
+                        window.waHomeKMLI = sessionInfo.keepMeLoggedIn === true;
+                    } catch (_) {
+                        // Optional display metadata: never show an unverified KMLI label.
+                    }
+                }
+                if (!waRestore.authenticated && waRestore.reason === 'restore_unavailable') console.warn('WA session restoration unavailable.');
                 await loadSubscriptionAccess();
 
                 /*
@@ -1318,7 +1342,8 @@
 
                 // User display and logout logic.
                 const token =
-                    localStorage.getItem('token');
+                    window.waHomeAuthenticated === true
+                    ? localStorage.getItem('token') : null;
 
                 const userDisplay =
                     document.getElementById(
@@ -1333,6 +1358,14 @@
                     if (decodedToken) {
                         userDisplay.textContent =
                             `Logged in as: ${decodedToken.username}`;
+                        if (window.waHomeKMLI === true) {
+                            const kmliLabel = document.createElement('span');
+                            kmliLabel.textContent = 'with KMLI';
+                            kmliLabel.style.marginLeft = '8px';
+                            kmliLabel.style.fontSize = '0.85em';
+                            kmliLabel.style.opacity = '0.8';
+                            userDisplay.appendChild(kmliLabel);
+                        }
                     } else {
                         userDisplay.textContent =
                             'Not Logged In';
@@ -1342,18 +1375,21 @@
                         .getElementById('logoutBtn')
                         .addEventListener(
                             'click',
-                            () => {
-                                localStorage.removeItem(
-                                    'token'
-                                );
-
-                                alert(
-                                    'You have been logged out.'
-                                );
-
-                                window.location.href =
-                                    'home.html';
-                            }
+                            async () => {
+    const button = document.getElementById('logoutBtn');
+    button.disabled = true;
+    try {
+        const result = await WA.session.logout();
+        if (result.serverRevoked) {
+            alert('You have been logged out.');
+        } else {
+            alert('Signed out of this browser. Server logout could not be confirmed.');
+        }
+        window.location.href = 'home.html';
+    } finally {
+        button.disabled = false;
+    }
+}
                         );
                 } else {
                     userDisplay.textContent =
@@ -1430,10 +1466,10 @@
                                     token: token
                                 };
 
-                                console.log(
-                                    'Sending time spent data:',
-                                    timeSpentData
-                                );
+                                console.log('Sending time spent data:', {
+                                    page: timeSpentData.page,
+                                    duration: timeSpentData.duration
+                                });
 
                                 fetch(
                                     `${BASE_URL}/track/log/time-spent`,

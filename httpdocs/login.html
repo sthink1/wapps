@@ -102,6 +102,7 @@
         </div>
     </div>
 
+    <script src="js/waPlatform.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -194,7 +195,7 @@
             .then(data => {
                 if (data.message === 'Login successful') {
                     // Store token in localStorage
-                    localStorage.setItem('token', data.token);
+                    WA.session.setAccessToken(data.token);
                     // Show confetti and alert on success
                     triggerConfetti();
                     alert('Login successful! Redirecting...');

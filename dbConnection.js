@@ -12,6 +12,16 @@ requiredEnvVars.forEach((envVar) => {
     }
 });
 
+// HelioHost test connections (local or Render staging) require verified TLS.
+// Keep the existing freeSQLdatabase pool configuration unchanged otherwise.
+const helioTest = ['local', 'staging'].includes(process.env.WA_ENV) &&
+    process.env.DB_HOST === 'johnny.heliohost.org' &&
+    process.env.DB_NAME === 'wapps_test' &&
+    process.env.DB_USER === 'wapps_test';
+if (helioTest && process.env.DB_SSL !== 'required') {
+    throw new Error('HELIO_TEST_TLS_REQUIRED');
+}
+
 // Create a Promise-based pool with adjusted configuration
 const pool = mysqlPromise.createPool({
     host: process.env.DB_HOST,
@@ -19,8 +29,9 @@ const pool = mysqlPromise.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
+    ...(helioTest ? { ssl: { rejectUnauthorized: true } } : {}),
     waitForConnections: true,
-    connectionLimit: 50,
+    connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 50),
     queueLimit: 0,
     charset: 'utf8mb4',
     // Standardize JavaScript Date <-> MySQL conversion on UTC.

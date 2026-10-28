@@ -98,8 +98,13 @@ async function protection(req,res,next){try{
  const userID=req.user.userId;const path=req.path;const match=path.match(personPath);
  const c=await pool.getConnection();try{
  if(match){const id=Number(match[1]),code=req.query.familyTreeCode||req.body?.familyTreeCode;const tree=await getTree(c,code,userID);await inTree(c,id,tree.FamilyTreeID);const p=await privacyRow(c,id);
- if(p.IsPrivate&&await hasAccess(c,id,userID,req.headers['x-ft-page-token'])&&path===`/persons/${id}`&&req.method==='GET')req._privacyFullPersonID=id;
- if(p.IsPrivate&&!await hasAccess(c,id,userID,req.headers['x-ft-page-token'])&&!(/^\/persons\/\d+\/(ancestor|relationships)$/.test(path)))return res.status(423).json({code:'PRIVATE_LOCKED',message:'This Person is private. Enter the key code.'});
+ if(p.IsPrivate){
+   const authorized=await hasAccess(c,id,userID,req.headers['x-ft-page-token']);
+   // Keep full focal-Person data for authorized GETs, including images.
+   // Other private people appearing in responses remain redacted.
+   if(authorized&&req.method==='GET')req._privacyFullPersonID=id;
+   if(!authorized&&!(/^\/persons\/\d+\/(ancestor|relationships)$/.test(path)))return res.status(423).json({code:'PRIVATE_LOCKED',message:'This Person is private. Enter the key code.'});
+ }
  }
  }finally{c.release();}
  const original=res.json.bind(res);
