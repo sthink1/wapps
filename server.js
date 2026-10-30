@@ -142,15 +142,17 @@ app.use('/api/geocode', require('./routes/geocode'));
 
 // Catch-all route for undefined endpoints
 app.use((req, res) => {
-  const errorMessage = `404 - Not Found - ${req.originalUrl}`;
-  logger.error(errorMessage);
+  // Do not log raw URLs: query strings and path segments may contain security tokens.
+  logger.error('404 - Not Found (request URL omitted)');
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
 // Centralized Error-Handling Middleware
 app.use((err, req, res, next) => {
-  logger.error(`Error: ${err.message}`);
+  // Error messages can contain URLs, tokens, or other untrusted details.
+  // Preserve the HTTP status for diagnostics without persisting the message.
   const statusCode = err.status || 500;
+  logger.error(`Request error (HTTP ${Number.isInteger(statusCode) ? statusCode : 500}; message omitted)`);
   res.status(statusCode).json({
     error: {
       message: err.message || 'Internal Server Error',
