@@ -9,7 +9,7 @@ const codePattern = /^(?=.{4,128}$)(?!.*[\x00-\x1F\x7F])[\s\S]+$/u;
 const personPath = /^\/persons\/(\d+)(?:\/|$)/;
 function hashToken(token){return crypto.createHash('sha256').update(token).digest('hex');}
 function error(message,status=400){const e=new Error(message);e.status=status;return e;}
-function sendError(res,e){res.status(e.status||500).json({message:e.status?e.message:'Privacy request failed.'}); if(!e.status)console.error('FT privacy',e);}
+function sendError(res,e){res.status(e.status||500).json({message:e.status?e.message:'Privacy request failed.'}); if(!e.status)console.error('FT privacy operation failed (details omitted)');}
 function canonicalCode(s){return String(s ?? '').trim().toUpperCase();}
 function exactPrivacyKey(s){return typeof s === 'string' ? s : '';}
 async function withTx(callback){const c=await pool.getConnection();try{await c.beginTransaction();const result=await callback(c);await c.commit();return result;}catch(e){await c.rollback();throw e;}finally{c.release();}}
@@ -37,7 +37,7 @@ async function getTree(c,code,userId){
 }
 async function inTree(c,personID,treeID){const [[row]]=await c.query('SELECT 1 AS n FROM FTFamilyTreePersonT WHERE PersonID=? AND FamilyTreeID=? LIMIT 1',[personID,treeID]);if(!row)throw error('Person does not belong to this Family Tree.',404);}
 async function isAdmin(c,userID){const [[row]]=await c.query('SELECT UserName FROM UsersT WHERE UserID=? LIMIT 1',[userID]);return Boolean(row&&String(row.UserName).toLowerCase()==='sthink');}
-async function notifyCreator(personID,subject,message){try{const [rows]=await pool.query('SELECT u.Email FROM FTPersonT p JOIN UsersT u ON u.UserID=p.CreatedByUserID WHERE p.PersonID=? LIMIT 1',[personID]);if(rows.length&&rows[0].Email)await sendNotification({recipientEmail:rows[0].Email,category:'FAMILY_TREE',channel:'EMAIL',subject,message,templateName:'FAMILY_TREE_PRIVACY_NOTICE',relatedApp:'FAMILY_TREE',relatedRecordID:personID});}catch(e){console.error('Family Tree privacy creator notice failed',e);}}
+async function notifyCreator(personID,subject,message){try{const [rows]=await pool.query('SELECT u.Email FROM FTPersonT p JOIN UsersT u ON u.UserID=p.CreatedByUserID WHERE p.PersonID=? LIMIT 1',[personID]);if(rows.length&&rows[0].Email)await sendNotification({recipientEmail:rows[0].Email,category:'FAMILY_TREE',channel:'EMAIL',subject,message,templateName:'FAMILY_TREE_PRIVACY_NOTICE',relatedApp:'FAMILY_TREE',relatedRecordID:personID});}catch(e){console.error('Family Tree privacy creator notice failed (details omitted)');}}
 async function isUnlocked(c,personID,userID,pageToken){if(!/^[0-9a-f]{64}$/i.test(String(pageToken||'')))return false;const [[row]]=await c.query('SELECT 1 AS yes FROM FTPrivacyUnlockT WHERE PersonID=? AND UserID=? AND SessionHash=? AND ExpiresAt>NOW() LIMIT 1',[personID,userID,hashToken(pageToken)]);return !!row;}
 async function hasAccess(c,personID,userID,session){if(await isAdmin(c,userID))return true;return isUnlocked(c,personID,userID,session);}
 async function privacyRow(c,personID){const [[row]]=await c.query('SELECT PersonID,IsPrivate FROM FTPersonPrivacyT WHERE PersonID=? LIMIT 1',[personID]);return row||{PersonID:personID,IsPrivate:0};}
@@ -62,7 +62,7 @@ privateRouter.post('/request/:personID',async(req,res)=>{try{
  const raw=crypto.randomBytes(32).toString('hex');const [r]=await c.query(`INSERT INTO FTPrivacyRequestT (PersonID,FamilyTreeID,ContactID,EmailAddress,RequestedAction,ProposedKeyCode,TokenHash,RequestedByUserID,RequestedAt,ExpiresAt) VALUES (?,?,?,?,?,?,?,?,NOW(),DATE_ADD(NOW(),INTERVAL 24 HOUR))`,[personID,tree.FamilyTreeID,contact.ContactID,String(contact.ContactValue).trim(),action,action==='PRIVATE'?key:null,hashToken(raw),req.user.userId]);
  return {raw,requestID:r.insertId,email:contact.ContactValue,action,personName:[p.FirstName,p.LastName].filter(Boolean).join(' '),creatorID:p.CreatedByUserID};});
  const base=String(process.env.PUBLIC_BASE_URL||process.env.APP_BASE_URL||'http://localhost:8080').replace(/\/$/,'');const link=`${base}/FTPrivacyVerification.html?token=${encodeURIComponent(result.raw)}`;
- try{await sendNotification({recipientEmail:result.email,category:'FAMILY_TREE',channel:'EMAIL',subject:`Family Tree privacy change approval — ${result.personName}`,message:`Someone requested GO ${result.action==='PRIVATE'?'PRIVATE':'PUBLIC'} for ${result.personName}. Please review and approve or decline within 24 hours. If you did not expect this request, decline it.`,templateName:'FAMILY_TREE_PRIVACY_APPROVAL',relatedApp:'FAMILY_TREE',relatedRecordID:personID,actionButtons:[{label:'REVIEW PRIVACY REQUEST',url:link,kind:'approve'}]});}catch(e){console.error('Privacy approval email delivery failed',e);return res.status(502).json({message:'Request saved, but approval email could not be delivered. Retry only after checking the email service.'});}
+ try{await sendNotification({recipientEmail:result.email,category:'FAMILY_TREE',channel:'EMAIL',subject:`Family Tree privacy change approval — ${result.personName}`,message:`Someone requested GO ${result.action==='PRIVATE'?'PRIVATE':'PUBLIC'} for ${result.personName}. Please review and approve or decline within 24 hours. If you did not expect this request, decline it.`,templateName:'FAMILY_TREE_PRIVACY_APPROVAL',relatedApp:'FAMILY_TREE',relatedRecordID:personID,actionButtons:[{label:'REVIEW PRIVACY REQUEST',url:link,kind:'approve'}]});}catch(e){console.error('Privacy approval email delivery failed (details omitted)');return res.status(502).json({message:'Request saved, but approval email could not be delivered. Retry only after checking the email service.'});}
  await notifyCreator(personID,'Family Tree Privacy Change Requested',`A GO ${action} request was submitted for ${result.personName}. The primary email recipient has 24 hours to approve. Privacy remains unchanged until approval.`);
  res.json({message:'Privacy change requested. Current privacy setting remains unchanged until email approval.',PendingAction:action});
  }catch(e){sendError(res,e);}});
@@ -115,7 +115,7 @@ async function protection(req,res,next){try{
      const [rows]=await pool.query(`SELECT PersonID FROM FTPersonPrivacyT WHERE IsPrivate=1 AND PersonID IN (${[...ids].map(()=>'?').join(',')})`,[...ids]);const locked=new Set(rows.map(x=>Number(x.PersonID)));
      const sanitize=(v,depth=0)=>{if(!v||typeof v!=='object'||depth>18)return v;if(Array.isArray(v))return v.map(x=>sanitize(x,depth+1));if(locked.has(Number(v.PersonID))&&!(req._privacyFullPersonID&&Number(v.PersonID)===req._privacyFullPersonID))return redactPerson(v);const out={};for(const [k,x] of Object.entries(v))out[k]=sanitize(x,depth+1);return out;};
      return original(sanitize(data));
-   }catch(e){console.error('Family Tree privacy response filter',e);return res.status(500).send('Unable to safely return Family Tree data.');}})();return res;
+   }catch(e){console.error('Family Tree privacy response filter failed (details omitted)');return res.status(500).send('Unable to safely return Family Tree data.');}})();return res;
  };
  next();
  }catch(e){sendError(res,e);}}

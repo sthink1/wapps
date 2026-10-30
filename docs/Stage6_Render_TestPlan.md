@@ -178,3 +178,13 @@ Production and hosted staging remain unauthorized/unchanged.
 - Staging remains targeted at `sql5838929` unless an independently approved revision explicitly authorizes a different test database and updates the identity guard.
 - Capture host/database/user identity (redacting passwords), required TLS and certificate verification, all connection pool sizes, other background connections, connection account quotas, and DNS/egress access. A `DB_CONNECTION_LIMIT=5` local Johnny success is supporting evidence, not a hosted result.
 - Add to eventual hosted test matrix: simultaneous Budget Print My Details plus representative protected application requests; measure exhausted-connection errors, queueing and recovery. Fail the test if user account limit is exceeded or the connection is unencrypted.
+
+<!-- STAGE6-LOGGING-HOSTED-2026-10-30 -->
+### October 30, 2026 — Logging-security regression and outstanding checks
+
+- `reviseLogIn` Render test service `wapps-stage6-test` was verified Live at commit `8fa035f`, using `WA_ENV=staging` and verified HelioHost test DB `wapps_test`; production and `main` unchanged. This supersedes older planning-only staging assumptions for current testing; retain historical entries as historical context.
+- Logging fix in `server.js` and `morgan.js`: local redaction smoke test confirmed omission of a synthetic token-like URL query from `access.log`, `error.log`, and `combined.log`; hosted raw filesystem logs were not independently accessed on the free Render service.
+- Hosted H01 normal login, H02 remembered-session reload, H03 restoration after removing access token, and H04 logout/reload: user-reported passed on commit `8fa035f` (Chrome Incognito, `charter` test account). These targeted regressions do not replace the formal hosted test matrix.
+- Consolidated logging-only changes in 14 additional JS files: local `git diff --check` passed (line-ending warnings only), `node --check` passed 14/14, diff summary 69 additions / 69 deletions, and all proposed diffs reviewed. **Not yet committed, deployed or functionally regression-tested.** Preserve working tree and `_COPY.js` backups.
+- Pending: local startup/functional checks, reviewed commit, isolated staging deployment and targeted hosted regressions for the consolidated revision. Do not claim hosted testing of the uncommitted revision.
+- Add negative API-error-response security tests after the independent review of S6-041 (`routes/familyTree.js` Favorite Pets, plus related routes). Do not record actual credentials, tokens, cookies, reset links or sensitive exception text.

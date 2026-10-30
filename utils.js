@@ -28,7 +28,7 @@ const HOLIDAYS_2020_2036 = [
 const holidays = HOLIDAYS_2020_2036.map(([y, m, d]) => new Date(y, m - 1, d));
 
 function handleDbError(error, res, customMessage = 'Database error') {
-    logger.error(`${customMessage}: ${error.message}`);
+    logger.error('Database operation failed (details omitted)');
     if (error.code === 'ER_DUP_ENTRY') {
         return res.status(400).json({ error: 'Duplicate entry(be)' });
     }

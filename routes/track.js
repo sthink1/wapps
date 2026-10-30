@@ -575,7 +575,7 @@ router.post('/log/page', auth, async (req, res) => {
         );
         res.status(200).json({ message: 'Page tracked' });
     } catch (error) {
-        console.error('Error in /log/page:', error.message);
+        console.error('Error in /log/page (details omitted)');
         res.status(500).json({ error: 'Tracking error' });
     }
 });
@@ -593,7 +593,7 @@ router.post('/log/time-spent', auth, async (req, res) => {
         );
         res.status(200).json({ message: 'Time spent tracked' });
     } catch (error) {
-        console.error('Error in /log/time-spent:', error.message);
+        console.error('Error in /log/time-spent (details omitted)');
         res.status(500).json({ error: 'Tracking error' });
     }
 });
@@ -605,7 +605,7 @@ router.get('/app-usage', auth, requireAdmin, async (req, res) => {
         const apps = await loadAppUsage(period);
         res.json({ period, apps });
     } catch (error) {
-        console.error('Error in /app-usage:', error.message);
+        console.error('Error in /app-usage (details omitted)');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -625,7 +625,7 @@ router.get('/users', auth, requireAdmin, async (req, res) => {
         );
         res.json({ users: rows });
     } catch (error) {
-        console.error('Error in /users:', error.message);
+        console.error('Error in /users (details omitted)');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -651,7 +651,7 @@ router.get('/user-usage', auth, requireAdmin, async (req, res) => {
 
         res.json({ period, user, apps });
     } catch (error) {
-        console.error('Error in /user-usage:', error.message);
+        console.error('Error in /user-usage (details omitted)');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -663,7 +663,7 @@ router.get('/current-plans', auth, requireAdmin, async (req, res) => {
         const data = await loadCurrentPlans();
         res.json(data);
     } catch (error) {
-        console.error('Error in /current-plans:', error.message);
+        console.error('Error in /current-plans (details omitted)');
         res.status(500).json({ error: 'Unable to load current plan information.' });
     }
 });
@@ -674,7 +674,7 @@ router.get('/free-tier-usage', auth, requireAdmin, async (req, res) => {
         const data = await loadCurrentPlans();
         res.json(data);
     } catch (error) {
-        console.error('Error in /free-tier-usage:', error.message);
+        console.error('Error in /free-tier-usage (details omitted)');
         res.status(500).json({ error: 'Unable to load current plan information.' });
     }
 });
@@ -712,7 +712,7 @@ router.get('/stats', auth, requireAdmin, async (req, res) => {
         }));
         res.json({ totalViews, mostVisited, avgTimeSpent, totalTimeSpent, activityOverTime, lastActive });
     } catch (error) {
-        console.error('Error in /stats:', error.message);
+        console.error('Error in /stats (details omitted)');
         res.status(500).json({ error: 'Database error' });
     }
 });

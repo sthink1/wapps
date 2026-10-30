@@ -27,7 +27,7 @@ async function cleanupOnce(pool, log = console) {
     return {ok:true,deleted,batches,mayHaveMore:batches===MAX_BATCHES};
   } catch (err) {
     // A partial cleanup is safe: only expired rows were removed. Never bypass rate limiting.
-    log.error?.(`Stage6A reset rate cleanup failed after ${deleted} removed: ${err.message}`);
+    log.error?.(`Stage6A reset rate cleanup failed after ${deleted} removed (details omitted)`);
     return {ok:false,deleted,batches};
   }
 }

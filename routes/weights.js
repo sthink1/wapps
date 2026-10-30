@@ -228,7 +228,7 @@ router.delete(
             .isISO8601().withMessage('endDate must be a YYYY-MM-DD format(be)')
     ],
     async (req, res) => {
-        logger.info(`Handling DELETE /weights/range with body: ${JSON.stringify(req.body)}`);
+        logger.info('Handling DELETE /weights/range (request body omitted)');
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ error: errors.array()[0].msg });

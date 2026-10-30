@@ -108,7 +108,7 @@ router.post(
       if (err.message.endsWith("(be)")) {
         return res.status(400).json({ message: err.message });
       }
-      logger.error(`POST /etf/category: ${err.message}`);
+      logger.error(`POST /etf/category: [details omitted]`);
       res.status(500).json({ message: "Server error (be)" });
     }
   }
@@ -125,7 +125,7 @@ router.get('/category', auth, async (req, res) => {
       res.json({ message: "Success", data: rows });
     });
   } catch (err) {
-    logger.error(`GET /etf/category: ${err.message}`);
+    logger.error(`GET /etf/category: [details omitted]`);
     res.status(500).json({ message: "Server error (be)" });
   }
 });
@@ -157,7 +157,7 @@ router.put(
       if (err.message.endsWith("(be)")) {
         return res.status(400).json({ message: err.message });
       }
-      logger.error(`PUT /etf/category/:id: ${err.message}`);
+      logger.error(`PUT /etf/category/:id: [details omitted]`);
       res.status(500).json({ message: "Server error (be)" });
     }
   }
@@ -188,7 +188,7 @@ router.delete('/category/:id', auth, async (req, res) => {
     if (err.message.endsWith("(be)")) {
       return res.status(400).json({ message: err.message });
     }
-    logger.error(`DELETE /etf/category/:id: ${err.message}`);
+    logger.error(`DELETE /etf/category/:id: [details omitted]`);
     res.status(500).json({ message: "Server error (be)" });
   }
 });
@@ -236,7 +236,7 @@ router.post(
           if (err.response && err.response.status === 404) {
             throw new Error("Symbol not found. Please check symbol entered.(be)");
           }
-          logger.error(`Polygon validation error for ${upperSymbol}: ${err.message}`);
+          logger.error(`Polygon validation error for [symbol omitted]: [details omitted]`);
           throw new Error("Symbol not found. Please check symbol entered.(be)");
         }
         await connection.query(
@@ -249,7 +249,7 @@ router.post(
       if (err.message.endsWith("(be)")) {
         return res.status(400).json({ message: err.message });
       }
-      logger.error(`POST /etf/symbol: ${err.message}`);
+      logger.error(`POST /etf/symbol: [details omitted]`);
       return res.status(500).json({ message: "Server error (be)" });
     }
   }
@@ -268,7 +268,7 @@ router.get('/symbol', auth, async (req, res) => {
       res.json({ message: "Success", data: rows });
     });
   } catch (err) {
-    logger.error(`GET /etf/symbol: ${err.message}`);
+    logger.error(`GET /etf/symbol: [details omitted]`);
     res.status(500).json({ message: "Server error (be)" });
   }
 });
@@ -300,7 +300,7 @@ router.put(
       if (err.message.endsWith("(be)")) {
         return res.status(400).json({ message: err.message });
       }
-      logger.error(`PUT /etf/symbol/:id: ${err.message}`);
+      logger.error(`PUT /etf/symbol/:id: [details omitted]`);
       res.status(500).json({ message: "Server error (be)" });
     }
   }
@@ -364,7 +364,7 @@ router.delete('/symbol/:id', auth, async (req, res) => {
     if (err.message.endsWith("(be)")) {
       return res.status(400).json({ message: err.message });
     }
-    logger.error(`DELETE /etf/symbol/:id: ${err.message}`);
+    logger.error(`DELETE /etf/symbol/:id: [details omitted]`);
     res.status(500).json({ message: "Server error (be)" });
   }
 });
@@ -467,7 +467,7 @@ router.get('/compare', auth, async (req, res) => {
           });
           return map;
         } catch (err) {
-          logger.error(`Tiingo range failed for ${symbol}: ${err.message}`);
+          logger.error(`Tiingo range failed for [symbol omitted]: [details omitted]`);
           return new Map();
         }
       };
@@ -513,7 +513,7 @@ router.get('/compare', auth, async (req, res) => {
               );
               todayPrice = finnResp.data.c && finnResp.data.c > 0 ? finnResp.data.c : null;
             } catch (e) {
-              logger.warn(`Finnhub failed for ${symbol}: ${e.message}`);
+              logger.warn(`Finnhub failed for [symbol omitted]: [details omitted]`);
             }
           }
 
@@ -604,7 +604,7 @@ router.get('/compare', auth, async (req, res) => {
       res.json({ current, past });
     });
   } catch (err) {
-    logger.error(`GET /etf/compare failed: ${err.message} - Stack: ${err.stack}`);
+    logger.error(`GET /etf/compare failed: [details omitted] - Stack: [details omitted]`);
     res.status(500).json({ message: 'Server error fetching comparison data' });
   }
 });
@@ -635,7 +635,7 @@ router.get('/tiingo-proxy', auth, async (req, res) => {
     );
     res.json(response.data);
   } catch (err) {
-    logger.error(`GET /etf/tiingo-proxy: ${err.message}`);
+    logger.error(`GET /etf/tiingo-proxy: [details omitted]`);
     res.status(500).json({ message: 'Tiingo proxy error' });
   }
 });
@@ -663,7 +663,7 @@ router.get('/polygon-proxy', auth, async (req, res) => {
       logger.error(`Polygon rate limit (429) for ${symbol} on ${date}`);
       return res.status(429).json({ message: 'Polygon rate limit' });
     }
-    logger.error(`GET /etf/polygon-proxy: ${err.message}`);
+    logger.error(`GET /etf/polygon-proxy: [details omitted]`);
     res.status(500).json({ message: 'Polygon proxy error' });
   }
 });
@@ -690,7 +690,7 @@ router.get('/activity/symbols-by-category/:categoryId', auth, async (req, res) =
       res.json({ message: "Success", data: rows });
     });
   } catch (err) {
-    logger.error(`GET /etf/activity/symbols-by-category: ${err.message}`);
+    logger.error(`GET /etf/activity/symbols-by-category: [details omitted]`);
     res.status(500).json({ message: "Server error (be)" });
   }
 });
@@ -755,7 +755,7 @@ router.post(
       if (err.code === 'ER_DUP_ENTRY') {
         return res.status(400).json({ message: "Duplicate entry (be)" });
       }
-      logger.error(`POST /etf/activity/buy: ${err.message}`);
+      logger.error(`POST /etf/activity/buy: [details omitted]`);
       res.status(500).json({ message: "Server error (be)" });
     }
   }
@@ -829,7 +829,7 @@ router.post(
       if (err.code === 'ER_DUP_ENTRY') {
         return res.status(400).json({ message: "Duplicate entry (be)" });
       }
-      logger.error(`POST /etf/activity/sell: ${err.message}`);
+      logger.error(`POST /etf/activity/sell: [details omitted]`);
       res.status(500).json({ message: "Server error (be)" });
     }
   }
@@ -883,7 +883,7 @@ router.get('/activity/inventory', auth, async (req, res) => {
             );
             currentPrice = finnResp.data.c && finnResp.data.c > 0 ? finnResp.data.c : null;
           } catch (e) {
-            logger.warn(`Finnhub failed for ${row.symbol}: ${e.message}`);
+            logger.warn(`Finnhub failed for [symbol omitted]: [details omitted]`);
           }
         }
 
@@ -903,7 +903,7 @@ router.get('/activity/inventory', auth, async (req, res) => {
               currentPrice = (!isNaN(adj) && adj > 0) ? adj : (!isNaN(raw) && raw > 0 ? raw : null);
             }
           } catch (e) {
-            logger.warn(`Tiingo fallback failed for ${row.symbol}: ${e.message}`);
+            logger.warn(`Tiingo fallback failed for [symbol omitted]: [details omitted]`);
           }
         }
 
@@ -937,7 +937,7 @@ router.get('/activity/inventory', auth, async (req, res) => {
       res.json({ message: "Success", data: inventoryData });
     });
   } catch (err) {
-    logger.error(`GET /etf/activity/inventory: ${err.message}`);
+    logger.error(`GET /etf/activity/inventory: [details omitted]`);
     res.status(500).json({ message: "Server error (be)" });
   }
 });
@@ -1027,7 +1027,7 @@ router.get('/activity/sales-report', auth, async (req, res) => {
       res.json({ message: "Success", data: salesData, rangeStart, rangeEnd });
     });
   } catch (err) {
-    logger.error(`GET /etf/activity/sales-report: ${err.message}`);
+    logger.error(`GET /etf/activity/sales-report: [details omitted]`);
     res.status(500).json({ message: "Server error (be)" });
   }
 });
@@ -1064,7 +1064,7 @@ router.get('/activity/transactions', auth, async (req, res) => {
       res.json({ message: "Success", data: rows });
     });
   } catch (err) {
-    logger.error(`GET /etf/activity/transactions: ${err.message}`);
+    logger.error(`GET /etf/activity/transactions: [details omitted]`);
     res.status(500).json({ message: "Server error (be)" });
   }
 });
@@ -1169,7 +1169,7 @@ router.put(
       if (err.message.endsWith("(be)")) {
         return res.status(400).json({ message: err.message });
       }
-      logger.error(`PUT /etf/activity/:id: ${err.message}`);
+      logger.error(`PUT /etf/activity/:id: [details omitted]`);
       res.status(500).json({ message: "Server error (be)" });
     }
   }
@@ -1225,7 +1225,7 @@ router.delete('/activity/:id', auth, async (req, res) => {
     if (err.message.endsWith("(be)")) {
       return res.status(400).json({ message: err.message });
     }
-    logger.error(`DELETE /etf/activity/:id: ${err.message}`);
+    logger.error(`DELETE /etf/activity/:id: [details omitted]`);
     res.status(500).json({ message: "Server error (be)" });
   }
 });

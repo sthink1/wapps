@@ -75,7 +75,7 @@ async function withTx(work) {
         await c.commit();
         for (const task of afterCommit) {
             try { await task(); } catch (error) {
-                console.error('FamilyTree after-commit task failed:', error);
+                console.error('FamilyTree after-commit task failed (details omitted)');
             }
         }
         return result;
@@ -783,7 +783,7 @@ async function safelyDeleteImage(storageKey) {
         await deleteImage(storageKey);
     } catch (err) {
         // R2 cleanup should not cause an otherwise-valid DB operation to fail.
-        console.error('Unable to delete old FamilyTree image from R2:', err.message);
+        console.error('Unable to delete old FamilyTree image from R2 (details omitted)');
     }
 }
 
@@ -8320,7 +8320,7 @@ const petHandler = async (req, res, action) => {
         if (!(await treeHasPerson(c, tree.FamilyTreeID, personID))) return res.status(404).json({message:'Person not found in this Family Tree.'});
         await action(c, personID);
     } catch (e) {
-        console.error('Favorite Pets:', e);
+        console.error('Favorite Pets operation failed (details omitted)');
         res.status(e.status || 500).json({message:e.message || 'Favorite Pets request failed.'});
     } finally {c.release();}
 };

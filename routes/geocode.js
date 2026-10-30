@@ -38,7 +38,7 @@ router.get('/reverse', async (req, res) => {
         res.json(data);
 
     } catch (err) {
-        console.error('Nominatim proxy error:', err);
+        console.error('Nominatim proxy error (details omitted)');
         res.status(500).json({ error: 'Reverse geocoding failed' });
     }
 });

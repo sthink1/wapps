@@ -16,7 +16,7 @@ router.get('/', auth, async (req, res) => {
         );
         res.json(results);
     } catch (err) {
-        console.error('Error fetching weight activities:', err.message);
+        console.error('Error fetching weight activities (details omitted)');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -73,7 +73,7 @@ router.post(
             );
             res.status(201).json({ message: 'Weight activity added successfully', id: result.insertId });
         } catch (err) {
-            console.error('Error adding weight activity:', err.message);
+            console.error('Error adding weight activity (details omitted)');
             res.status(500).json({ error: 'Database error' });
         }
     }
@@ -108,7 +108,7 @@ router.delete(
             );
             res.status(204).send();
         } catch (err) {
-            console.error('Error deleting weight activity:', err.message);
+            console.error('Error deleting weight activity (details omitted)');
             res.status(500).json({ error: 'Database error' });
         }
     }
@@ -143,7 +143,7 @@ router.delete(
             );
             res.status(204).send();
         } catch (err) {
-            console.error('Error deleting weight activities by WeightID:', err.message);
+            console.error('Error deleting weight activities by WeightID (details omitted)');
             res.status(500).json({ error: 'Database error' });
         }
     }
@@ -236,7 +236,7 @@ router.put(
             }
             res.status(204).send();
         } catch (err) {
-            console.error('Error updating weight activity:', err.message);
+            console.error('Error updating weight activity (details omitted)');
             res.status(500).json({ error: 'Database error' });
         }
     }

@@ -254,3 +254,13 @@ For every status change, add a dated row above and update the corresponding mast
 **Status:** In Progress. **Priority:** High. **Stage:** Local DB-host evaluation / 6D operational readiness. **Evidence:** User-confirmed Johnny MariaDB `max_user_connections=10`, server `max_connections=300`; `BudgetPrintDetails` exhausted connections with WA pool max 50; local setting `DB_CONNECTION_LIMIT=5` and restart resolved Print My Details. **Unverified:** all pools and background workers, long-run concurrency, Morty limits and hosted behavior. **Acceptance criteria:** documented inventory of pools and limits, successful representative local tests without connection errors, bounded stress/recovery test, verified staged identity guard, and review before any hosting change. Do not classify as Verified Closed merely because the Budget report passed.
 
 **Recordkeeping note:** All pre-October 27 references to `sql5838929`-only *local* testing are historical baselines. Locally, `wapps_test` is now an additional approved test endpoint under reviewed safeguards; hosted staging remains restricted to `sql5838929` pending separate approval. Existing S6 IDs and statuses remain unchanged.
+
+<!-- S6-041: Stage 6 API error-response disclosure -->
+### S6-041 — Review API error responses that include exception messages
+
+- **Status:** Open. **Priority:** High (security review; actual disclosure not demonstrated). **Stage:** 6B security / independent design-engineer review.
+- **Confirmed source finding (October 30, 2026):** In `routes/familyTree.js`, the Favorite Pets error handler returns `res.status(e.status || 500).json({message:e.message || 'Favorite Pets request failed.'})`. The consolidated logging revision changes the associated `console.error` statement only; the HTTP response remains unchanged. Other API error-response patterns were not exhaustively adjudicated in this logging-only review.
+- **Risk to evaluate:** Unexpected exception messages may expose internal implementation or data details to API clients. This is a potential exposure, not evidence of a real incident.
+- **Required action:** Review public and authenticated API error responses, starting with the Favorite Pets handler and `routes/notifications.js`; distinguish explicitly approved user-facing validation messages from unexpected 5xx exception details. Design and implement safe responses without altering intended validation/HTTP contracts.
+- **Acceptance criteria:** Reviewed route inventory, agreed error-response policy, targeted tests for validation and unexpected exceptions, and independent design-engineer sign-off. Do not mark Verified Closed until these are recorded.
+- **Production:** No production changes authorized.

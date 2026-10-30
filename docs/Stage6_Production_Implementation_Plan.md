@@ -195,3 +195,11 @@ These prerequisites correspond to `Stage6_OpenItems.md` IDs and the separate `St
 - Before any database cutover, obtain Morty per-user connection allowance, maximum service-wide connections, TLS/certificate policy, backup/restore evidence and representative workload results.
 - Keep Stage 6 production schema migration separate from a later MySQL-to-MariaDB hosting migration. Do not apply a test dump to production or imply that Johnny local success authorizes a Morty move.
 - Maintain independent rollback plans for Stage 6 code/authentication and database hosting, with verified database identities and explicit approval for each.
+
+<!-- STAGE6-LOGGING-RELEASE-GATE-2026-10-30 -->
+### October 30, 2026 — Logging / API error-response release gate
+
+- Commit `8fa035f` contains the earlier `server.js` / `morgan.js` HTTP URL logging fix, with H01–H04 targeted hosted login regressions reported passed. This evidence does **not** certify all application logging or response handling.
+- A further consolidated logging-only revision modifies 14 JS files (69 logging replacements), currently **uncommitted and not deployed**. Local whitespace, syntax and code-diff review passed; local startup, representative functional tests and isolated hosted checks remain required. Preserve backups and the existing production environment.
+- **Open security item S6-041:** `routes/familyTree.js` Favorite Pets handler returns raw `e.message` in a JSON API response; separate from server-side logging. Review potentially similar exception-to-client paths, define approved safe error-response behavior and regression-test before independent design-engineer review and any production decision.
+- Do not merge to `main`, redeploy production, modify production SQL, or change TNNA devices without explicit approval and the existing Stage 6 release gates.

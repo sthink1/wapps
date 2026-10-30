@@ -41,7 +41,7 @@ function usageActivity(appKey) {
             Promise.allSettled(jobs).then(results => {
                 results.forEach(result => {
                     if (result.status === 'rejected') {
-                        console.error('Usage activity tracking error:', result.reason && result.reason.message ? result.reason.message : result.reason);
+                        console.error('Usage activity tracking failed (details omitted)');
                     }
                 });
             });

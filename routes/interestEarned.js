@@ -16,7 +16,7 @@ router.get('/companies', auth, async (req, res) => {
         );
         res.json(rows.map(row => row.CompanyName));
     } catch (error) {
-        console.error('Error fetching companies:', error.message);
+        console.error('Error fetching companies (details omitted)');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -40,7 +40,7 @@ router.get('/contracts/:companyName',
             );
             res.json(rows.map(row => row.ContractNumber));
         } catch (error) {
-            console.error('Error fetching contracts:', error.message);
+            console.error('Error fetching contracts (details omitted)');
             res.status(500).json({ error: 'Database error' });
         }
     }
@@ -56,7 +56,7 @@ router.get('/', auth, async (req, res) => {
         );
         res.json(rows);
     } catch (error) {
-        console.error('Error fetching interest records:', error.message);
+        console.error('Error fetching interest records (details omitted)');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -81,7 +81,7 @@ router.get('/:userIntErndId',
             }
             res.json(results[0]);
         } catch (error) {
-            console.error('Error fetching interest record:', error.message);
+            console.error('Error fetching interest record (details omitted)');
             res.status(500).json({ error: 'Database error' });
         }
     }
@@ -119,7 +119,7 @@ router.post('/',
             if (error.code === 'ER_DUP_ENTRY') {
                 return res.status(400).json({ error: 'Contract already exists' });
             }
-            console.error('Error adding interest record:', error.message);
+            console.error('Error adding interest record (details omitted)');
             res.status(500).json({ error: 'Database error' });
         }
     }
@@ -191,7 +191,7 @@ router.put('/:userIntErndId',
             if (error.code === 'ER_DUP_ENTRY') {
                 return res.status(400).json({ error: 'Contract already exists' });
             }
-            console.error('Error updating interest record:', error.message);
+            console.error('Error updating interest record (details omitted)');
             res.status(500).json({ error: 'Database error' });
         }
     }
@@ -225,7 +225,7 @@ router.delete('/:userIntErndId',
                 UserIntErndID: Number(userIntErndId)
             });
         } catch (error) {
-            console.error('Error deleting interest record:', error.message);
+            console.error('Error deleting interest record (details omitted)');
             res.status(500).json({ error: 'Database error' });
         }
     }

@@ -50,14 +50,14 @@ Message: ${message}
       html: htmlBody,     // rich HTML version
     });
 
-    logger.info(`Contact form email sent from ${email}`);
+    logger.info('Contact form email sent');
 
     return {
       status: 'success',
       message: `Thank you, ${name}! Your message has been sent successfully.`,
     };
   } catch (error) {
-    logger.error(`Failed to send email: ${error.message}`);
+    logger.error('Contact form email delivery failed (details omitted)');
     throw new Error('Unable to send your message at this time.');
   }
 };
@@ -110,14 +110,14 @@ If you did not attempt to log in, please ignore this email.
       html: htmlBody,
     });
 
-    logger.info(`Login verification code sent to ${email}`);
+    logger.info('Login verification code sent');
 
     return {
       status: 'success',
       message: 'Verification code sent to your email.',
     };
   } catch (error) {
-    logger.error(`Failed to send verification code: ${error.message}`);
+    logger.error('Login verification email delivery failed (details omitted)');
     throw new Error('Unable to send verification code at this time.');
   }
 };
@@ -243,10 +243,10 @@ const sendNotificationEmail = async ({
       html: htmlBody,
     });
 
-    logger.info(`Notification email sent to ${email} (${category})`);
+    logger.info('Notification email sent (recipient and category omitted)');
     return { status: 'success', message: 'Notification sent.' };
   } catch (error) {
-    logger.error(`Failed to send notification to ${email}: ${error.message}`);
+    logger.error('Notification email delivery failed (details omitted)');
     throw new Error('Unable to send notification at this time.');
   }
 };

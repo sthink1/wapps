@@ -236,7 +236,7 @@ router.post('/login', async (req, res) => {
                 username: user.UserName
             });
         } catch (emailError) {
-            console.error('Email sending failed:', emailError.message);
+            console.error('Login verification email delivery failed (details omitted)');
             return res.status(500).json({ error: 'Failed to send verification code. Email service error.(be)' });
         }
 
@@ -247,7 +247,7 @@ router.post('/login', async (req, res) => {
             userId: user.UserID
         });
     } catch (error) {
-        console.error('Login error:', error.message);
+        console.error('Login operation failed (details omitted)');
         handleDbError(error, res, 'Error during login');
     }
 });
@@ -303,7 +303,7 @@ router.post('/change-password',auth,async(req,res)=>{
     await sessions.revokeAll(c,req.user.userId);
     await c.commit();sessions.clearCookie(res,req);res.set('Cache-Control','no-store');
     try{const [info]=await pool.query('SELECT Email,UserName FROM UsersT WHERE UserID=?',[req.user.userId]);if(info.length)await sendPasswordChangedNotice({email:info[0].Email,username:info[0].UserName});}
-    catch(mailErr){console.error('Password-change confirmation email failed:',mailErr.message);}
+    catch(mailErr){console.error('Password-change confirmation email failed (details omitted)');}
     res.json({message:'Password changed. Please log in again.'});
   } catch(e){try{await c.rollback();}catch(_){}handleDbError(e,res,'Error changing password');}
   finally{c.release();}
@@ -382,7 +382,7 @@ router.post('/forgot-password',async(req,res)=>{
       if(!base||!/^https?:\/\//.test(base))throw new Error('APP_PUBLIC_ORIGIN not configured');
       const url=new URL('/forgotPassWord.html',base);url.searchParams.set('token',mail.secret);
       await sendPasswordResetLink({email:mail.email,username:mail.username,resetUrl:url.toString()});
-    }catch(e){console.error('Password reset delivery failed:',e.message);}
+    }catch(e){console.error('Password reset delivery failed (details omitted)');}
   }
   res.json({message:GENERIC_RESET_MESSAGE});
 });
@@ -433,7 +433,7 @@ router.post('/reset-password',async(req,res)=>{
   }catch(e){try{await c.rollback();}catch(_){}return handleDbError(e,res,'Error resetting password');}
   finally{c.release();}
   sessions.clearCookie(res,req);
-  try{await sendPasswordChangedNotice(userEmail);}catch(e){console.error('Password change notice failed:',e.message);}
+  try{await sendPasswordChangedNotice(userEmail);}catch(e){console.error('Password change notice failed (details omitted)');}
   res.json({message:'Password reset successful. Please log in again.'});
 });
 

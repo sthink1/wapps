@@ -45,7 +45,7 @@ const pool = mysqlPromise.createPool({
 pool.on('connection', (connection) => {
     connection.query("SET time_zone = '+00:00'", (err) => {
         if (err) {
-            logger.error('Unable to set MySQL session time zone to UTC: ' + err.message);
+            logger.error('Unable to set MySQL session time zone to UTC (details omitted)');
         }
     });
 });
@@ -106,7 +106,7 @@ async function getNextUserSpecificID(userId, tableName, columnName) {
         return selectResult[0].NextID;
     } catch (err) {
         await connection.rollback();
-        logger.error(`Error generating ID for UserID=${userId}, Table=${tableName}: ${err.message}`);
+        logger.error('Error generating ID (identifiers and details omitted)');
         throw err;
     } finally {
         connection.release();
