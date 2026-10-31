@@ -254,6 +254,7 @@ router.post('/login', async (req, res) => {
 
 router.post('/logout', auth, async (req,res)=>{
   if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});
+  try { sessions.requireOrigin(req); } catch(e) { return res.status(403).json({error:'ORIGIN_NOT_ALLOWED'}); }
   try { await sessions.revokeCurrent(pool,req.user);sessions.clearCookie(res,req);res.json({message:'Logged out successfully'}); }
   catch(e){handleDbError(e,res,'Error logging out');}
 });
