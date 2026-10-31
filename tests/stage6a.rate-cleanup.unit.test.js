@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');
-assert.equal(process.env.DB_NAME,'sql5838929');
+assert.equal(process.env.DB_NAME,'wapps_test');
 const cleanup=require('../services/passwordResetRateCleanup');
 (async()=>{
   assert.match(cleanup.DELETE_SQL,/WindowStart < DATE_SUB\(UTC_TIMESTAMP\(\), INTERVAL 48 HOUR\)/);

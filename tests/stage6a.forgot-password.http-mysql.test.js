@@ -10,8 +10,13 @@ const http=require('node:http');
 const express=require('express');
 const mysql=require('mysql2/promise');
 
-if(process.env.DB_NAME!=='sql5838929'||process.env.NODE_ENV==='production')
-  throw Error('STOP: .env.test DB_NAME must be sql5838929; production prohibited.');
+// Live test gate: no network or database operations unless explicitly authorized.
+const {config}=require('../services/stage6Environment');
+if(process.env.WA_ENV!=='local' || process.env.DB_NAME!=='wapps_test' || process.env.NODE_ENV==='production')
+  throw Error('STOP: requires WA_ENV=local, DB_NAME=wapps_test, nonproduction.');
+config();
+if(!process.argv.includes('--run-live'))
+  throw Error('STOP: add --run-live only after reviewing database safety.');
 if(!process.env.JWT_SECRET)throw Error('JWT_SECRET required.');
 if(!process.env.DB_HOST||!process.env.DB_USER||!process.env.DB_PASSWORD)
   throw Error('Test database credentials missing.');
@@ -21,12 +26,12 @@ const tag=crypto.randomBytes(12).toString('hex');
 const syntheticEmail=`stage6a-http-${tag}@example.invalid`;
 const otherEmail=`stage6a-other-${tag}@example.invalid`;
 const keys=new Set();
-let mailCalls=0,connections=0,released=0,commits=0,rollbacks=0;
+let mailCalls=0,connections=0,released=0,commits=0,rollbacks=0,isolated=false;
 const expectedMessage='If an account matches, password reset instructions will be sent.';
 const db=mysql.createPool({
  host:process.env.DB_HOST,user:process.env.DB_USER,password:process.env.DB_PASSWORD,
  database:process.env.DB_NAME,port:Number(process.env.DB_PORT||3306),
- timezone:'Z',waitForConnections:true,connectionLimit:4
+ timezone:'Z',ssl:{rejectUnauthorized:true},multipleStatements:false,waitForConnections:true,connectionLimit:4
 });
 const pool={
  async getConnection(){
@@ -98,7 +103,9 @@ async function main(){
  let started=false;
  try{
   const [[current]]=await db.query('SELECT DATABASE() AS db');
-  assert.equal(current.db,'sql5838929');
+  assert.equal(current.db,'wapps_test');
+  const [[tls]]=await db.query("SHOW STATUS LIKE 'Ssl_cipher'");
+  assert(tls && tls.Value,'TLS cipher required');
   const [[table]]=await db.query("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='PasswordResetRateT'");
   assert.equal(String(table?.ENGINE).toUpperCase(),'INNODB');
   // Verify synthetic global slot is empty before writing anything.
@@ -106,6 +113,7 @@ async function main(){
    .update(`reset-v1|global|all-password-resets|${FUTURE_BUCKET}`,'utf8').digest('hex');
   const [[old]]=await db.query('SELECT COUNT(*) AS n FROM PasswordResetRateT WHERE KeyHash=?',[globalKey]);
   assert.equal(Number(old.n),0,'Synthetic global slot already occupied: stop without modification.');
+  isolated=true;
   console.log('PASS preflight: test database and isolated future global window verified.');
   await new Promise((ok,bad)=>{web.once('error',bad);web.listen(0,'127.0.0.1',ok)});started=true;
   const expected={status:200,body:{message:expectedMessage}};
@@ -132,7 +140,7 @@ async function main(){
   // Cleanup: use exact hash AND synthetic bucket; verify each removal.
   let removed=0;
   try{
-   for(const key of keys){
+   for(const key of (isolated?keys:[])){
     const [r]=await db.query(
       "DELETE FROM PasswordResetRateT WHERE KeyHash=? AND WindowStart=STR_TO_DATE(?,'%Y%m%d%H')",
       [key,FUTURE_BUCKET]
@@ -140,11 +148,12 @@ async function main(){
     removed+=Number(r.affectedRows||0);
    }
    const hashes=[...keys];
-   for(const key of hashes){
+   for(const key of (isolated?hashes:[])){
     const [[r]]=await db.query('SELECT COUNT(*) AS n FROM PasswordResetRateT WHERE KeyHash=?',[key]);
     assert.equal(Number(r.n),0,`Cleanup left row for ${key.slice(0,8)}`);
    }
-   console.log(`PASS cleanup: ${removed} rows removed; ${keys.size} synthetic keys verified absent.`);
+   if(isolated)console.log(`PASS cleanup: ${removed} rows removed; ${keys.size} synthetic keys verified absent.`);
+   else console.log('CLEANUP: skipped; isolation preflight was not completed.');
   }catch(e){console.error('CLEANUP FAILED:',e.message);process.exitCode=1}
   await db.end();
  }

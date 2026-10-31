@@ -6,7 +6,7 @@ const path=require('node:path');
 const Module=require('node:module');
 const http=require('node:http');
 const express=require('express');
-if(process.env.DB_NAME!=='sql5838929'||process.env.NODE_ENV==='production')throw Error('Test environment sql5838929 required');
+if(process.env.DB_NAME!=='wapps_test'||process.env.NODE_ENV==='production')throw Error('Test environment wapps_test required');
 const source=path.resolve(__dirname,'../routes/users.js');
 let calls=0, emails=[], fails=false, counters=new Map(), commits=0, rollbacks=0, releases=0, inserted=0;
 const realEmail='synthetic-existing@example.invalid';

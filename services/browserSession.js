@@ -40,9 +40,12 @@ async function create(c,user,remembered) {
 async function rotate(pool,secret) {
   if(!/^[a-f0-9]{96}$/.test(secret||'')) {const e=Error('REFRESH_INVALID');e.status=401;throw e;}
   const c=await pool.getConnection();try {
-    await c.beginTransaction();
+    // Resolve the candidate account before starting the transaction so this
+    // nonlocking read cannot establish a stale REPEATABLE READ snapshot.
+    // The account lock and all token checks below remain transactional.
     const [candidate]=await c.query('SELECT s.UserID FROM WebRefreshTokenT r JOIN WebSessionT s ON s.WebSessionID=r.WebSessionID WHERE r.TokenHash=? LIMIT 1',[hash(secret)]);
     if(!candidate.length){const e=Error('REFRESH_INVALID');e.status=401;throw e;}
+    await c.beginTransaction();
     const current=await fence.lock(c,candidate[0].UserID);
     const [rows]=await c.query(`SELECT r.WebRefreshTokenID,r.WebSessionID,r.ConsumedAt,r.RevokedAt,r.ExpiresAt AS TokenExpires,s.UserID,s.IsRemembered,s.RevokedAt AS SessionRevoked,s.AbsoluteExpiresAt,s.ExpiresAt AS SessionExpires,s.SessionPublicID,u.UserName,sec.SecurityVersion
       FROM WebRefreshTokenT r JOIN WebSessionT s ON s.WebSessionID=r.WebSessionID JOIN UsersT u ON u.UserID=s.UserID JOIN UserSecurityT sec ON sec.UserID=u.UserID

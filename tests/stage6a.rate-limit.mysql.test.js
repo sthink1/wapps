@@ -6,19 +6,31 @@ const crypto = require('node:crypto');
 const mysql = require('mysql2/promise');
 const limiter = require('../services/passwordResetLimiter');
 
-if (process.env.DB_NAME !== 'sql5838929' || process.env.NODE_ENV === 'production') {
-  throw Error('STOP: Only DB_NAME=sql5838929 in a NON-production environment is allowed.');
+// Fail closed before any database connection. Test-only HelioHost identity.
+const {config} = require('../services/stage6Environment');
+if (process.env.WA_ENV !== 'local' || process.env.NODE_ENV === 'production' ||
+    process.env.DB_NAME !== 'wapps_test') {
+  throw Error('STOP: H103 requires WA_ENV=local, DB_NAME=wapps_test, non-production.');
+}
+config(); // validates Helio host, user, port, TLS setting and localhost origin.
+if (!process.argv.includes('--run-live')) {
+  throw Error('STOP: live MySQL test requires explicit --run-live after safety review.');
 }
 if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.JWT_SECRET) {
   throw Error('Missing test database connection or JWT_SECRET configuration.');
 }
 
 const nonce = crypto.randomBytes(12).toString('hex');
+const FUTURE_BUCKET = '2099123121'; // reserved; never current application hour
 const keysCreated = new Set();
+let isolated = false;
+const globalKey = crypto.createHmac('sha256',process.env.JWT_SECRET)
+  .update(`reset-v1|global|all-password-resets|${FUTURE_BUCKET}`,'utf8').digest('hex');
 const newPool = () => mysql.createPool({
   host: process.env.DB_HOST, port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER, password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME, charset: 'utf8mb4', timezone: 'Z',
+  ssl: {rejectUnauthorized: true}, multipleStatements: false,
   connectionLimit: 5, waitForConnections: true, queueLimit: 0
 });
 let pool = null;
@@ -32,6 +44,7 @@ async function consume(activePool, email, ip) {
     await c.beginTransaction(); open = true;
     // Record keys that THIS test attempts to create; exact-key cleanup only.
     const db = {query: async (sql, args) => {
+      if (sql.startsWith('SELECT DATE_FORMAT')) return [[{Bucket:FUTURE_BUCKET}]];
       if (sql.startsWith('INSERT INTO PasswordResetRateT')) keysCreated.add(args[0]);
       return c.query(sql, args);
     }};
@@ -56,10 +69,16 @@ async function getCountsFor(keys, activePool) {
 async function main() {
   pool = newPool();
   const [[db]] = await pool.query('SELECT DATABASE() AS db');
-  assert.equal(db.db, 'sql5838929');
+  assert.equal(db.db, 'wapps_test');
+  const [[tls]] = await pool.query("SHOW STATUS LIKE 'Ssl_cipher'");
+  assert(tls && tls.Value, 'TLS cipher required');
   const [[table]] = await pool.query("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='PasswordResetRateT'");
   assert(table && String(table.ENGINE).toUpperCase() === 'INNODB', 'PasswordResetRateT must be InnoDB');
-  console.log('PASS preflight: sql5838929 and PasswordResetRateT/InnoDB confirmed.');
+  // Refuse to interact with a pre-existing shared future-hour global key.
+  const [[prior]] = await pool.query('SELECT COUNT(*) AS n FROM PasswordResetRateT WHERE KeyHash=?',[globalKey]);
+  assert.equal(Number(prior.n),0,'Synthetic global bucket occupied: abort without changes');
+  isolated = true;
+  console.log('PASS preflight: wapps_test, TLS, InnoDB and unused isolated future bucket.');
 
   // Test 1 — five requests allowed per email, sixth blocked.
   const emailA = `stage6a-${nonce}-email@example.invalid`;
@@ -100,10 +119,11 @@ async function main() {
 
 async function cleanup(){
   // Exact hashes only, recorded from this test's INSERT attempts; never truncate a table.
-  // This removes ALL keys attempted by this test, including denied attempts.
-  if (!pool || keysCreated.size===0) return;
+  // Removes only this run's isolated future-hour keys, including denied attempts.
+  // Do not run this test simultaneously with any other synthetic 2099123121 test.
+  if (!pool || !isolated || keysCreated.size===0) return;
   for (const key of keysCreated) {
-    await pool.query('DELETE FROM PasswordResetRateT WHERE KeyHash=?',[key]);
+    await pool.query("DELETE FROM PasswordResetRateT WHERE KeyHash=? AND WindowStart=STR_TO_DATE(?,'%Y%m%d%H')",[key,FUTURE_BUCKET]);
   }
   const remaining = await getCountsFor(keysCreated,pool);
   assert([...remaining.values()].every(v=>v===null),'Test keys remain after cleanup');

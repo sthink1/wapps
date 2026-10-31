@@ -34,7 +34,7 @@ check('Forgot Password uses database-backed shared limiter and credential-versio
   // Replace JWT module only during module loading. No real database dependency.
   const prior=Module._load;
   Module._load=function(request,parent,isMain){if(request==='jsonwebtoken')return {sign(){throw Error('No signing in isolated test')}};return prior.apply(this,arguments)};
-  let lib;try{process.env.DB_NAME='sql5838929';lib=require(servicePath)}finally{Module._load=prior}
+  let lib;try{lib=require(servicePath)}finally{Module._load=prior}
   const observed=[];
   const fake={async query(sql,args){observed.push({sql,args});return [{affectedRows:1}]}};
   await lib.revokeAll(fake,62);

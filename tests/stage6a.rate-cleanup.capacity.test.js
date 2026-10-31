@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-if (process.env.DB_NAME !== 'sql5838929' || process.env.NODE_ENV === 'production') throw Error('Test DB required');
+if (process.env.DB_NAME !== 'wapps_test' || process.env.NODE_ENV === 'production') throw Error('Test DB required');
 const {cleanupOnce,DELETE_SQL,BATCH,MAX_BATCHES} = require('../services/passwordResetRateCleanup');
 const quiet={info(){},error(){}};
 assert.equal(BATCH,250);

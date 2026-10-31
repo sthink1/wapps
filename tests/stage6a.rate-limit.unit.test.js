@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
-assert.equal(process.env.DB_NAME,'sql5838929','Requires --env-file=.env.test');
+assert.equal(process.env.DB_NAME,'wapps_test','Requires --env-file=.env.test');
 const limiter=require('../services/passwordResetLimiter');
 class FakeConnection{
   constructor(db){this.db=db;this.calls=0}

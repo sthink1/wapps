@@ -10,8 +10,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const mysql = require('mysql2/promise');
 
-if (process.env.DB_NAME !== 'sql5838929' || process.env.NODE_ENV === 'production') {
-  throw new Error('STOP: run with .env.test, DB_NAME=sql5838929, not production.');
+// Fail closed before any database connection. Test-only HelioHost identity.
+const {config} = require('../services/stage6Environment');
+if (process.env.WA_ENV !== 'local' || process.env.NODE_ENV === 'production' ||
+    process.env.DB_NAME !== 'wapps_test') {
+  throw Error('STOP: H103 requires WA_ENV=local, DB_NAME=wapps_test, non-production.');
+}
+config(); // validates Helio host, user, port, TLS setting and localhost origin.
+if (!process.argv.includes('--run-live')) {
+  throw Error('STOP: live MySQL test requires explicit --run-live after safety review.');
 }
 if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD) {
   throw new Error('Missing test database configuration.');
@@ -31,14 +38,16 @@ async function run(){
   const pool=mysql.createPool({
     host:process.env.DB_HOST, user:process.env.DB_USER, password:process.env.DB_PASSWORD,
     database:process.env.DB_NAME, port:Number(process.env.DB_PORT||3306),
-    timezone:'Z', waitForConnections:true, connectionLimit:2
+    timezone:'Z', ssl:{rejectUnauthorized:true}, multipleStatements:false, waitForConnections:true, connectionLimit:2
   });
   let c;
   try {
     c=await pool.getConnection();
     await c.query("SET time_zone='+00:00'");
     const [[db]]=await c.query('SELECT DATABASE() AS name');
-    assert.equal(db.name,'sql5838929');
+    assert.equal(db.name,'wapps_test');
+    const [[tls]]=await c.query("SHOW STATUS LIKE 'Ssl_cipher'");
+    assert(tls && tls.Value,'TLS cipher required');
     await c.query('CREATE TEMPORARY TABLE _wa_stage6a_rollback_account (id INT PRIMARY KEY, password_hash VARCHAR(80) NOT NULL, security_version INT NOT NULL, revoked INT NOT NULL) ENGINE=InnoDB');
     await c.query('CREATE TEMPORARY TABLE _wa_stage6a_rollback_reset (id INT PRIMARY KEY, used INT NOT NULL, revoked INT NOT NULL) ENGINE=InnoDB');
     await c.query("INSERT INTO _wa_stage6a_rollback_account VALUES (1,'original-test-hash',7,0)");

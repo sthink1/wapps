@@ -5,7 +5,7 @@ const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
 const Module=require('module');
 const originalLoad=Module._load;
-process.env.DB_NAME='sql5838929';process.env.JWT_SECRET='local-test';
+process.env.DB_NAME='wapps_test';process.env.JWT_SECRET='local-test';
 let tokenCounter=0;
 Module._load=function(request,parent,isMain){
  if(request==='jsonwebtoken')return {sign(payload,secret,opts){assert.equal(secret,'local-test');return JSON.stringify({...payload,exp:Date.now()+8*3600000,serial:++tokenCounter});},verify(raw,secret){if(secret!=='local-test')throw Error('wrong key');const p=JSON.parse(raw);if(p.exp<Date.now())throw Error('expired');return p;}};

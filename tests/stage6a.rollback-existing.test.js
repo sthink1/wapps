@@ -1,96 +1,60 @@
 'use strict';
-// Stage 6A limited rollback test: test database, selected existing test-only rows,
-// no CREATE/ALTER/DROP; all modifications occur inside uncommitted transactions.
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const mysql = require('mysql2/promise');
-
-if (process.env.DB_NAME !== 'sql5838929' || process.env.NODE_ENV === 'production') {
-  throw Error('STOP: this test requires .env.test (sql5838929), non-production mode.');
+// Group 4 isolated rollback regression. Only connection-local TEMPORARY tables.
+// Does not touch UsersT, WebSessionT, UserSecurityT, or PasswordResetT.
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {config}=require('../services/stage6Environment');
+if(process.env.WA_ENV!=='local'||process.env.NODE_ENV==='production'||process.env.DB_NAME!=='wapps_test')
+ throw Error('STOP: WA_ENV=local and HelioHost wapps_test required');
+config();
+const source=fs.readFileSync(path.resolve(__dirname,'../routes/users.js'),'utf8');
+for(const route of ['/change-password','/reset-password']){
+ const begin=source.indexOf(`router.post('${route}'`);assert(begin>=0,`Missing ${route}`);
+ const next=source.indexOf('\nrouter.',begin+12);
+ const body=source.slice(begin,next<0?undefined:next);
+ for(const term of ['beginTransaction()','sessions.revokeAll(','.commit()','.rollback()'])
+  assert(body.includes(term),`${route} missing ${term}`);
 }
-if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD) {
-  throw Error('STOP: missing test database connection settings.');
+console.log('PASS source contract: transaction, revocation, commit and rollback found.');
+if(!process.argv.includes('--run-live')){
+ console.log('SAFE STOP: Source contract passed; add --run-live to exercise isolated temporary tables.');
+ process.exit(0);
 }
-const src = fs.readFileSync(path.resolve(__dirname, '../routes/users.js'), 'utf8');
-for (const route of ['/change-password', '/reset-password']) {
-  const anchor = src.indexOf(`router.post('${route}'`);
-  assert(anchor >= 0, `Missing ${route}`);
-  const next = src.indexOf('\nrouter.', anchor + 12);
-  const body = src.slice(anchor, next === -1 ? undefined : next);
-  for (const fragment of ['beginTransaction()', 'sessions.revokeAll(', '.commit()', '.rollback()']) {
-    assert(body.includes(fragment), `${route} missing ${fragment}`);
-  }
-}
-console.log('PASS source checks: transaction, revocation, commit, rollback found in password routes.');
-
+const mysql=require('mysql2/promise');
 async function main(){
- const pool = mysql.createPool({
-   host:process.env.DB_HOST,port:Number(process.env.DB_PORT||3306),
-   user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_NAME,
-   timezone:'Z',waitForConnections:true,connectionLimit:2
- });
- let conn;
- try {
-   conn = await pool.getConnection();
-   await conn.query("SET time_zone = '+00:00'");
-   const [[db]] = await conn.query('SELECT DATABASE() AS db');
-   assert.equal(db.db, 'sql5838929');
-   const [engines] = await conn.query(`SELECT TABLE_NAME, ENGINE FROM information_schema.TABLES
-       WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('WebSessionT','UserSecurityT','PasswordResetT')`);
-   assert.equal(engines.length,3,'Required security tables missing');
-   assert(engines.every(t=>t.ENGINE==='InnoDB'),'Rollback test requires InnoDB tables');
-
-   const [[user]] = await conn.query("SELECT UserID FROM UsersT WHERE UserID=62 AND UserName='charter' LIMIT 1");
-   assert(user,'Expected charter test account UserID 62');
-   const [[security]] = await conn.query('SELECT SecurityVersion FROM UserSecurityT WHERE UserID=62 LIMIT 1');
-   const [[session]] = await conn.query('SELECT WebSessionID,RevokedAt FROM WebSessionT WHERE WebSessionID=7 AND UserID=62 LIMIT 1');
-   const [[reset]] = await conn.query('SELECT PasswordResetID,UsedAt,RevokedAt,ExpiresAt FROM PasswordResetT WHERE PasswordResetID=5 AND UserID=62 LIMIT 1');
-   assert(security && session && reset,'Expected existing Stage 6A test rows missing; test stopped without changes');
-   assert(session.RevokedAt!==null,'Session 7 must already be revoked');
-   assert(new Date(reset.ExpiresAt).getTime()<Date.now(),'Reset link 5 must be expired');
-
-   async function state(){
-     const [[s]]=await conn.query('SELECT SecurityVersion FROM UserSecurityT WHERE UserID=62');
-     const [[w]]=await conn.query('SELECT RevokedAt FROM WebSessionT WHERE WebSessionID=7 AND UserID=62');
-     const [[r]]=await conn.query('SELECT UsedAt,RevokedAt FROM PasswordResetT WHERE PasswordResetID=5 AND UserID=62');
-     return {securityVersion:Number(s.SecurityVersion),sessionRevokedAt:w.RevokedAt===null?null:new Date(w.RevokedAt).getTime(),
-       resetUsedAt:r.UsedAt===null?null:new Date(r.UsedAt).getTime(),resetRevokedAt:r.RevokedAt===null?null:new Date(r.RevokedAt).getTime()};
-   }
-   const original=await state();
-   console.log('PASS preflight: sql5838929, InnoDB, isolated charter test rows verified.');
-   async function simulate(label,statements){
-     await conn.beginTransaction();
-     let failed=false;
-     try {
-       for(const [sql,params] of statements) await conn.query(sql,params);
-       // A deliberately invalid SQL statement raises a database error without CREATE privilege.
-       await conn.query('SELECT NotARealStage6AColumn FROM UserSecurityT WHERE UserID=62');
-       throw Error('Injected query unexpectedly succeeded.');
-     } catch(err) {
-       if(err.message==='Injected query unexpectedly succeeded.') throw err;
-       failed=true;
-       await conn.rollback();
-     } finally {
-       if(!failed) await conn.rollback();
-     }
-     assert(failed,'Expected injected SQL failure');
-     assert.deepEqual(await state(),original,`${label}: state differed after rollback`);
-     console.log(`PASS ${label}: deliberate SQL error; transaction rolled back; original records verified.`);
-   }
-   await simulate('change-password rollback simulation',[
-     ['UPDATE UserSecurityT SET SecurityVersion=SecurityVersion+1 WHERE UserID=?',[62]],
-     ['UPDATE WebSessionT SET RevokedAt=NULL WHERE WebSessionID=? AND UserID=?',[7,62]]
-   ]);
-   await simulate('reset-password rollback simulation',[
-     ['UPDATE PasswordResetT SET UsedAt=UTC_TIMESTAMP(), RevokedAt=UTC_TIMESTAMP() WHERE PasswordResetID=? AND UserID=?',[5,62]],
-     ['UPDATE UserSecurityT SET SecurityVersion=SecurityVersion+1 WHERE UserID=?',[62]]
-   ]);
-   console.log('PASS isolation: no CREATE TABLE privilege needed; no changes committed to test records.');
-   console.log('LIMITATION: This tests real InnoDB rollback on existing security records, not fault injection into HTTP handlers.');
- } finally {
-   if(conn){try{await conn.rollback();}finally{conn.release();}}
-   await pool.end();
+ assert(process.env.DB_PASSWORD,'Test database password missing');
+ const pool=mysql.createPool({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_NAME,ssl:{rejectUnauthorized:true},multipleStatements:false,connectionLimit:1,timezone:'Z'});
+ let c;
+ try{
+  c=await pool.getConnection();
+  await c.query("SET time_zone='+00:00'");
+  const [[db]]=await c.query('SELECT DATABASE() AS db');assert.equal(db.db,'wapps_test');
+  const [[tls]]=await c.query("SHOW STATUS LIKE 'Ssl_cipher'");assert(tls?.Value,'TLS required');
+  await c.query('CREATE TEMPORARY TABLE _wa_g4_security (UserID INT PRIMARY KEY,SecurityVersion INT NOT NULL,RevokedAt DATETIME NULL) ENGINE=InnoDB');
+  await c.query('CREATE TEMPORARY TABLE _wa_g4_reset (PasswordResetID INT PRIMARY KEY,UsedAt DATETIME NULL,RevokedAt DATETIME NULL) ENGINE=InnoDB');
+  await c.query('INSERT INTO _wa_g4_security VALUES (900000001,7,NULL)');
+  await c.query('INSERT INTO _wa_g4_reset VALUES (900000001,NULL,NULL)');
+  const state=async()=>{const [[s]]=await c.query('SELECT * FROM _wa_g4_security');const [[r]]=await c.query('SELECT * FROM _wa_g4_reset');return {s,r}};
+  const original=await state();
+  for(const [label,updates] of [
+    ['change-password',["UPDATE _wa_g4_security SET SecurityVersion=SecurityVersion+1, RevokedAt=UTC_TIMESTAMP()"]],
+    ['reset-password',["UPDATE _wa_g4_reset SET UsedAt=UTC_TIMESTAMP(), RevokedAt=UTC_TIMESTAMP()","UPDATE _wa_g4_security SET SecurityVersion=SecurityVersion+1"]]
+  ]){
+    let active=false;
+    try{
+      await c.beginTransaction();active=true;
+      for(const q of updates)await c.query(q);
+      await assert.rejects(c.query('SELECT NotARealGroup4Column FROM _wa_g4_security'));
+    }finally{if(active)await c.rollback()}
+    assert.deepEqual(await state(),original,`${label}: rollback did not restore fixtures`);
+    console.log(`PASS ${label}: synthetic temporary-table records restored after fault.`);
+  }
+  console.log('PASS no shared account/session/password reset records accessed.');
+  console.log('LIMITATION: validates real InnoDB rollback on isolated temporary tables, not real password HTTP handler fault injection.');
+ }finally{
+  if(c){try{await c.query('DROP TEMPORARY TABLE IF EXISTS _wa_g4_reset');await c.query('DROP TEMPORARY TABLE IF EXISTS _wa_g4_security')}finally{c.release()}}
+  await pool.end();
  }
 }
-main().catch(err=>{console.error('TEST FAILED:',err.message);process.exitCode=1;});
+main().catch(e=>{console.error('FAIL',e);process.exitCode=1});

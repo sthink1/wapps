@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const Module = require('node:module');
 const crypto = require('node:crypto');
 const originalLoad = Module._load;
-process.env.DB_NAME = 'sql5838929';
+process.env.DB_NAME = 'wapps_test';
 process.env.JWT_SECRET = 'supplemental-test-secret';
 // Fake JWT isolates session/claims logic; NOT a signature verification test.
 Module._load = function(name, parent, main) {
