@@ -1,74 +1,59 @@
 'use strict';
-// WA Group 0a, Phase 7F. TEST ONLY. Run with node --env-file=.env.test.
-const crypto = require('node:crypto');
-const readline = require('node:readline');
-const {pool} = require('../dbConnection');
-const BASE = 'http://localhost:8080';
-const USER = 'charter';
-const ID = 62;
-const DEVICE = 'WA-GROUP0A-7F-' + crypto.randomBytes(10).toString('hex');
-let secret = null;
-let rotated = null;
-let exitCode = 0;
-
-function prompt(label, hidden = false) {
-  if (!hidden || !process.stdin.isTTY || !process.stdin.setRawMode) {
-    const rl = readline.createInterface({input: process.stdin, output: process.stdout});
-    return new Promise(resolve=>rl.question(label, answer=>{rl.close();resolve(answer);}));
-  }
-  return new Promise((resolve,reject)=>{
-    let value='';
-    process.stdout.write(label);
-    const input=process.stdin;
-    readline.emitKeypressEvents(input);
-    input.setRawMode(true); input.resume();
-    const onKey=(str,key)=>{
-      if(key?.ctrl && key.name==='c') { cleanup(); reject(Error('Cancelled')); return; }
-      if(key?.name==='return'||key?.name==='enter') { cleanup(); process.stdout.write('\n'); resolve(value); return; }
-      if(key?.name==='backspace') { value=value.slice(0,-1); return; }
-      if(typeof str==='string' && str.length===1 && str>=' ') value+=str;
-    };
-    function cleanup(){input.off('keypress',onKey);input.setRawMode(false);input.pause();}
-    input.on('keypress',onKey);
-  });
-}
-async function post(path, body) {
-  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);
-  try {
-    const res=await fetch(BASE+path,{method:'POST',headers:{'Content-Type':'application/json','Origin':BASE},body:JSON.stringify(body),signal:controller.signal});
-    let data={};try{data=await res.json();}catch(_){}
-    return {status:res.status, data};
-  } finally {clearTimeout(timeout);}
-}
-function assert(cond,message){if(!cond)throw Error(message);console.log('PASS '+message);}
-async function main(){
-  assert(process.env.WA_ENV==='local' && process.env.DB_NAME==='sql5838929','test-only environment variables');
-  const [db]=await pool.query('SELECT DATABASE() AS db, @@session.time_zone AS tz');
-  assert(db[0]?.db==='sql5838929' && db[0]?.tz==='+00:00','connected to sql5838929 with UTC session');
-  const [users]=await pool.query('SELECT UserID,UserName FROM UsersT WHERE UserID=? AND UserName=?',[ID,USER]);
-  assert(users.length===1,'disposable charter account exists');
-  const [devices]=await pool.query('SELECT DeviceID FROM TNNADeviceT WHERE DeviceID=?',[DEVICE]);
-  assert(devices.length===0,'synthetic device ID is unused');
-  console.log('This will write TNNA test registration, consent, device and refresh-token records for charter.');
-  console.log('No installed phones are accessed or modified. Credentials are never printed.');
-  const password=await prompt('Current charter password (hidden): ',true);
-  if(!password)throw Error('Password required');
-  const login=await post('/users/login',{username:USER,password});
-  assert(login.status===200 && typeof login.data.tempToken==='string','web login challenge sent by email');
-  const code=await prompt('Enter the emailed six-digit verification code: ');
-  assert(/^\d{6}$/.test(code),'verification code format valid');
-  const verified=await post('/tnna/verify-code',{tempToken:login.data.tempToken,verificationCode:code,deviceId:DEVICE,platform:'Android',appVersion:'0.0.0-test',versionCode:0,updateEmailOptIn:false});
-  assert(verified.status===200 && verified.data.user?.userId===ID && typeof verified.data.accessToken==='string' && /^[a-f0-9]{96}$/.test(verified.data.refreshToken||''),'TNNA verify-code issued access and refresh credentials');
-  secret=verified.data.refreshToken;
-  const refresh=await post('/tnna/refresh',{refreshToken:secret,deviceId:DEVICE,platform:'Android',appVersion:'0.0.0-test',versionCode:0});
-  assert(refresh.status===200 && typeof refresh.data.accessToken==='string' && /^[a-f0-9]{96}$/.test(refresh.data.refreshToken||'') && refresh.data.refreshToken!==secret,'TNNA refresh rotated token and issued access token');
-  rotated=refresh.data.refreshToken;
-  const replay=await post('/tnna/refresh',{refreshToken:secret,deviceId:DEVICE});
-  assert(replay.status===401,'old TNNA refresh token replay rejected (HTTP 401)');
-  const logout=await post('/tnna/logout',{refreshToken:rotated});
-  assert(logout.status===200,'TNNA logout succeeded');
-  const after=await post('/tnna/refresh',{refreshToken:rotated,deviceId:DEVICE});
-  assert(after.status===401,'TNNA refresh rejected after logout');
-  console.log('COMPLETE: TNNA HTTP functional flow passed. Test audit/registration rows remain in sql5838929.');
-}
-(async()=>{try{await main();}catch(e){exitCode=1;console.error('FAIL:',e.message);}finally{if(rotated){try{await post('/tnna/logout',{refreshToken:rotated});}catch(_){}}if(secret && !rotated){try{await post('/tnna/logout',{refreshToken:secret});}catch(_){}} try{await pool.end();}catch(_){}process.exitCode=exitCode;}})();
+// Group 5C: actual TNNA route callbacks under strict, isolated SQL adapter.
+// No real MySQL, HTTP, user accounts, devices or external email.
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const crypto=require('node:crypto');
+const source=fs.readFileSync(path.resolve(__dirname,'../routes/tnna.js'),'utf8');
+const handlers=new Map();
+const USER=900000019,DEVICE='group5c-synthetic-only',TEMP='fixture-challenge',CODE='123456';
+const version={VersionCode:1,VersionName:'test',MinimumSupportedVersionCode:1,DownloadUrl:'https://example.invalid/test',ReleaseNotes:'',ReleasedAt:new Date()};
+const state={challengeUsed:false,userExists:false,deviceExists:false, tokens:[],commits:0,rollbacks:0,emails:0,queries:0};
+let working=null;
+const digest=v=>crypto.createHash('sha256').update(v,'utf8').digest('hex');
+const connection={
+ async beginTransaction(){assert.equal(working,null);working={challengeUsed:state.challengeUsed,userExists:state.userExists,deviceExists:state.deviceExists,tokens:state.tokens.map(t=>({...t}))}},
+ async commit(){assert(working);Object.assign(state,working);working=null;state.commits++},
+ async rollback(){assert(working);working=null;state.rollbacks++},release(){},
+ async query(sql,args=[]){state.queries++;assert(working,'Unexpected query outside transaction');const s=sql.replace(/\s+/g,' ').trim();
+  if(s.startsWith('SELECT UserID FROM LoginVerificationT'))return [working.challengeUsed?[]:[{UserID:USER}]];
+  if(s.startsWith('SELECT VerificationID,UserID,VerificationCode,ExpiresAt,SecurityVersion FROM LoginVerificationT'))return [working.challengeUsed?[]:[{VerificationID:1,UserID:USER,VerificationCode:CODE,ExpiresAt:new Date(Date.now()+60000),SecurityVersion:7}]];
+  if(s.startsWith('UPDATE LoginVerificationT SET IsVerified')){working.challengeUsed=true;return [{affectedRows:1}]}
+  if(s.startsWith('SELECT UserID, UserName, Email FROM UsersT'))return [[{UserID:USER,UserName:'synthetic',Email:'synthetic@example.invalid'}]];
+  if(s.startsWith('INSERT INTO TNNAUserT')){working.userExists=true;return [{affectedRows:1}]}
+  if(s.startsWith('INSERT INTO TNNADeviceT')){assert.equal(args[0],DEVICE);working.deviceExists=true;return [{affectedRows:1}]}
+  if(s.startsWith('INSERT INTO TNNARefreshTokenT')){assert.equal(args[0],USER);working.tokens.push({id:working.tokens.length+1,device:args[1],hash:args[2],expiry:args[3],revoked:false});return [{insertId:working.tokens.length}]}
+  if(s.startsWith('SELECT UserID FROM TNNARefreshTokenT WHERE TokenHash'))return [working.tokens.filter(t=>t.hash===args[0]).map(()=>({UserID:USER})).slice(0,1)];
+  if(s.startsWith('SELECT r.RefreshTokenID'))return [working.tokens.filter(t=>t.hash===args[0]&&!t.revoked&&t.expiry>new Date()).map(t=>({RefreshTokenID:t.id,UserID:USER,DeviceID:t.device,ExpiresAt:t.expiry,UserName:'synthetic',Email:'synthetic@example.invalid',UpdateEmailOptIn:0})).slice(0,1)];
+  if(s.startsWith('UPDATE TNNARefreshTokenT SET RevokedAt')){const t=working.tokens.find(t=>t.id===args[0]);assert(t);t.revoked=true;return [{affectedRows:1}]}
+  if(s.startsWith('UPDATE TNNAUserT SET LastSeenAt'))return [{affectedRows:1}];
+  throw Error('Unexpected TNNA transaction SQL: '+s.slice(0,160));
+ }
+};
+const pool={getConnection:async()=>connection,async query(sql,args=[]){state.queries++;const s=sql.replace(/\s+/g,' ').trim();
+ if(s.startsWith('SELECT VersionCode, VersionName'))return [[version]];
+ if(s.startsWith('UPDATE TNNARefreshTokenT SET RevokedAt')){const t=state.tokens.find(t=>t.hash===args[0]&&!t.revoked);if(t)t.revoked=true;return [{affectedRows:t?1:0}]}
+ throw Error('Unexpected TNNA pool SQL: '+s.slice(0,160));}};
+const mocks={express:{Router:()=>({post:(p,...args)=>handlers.set(p,args.at(-1)),get(){},put(){}})},crypto,jsonwebtoken:{sign:()=> 'synthetic-tnna-jwt'},'../dbConnection':{pool},
+ '../services/browserSession':{securityVersion:async()=>7},'../services/credentialFence':{lock:async(_c,id)=>{assert.equal(id,USER);return 7},matches:(a,b)=>a===b},
+ '../middleware/auth':()=>{},'../utils':{handleDbError:(e,res)=>{throw e}},'../send_email':{sendNotificationEmail(){state.emails++;throw Error('NO_EMAIL_ALLOWED')}},
+ '../services/notificationService':{getActiveConsentVersion:async()=>1,logConsent:async()=>{}},'dotenv':{config(){}}};
+vm.runInNewContext(source,{require:n=>{assert(Object.hasOwn(mocks,n),'Unexpected dependency: '+n);return mocks[n]},module:{exports:{}},exports:{},process:{env:{JWT_SECRET:'test-only'}},console,Date,Number,String,Boolean,Error,Buffer},{filename:'routes/tnna.js',timeout:3000});
+const response=()=>({statusCode:200,body:null,status(n){this.statusCode=n;return this},json(data){this.body=data;return this}});
+async function call(name,body){const h=handlers.get(name);assert.equal(typeof h,'function');const res=response();await h({body},res);return res}
+(async()=>{
+ let r=await call('/verify-code',{tempToken:TEMP,verificationCode:CODE,deviceId:DEVICE,platform:'Android',appVersion:'test',versionCode:1,updateEmailOptIn:false});
+ assert.equal(r.statusCode,200);assert.match(r.body.refreshToken,/^[a-f0-9]{96}$/);assert.equal(state.tokens.length,1);assert(state.userExists&&state.deviceExists&&state.challengeUsed);
+ const first=r.body.refreshToken;
+ r=await call('/refresh',{refreshToken:first,deviceId:DEVICE+'-wrong'});assert.equal(r.statusCode,401);assert.equal(state.tokens.length,1);assert.equal(state.tokens[0].revoked,false);
+ r=await call('/refresh',{refreshToken:first,deviceId:DEVICE});assert.equal(r.statusCode,200);const second=r.body.refreshToken;assert.notEqual(second,first);assert.equal(state.tokens.length,2);assert(state.tokens[0].revoked);
+ r=await call('/refresh',{refreshToken:first,deviceId:DEVICE});assert.equal(r.statusCode,401);
+ r=await call('/logout',{refreshToken:second});assert.equal(r.statusCode,200);assert(state.tokens[1].revoked);
+ r=await call('/refresh',{refreshToken:second,deviceId:DEVICE});assert.equal(r.statusCode,401);
+ assert.equal(state.emails,0);assert.equal(working,null);
+ console.log('PASS actual tnna.js handlers: synthetic verify, device mismatch 401, refresh rotation, replay 401, logout and post-logout rejection.');
+ console.log('PASS isolation: all SQL in strict in-memory adapter; no real MySQL, email, HTTP listener, account or device.');
+ console.log('LIMITATION: simulated SQL transactions; does not validate full HTTP middleware, concurrency or real database side effects.');
+})().catch(e=>{console.error('FAIL:',e.stack||e);process.exitCode=1});
