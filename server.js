@@ -140,9 +140,6 @@ app.use('/etf', authenticateToken, requireAppAccess('etf_investing'), usageActiv
 // Keep its existing geocode route behavior unchanged until its external cost model is finalized.
 app.use('/api/geocode', require('./routes/geocode'));
 
-// Stage 6 Group 5E — Temporary Render proxy diagnostic
-app.use('/_stage6_proxy_probe', require('./services/stage6ProxyDiagnostic'));
-
 // Catch-all route for undefined endpoints
 app.use((req, res) => {
   // Do not log raw URLs: query strings and path segments may contain security tokens.
