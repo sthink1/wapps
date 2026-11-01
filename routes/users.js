@@ -345,6 +345,7 @@ router.post('/verify-code',async(req,res)=>{
 
 // Stage 6A — shared MySQL 5.5-compatible limiter; no in-memory counters.
 const resetLimiter = require('../services/passwordResetLimiter');
+const {clientIpForReset} = require('../services/passwordResetClientIp');
 function resetHash(v){return crypto.createHash('sha256').update(v,'utf8').digest('hex');}
 const GENERIC_RESET_MESSAGE='If an account matches, password reset instructions will be sent.';
 router.post('/forgot-password',async(req,res)=>{
@@ -357,7 +358,7 @@ router.post('/forgot-password',async(req,res)=>{
     await c.beginTransaction();
     // Count requests even for unknown email addresses; keys never store raw PII.
     // Keep counter increments committed even for blocked requests.
-    const allowed=await resetLimiter.allow(c,email,req.ip||req.socket?.remoteAddress||'unknown');
+    const allowed=await resetLimiter.allow(c,email,clientIpForReset(req));
     if(!allowed){
       await c.commit();
       return res.status(200).json({message:GENERIC_RESET_MESSAGE});

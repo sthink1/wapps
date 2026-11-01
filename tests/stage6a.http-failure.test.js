@@ -36,7 +36,9 @@ function makeCase(route, failure){
     '../send_email':{sendVerificationCode:async()=>{},sendPasswordResetLink:async()=>{},sendPasswordChangedNotice:async()=>{state.emails++;}},
     '../services/browserSession':{requireOrigin:()=>{},revokeAll:async()=>{assert(state.active);working.webRevoked=true;working.tnnaRevoked=true;working.version++;if(failure==='revocation')throw Error('SIMULATED_DB_REVOCATION_ERROR');},clearCookie:()=>{state.cookieClears++;}},
     '../services/credentialFence':{lock:async(conn,userId)=>{assert.equal(userId,777);return working.version;},matches:(a,b)=>a===b},
-    '../services/passwordResetLimiter':{allow:async()=>true}, '../middleware/auth':(req,res,next)=>next(), '../services/subscriptionService':{getOrCreateDevelopmentTrial:async()=>{}},
+    '../services/passwordResetLimiter':{allow:async()=>true},
+    '../services/passwordResetClientIp':{clientIpForReset:()=> '192.0.2.10'},
+    '../middleware/auth':(req,res,next)=>next(), '../services/subscriptionService':{getOrCreateDevelopmentTrial:async()=>{}},
     '../services/notificationService':{getActiveConsentVersion:async()=>1,logConsent:async()=>{}},'dotenv':{config:()=>{}},crypto
   };
   const sandbox={require:name=>{if(Object.hasOwn(mocks,name))return mocks[name];throw Error('Unexpected require: '+name);},module:{exports:{}},exports:{},process:{env:{JWT_SECRET:'in-memory-test-only'}},console,URL,Date,Map,String,Error,Buffer,setTimeout};
