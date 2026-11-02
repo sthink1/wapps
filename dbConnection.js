@@ -12,15 +12,39 @@ requiredEnvVars.forEach((envVar) => {
     }
 });
 
+// Keep the existing limit by default for compatibility with the old provider.
+// HelioHost Johnny: set DB_CONNECTION_LIMIT=5 in the Render environment.
+const rawConnectionLimit = process.env.DB_CONNECTION_LIMIT || '50';
+const connectionLimit = Number(rawConnectionLimit);
+if (!Number.isSafeInteger(connectionLimit) || connectionLimit < 1) {
+    logger.error('DB_CONNECTION_LIMIT must be a positive integer');
+    process.exit(1);
+}
+
+const rawPort = Number(process.env.DB_PORT);
+if (!Number.isSafeInteger(rawPort) || rawPort < 1 || rawPort > 65535) {
+    logger.error('DB_PORT must be a valid TCP port');
+    process.exit(1);
+}
+
+// DB_SSL=required enables server-certificate-validated TLS.
+// No DB_SSL setting preserves the original unencrypted behavior, for compatibility.
+const dbSsl = (process.env.DB_SSL || '').trim().toLowerCase();
+if (dbSsl !== '' && dbSsl !== 'required') {
+    logger.error('DB_SSL must be "required" or unset');
+    process.exit(1);
+}
+
 // Create a Promise-based pool with adjusted configuration
 const pool = mysqlPromise.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT,
+    port: rawPort,
+    ...(dbSsl === 'required' ? { ssl: { rejectUnauthorized: true } } : {}),
     waitForConnections: true,
-    connectionLimit: 50,
+    connectionLimit,
     queueLimit: 0,
     charset: 'utf8mb4',
     // Standardize JavaScript Date <-> MySQL conversion on UTC.
@@ -41,20 +65,24 @@ pool.on('connection', (connection) => {
 
 // Test the database connection and confirm its session time zone.
 (async () => {
+    let connection;
+    let startupFailed = false;
     try {
-        const connection = await pool.getConnection();
+        connection = await pool.getConnection();
         const [[timeZoneRow]] = await connection.query(
             "SELECT @@session.time_zone AS SessionTimeZone, NOW() AS SessionNow, UTC_TIMESTAMP() AS UtcNow"
         );
         if (timeZoneRow.SessionTimeZone !== '+00:00') {
-            connection.release();
             throw new Error(`MySQL session time zone is ${timeZoneRow.SessionTimeZone}, expected +00:00.`);
         }
         logger.info('Connected to the MySQL database with UTC session time.');
-        connection.release();
     } catch (err) {
         logger.error('Error connecting to the MySQL database: ' + err.message);
-        process.exit(1);
+        // Preserve the original startup failure behavior after releasing the connection.
+        startupFailed = true;
+    } finally {
+        if (connection) connection.release();
+        if (startupFailed) process.exit(1);
     }
 })();
 
