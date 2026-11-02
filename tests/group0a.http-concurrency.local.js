@@ -29,7 +29,8 @@ const mocks={
  '../utils':{handleDbError(){throw Error('UNEXPECTED_ERROR_HANDLER')}},
  '../send_email':{sendVerificationCode(){emails++;throw Error('UNEXPECTED_EMAIL')},sendPasswordResetLink(){emails++;throw Error('UNEXPECTED_EMAIL')},sendPasswordChangedNotice(){emails++;throw Error('UNEXPECTED_EMAIL')}},
  crypto,'../services/browserSession':sessions,'../services/credentialFence':{},'../middleware/auth':()=>{},
- '../services/subscriptionService':{},'../services/notificationService':{},'../services/passwordResetLimiter':{},'dotenv':{config(){}}
+ '../services/subscriptionService':{},'../services/notificationService':{},'../services/passwordResetLimiter':{},
+ '../services/passwordResetClientIp':{clientIpForReset:()=> '192.0.2.10'},'dotenv':{config(){}}
 };
 vm.runInNewContext(source,{require:n=>{assert(Object.hasOwn(mocks,n),'Unexpected dependency: '+n);return mocks[n]},module:{exports:{}},exports:{},process:{env:{JWT_SECRET:'test-only'},exit(){throw Error('FORBIDDEN_EXIT')}},console,URL,Date,Map,String,Error,Buffer,setTimeout},{filename:'routes/users.js',timeout:3000});
 const handler=handlers.get('/refresh-session');assert.equal(typeof handler,'function');

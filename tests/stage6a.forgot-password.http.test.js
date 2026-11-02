@@ -34,6 +34,7 @@ const stubs={
  '../send_email':{sendVerificationCode:async()=>{},sendPasswordResetLink:async(details)=>{emails.push(details)},sendPasswordChangedNotice:async()=>{}},
  '../services/browserSession':{requireOrigin:reqOrigin},
  '../services/passwordResetLimiter':limiter,
+ '../services/passwordResetClientIp':{clientIpForReset:()=> '192.0.2.10'},
  '../services/credentialFence':{lock:async(conn,userId)=>{assert.equal(userId,99999);return 4;},matches:(a,b)=>a===b},
  '../middleware/auth':(req,res,next)=>next(),
  '../services/subscriptionService':{getOrCreateDevelopmentTrial:async()=>({})},
