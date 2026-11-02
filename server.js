@@ -104,8 +104,6 @@ app.get('/', (req, res) => {
 });
 
 // API routes
-// TEMPORARY Stage 6 Group 5E diagnostic -- remove after verification.
-app.get('/_stage6_group5e_ip_verify', require('./services/stage6ClientIpVerify').handler);
 app.use('/users', userRoutes);
 app.use('/subscriptions', subscriptionRoutes);
 app.use('/notifications', notificationRoutes);
