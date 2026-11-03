@@ -15,7 +15,7 @@ requiredEnvVars.forEach((envVar) => {
 // HelioHost test connections (local or Render staging) require verified TLS.
 // Keep the existing freeSQLdatabase pool configuration unchanged otherwise.
 const helioTest = ['local', 'staging'].includes(process.env.WA_ENV) &&
-    process.env.DB_HOST === 'johnny.heliohost.org' &&
+    process.env.DB_HOST === 'morty2.heliohost.org' &&
     process.env.DB_NAME === 'wapps_test' &&
     process.env.DB_USER === 'wapps_test';
 if (helioTest && process.env.DB_SSL !== 'required') {

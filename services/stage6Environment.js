@@ -2,7 +2,7 @@
 // Group 0d TEST-ONLY package. Deliberately does not support production deployment.
 const TEST_DB = 'sql5838929';
 const HELIO_TEST_DB = 'wapps_test';
-const HELIO_HOST = 'johnny.heliohost.org';
+const HELIO_HOST = 'morty2.heliohost.org';
 const VALID_MODES = new Set(['local', 'staging']);
 const LEGACY_CORS_ORIGINS = Object.freeze(['http://localhost', 'http://localhost:8080', 'https://localhost', 'capacitor://localhost', 'https://wapps.helioho.st', 'https://wapps-ypez.onrender.com']);
 function config(env=process.env) {
