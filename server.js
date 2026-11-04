@@ -116,6 +116,24 @@ app.use('/subscriptions', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 }, subscriptionRoutes);
+// Stage 6 R16: prevent storage of personal, admin, and native API responses.
+// Apply before the routers so their 200/401/403/error responses are covered.
+// Keep static assets and unrelated public routes on their existing cache policy.
+app.use([
+  '/notifications',
+  '/track',
+  '/tnna',
+  '/weights',
+  '/activities',
+  '/weightActivities',
+  '/interestEarned',
+  '/budget',
+  '/familytree',
+  '/etf'
+], (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 app.use('/notifications', notificationRoutes);
 app.use('/track', trackRoutes);
 app.use('/tnna', tnnaRoutes);
