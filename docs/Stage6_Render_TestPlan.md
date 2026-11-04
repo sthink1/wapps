@@ -1,11 +1,71 @@
+# Stage 6 Render Acceptance Test Plan — consolidated current edition
+
+**Consolidated version 2.0 — November 3, 2026; prepared for manual installation.** This file is intended to replace `docs/Stage6_Render_TestPlan.md` and incorporate its dated October 31 append. The full prior formal plan and hosted H05–H50 ledger remain below as preserved evidence, not active deployment instructions.
+
+**Approved staging reality:** `reviseLogIn`; latest verified hosted commit `f023cc3`; service `wapps-stage6-test`; `https://wapps-stage6-test.onrender.com`; HelioHost Morty2 `wapps_test`, user `wapps_test`; 16/16 environment tests passed. Older references saying staging does not exist, pointing exclusively at `sql5838929`, or reporting commit `09ece26` are historic snapshots.
+
+**Read-only Google Drive rule:** Never modify the authoritative `My Drive/wonderfulApp` folder using the assistant. All downloaded replacement documents require local user review/installation. No Stage 6 change to production, `main`, or installed TNNA approved.
+
+## Current R01–R20 status (formal requirements, not test-count percentage)
+
+| Test | Current assessment | Evidence / outstanding acceptance |
+|---|---|---|
+| R01 | PASSED (bounded) | H05/H07 routine unchecked login/logout; unchecked persistence expiry precision still R03. |
+| R02 | PASSED (bounded) | H23-H24 and Group 5D remembered full Chrome restart. |
+| R03 | PARTIAL | #8B overnight issue/expiry time; H26 behavior, not exact hosted expiry verification. |
+| R04 | PARTIAL | Local #8A and Group 5D restoration; exact hosted manual access-token-only removal not fully established. |
+| R05 | PARTIAL | H25/H27 logout persistence; missing/expired token and offline result pending. |
+| R06 | PASSED (bounded) | Nov 3 Group 5G web change-password session 117 revoked and old/new password outcomes. |
+| R07 | PARTIAL | Nov 3 Group 5G reset used/reused link and session 115 revoked; exhaustive hosted invalid/expiry/negative cases incomplete. |
+| R08 | PARTIAL | Nov 3 HTTP Steps 1–8 pass; valid Chrome secure cookie observed; authenticated forged Origin and failure-response cache review pending. |
+| R09 | PASSED (bounded) | H23 server restart with remembered account. |
+| R10 | PARTIAL | S6-037 and H30-H44 selected 401/403; injected 5xx/outage unverified. |
+| R11 | PARTIAL | Nov 2 Group 5E hosted resolver selected CF header and 6 unit tests; spoof provenance and limiter fairness pending. |
+| R12 | PASSED (bounded) | Group 5D + H27 two-tab refresh/logout. |
+| R13 | PASSED (bounded) | Controlled Web Locks 9D and waPlatform 19/19. |
+| R14 | PARTIAL | H30-H44 sampled entitlement/admin APIs; expired subscription and other routes open. |
+| R15 | PARTIAL | H08-H19 reads, H34/H35 controlled mutations; uploads/privacy and tracking edge paths incomplete. |
+| R16 | PARTIAL | H21/H22 bounded logs, Group 5E cleanup; May 2027 cookie; five 401/403 responses lack no-store; source-wide log/caches open. |
+| R17 | OPEN | DuckDuckGo dedicated browser, Edge, Firefox not yet evidenced. |
+| R18 | PARTIAL | Nov 3 Group 5G real TNNA HTTP success; no native Android app tests. |
+| R19 | PARTIAL | Group 5B H109 real DB and Group 5G sequential TNNA replay 401; remaining stress/fairness/concurrent replay review. |
+| R20 | PARTIAL | Staging isolation guard and Morty2 startup verified; formal non-destructive reversal drill and production transition plan open. |
+
+
+### R08 latest recorded bounded steps (Nov 3)
+
+| Step | Request or browser check | Observed result |
+|---|---|---|
+| 1 | `GET /users/session-status`, no authentication | HTTP 401; no `no-store` header; ETag present |
+| 2 | `POST /users/refresh-session`, `Origin: https://example.com`, no cookie | HTTP 403; no Access-Control-Allow-Origin/Credentials |
+| 3 | POST refresh, missing Origin, no cookie | HTTP 403 |
+| 4 | POST refresh, allowed exact staging Origin, no cookie | HTTP 401; allowed-origin and credentials CORS response; `Vary: Origin` |
+| 5 | `GET /weights`, no auth | HTTP 401 |
+| 6 | Chrome Normal `wa_refresh` cookie | `HttpOnly` checked; `Secure` checked; `SameSite=Lax`; `/users`; expires May 2027; value redacted |
+| 7 | Chrome authenticated `GET /users/session-status` | HTTP 200; `Cache-Control: no-store`; JSON; no `Set-Cookie` response |
+| 8 | Same request's browser context | `Sec-Fetch-Site: same-origin`; Origin absent (normal for GET) |
+| 9 | DevTools activity sampled | session-status 200; no refresh-session seen; *not an actual refresh correctness proof* |
+
+**R08/R16 observation:** Failure responses tested in Steps 1–5 lack `Cache-Control: no-store` and expose an ETag. Treat as a cache-policy review finding, not a demonstrated incident or security bypass. Repeated success of a negative Origin test without cookies does not establish the fully authenticated CSRF case. Preserve secrets in private browser contexts only.
+
+### Remaining work and stop rules
+
+Finish targeted R08/16 error response caching and authenticated-CSRF design review first. Then prioritize R10/14 authorization negative tests, R11/19 failure/limiter fairness, R17 cross-browser, R18 native TNNA only with an isolated approved device, and R20 non-destructive environment/rollback review. Preserve R01/02/06/09/12/13 and H05-H50/Groups 5A–5G successes without gratuitous repetition. Actual changes to test credentials must be approved case-by-case. No production validation requiring production write.
+
+**Completion:** 70% ± ~5 percentage points remains a provisional engineering planning estimate; not a statistically defensible fraction of R01–R20 formal cases.
+
+---
+
+# Earlier v1.2 formal plan — preserved historical requirements
+
 # Wonderful Apps — Stage 6 Render Staging Acceptance Test Plan
 
-**Version:** 1.2  
-**Prepared:** October 25, 2026  
-**Status:** Planning document; staging service has **not** been authorized for deployment  
-**Branch:** `reviseLogIn` (verify exact branch and deployed commit before any setup)  
-**Test database:** `sql5838929` exclusively (verify actual connection identity)  
-**Companion register:** `docs/Stage6_OpenItems.md` (Version 2.3 prepared October 25; synchronize after review)  
+**Version:** 1.2
+**Prepared:** October 25, 2026
+**Status:** Planning document; staging service has **not** been authorized for deployment
+**Branch:** `reviseLogIn` (verify exact branch and deployed commit before any setup)
+**Test database:** `sql5838929` exclusively (verify actual connection identity)
+**Companion register:** `docs/Stage6_OpenItems.md` (Version 2.3 prepared October 25; synchronize after review)
 **Production:** Existing Render services, database, `main`, and deployed/installed TNNA remain unchanged.
 
 ## 1. Objective and evidence policy
@@ -188,3 +248,271 @@ Production and hosted staging remain unauthorized/unchanged.
 - Consolidated logging-only changes in 14 additional JS files: local `git diff --check` passed (line-ending warnings only), `node --check` passed 14/14, diff summary 69 additions / 69 deletions, and all proposed diffs reviewed. **Not yet committed, deployed or functionally regression-tested.** Preserve working tree and `_COPY.js` backups.
 - Pending: local startup/functional checks, reviewed commit, isolated staging deployment and targeted hosted regressions for the consolidated revision. Do not claim hosted testing of the uncommitted revision.
 - Add negative API-error-response security tests after the independent review of S6-041 (`routes/familyTree.js` Favorite Pets, plus related routes). Do not record actual credentials, tokens, cookies, reset links or sensitive exception text.
+
+---
+
+# Integrated October 31 plan addendum
+
+## October 31, 2026 addendum - deployed staging and hosted regression evidence
+
+**Supersedes historical preflight statements only:** a separate Render staging service now exists: `wapps-stage6-test`, branch `reviseLogIn`, candidate `09ece26`, `WA_ENV=staging`, verified staging test DB `wapps_test`. It was user-reported Live and completed H05-H50. Older sections describing an uncreated/unauthorized staging service or the `sql5838929`-only target are historical, not current operating facts. No production deployment has been authorized.
+
+**Evidence detail:** See companion `Stage6_H05-H50_Hosted_Evidence_2026-10-31.md` for the complete H05-H50 ledger, accounts, browser modes, observations and limitations. These H labels do not replace formal R01-R20 IDs. No full release acceptance or closure is implied.
+
+**Dispositions requiring attention:** H20 reproduced S6-039, an existing deferred dialog error; H26 later became signed out without KMLI (behavior consistent with 8-hour design, but exact JWT expiry not checked); H50 rejected an expired password-reset link (actual server-side enforcement not traced). H30/H33/H36/H41 yielded nonblocking UI/error-handling observations. H42/H43 confirmed `users` API 403 and limited response; H44 authorized Tracking operation. Other routes and security pathways remain unverified.
+
+**Pending formal test mapping:** Map these hosted observations to formal R01-R20 only where acceptance evidence actually matches. Preserve unresolved HTTPS cookie, origin/CSRF, proxies/rate limits, browser/device, TNNA, password reset/change/revocation, cache headers, logs, and independent-review gates.
+
+---
+
+# October 31 H05–H50 hosted test ledger — integrated evidence
+
+# Stage 6 Hosted Consolidated Test Evidence — H05 through H50
+
+**Evidence cutoff:** October 31, 2026.
+**Project / branch:** Wonderful Apps / `reviseLogIn`.
+**Hosted staging service:** `wapps-stage6-test` (`https://wapps-stage6-test.onrender.com`).
+**Deployed candidate:** commit `09ece26` (user-confirmed staging deployment).
+**Database:** staging HelioHost test database `wapps_test`, with `WA_ENV=staging` identity guard reported verified at startup.
+**Production scope:** none; no authorized changes to production Render, database, `main`, or installed TNNA.
+**Evidence source:** user-reported browser behavior, Console/Network observations, selected Render logs, and follow-up clarifications in Stage 6 conversation. Where evidence is partial, dispositions are explicitly bounded. Individual test timestamps generally were not recorded.
+
+**Important distinction:** H05-H50 are the sequential conversational hosted regression IDs, **not** formal R01-R20 test-plan IDs. Do not count them as completion of the full formal security matrix. Earlier H01-H04, local L01-L03, and separately numbered R tests retain their own original evidence.
+
+## Hosted test ledger
+
+| ID | Check | Context | Disposition | Observed evidence / limitation |
+|---|---|---|---|---|
+| H05 | Normal login; KMLI unchecked | charter / Incognito | Pass | Home signed in; email verification completed; no Console errors |
+| H06 | KMLI login and F5 reload | charter / Incognito | Pass | Remained signed in; no Console errors |
+| H07 | Explicit logout and F5 | charter / Incognito | Pass | Stayed signed out; no Console errors |
+| H08 | Weights existing records | eg / Incognito | Pass | Records/chart displayed; no Console errors |
+| H09 | Activities existing records | eg / Incognito | Pass | Records displayed; no Console errors |
+| H10 | Interest Earned existing records | sthink / Incognito | Pass | Existing records displayed; no Console errors |
+| H11 | ETF categories and symbols | sthink / Incognito | Pass | Existing configuration displayed; no Console errors |
+| H12 | Family Tree existing authorized data | sthink / Incognito | Pass | Authorized information displayed; no Console errors |
+| H13 | Tracking interface | sthink / Incognito | Pass | Statistics and usage information displayed; no Console errors |
+| H14 | Family Tree privacy (read-only) | sthink / Incognito | Pass | Existing privacy information displayed; no Console errors |
+| H15 | Town Notice page (read-only) | sthink / Incognito | Pass | Normal interface displayed; no Console errors |
+| H16 | Budget existing views | sthink / Incognito | Pass | Budget view/calculations displayed; no Console errors |
+| H17 | Notification Preferences (read-only) | sthink / Incognito | Pass | Existing preferences displayed; no Console errors |
+| H18 | ETF 1Y comparison | sthink / Incognito | Pass | Comparison completed; no Console errors |
+| H19 | Favorite Pets (read-only) | sthink / Incognito | Pass | Existing information displayed; no Console errors |
+| H20 | Weights date-range delete dialog | eg / Incognito | Known limitation | earliestDate.toISOString is not a function; S6-039; no DELETE submitted; server DELETE log path untested |
+| H21 | Scheduled reset rate cleanup | Render staging logs | Pass (normal path) | 2026-10-30 18:57:21: removed 0 expired records in 1 batch; failure path untested |
+| H22 | Application error log search | Render staging logs | Pass (bounded search) | No matches for [ERROR] in selected window; not proof of absence of all errors |
+| H23 | KMLI after Render service restart | charter / Chrome Normal | Pass | Remained logged in; no Console errors |
+| H24 | KMLI after full Chrome restart | charter / Chrome Normal | Pass | Remained logged in; no Console errors |
+| H25 | Logout then Chrome restart | charter / Chrome Normal | Pass | Remained logged out; no Console errors |
+| H26 | Unremembered 8-hour session lifecycle | charter / Chrome Normal | Pass (behavior observed) | KMLI off; remained logged in after earlier Chrome restart, later reopened not logged in; JWT exp/network timing not independently inspected |
+| H27 | Two-tab remembered logout | charter / Incognito | Pass | Both tabs signed in; logout first; second signed out on refresh; no Console errors |
+| H28 | Independent session isolation on logout | charter / Normal + Incognito | Pass | Incognito logout did not revoke still-valid Normal session; no Console errors |
+| H29 | Different-account browser isolation | charter Normal / eg Incognito | Pass | Account and plan status remained distinct; no Console errors |
+| H30 | Unauthorized Weights API and save | charter / Incognito | Pass, UI observation | GET weights 403; activities 403; POST weights 403; Add form still accessible, repeated 403 Console messages; no write readback |
+| H31 | Authorized Weights and Add form | eg / Incognito | Pass | Records/chart/activities displayed; Add form opened and cancelled; no Console errors |
+| H32 | Unauthorized Activities direct navigation | charter / Incognito | Pass (403) | No Activities button on Home; direct page GET activities 403, subscription denied Console message |
+| H33 | Unauthorized Interest Earned | charter / Incognito | Pass, UI observation | GET and save rejected 403; form allowed input; uncaught promise rejection; no DB readback |
+| H34 | Authorized Interest Earned add/delete | eg / Incognito | Pass | Created and deleted test contract; no Console errors; eg entitled but previously had no saved records |
+| H35 | Authorized Activities add/delete | eg / Incognito | Pass | Created and deleted temporary activity; no Console errors |
+| H36 | Activities after logout | eg / Incognito signed out | Pass, UI observation | No data displayed; uncaught Please log in error; no server 401 independently verified |
+| H37 | Weights after logout | Incognito signed out | Pass | No data; LOGIN_REQUIRED; Service Worker registered; no unexpected Console errors |
+| H38 | Interest Earned after logout | Incognito signed out | Pass | Redirected to login.html; no Console errors |
+| H39 | Family Tree after logout | Incognito signed out | Pass | Public instruction page displayed; FamilyTree2 Menu redirected to Login; no Console errors |
+| H40 | Tracking after logout | Incognito signed out | Pass | Redirected to Login; no Console errors |
+| H41 | Tracking as non-admin | eg / Incognito | Pass (UI gate) | track.html flashed briefly then redirected home; no Console errors |
+| H42 | Tracking protected users API | eg / Incognito | Pass (specific request) | Network showed users 403; session-status 200; some page resources 304; other admin APIs not exhaustively verified |
+| H43 | Tracking denial response | eg / Incognito | Pass (specific request) | users 403 response: {"error":"Administrator access required."}; no user records in that response |
+| H44 | Tracking as administrator | sthink / Incognito | Pass | Tracking and statistics displayed, users API reported successful as expected; exact HTTP code not separately transcribed |
+| H45 | Change Password interface | sthink / Incognito | Pass (UI only) | Fields displayed; no password changed; no Console errors |
+| H46 | Forgot Password interface | Incognito signed out | Pass (UI only) | Form and navigation worked; no reset request in this test; no Console errors |
+| H47 | Reset email request submission | charter / Incognito | Pass (observed) | Expected generic confirmation; no Console errors; equivalence for unknown email not compared |
+| H48 | Reset email delivery and URL | charter inbox | Pass | Email received; link started https://wapps-stage6-test.onrender.com/forgotPassWord.html?; token never recorded |
+| H49 | Reset form from email link | charter / Incognito | Pass (UI only) | Fields displayed; no change submitted; no Console errors |
+| H50 | Expired reset link | charter / Incognito | Pass (observed) | After expiry window, message Reset password no longer valid; no server-side enforcement independently traced |
+
+## Reconciliation and residual findings
+
+1. **S6-039 remains deferred.** H20 reproduced the previously reported `earliestDate.toISOString is not a function` error in the Weights date-range dialog. Opening/canceling that dialog did not exercise the server-side DELETE route; prior controlled local delete evidence is separate. Do not classify H20 as clean/no-error.
+2. **S6-041 remains open.** The fact that H43 returned a safe, limited administrator-denial JSON message does not establish that other route exception handlers avoid raw `e.message` disclosure (notably Family Tree Favorite Pets and other previously flagged routes). An endpoint-by-endpoint error-path review remains required.
+3. **UI observations to triage (not server-side authorization bypasses):** H30 unauthorized Weights user could open Add before POST 403, with repeated Activities 403s; H33 unauthorized Interest Earned user could open Add before POST 403 and an uncaught promise rejection; H36 Activities page emitted an uncaught login-required exception; H41 `track.html` briefly appeared before redirect. Preserve in review queue; assigning a new S6 issue ID requires reconciling the latest local register first.
+4. **H26 is behavioral, not timestamp-level proof.** Unchecked-KMLI session survived an early browser restart and was later signed out. Exact access-JWT `iat`/`exp`, 8-hour threshold and server response were not inspected, so precise expiry mechanism is unverified. No indication that this result failed the intended design.
+5. **H50 is behavioral.** Previously emailed reset link was rejected with 'Reset password no longer valid.' The server-side expiry check and one-time-token reuse protection were not inspected in this hosted test. Actual reset completion, password-change and cross-session revocation remain required hosted cases.
+6. **H22 was a bounded log check.** Zero matches for `[ERROR]` in the selected period; other severity formats, missing logs, error-path safety and PII/log leakage are not globally excluded. H21 validated normal cleanup only (0 expired records, 1 batch).
+7. **H42-H44 are endpoint-specific.** H43 establishes the observed `users` 403 response body contains no user records. The 304 entries for cached resources do not establish safe cache headers for sensitive API data; broader admin route authorization and cache header inspection remain required.
+8. **Tests H34/H35 made temporary changes to *staging/test* records only.** Users reported a test contract and test activity were created and deleted. No independent database reconciliation was conducted.
+9. **Formal release gates remain open:** hosted password change/reset with revocation/one-use tests; HTTPS cookie / Secure / SameSite / Origin and CSRF; X-Forwarded-For/proxy and rate-limit safeguards; multi-tab simultaneous refresh; protected API caching; service-worker compatibility; other browsers/devices; TNNA compatibility; account/subscription negative scenarios beyond sampled routes; controlled rate/DB limits; sanitized logging audit; exact production diff / migration / rollback; and independent design-engineer review after all Stage 6 changes and tests. Map these to the current R01-R20 matrix and S6 IDs without automatically closing any.
+
+## Summary counts and controls
+
+- **46 tests recorded:** H05-H50 inclusive.
+- **45 pass or qualified-pass observations** (including H26, with limited expiry evidence), and **1 known-limitation case H20**. This count is descriptive, not a formal release readiness score.
+- Existing production service, production data, `main`, and TNNA clients remain out of scope.
+- Passwords, JWTs, refresh cookies, reset tokens, full password-reset links, and personal data are intentionally absent.
+
+## Update policy
+
+This appendix is a **dated supplement**, not a replacement for older formal test-plan sections. Reconcile newer local copies of the three source documents before applying any update. Do not silently rewrite historical statements; add a 'superseded by October 31 staging evidence' note where old descriptions incorrectly refer to staging as not yet created. No production authorization is implied.
+
+---
+
+# November 3 Group 5G hosted acceptance — integrated evidence
+
+# Wonderful Apps — Stage 6 Group 5G Hosted Credential-Lifecycle Acceptance Evidence
+
+**Date:** November 3, 2026
+**Scope:** Stage 6 Group 5G only; web password-reset/change-password and TNNA API credential lifecycle
+**Disposition:** **PASS for the explicitly observed hosted scenarios; Stage 6 overall NOT released / NOT fully accepted**
+**Branch / hosted deployed commit:** `reviseLogIn` / `f023cc3` (user-confirmed successful Render startup and Live deployment)
+**Service:** `https://wapps-stage6-test.onrender.com`
+**Database:** HelioHost Morty2 MariaDB `wapps_test`, version `12.3.3-MariaDB-log`, staging identity and UTC verified in Render startup messages
+**Synthetic user:** `charter`, **UserID 64**. Previous `charter` UserID 62 was deleted and 14 identified user-reference tables checked as zero before new registration.
+**Evidence provenance:** User-supplied phpMyAdmin SQL results, Render logs/screenshots, Chrome observations, and PowerShell output from real staging HTTP requests in this conversation. No full secret-bearing HTTP traces, automated capture bundle, or Android device test was provided. Unless stated otherwise, PASS means the reported result was observed in the bounded test, not an exhaustive security certification.
+
+## A. Deployment and scope verification
+
+- The stage-only database hostname changed to `morty2.heliohost.org` in `services/stage6Environment.js` and `dbConnection.js`; `tests/group0d.environment.test.js` updated. On local branch `reviseLogIn`, `git diff --check` was clean aside from harmless LF/CRLF notices; all **16/16** group0d environment tests passed.
+- Git commit **`f023cc3`** (`Stage 6: update HelioHost test endpoint to Morty2`) was pushed to `origin/reviseLogIn`, changing only the three reviewed files. Render startup then showed successful DB UTC connection, verified Stage 6 database identity and listening port 10000. No `main`, production Render service, or production database modification was authorized as part of Group 5G.
+- A separate local credentialed/TLS MariaDB test reported `johnny.heliohost.org` access denied and `morty2.heliohost.org` connection successful to `wapps_test`. This supports the stage-only host change; it does not establish future production migration readiness.
+
+## B. Hosted web password-reset lifecycle — PASS (observed)
+
+1. Normal Chrome KMLI login for `charter` established remembered **WebSessionID 115**. Pre-reset DB: `UserID=64`, `IsRemembered=1`, `RevokedAt=NULL`, `CreatedAt=2026-11-03 15:38:51 UTC`, `ExpiresAt=2027-05-02 15:38:51 UTC`.
+2. Separate Incognito browser: Forgot Password showed generic response; reset email delivered. Existing KMLI window was kept open.
+3. Reset link submitted with a different password; page reported success. DB: WebSessionID 115 `RevokedAt=2026-11-03 15:47:38 UTC`.
+4. Original Normal Chrome session returned to logged-out state on reload; old password rejected; new password accepted via subsequent login (KMLI unchecked).
+5. Reopening same reset link was rejected. DB `PasswordResetT` record for UserID 64 showed `CreatedAt=2026-11-03 15:44:45 UTC`, `ExpiresAt=2026-11-03 16:14:45 UTC`, `UsedAt=2026-11-03 15:47:38 UTC`, `RevokedAt=NULL`. The used timestamp, not `RevokedAt`, prevents reuse.
+6. `UserSecurityT.SecurityVersion` read **2** afterward. Its exact pre-reset value was **not recorded**, so the increment is consistent with expected behavior but not independently measured as a before/after pair.
+
+## C. Hosted authenticated Change Password lifecycle — PASS (observed)
+
+1. Re-established remembered Normal Chrome KMLI session **WebSessionID 117**: `UserID=64`, `IsRemembered=1`, `CreatedAt=2026-11-03 16:00:46 UTC`, `RevokedAt=NULL` before change.
+2. Authenticated Change Password returned success. DB later showed session 117 `RevokedAt=2026-11-03 16:05:18 UTC`.
+3. Original Normal Chrome browser became logged out on reload. Previous password rejected. Newly changed password accepted via normal login, KMLI unchecked.
+
+## D. TNNA hosted HTTP and credential-revocation lifecycle — PASS (Windows API client)
+
+**Device boundary:** Executed from Windows PowerShell using real `wapps-stage6-test` routes, a synthetic test-device identifier, and `charter` UserID 64. **Not an Android APK/device end-to-end test**. Samsung A15 TNNA installation remained signed in as `sthink` in offline mode and was not altered.
+
+1. `POST /users/login` accepted test-only credentials and sent verification email; its temporary challenge was retained privately in the user's PowerShell session.
+2. `POST /tnna/verify-code` succeeded, returning UserID 64 and actual access and refresh tokens. `GET /tnna/me` with issued access token succeeded and identified `charter`, UserID 64.
+3. DB baseline **TNNA RefreshTokenID 28**, `CreatedAt=2026-11-03 16:24:23 UTC`, `ExpiresAt=2027-05-02 16:24:23 UTC`, `RevokedAt=NULL` (180-day lifetime).
+4. `POST /tnna/refresh` with token 28 succeeded and returned new, different access/refresh credentials. DB then showed token **28 revoked at 2026-11-03 16:27:37 UTC**, and replacement **RefreshTokenID 29**, `CreatedAt=2026-11-03 16:27:37 UTC`, `ExpiresAt=2027-05-02 16:27:37 UTC`, `RevokedAt=NULL`.
+5. Replaying token 28 against `/tnna/refresh` returned **HTTP 401** (PASS).
+6. The user changed `charter` password through the hosted normal web interface while token 29 was active. DB showed token **29 revoked at 2026-11-03 16:31:10 UTC**.
+7. Using the previously issued TNNA access token on `GET /tnna/me` returned **HTTP 401** (PASS). Using the previously issued TNNA refresh token 29 against `POST /tnna/refresh` also returned **HTTP 401** (PASS).
+
+**Evidence limitation:** Token contents, verification codes, passwords, email addresses, and reset links were deliberately not captured or shared. We have user-reported HTTP outcomes and selected database states, not a separate signed/automated log bundle. The initial refresh rotation and replay protection are also covered by prior offline tests, but this Group 5G record establishes actual hosted HTTP behavior for the specific sequential scenario above. It does not prove concurrent replay behavior at the hosted network layer or other TNNA device flows.
+
+## E. Group 5G disposition and outstanding gates
+
+**Group 5G planned web and TNNA API credential lifecycle: completed / PASS for observed cases.** Neither Group 5G PASS nor successful Stage 6 staging connection authorizes a merge or production deploy.
+
+Still outstanding or separately tracked:
+
+- Native Samsung/Android TNNA app flow on a staging-connected installation (Windows API client is not a substitute for the Android UI, app lifecycle, or offline-to-online transition).
+- Formal R01–R20 security matrix mapping and any cases not directly supported by these specific observations; broader origin/CSRF/cookie/header/caching controls, cross-browser/device behavior, concurrent failures, abnormal DB/rate limits, error-response/logging audit, access-control/entitlement negative cases.
+- Existing **S6-039** Weights delete date-range dialog error (`earliestDate.toISOString is not a function`), deferred; **S6-041** incomplete sanitized error-response audit; additional UI observations H30/H33/H36/H41 require triage against the authoritative issue register.
+- Production MariaDB migration planning, fresh production MySQL dump/import validation, operational rollback, exact source/database schema and environment diff; **not part of Group 5G**.
+- **Mandatory independent design-engineer/security review after all Stage 6 work and testing, before any merge or production decision**.
+- The distinct, proposed account-deletion SOP (in `docs/WA_Account_Deletion_SOP_Design_2026-11-02.md`) and unresolved retention/shared Family Tree/subscription policy choices remain a **future enhancement**, not installed in Stage 6.
+
+## F. Documentation reconciliation
+
+This is a **dated November 3 supplement** to the historical October 31 `Stage6_H05-H50_Hosted_Evidence_2026-10-31.md`, `Stage6_OpenItems_H05-H50_Append_2026-10-31.md`, and `Stage6_Render_TestPlan_H05-H50_Append_2026-10-31.md`. Their statements that hosted password completion, one-time use and TNNA credential revocation were *still untested as of October 31* are historically correct and **superseded for the bounded cases recorded here**; do not rewrite or silently change their original observations. Do not mark the entire Stage 6 project finished.
+
+**Credentials and secrets:** None included. **Production/main/A15:** No change reported in the Group 5G test sequence.
+
+---
+
+# November 1 Group 5D acceptance notes — integrated evidence
+
+# Wonderful Apps — Stage 6 Group 5D acceptance record and remaining-test reconciliation
+**Date:** 2026-11-01
+**Branch:** `reviseLogIn`
+**Hosted environment:** existing `wapps-stage6-test` Render service and HelioHost `wapps_test` database
+**Reported deployed commit:** `9e443c7` (user's Render dashboard screenshot).
+**Evidence basis:** user-reported Chrome Console and Network screenshots, phpMyAdmin query output, earlier local Node test output, Google Drive source/inventory. No new network or database test performed for this report.
+
+## Group 5D — results verified from supplied evidence
+
+| Test / observation | Result | Qualification |
+|---|---|---|
+| `waPlatform.unit.test.js` | PASS, 19/19 | Offline mocked browser/database interfaces; not live HTTP |
+| Hosted read-only browser preflight | PASS, 7/7 | User screenshot; correct Render origin, browser APIs available |
+| Controlled hosted two-tab restoration | PASS for tested run | Console: 2/2 participated, 2/2 authenticated, `restored=1/2` |
+| Browser Network request evidence | Consistent with one refresh | Tab 1: one `/users/refresh-session` HTTP 200; Tab 2: none observed, `/users/session-status` HTTP 200. This is a captured-run conclusion, not universal concurrency proof |
+| Keep Me Logged In through Chrome restart | PASS, user confirmed | Automatically authenticated |
+| Explicit logout + page refresh | PASS, user confirmed | Remained signed out |
+| Logout persistence through Chrome restart | PASS, user confirmed | Remained signed out |
+| DB row for remembered session | PASS with linkage caveat | `wapps_test.WebSessionT`: WebSessionID 111; UserID 62; IsRemembered 1; CreatedAt 2026-11-01 13:50:33 UTC; RevokedAt 2026-11-01 14:19:42 UTC |
+| Refresh history associated with WebSessionID 111 | Consistent with one rotation | Two issued, one consumed. Row linkage inferred from timing and behavior; browser session ID was not independently captured |
+| Refresh-token rejection after logout | Not independently probed | Browser stayed signed out; no isolated attempt to replay post-logout refresh cookie |
+
+### Interpretation
+The tested two-tab refresh, remembered browser-restart, explicit logout, and persistence scenarios passed. Browser and DB evidence reinforce each other. A database revocation timestamp is recorded, but no separate credential-level rejection probe was run after logout.
+
+## Stage 6 remaining work / distinctions
+
+1. **Group 5C full HTTP integration** — OFFLINE handler tests passed in earlier user-reported runs. They do not validate all real Express middleware, database, and end-to-end HTTP behavior. Real HTTP website and TNNA scenarios remain outstanding unless separately documented as performed. Do not reinstate legacy tests using `charter`/UserID 62 and password mutation without isolated fixture and explicit cleanup.
+2. **Proxy/client IP hosted attribution** — OPEN. Earlier source/loopback audit does not establish the actual Render proxy chain or client-IP rate-limiter attribution.
+3. **Source patcher `tests/apply-stage6b2-revocation-fix.cjs`** — KEEP BLOCKED. It writes application source; it is not a test.
+4. **Unreconciled test inventory** — The Oct 31 inventory enumerated 29 then-present items (16 migrated, 13 pending). The Drive test folder has changed since that audit. Reconcile actual local branch and current test suite before claiming all Stage 6 tests are complete. Do not treat this as an exhaustive inventory of project tests.
+5. **Independent design-engineer review** — REQUIRED after all Stage 6 implementation and hosted acceptance work, before merge or production decision.
+6. **Production smoke check** — A limited post-deployment sanity check follows a future, separately authorized merge and production deployment; not a substitute for pre-merge testing.
+
+## Operational safeguards
+- No merge into `main`, no production deployment or production database operations.
+- Keep existing dedicated Render staging service and database; no need to install the unused H109 startup-fix ZIP.
+- Avoid posting raw tokens, cookies, headers, passwords, secret strings, or SQL dumps with private records.
+- This report does not authorize destructive replays or tests targeting an existing shared account.
+- Record separately the disposition of outstanding live HTTP, TNNA, and proxy checks. Do not silently mark them passed based on Group 5D.
+
+## Suggested next acceptance sequence
+A. Reconcile the current test suite against the Oct 31 audit and the recent Group 5A–5D evidence, identifying exact remaining cases.
+B. Design minimally invasive hosted HTTP tests with dedicated test identity and cleanup, only where coverage cannot be demonstrated from existing results.
+C. Perform hosted proxy/client-IP attribution test with nonsecret observable evidence.
+D. Complete independent design-engineer review, resolve findings, then make a separate merge/production decision.
+
+---
+
+# November 2 Group 5E closure — integrated evidence
+
+# Wonderful Apps — Stage 6 Group 5E closure and remaining acceptance
+Date: 2026-11-02
+Branch: reviseLogIn
+Latest user-verified local and origin commit: d7ebc3c
+Scope: documentation only; no code, database, or Render modifications.
+
+## Confirmed Group 5E evidence
+- Permanent password-reset client-IP resolver committed in ff6eef2, deployed to the separate wapps-stage6-test service.
+- Feature flag WA_TRUST_RENDER_CF_IP initially absent; later set to 1 in the separate staging service by the user.
+- Six resolver unit tests passed locally, including disabled default, valid CF IP selection, malformed-header fallback, and rejection of X-Forwarded-For as authority.
+- Previously reported HTTP-failure, email/IP and global rate-limit unit regressions passed.
+- Hosted Home page, login, authenticated state and logout smoke test passed.
+- Temporary authenticated diagnostic deployed in d1e427b; hosted response reported trustProxy=false, cfPresent=true, cfValidSingleIp=true, peerValidSingleIp=true, selectedEqualsCf=true, selectedEqualsPeer=false, cfEqualsPeer=false and xffPresent=true.
+- User removed temporary secret WA_GROUP5E_VERIFY_KEY from Render, and saved/deployed configuration.
+- User restored server.js and deleted the temporary diagnostic module locally. Git diff showed exactly two diagnostic route lines removed.
+- Cleanup committed and pushed as d7ebc3c; the temporary module deleted from the repository. Render post-cleanup deployment was not independently checked by design, per agreed workflow.
+
+## Interpretation and security limitation
+The hosted check confirms the application's actual resolver selected the valid CF-Connecting-IP header rather than the immediate socket peer on the tested ingress path. This is not proof that the header is unspoofable across all alternate ingress paths. Previous client-supplied CF-Connecting-IP test encountered Cloudflare error 1000 on the tested route; this provides limited supporting evidence, not a universal guarantee. Independent reviewer must evaluate header provenance and fail-safe behavior before use in production. Express trust proxy remains false in the verified diagnostic.
+
+## Remaining Stage 6 acceptance gates
+A. Reconcile unresolved HTTP/TNNA integration cases against safe, prior tests and select only material gaps. Avoid shared accounts, credentials, and mutating legacy scripts.
+B. Compare local reviseLogIn test file inventory against prior recorded runs and the authoritative Drive tests inventory. Include Stage 6A rate-limit and cleanup cases.
+C. Complete any narrowly justified, bounded staging tests that remain after that reconciliation.
+D. Mandatory independent design-engineer/security review after implementation and hosted acceptance, before merge to main or production changes.
+
+## Next recommended action (read-only)
+Run this PowerShell inventory in the local Wonderful Apps checkout:
+
+  git branch --show-current
+  git log -1 --oneline
+  git ls-files tests
+
+No tests, database connections, code changes, commits or deployments are required just to collect the list. Review against recorded acceptance evidence before selecting further tests.
+
+## Source references
+- My Drive/wonderfulApp/WA_Stage6_Remaining_Acceptance_Reconciliation_2026-11-01.md
+- My Drive/wonderfulApp/WA_Stage6_Group5E_Proxy_Trust_Decision_2026-11-01.md
+- User-provided PowerShell output and hosted diagnostic response in the current conversation.

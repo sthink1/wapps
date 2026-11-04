@@ -11,6 +11,26 @@ logs/
 
 # database files
 *Dump.sql
+# Compressed SQL exports/backups (retain ordinary .sql scripts in Git)
+*.sql.gz
+*.sql.zip
+*.sql.7z
+*.sql.bz2
+*.sql.xz
+# Local database files; do not ignore project migration scripts
+*.sqlite
+*.sqlite3
+*.db
+
+# Backup copies that can contain code, user data, or credentials
+*.bak
+*.backup
+
+# Private keys and certificate bundles
+*.pem
+*.p12
+*.pfx
+*.key
 
 # TNNA / Capacitor dependencies
 TNNA/node_modules/
@@ -20,6 +40,7 @@ TNNA/android/.gradle/
 TNNA/android/build/
 TNNA/android/app/build/
 TNNA/android/local.properties
+TNNA/android/.idea/caches/
 
 # Android signing files
 *.jks
@@ -29,6 +50,11 @@ keystore.properties
 # IDE / OS temporary files
 .DS_Store
 Thumbs.db
+
+# Python-generated caches
+__pycache__/
+.pytest_cache/
+*.pyc
 
 # test / coverage output
 coverage/

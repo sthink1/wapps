@@ -1,3 +1,50 @@
+# Stage 6 Production Implementation Plan — consolidated current edition
+
+**Consolidated version 2.0 — November 3, 2026. PLAN ONLY; no production authorization.** This replaces the fragmented standalone plan plus its October 31 append after user review, while preserving the earlier document below.
+
+## Release status and immutable safeguards
+
+- Current development branch: `reviseLogIn`; most recently verified **staging** commit `f023cc3`.
+- Staging: `wapps-stage6-test`, `https://wapps-stage6-test.onrender.com`, Morty2 host `morty2.heliohost.org`, MariaDB `wapps_test`, user `wapps_test`. Staging environment checks 16/16 passed. This is *not* approval to repoint production to Morty2.
+- Production Render `wapps`, production database, Git `main`, public DNS, and installed Samsung A15 TNNA remain untouched.
+- Google Drive `My Drive/wonderfulApp` remains READ-ONLY to the assistant; downloads are for user installation.
+- No Stage 6 merge, migration, production deploy or rollback action is authorized. The separate independent design-engineer/security review must follow full acceptance and precede any release decision.
+
+## Updated prerequisite gates (supersedes old staging-nonexistent statements)
+
+| Gate | Evidence as of Nov 3 | Status |
+|---|---|---|
+| Separate hosted staging environment | `f023cc3`, test-only DB identity / UTC, 16/16 environment tests; H05-H50 and Group 5G runs | Verified for bounded staging identity; continue monitoring |
+| Hosted password reset and session revocation | Nov 3 Group 5G sessions 115 and 117 revoked after reset and change | Observed PASS |
+| TNNA hosted credential transition | Group 5G sequential rotation 28→29, replay 401, password change revokes access/refresh | Observed PASS for Windows API; Android pending |
+| Auth cookie/CSRF and cache | Nov 3 R08 9 observations, protected success no-store; five unauthenticated/denied responses without no-store | Partial; findings must be evaluated |
+| Proxy trust and rate limiting | Nov 2 Group 5E selection and resolver suite passed | Partial; alternate ingress/spoof and fairness review open |
+| Broader authz and regressions | H05-H50 samples pass with H30/H33/H36/H41 UI observations | Partial |
+| S6-039 Weights date dialog | Existing `.toISOString()` type error | User-deferred; document exception explicitly |
+| S6-041 safe error-response audit | Favorite Pets raw unexpected exception pattern flagged | Open |
+| Operational failure and DB connection budget | Morty2 stage connection verified; capacity/recovery not | Open |
+| Production database migration | Need fresh comparison, compatible rehearsal, safety and rollback limitations | Not approved / open |
+| Final independent engineering/security review | Required after implementation and acceptance | Open mandatory gate |
+| User's explicit production go/no-go decision | No such authorization | Not approved |
+
+## Production transition plan must be constructed from fresh verified facts
+
+1. Obtain exact local `reviseLogIn` commit, working tree and clean diffs; compare with authoritative Drive and staging deployed commit. Ensure no `.env`, diagnostic scripts, backup `_COPY` files, token-bearing logs, or local secrets enter release.
+2. Record production and candidate schema, SQL procedures, indices and row-level compatibility from safe exports. Do **not** assume Morty2 staging becomes the production DB or that test data/credentials are suitable for live use.
+3. Prepare reversible migration SQL and non-destructive rehearsals in isolated test facilities; specify where rollback cannot unwind user writes or token revocation.
+4. Inventory production Render env variable **names** and settings without exposing values; review origin/CORS/cookie/service worker, connection limit, secret separation, permitted email behavior, Node version and storage dependencies.
+5. Establish backwards-compatible web/TNNA credential transition, session migration choice, installed-phone preservation, deployment order, outage handling, backups and monitored recovery.
+6. Finish formal R01–R20 acceptance or explicitly document bounded exceptions; close/open S6 items based on acceptance evidence and approved risk decisions.
+7. Obtain independent design engineer/security findings, remediation/retest, then the user's separate authorization before touching `main` or production.
+
+## Rollback principle
+
+A rollback document must identify who executes each reversal, the precise deployment/database artifacts and compatibility constraints, plus validation of restored service and ongoing writes. No rollback action is claimed rehearsed unless a safely recorded dry run supports it. Disabling the separate test service is not proof of reversible production SQL migration.
+
+---
+
+# Earlier production implementation plan — retained historical details
+
 # Wonderful Apps — Stage 6 Production Implementation Plan
 
 **Version:** 1.2 — Draft / tracking document  
@@ -203,3 +250,15 @@ These prerequisites correspond to `Stage6_OpenItems.md` IDs and the separate `St
 - A further consolidated logging-only revision modifies 14 JS files (69 logging replacements), currently **uncommitted and not deployed**. Local whitespace, syntax and code-diff review passed; local startup, representative functional tests and isolated hosted checks remain required. Preserve backups and the existing production environment.
 - **Open security item S6-041:** `routes/familyTree.js` Favorite Pets handler returns raw `e.message` in a JSON API response; separate from server-side logging. Review potentially similar exception-to-client paths, define approved safe error-response behavior and regression-test before independent design-engineer review and any production decision.
 - Do not merge to `main`, redeploy production, modify production SQL, or change TNNA devices without explicit approval and the existing Stage 6 release gates.
+
+---
+
+# Integrated October 31 staging addendum
+
+## October 31, 2026 addendum - staging evidence, production still gated
+
+A separate Render staging service `wapps-stage6-test` is now user-reported Live for `reviseLogIn` commit `09ece26`, guarded `WA_ENV=staging`, HelioHost test database `wapps_test`; this replaces older *planning-time* assumptions about staging availability and `sql5838929` as its sole possible DB. The H05-H50 evidence ledger is in `Stage6_H05-H50_Hosted_Evidence_2026-10-31.md`. It supports meaningful functional, session, subscription and selected admin tests but **does not certify readiness for production**.
+
+**Remaining deployment gates:** complete formal R01-R20 matrix and S6 register reconciliation; controlled hosted password change/reset/session revocation; API error response audit S6-041; S6-039 deferred explicitly; review UI observations H30/H33/H36/H41; HTTPS cookie/CSRF/origin/proxy and rate-limit checks; data/cache/service-worker/browser/TNNA coverage; database connection and security verification; exact Git/SQL migration inventories; tested rollback; and an independent design-engineer review **after all implementation and tests and before any merge or production decision**.
+
+No changes to `main`, the production Render service, production database, or installed TNNA were authorized or made by this documentation supplement. No schema migration approved.
