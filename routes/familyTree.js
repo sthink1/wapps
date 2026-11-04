@@ -25,6 +25,24 @@ const upload = multer({
 });
 
 
+// Stage 6 R16: unexpected Family Tree failures must not disclose internal
+// exception details through HTTP responses. Explicit client errors retain
+// their existing user-facing messages. This helper is response-only; it does
+// not alter authorization, privacy checks, or error status codes.
+function safeFamilyTreeErrorMessage(error, responseStatus = error && error.status) {
+    const status = responseStatus;
+    return Number.isInteger(status) && status >= 400 && status < 500
+        ? (typeof error.message === 'string' && error.message ? error.message : 'Request failed')
+        : 'Internal Server Error';
+}
+
+function safeFamilyTreeErrorDetail(error, field) {
+    const status = error && error.status;
+    return Number.isInteger(status) && status >= 400 && status < 500
+        ? (error[field] || undefined)
+        : undefined;
+}
+
 // Automatically maintained birth/death events. Existing manual entries are preserved.
 async function syncPersonMilestoneEvents(c, personID, userID) {
     const [[p]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? LIMIT 1', [personID]);
@@ -1714,7 +1732,7 @@ router.get('/current-tree', auth, async (req, res) => {
         });
     } catch (e) {
         res.status(500).json({
-            message: e.message
+            message: safeFamilyTreeErrorMessage(e, 500)
         });
     }
 });
@@ -1760,7 +1778,7 @@ router.post('/change-tree', auth, async (req, res) => {
 
         res.json(result);
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -1816,7 +1834,7 @@ router.post('/enter-code', auth, async (req, res) => {
         res.json(result);
     } catch (e) {
         res.status(e.status || 500).json({
-            message: e.message
+            message: safeFamilyTreeErrorMessage(e)
         });
     }
 });
@@ -3479,7 +3497,7 @@ router.get('/tree-search', auth, async (req, res) => {
         );
         res.json({ results: rows });
     } catch (e) {
-        res.status(500).json({ message: e.message });
+        res.status(500).json({ message: safeFamilyTreeErrorMessage(e, 500) });
     }
 });
 
@@ -3582,9 +3600,9 @@ router.post('/use-existing-person', auth, async (req, res) => {
         res.json(result);
     } catch (e) {
         res.status(e.status || 500).json({
-            code: e.responseCode || undefined,
-            message: e.message,
-            review: e.review || undefined
+            code: safeFamilyTreeErrorDetail(e, 'responseCode'),
+            message: safeFamilyTreeErrorMessage(e),
+            review: safeFamilyTreeErrorDetail(e, 'review')
         });
     }
 });
@@ -3601,7 +3619,7 @@ router.get('/health', auth, async (req, res) => {
         });
     } catch (e) {
         res.status(500).json({
-            message: 'FamilyTree database connection failed: ' + e.message
+            message: 'FamilyTree database connection failed.'
         });
     }
 });
@@ -3735,7 +3753,7 @@ router.get('/split-view', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -3759,7 +3777,7 @@ router.get('/persons', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -3773,7 +3791,7 @@ router.get('/persons/duplicates', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(500).json({ message: e.message });
+        res.status(500).json({ message: safeFamilyTreeErrorMessage(e, 500) });
     }
 });
 
@@ -3805,7 +3823,7 @@ router.get('/persons/search', auth, async (req, res) => {
 
         res.json({ results: rows });
     } catch (e) {
-        res.status(500).json({ message: e.message });
+        res.status(500).json({ message: safeFamilyTreeErrorMessage(e, 500) });
     }
 });
 
@@ -3949,9 +3967,9 @@ router.post('/persons', auth, async (req, res) => {
         res.status(201).json(result);
     } catch (e) {
         res.status(e.status || 500).json({
-            code: e.responseCode || undefined,
-            message: e.message,
-            matches: e.matches || undefined
+            code: safeFamilyTreeErrorDetail(e, 'responseCode'),
+            message: safeFamilyTreeErrorMessage(e),
+            matches: safeFamilyTreeErrorDetail(e, 'matches')
         });
     }
 });
@@ -3999,7 +4017,7 @@ router.get('/persons/:id', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -4209,7 +4227,7 @@ router.put('/persons/:id', auth, async (req, res) => {
         res.json(result);
     } catch (e) {
         res.status(e.status || 500).json({
-            message: e.message
+            message: safeFamilyTreeErrorMessage(e)
         });
     }
 });
@@ -4590,7 +4608,7 @@ router.get('/persons/:id/ancestor', auth, async (req, res) => {
         }
     } catch (e) {
         res.status(e.status || 500).json({
-            message: e.message
+            message: safeFamilyTreeErrorMessage(e)
         });
     }
 });
@@ -4720,7 +4738,7 @@ router.get('/persons/:id/relationships', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -4860,7 +4878,7 @@ router.post('/relationships', auth, async (req, res) => {
         }
 
         res.status(e.status || 500).json({
-            message: e.message
+            message: safeFamilyTreeErrorMessage(e)
         });
     }
 });
@@ -4981,7 +4999,7 @@ router.post('/related-person', auth, async (req, res) => {
 
         res.status(201).json(result);
     } catch (e) {
-        res.status(e.status || 500).json({ code: e.responseCode || undefined, message: e.message, matches: e.matches || undefined });
+        res.status(e.status || 500).json({ code: safeFamilyTreeErrorDetail(e, 'responseCode'), message: safeFamilyTreeErrorMessage(e), matches: safeFamilyTreeErrorDetail(e, 'matches') });
     }
 });
 
@@ -5061,7 +5079,7 @@ router.post('/siblings/:siblingID/shared-parents', auth, async (req, res) => {
 
         res.json({ message: 'Selected biological parent relationship(s) saved.' });
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -5137,7 +5155,7 @@ router.post('/parents/:parentID/shared-siblings', auth, async (req, res) => {
 
         res.json({ message: 'Selected sibling parent relationship(s) saved.' });
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -5192,7 +5210,7 @@ router.post('/children/:childID/partner-parent', auth, async (req, res) => {
         });
         res.status(201).json(result);
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -5243,7 +5261,7 @@ router.get('/contact-email-verification/:token', async(req,res)=>{
    const valid=!x.RespondedAt && new Date(x.ExpiresAt)>new Date() && x.ContactType==='Email' &&
          String(x.ContactValue||'').trim().toLowerCase()===String(x.EmailAddress).toLowerCase();
    res.json({valid, message:valid?'Email verification request is ready.':'This verification request is no longer valid.'});
- }catch(e){res.status(500).json({message:e.message});}
+ }catch(e){res.status(500).json({message:safeFamilyTreeErrorMessage(e, 500)});}
 });
 router.post('/contact-email-verification/:token',async(req,res)=>{
  try {
@@ -5264,7 +5282,7 @@ router.post('/contact-email-verification/:token',async(req,res)=>{
       return {message:'Contact email verified successfully.'};
    });
    res.json(result);
- }catch(e){res.status(e.status||500).json({message:e.message});}
+ }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
 });
 router.post('/persons/:id/contacts/:contactID/resend-verification',auth,async(req,res)=>{
  const personID=Number(req.params.id),contactID=Number(req.params.contactID),userID=req.user.userId;
@@ -5279,7 +5297,7 @@ router.post('/persons/:id/contacts/:contactID/resend-verification',auth,async(re
    });
    await sendContactVerification(pending);
    res.json({message:'Verification email requested.'});
- }catch(e){res.status(e.status||500).json({message:e.message});}
+ }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
 });
 
 /* ============================================================================
@@ -5310,7 +5328,7 @@ router.get('/persons/:id/contacts', auth, async (req, res) => {
             }
             res.json({ contacts: rows });
         } finally { c.release(); }
-    } catch (e) { res.status(e.status || 500).json({ message: e.message }); }
+    } catch (e) { res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) }); }
 });
 
 router.post('/persons/:id/contacts', auth, async (req, res) => {
@@ -5337,7 +5355,7 @@ router.post('/persons/:id/contacts', auth, async (req, res) => {
         });
         if (pendingEmail) await sendContactVerification(pendingEmail);
         res.status(201).json(result);
-    } catch (e) { res.status(e.status || 500).json({ message:e.message }); }
+    } catch (e) { res.status(e.status || 500).json({ message:safeFamilyTreeErrorMessage(e) }); }
 });
 
 router.put('/persons/:id/contacts/:contactID', auth, async (req, res) => {
@@ -5366,7 +5384,7 @@ router.put('/persons/:id/contacts/:contactID', auth, async (req, res) => {
         });
         if(pendingEmail) await sendContactVerification(pendingEmail);
         res.json(result);
-    } catch(e){res.status(e.status||500).json({message:e.message});}
+    } catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
 });
 
 router.delete('/persons/:id/contacts/:contactID', auth, async (req,res)=>{
@@ -5381,7 +5399,7 @@ router.delete('/persons/:id/contacts/:contactID', auth, async (req,res)=>{
             return { message:'Contact deleted.' };
         });
         res.json(result);
-    }catch(e){res.status(e.status||500).json({message:e.message});}
+    }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
 });
 
 router.get('/persons/:id/events', auth, async (req, res) => {
@@ -5425,7 +5443,7 @@ router.get('/persons/:id/events', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -5502,7 +5520,7 @@ router.post('/persons/:id/events', auth, async (req, res) => {
         });
     } catch (e) {
         res.status(e.status || 500).json({
-            message: e.message
+            message: safeFamilyTreeErrorMessage(e)
         });
     }
 });
@@ -5529,7 +5547,7 @@ router.put('/persons/:id/events/:eventID', auth, async (req,res)=>{
             return {message:'Event changes saved.'};
         });
         res.json(result);
-    }catch(e){res.status(e.status||500).json({message:e.message});}
+    }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
 });
 
 router.delete('/persons/:id/events/:eventID', auth, async (req,res)=>{
@@ -5547,7 +5565,7 @@ router.delete('/persons/:id/events/:eventID', auth, async (req,res)=>{
             return {message:'Event deleted.'};
         });
         res.json(result);
-    }catch(e){res.status(e.status||500).json({message:e.message});}
+    }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
 });
 
 /* ============================================================================
@@ -5600,7 +5618,7 @@ router.get('/persons/:id/profile-image', auth, async (req, res) => {
         }
     } catch (e) {
         res.status(e.status || 500).json({
-            message: e.message
+            message: safeFamilyTreeErrorMessage(e)
         });
     }
 });
@@ -5766,7 +5784,7 @@ router.post(
             res.status(201).json(result);
         } catch (e) {
             res.status(e.status || 500).json({
-                message: e.message
+                message: safeFamilyTreeErrorMessage(e)
             });
         }
     }
@@ -5831,7 +5849,7 @@ router.get('/persons/:id/life-images', auth, async (req, res) => {
         }
     } catch (e) {
         res.status(e.status || 500).json({
-            message: e.message
+            message: safeFamilyTreeErrorMessage(e)
         });
     }
 });
@@ -6000,7 +6018,7 @@ router.post(
             res.status(201).json(result);
         } catch (e) {
             res.status(e.status || 500).json({
-                message: e.message
+                message: safeFamilyTreeErrorMessage(e)
             });
         }
     }
@@ -6185,7 +6203,7 @@ router.post(
             res.status(201).json(result);
         } catch (e) {
             res.status(e.status || 500).json({
-                message: e.message
+                message: safeFamilyTreeErrorMessage(e)
             });
         }
     }
@@ -6307,7 +6325,7 @@ router.delete(
             });
         } catch (e) {
             res.status(e.status || 500).json({
-                message: e.message
+                message: safeFamilyTreeErrorMessage(e)
             });
         }
     }
@@ -6552,7 +6570,7 @@ router.post(
             res.json(result);
         } catch (e) {
             res.status(e.status || 500).json({
-                message: e.message
+                message: safeFamilyTreeErrorMessage(e)
             });
         }
     }
@@ -7053,7 +7071,7 @@ router.delete('/persons/:id', auth, async (req, res) => {
         res.json(result);
     } catch (e) {
         res.status(e.status || 500).json({
-            message: e.message
+            message: safeFamilyTreeErrorMessage(e)
         });
     }
 });
@@ -7099,7 +7117,7 @@ router.get('/persons/:id/duplicate-view', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -7139,7 +7157,7 @@ router.get('/one-tree/review', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -7271,8 +7289,8 @@ router.post('/one-tree/merge', auth, async (req, res) => {
             await safelyDeleteImage(key);
         }
         res.status(e.status || 500).json({
-            code: e.responseCode || undefined,
-            message: e.message
+            code: safeFamilyTreeErrorDetail(e, 'responseCode'),
+            message: safeFamilyTreeErrorMessage(e)
         });
     }
 });
@@ -7322,7 +7340,7 @@ router.get('/one-tree/undo-options', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -7381,7 +7399,7 @@ router.get('/one-tree/undo-review/:treeMergeID', auth, async (req, res) => {
             samePersonPairs
         });
     } catch (e) {
-        res.status(500).json({ message: e.message });
+        res.status(500).json({ message: safeFamilyTreeErrorMessage(e, 500) });
     }
 });
 
@@ -7431,7 +7449,7 @@ router.post('/one-tree/undo', auth, async (req, res) => {
             message: `Family Tree ${result.FamilyTreeCode} has been restored as a separate Tree.`
         });
     } catch (e) {
-        res.status(e.status || 500).json({ message: e.message });
+        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
     }
 });
 
@@ -7809,7 +7827,7 @@ router.get('/persons/:id/network', auth, async (req, res) => {
         }
     } catch (error) {
         res.status(error.status || 500).json({
-            message: error.message
+            message: safeFamilyTreeErrorMessage(error)
         });
     }
 });
@@ -8036,7 +8054,7 @@ router.put('/persons/:id/network', auth, async (req, res) => {
         });
     } catch (error) {
         res.status(error.status || 500).json({
-            message: error.message
+            message: safeFamilyTreeErrorMessage(error)
         });
     }
 });
@@ -8114,7 +8132,7 @@ router.delete('/persons/:id/network', auth, async (req, res) => {
         });
     } catch (error) {
         res.status(error.status || 500).json({
-            message: error.message
+            message: safeFamilyTreeErrorMessage(error)
         });
     }
 });
@@ -8303,7 +8321,7 @@ router.get('/network/search', auth, async (req, res) => {
         }
     } catch (error) {
         res.status(error.status || 500).json({
-            message: error.message
+            message: safeFamilyTreeErrorMessage(error)
         });
     }
 });
@@ -8321,7 +8339,7 @@ const petHandler = async (req, res, action) => {
         await action(c, personID);
     } catch (e) {
         console.error('Favorite Pets operation failed (details omitted)');
-        res.status(e.status || 500).json({message:e.message || 'Favorite Pets request failed.'});
+        res.status(e.status || 500).json({message:safeFamilyTreeErrorMessage(e)});
     } finally {c.release();}
 };
 const parsePetDate = (value) => {

@@ -1,0 +1,487 @@
+--- GoogleDrive/routes/familyTree.js
++++ proposed/routes/familyTree.js
+@@ -24,6 +24,24 @@
+     }
+ });
+ 
++
++// Stage 6 R16: unexpected Family Tree failures must not disclose internal
++// exception details through HTTP responses. Explicit client errors retain
++// their existing user-facing messages. This helper is response-only; it does
++// not alter authorization, privacy checks, or error status codes.
++function safeFamilyTreeErrorMessage(error, responseStatus = error && error.status) {
++    const status = responseStatus;
++    return Number.isInteger(status) && status >= 400 && status < 500
++        ? (typeof error.message === 'string' && error.message ? error.message : 'Request failed')
++        : 'Internal Server Error';
++}
++
++function safeFamilyTreeErrorDetail(error, field) {
++    const status = error && error.status;
++    return Number.isInteger(status) && status >= 400 && status < 500
++        ? (error[field] || undefined)
++        : undefined;
++}
+ 
+ // Automatically maintained birth/death events. Existing manual entries are preserved.
+ async function syncPersonMilestoneEvents(c, personID, userID) {
+@@ -1714,7 +1732,7 @@
+         });
+     } catch (e) {
+         res.status(500).json({
+-            message: e.message
++            message: safeFamilyTreeErrorMessage(e, 500)
+         });
+     }
+ });
+@@ -1760,7 +1778,7 @@
+ 
+         res.json(result);
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -1816,7 +1834,7 @@
+         res.json(result);
+     } catch (e) {
+         res.status(e.status || 500).json({
+-            message: e.message
++            message: safeFamilyTreeErrorMessage(e)
+         });
+     }
+ });
+@@ -3479,7 +3497,7 @@
+         );
+         res.json({ results: rows });
+     } catch (e) {
+-        res.status(500).json({ message: e.message });
++        res.status(500).json({ message: safeFamilyTreeErrorMessage(e, 500) });
+     }
+ });
+ 
+@@ -3582,9 +3600,9 @@
+         res.json(result);
+     } catch (e) {
+         res.status(e.status || 500).json({
+-            code: e.responseCode || undefined,
+-            message: e.message,
+-            review: e.review || undefined
++            code: safeFamilyTreeErrorDetail(e, 'responseCode'),
++            message: safeFamilyTreeErrorMessage(e),
++            review: safeFamilyTreeErrorDetail(e, 'review')
+         });
+     }
+ });
+@@ -3601,7 +3619,7 @@
+         });
+     } catch (e) {
+         res.status(500).json({
+-            message: 'FamilyTree database connection failed: ' + e.message
++            message: 'FamilyTree database connection failed.'
+         });
+     }
+ });
+@@ -3735,7 +3753,7 @@
+             c.release();
+         }
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -3759,7 +3777,7 @@
+             c.release();
+         }
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -3773,7 +3791,7 @@
+             c.release();
+         }
+     } catch (e) {
+-        res.status(500).json({ message: e.message });
++        res.status(500).json({ message: safeFamilyTreeErrorMessage(e, 500) });
+     }
+ });
+ 
+@@ -3805,7 +3823,7 @@
+ 
+         res.json({ results: rows });
+     } catch (e) {
+-        res.status(500).json({ message: e.message });
++        res.status(500).json({ message: safeFamilyTreeErrorMessage(e, 500) });
+     }
+ });
+ 
+@@ -3949,9 +3967,9 @@
+         res.status(201).json(result);
+     } catch (e) {
+         res.status(e.status || 500).json({
+-            code: e.responseCode || undefined,
+-            message: e.message,
+-            matches: e.matches || undefined
++            code: safeFamilyTreeErrorDetail(e, 'responseCode'),
++            message: safeFamilyTreeErrorMessage(e),
++            matches: safeFamilyTreeErrorDetail(e, 'matches')
+         });
+     }
+ });
+@@ -3999,7 +4017,7 @@
+             c.release();
+         }
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -4209,7 +4227,7 @@
+         res.json(result);
+     } catch (e) {
+         res.status(e.status || 500).json({
+-            message: e.message
++            message: safeFamilyTreeErrorMessage(e)
+         });
+     }
+ });
+@@ -4590,7 +4608,7 @@
+         }
+     } catch (e) {
+         res.status(e.status || 500).json({
+-            message: e.message
++            message: safeFamilyTreeErrorMessage(e)
+         });
+     }
+ });
+@@ -4720,7 +4738,7 @@
+             c.release();
+         }
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -4860,7 +4878,7 @@
+         }
+ 
+         res.status(e.status || 500).json({
+-            message: e.message
++            message: safeFamilyTreeErrorMessage(e)
+         });
+     }
+ });
+@@ -4981,7 +4999,7 @@
+ 
+         res.status(201).json(result);
+     } catch (e) {
+-        res.status(e.status || 500).json({ code: e.responseCode || undefined, message: e.message, matches: e.matches || undefined });
++        res.status(e.status || 500).json({ code: safeFamilyTreeErrorDetail(e, 'responseCode'), message: safeFamilyTreeErrorMessage(e), matches: safeFamilyTreeErrorDetail(e, 'matches') });
+     }
+ });
+ 
+@@ -5061,7 +5079,7 @@
+ 
+         res.json({ message: 'Selected biological parent relationship(s) saved.' });
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -5137,7 +5155,7 @@
+ 
+         res.json({ message: 'Selected sibling parent relationship(s) saved.' });
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -5192,7 +5210,7 @@
+         });
+         res.status(201).json(result);
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -5243,7 +5261,7 @@
+    const valid=!x.RespondedAt && new Date(x.ExpiresAt)>new Date() && x.ContactType==='Email' &&
+          String(x.ContactValue||'').trim().toLowerCase()===String(x.EmailAddress).toLowerCase();
+    res.json({valid, message:valid?'Email verification request is ready.':'This verification request is no longer valid.'});
+- }catch(e){res.status(500).json({message:e.message});}
++ }catch(e){res.status(500).json({message:safeFamilyTreeErrorMessage(e, 500)});}
+ });
+ router.post('/contact-email-verification/:token',async(req,res)=>{
+  try {
+@@ -5264,7 +5282,7 @@
+       return {message:'Contact email verified successfully.'};
+    });
+    res.json(result);
+- }catch(e){res.status(e.status||500).json({message:e.message});}
++ }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
+ });
+ router.post('/persons/:id/contacts/:contactID/resend-verification',auth,async(req,res)=>{
+  const personID=Number(req.params.id),contactID=Number(req.params.contactID),userID=req.user.userId;
+@@ -5279,7 +5297,7 @@
+    });
+    await sendContactVerification(pending);
+    res.json({message:'Verification email requested.'});
+- }catch(e){res.status(e.status||500).json({message:e.message});}
++ }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
+ });
+ 
+ /* ============================================================================
+@@ -5310,7 +5328,7 @@
+             }
+             res.json({ contacts: rows });
+         } finally { c.release(); }
+-    } catch (e) { res.status(e.status || 500).json({ message: e.message }); }
++    } catch (e) { res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) }); }
+ });
+ 
+ router.post('/persons/:id/contacts', auth, async (req, res) => {
+@@ -5337,7 +5355,7 @@
+         });
+         if (pendingEmail) await sendContactVerification(pendingEmail);
+         res.status(201).json(result);
+-    } catch (e) { res.status(e.status || 500).json({ message:e.message }); }
++    } catch (e) { res.status(e.status || 500).json({ message:safeFamilyTreeErrorMessage(e) }); }
+ });
+ 
+ router.put('/persons/:id/contacts/:contactID', auth, async (req, res) => {
+@@ -5366,7 +5384,7 @@
+         });
+         if(pendingEmail) await sendContactVerification(pendingEmail);
+         res.json(result);
+-    } catch(e){res.status(e.status||500).json({message:e.message});}
++    } catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
+ });
+ 
+ router.delete('/persons/:id/contacts/:contactID', auth, async (req,res)=>{
+@@ -5381,7 +5399,7 @@
+             return { message:'Contact deleted.' };
+         });
+         res.json(result);
+-    }catch(e){res.status(e.status||500).json({message:e.message});}
++    }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
+ });
+ 
+ router.get('/persons/:id/events', auth, async (req, res) => {
+@@ -5425,7 +5443,7 @@
+             c.release();
+         }
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -5502,7 +5520,7 @@
+         });
+     } catch (e) {
+         res.status(e.status || 500).json({
+-            message: e.message
++            message: safeFamilyTreeErrorMessage(e)
+         });
+     }
+ });
+@@ -5529,7 +5547,7 @@
+             return {message:'Event changes saved.'};
+         });
+         res.json(result);
+-    }catch(e){res.status(e.status||500).json({message:e.message});}
++    }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
+ });
+ 
+ router.delete('/persons/:id/events/:eventID', auth, async (req,res)=>{
+@@ -5547,7 +5565,7 @@
+             return {message:'Event deleted.'};
+         });
+         res.json(result);
+-    }catch(e){res.status(e.status||500).json({message:e.message});}
++    }catch(e){res.status(e.status||500).json({message:safeFamilyTreeErrorMessage(e)});}
+ });
+ 
+ /* ============================================================================
+@@ -5600,7 +5618,7 @@
+         }
+     } catch (e) {
+         res.status(e.status || 500).json({
+-            message: e.message
++            message: safeFamilyTreeErrorMessage(e)
+         });
+     }
+ });
+@@ -5766,7 +5784,7 @@
+             res.status(201).json(result);
+         } catch (e) {
+             res.status(e.status || 500).json({
+-                message: e.message
++                message: safeFamilyTreeErrorMessage(e)
+             });
+         }
+     }
+@@ -5831,7 +5849,7 @@
+         }
+     } catch (e) {
+         res.status(e.status || 500).json({
+-            message: e.message
++            message: safeFamilyTreeErrorMessage(e)
+         });
+     }
+ });
+@@ -6000,7 +6018,7 @@
+             res.status(201).json(result);
+         } catch (e) {
+             res.status(e.status || 500).json({
+-                message: e.message
++                message: safeFamilyTreeErrorMessage(e)
+             });
+         }
+     }
+@@ -6185,7 +6203,7 @@
+             res.status(201).json(result);
+         } catch (e) {
+             res.status(e.status || 500).json({
+-                message: e.message
++                message: safeFamilyTreeErrorMessage(e)
+             });
+         }
+     }
+@@ -6307,7 +6325,7 @@
+             });
+         } catch (e) {
+             res.status(e.status || 500).json({
+-                message: e.message
++                message: safeFamilyTreeErrorMessage(e)
+             });
+         }
+     }
+@@ -6552,7 +6570,7 @@
+             res.json(result);
+         } catch (e) {
+             res.status(e.status || 500).json({
+-                message: e.message
++                message: safeFamilyTreeErrorMessage(e)
+             });
+         }
+     }
+@@ -7053,7 +7071,7 @@
+         res.json(result);
+     } catch (e) {
+         res.status(e.status || 500).json({
+-            message: e.message
++            message: safeFamilyTreeErrorMessage(e)
+         });
+     }
+ });
+@@ -7099,7 +7117,7 @@
+             c.release();
+         }
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -7139,7 +7157,7 @@
+             c.release();
+         }
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -7271,8 +7289,8 @@
+             await safelyDeleteImage(key);
+         }
+         res.status(e.status || 500).json({
+-            code: e.responseCode || undefined,
+-            message: e.message
++            code: safeFamilyTreeErrorDetail(e, 'responseCode'),
++            message: safeFamilyTreeErrorMessage(e)
+         });
+     }
+ });
+@@ -7322,7 +7340,7 @@
+             c.release();
+         }
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -7381,7 +7399,7 @@
+             samePersonPairs
+         });
+     } catch (e) {
+-        res.status(500).json({ message: e.message });
++        res.status(500).json({ message: safeFamilyTreeErrorMessage(e, 500) });
+     }
+ });
+ 
+@@ -7431,7 +7449,7 @@
+             message: `Family Tree ${result.FamilyTreeCode} has been restored as a separate Tree.`
+         });
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: e.message });
++        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+     }
+ });
+ 
+@@ -7809,7 +7827,7 @@
+         }
+     } catch (error) {
+         res.status(error.status || 500).json({
+-            message: error.message
++            message: safeFamilyTreeErrorMessage(error)
+         });
+     }
+ });
+@@ -8036,7 +8054,7 @@
+         });
+     } catch (error) {
+         res.status(error.status || 500).json({
+-            message: error.message
++            message: safeFamilyTreeErrorMessage(error)
+         });
+     }
+ });
+@@ -8114,7 +8132,7 @@
+         });
+     } catch (error) {
+         res.status(error.status || 500).json({
+-            message: error.message
++            message: safeFamilyTreeErrorMessage(error)
+         });
+     }
+ });
+@@ -8303,7 +8321,7 @@
+         }
+     } catch (error) {
+         res.status(error.status || 500).json({
+-            message: error.message
++            message: safeFamilyTreeErrorMessage(error)
+         });
+     }
+ });
+@@ -8321,7 +8339,7 @@
+         await action(c, personID);
+     } catch (e) {
+         console.error('Favorite Pets operation failed (details omitted)');
+-        res.status(e.status || 500).json({message:e.message || 'Favorite Pets request failed.'});
++        res.status(e.status || 500).json({message:safeFamilyTreeErrorMessage(e)});
+     } finally {c.release();}
+ };
+ const parsePetDate = (value) => {
