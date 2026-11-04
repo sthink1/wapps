@@ -110,7 +110,12 @@ app.use('/users', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 }, userRoutes);
-app.use('/subscriptions', subscriptionRoutes);
+// Stage 6 R16: subscription/account entitlement responses must not be stored,
+// including authentication and authorization failures.
+app.use('/subscriptions', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+}, subscriptionRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/track', trackRoutes);
 app.use('/tnna', tnnaRoutes);
