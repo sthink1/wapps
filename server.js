@@ -104,7 +104,12 @@ app.get('/', (req, res) => {
 });
 
 // API routes
-app.use('/users', userRoutes);
+// Stage 6 R08/R16: prevent storage of authentication and account responses,
+// including failures returned before individual route handlers execute.
+app.use('/users', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+}, userRoutes);
 app.use('/subscriptions', subscriptionRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/track', trackRoutes);
