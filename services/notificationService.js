@@ -280,7 +280,7 @@ async function sendNotification({
                 `UPDATE NotificationHistoryT
                  SET Status='FAILED', FailureReason=?
                  WHERE NotificationHistoryID=?`,
-                [String(error.message || error).slice(0, 500), historyID]
+                ['Notification delivery failed (details omitted).', historyID]
             );
             throw error;
         }

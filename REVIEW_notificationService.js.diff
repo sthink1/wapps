@@ -1,0 +1,11 @@
+--- GoogleDrive/services/notificationService.js
++++ candidate/services/notificationService.js
+@@ -280,7 +280,7 @@
+                 `UPDATE NotificationHistoryT
+                  SET Status='FAILED', FailureReason=?
+                  WHERE NotificationHistoryID=?`,
+-                [String(error.message || error).slice(0, 500), historyID]
++                ['Notification delivery failed (details omitted).', historyID]
+             );
+             throw error;
+         }

@@ -739,7 +739,7 @@ async function sendPendingFamilyTreeNotifications(pendingEmails) {
                     `UPDATE FTNotificationT
                      SET Status='Failed', FailureReason=?
                      WHERE NotificationID=?`,
-                    [String(error.message || error).slice(0, 500), pending.NotificationID]
+                    ['Family Tree notification delivery failed (details omitted).', pending.NotificationID]
                 );
             } catch (_) {
                 /* Do not undo a successful FamilyTree edit/delete. */
