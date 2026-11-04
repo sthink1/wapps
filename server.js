@@ -179,11 +179,18 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   // Error messages can contain URLs, tokens, or other untrusted details.
   // Preserve the HTTP status for diagnostics without persisting the message.
-  const statusCode = err.status || 500;
-  logger.error(`Request error (HTTP ${Number.isInteger(statusCode) ? statusCode : 500}; message omitted)`);
+  const statusCode = Number.isInteger(err && err.status) && err.status >= 400 && err.status <= 599
+    ? err.status
+    : 500;
+  // Preserve explicitly supplied client-error messages, but never expose an
+  // unexpected exception's message or stack trace to the HTTP caller.
+  const publicMessage = statusCode >= 500
+    ? 'Internal Server Error'
+    : (typeof err.message === 'string' && err.message ? err.message : 'Request failed');
+  logger.error(`Request error (HTTP ${statusCode}; message omitted)`);
   res.status(statusCode).json({
     error: {
-      message: err.message || 'Internal Server Error',
+      message: publicMessage,
     },
   });
 });

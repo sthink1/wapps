@@ -10,12 +10,24 @@ const {
     unsubscribeByToken
 } = require('../services/notificationService');
 
+// Stage 6 R16: Do not return raw internal exception messages in HTTP 5xx
+// responses. Preserve existing 4xx application messages and HTTP statuses.
+function sendSafeNotificationError(res, error) {
+    const status = Number.isInteger(error && error.status) && error.status >= 400 && error.status <= 599
+        ? error.status
+        : 500;
+    const message = status >= 500
+        ? 'Internal Server Error'
+        : (typeof error.message === 'string' && error.message ? error.message : 'Request failed');
+    return res.status(status).json({ message });
+}
+
 router.get('/preferences', auth, async (req, res) => {
     try {
         const preferences = await getPreferences(req.user.userId);
         res.json(preferences);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        sendSafeNotificationError(res, error);
     }
 });
 
@@ -36,7 +48,7 @@ router.put('/preferences', auth, async (req, res) => {
         const preferences = await updatePreferences(req.user.userId, updates);
         res.json({ message: 'Notification preferences saved.', preferences });
     } catch (error) {
-        res.status(error.status || 500).json({ message: error.message });
+        sendSafeNotificationError(res, error);
     }
 });
 
@@ -60,7 +72,7 @@ router.get('/unsubscribe/:token', async (req, res) => {
             destination: info.Channel === 'EMAIL' ? maskedEmail : 'your phone number'
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        sendSafeNotificationError(res, error);
     }
 });
 
@@ -73,7 +85,7 @@ router.post('/unsubscribe/:token', async (req, res) => {
             ...result
         });
     } catch (error) {
-        res.status(error.status || 500).json({ message: error.message });
+        sendSafeNotificationError(res, error);
     }
 });
 
@@ -106,7 +118,7 @@ router.get('/network-verification/:token', async (req, res) => {
             response: row.Response || null
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        sendSafeNotificationError(res, error);
     }
 });
 
@@ -136,7 +148,7 @@ router.post('/network-verification/:token', async (req, res) => {
         res.json({ message: response==='APPROVED'?'Family Network participation has been approved.':'Family Network participation has been declined.' });
     } catch (error) {
         try { await c.rollback(); } catch (_) {}
-        res.status(error.status || 500).json({ message: error.message });
+        sendSafeNotificationError(res, error);
     } finally { c.release(); }
 });
 
