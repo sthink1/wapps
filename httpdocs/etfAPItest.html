@@ -598,19 +598,6 @@ function isAfterListDate(calendarDateStr, listDateStr) {
 // API KEYS & SYMBOL LOOKUP
 // ─────────────────────────────────────────────
 
-let apiKeys = null;
-
-async function getApiKeys() {
-  if (apiKeys) return apiKeys;
-  const token = localStorage.getItem('token');
-  const resp = await fetch(`${BASE_URL}/etf/config`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  if (!resp.ok) throw new Error('Failed to load API keys');
-  apiKeys = await resp.json();
-  return apiKeys;
-}
-
 async function lookupSymbol(symbolInput) {
   const token = localStorage.getItem('token');
   const resp = await fetch(`${BASE_URL}/etf/symbol`, {
@@ -650,12 +637,16 @@ async function fetchTiingoRange(symbol, startDateStr, endDateStr) {
   return map;
 }
 
-async function fetchFinnhub(symbol, keys) {
-  const resp = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${keys.FINNHUB_API_KEY}`);
+async function fetchFinnhub(symbol) {
+  const token = localStorage.getItem('token');
+  const resp = await fetch(
+    `${BASE_URL}/etf/finnhub-quote?symbol=${encodeURIComponent(symbol)}`,
+    { headers: { 'Authorization': `Bearer ${token}` } }
+  );
   if (!resp.ok) throw new Error('Finnhub request failed');
   const data = await resp.json();
-  if (!data.c || data.c === 0) throw new Error('No valid price from Finnhub');
-  return { price: parseFloat(data.c), adjPrice: null };
+  if (!Number.isFinite(data.price) || data.price <= 0) throw new Error('No valid price from Finnhub');
+  return { price: data.price, adjPrice: null };
 }
 
 // ─────────────────────────────────────────────
@@ -765,7 +756,7 @@ function renderSkeleton(prefix, periods, baseStr, listDateStr) {
 // MAIN PRICE FETCH & CALCULATION
 // ─────────────────────────────────────────────
 
-async function fetchAllPrices(symbol, listDateStr, keys) {
+async function fetchAllPrices(symbol, listDateStr) {
   const todayStr = toDateStr(today());
 
   // Find earliest needed date (6 years back: covers Table 1 [today-5y] and Table 2 [1yr-prior-5y])
@@ -793,7 +784,7 @@ async function fetchAllPrices(symbol, listDateStr, keys) {
   if (isTodayTradingDay()) {
     updateProgress('Finnhub today');
     try {
-      todayResult = await fetchFinnhub(symbol, keys);
+      todayResult = await fetchFinnhub(symbol);
     } catch (err) {
       console.warn('Finnhub today failed:', err);
       // fall back to Tiingo for today
@@ -893,10 +884,6 @@ async function calculate() {
     document.getElementById('symListDisplay').textContent = `Listed: ${fmtDisplay(listDate)}`;
     document.getElementById('symbolInfoBox').style.display = 'flex';
 
-    showStatus('Loading API keys…', 'info');
-    const keys = await getApiKeys();
-    clearStatus();
-
     const todayStr = toDateStr(today());
     const t1Base = todayStr;
     const t2Base = getCalendarDate(todayStr, '1y');
@@ -907,7 +894,7 @@ async function calculate() {
     document.getElementById('t1-head-today').textContent = `Today · ${fmtDisplay(t1Base)}`;
     document.getElementById('t2-head-anchor').textContent = `1 Yr Prior · ${fmtDisplay(t2Base)}`;
 
-    await fetchAllPrices(sym.symbol, listDate, keys);
+    await fetchAllPrices(sym.symbol, listDate);
 
   } catch (err) {
     showStatus(err.message, 'error');

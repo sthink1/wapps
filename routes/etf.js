@@ -622,13 +622,35 @@ router.get('/compare', auth, async (req, res) => {
 });
 
 // ────────────────────────────────────────────────
-// GET /etf/config
+// GET /etf/config — retired for credential safety. Never return API keys to clients.
 router.get('/config', auth, (req, res) => {
-  res.json({
-    FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
-    POLYGON_API_KEY: process.env.POLYGON_API_KEY,
-    TIINGO_API_KEY:  process.env.TIINGO_API_KEY,
-  });
+  return res.status(410).json({ message: 'ETF API configuration is no longer available (be)' });
+});
+
+// GET /etf/finnhub-quote — server-side provider call; only quote data reaches clients.
+router.get('/finnhub-quote', auth, async (req, res) => {
+  const symbol = typeof req.query.symbol === 'string' ? req.query.symbol.trim().toUpperCase() : '';
+  if (!/^[A-Z0-9][A-Z0-9.\^-]{0,19}$/.test(symbol)) {
+    return res.status(400).json({ message: 'Invalid symbol (be)' });
+  }
+  if (!process.env.FINNHUB_API_KEY) {
+    logger.error('GET /etf/finnhub-quote: provider not configured (details omitted)');
+    return res.status(503).json({ message: 'Quote service unavailable (be)' });
+  }
+  try {
+    const response = await axios.get('https://finnhub.io/api/v1/quote', {
+      params: { symbol, token: process.env.FINNHUB_API_KEY },
+      timeout: 10000
+    });
+    const price = Number(response.data && response.data.c);
+    if (!Number.isFinite(price) || price <= 0) {
+      return res.status(404).json({ message: 'No valid price from Finnhub (be)' });
+    }
+    return res.json({ price, adjPrice: null });
+  } catch (error) {
+    logger.error('GET /etf/finnhub-quote: provider request failed (details omitted)');
+    return res.status(502).json({ message: 'Quote service unavailable (be)' });
+  }
 });
 
 // ────────────────────────────────────────────────
