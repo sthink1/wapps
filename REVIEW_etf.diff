@@ -1,0 +1,291 @@
+--- a/routes/etf.js
++++ b/routes/etf.js
+@@ -9,6 +9,18 @@
+ const { withTransaction, handleDbError, holidays } = require('../utils');
+ const auth = require('../middleware/auth');
+ const POLYGON_API_KEY = process.env.POLYGON_API_KEY;
++
++// Stage 6 R16: (be) identifies backend message origin, not safe disclosure.
++// Only errors explicitly created for client validation may be returned as HTTP 400.
++const etfClientErrors = new WeakSet();
++function etfClientError(message) {
++  const error = new Error(message);
++  etfClientErrors.add(error);
++  return error;
++}
++function isEtfClientError(error) {
++  return error !== null && typeof error === 'object' && etfClientErrors.has(error);
++}
+ 
+ // Simple in-memory cache: userId + category → { data, timestamp }
+ const compareCache = new Map();
+@@ -96,7 +108,7 @@
+           [category, userId]
+         );
+         if (existing.length > 0) {
+-          throw new Error("Category already exists (be)");
++          throw etfClientError("Category already exists (be)");
+         }
+         await connection.query(
+           'INSERT INTO etfCategoryT (category, UserID) VALUES (?, ?)',
+@@ -105,7 +117,7 @@
+         res.json({ message: "Category saved" });
+       });
+     } catch (err) {
+-      if (err.message.endsWith("(be)")) {
++      if (isEtfClientError(err)) {
+         return res.status(400).json({ message: err.message });
+       }
+       logger.error(`POST /etf/category: [details omitted]`);
+@@ -149,12 +161,12 @@
+           [category, categoryID, userId]
+         );
+         if (result.affectedRows === 0) {
+-          throw new Error("Category not found (be)");
++          throw etfClientError("Category not found (be)");
+         }
+         res.json({ message: "Category updated" });
+       });
+     } catch (err) {
+-      if (err.message.endsWith("(be)")) {
++      if (isEtfClientError(err)) {
+         return res.status(400).json({ message: err.message });
+       }
+       logger.error(`PUT /etf/category/:id: [details omitted]`);
+@@ -173,19 +185,19 @@
+         [categoryID, userId]
+       );
+       if (symbols[0].count > 0) {
+-        throw new Error("Cannot delete category with existing symbols (be)");
++        throw etfClientError("Cannot delete category with existing symbols (be)");
+       }
+       const [result] = await connection.query(
+         'DELETE FROM etfCategoryT WHERE etfCategoryID = ? AND UserID = ?',
+         [categoryID, userId]
+       );
+       if (result.affectedRows === 0) {
+-        throw new Error("Category not found (be)");
++        throw etfClientError("Category not found (be)");
+       }
+       res.json({ message: "Category deleted" });
+     });
+   } catch (err) {
+-    if (err.message.endsWith("(be)")) {
++    if (isEtfClientError(err)) {
+       return res.status(400).json({ message: err.message });
+     }
+     logger.error(`DELETE /etf/category/:id: [details omitted]`);
+@@ -212,7 +224,7 @@
+           [upperSymbol, userId]
+         );
+         if (existing.length > 0) {
+-          throw new Error("Symbol already exists (be)");
++          throw etfClientError("Symbol already exists (be)");
+         }
+         let name = null;
+         let listDate = null;
+@@ -225,19 +237,19 @@
+             !response.data.results ||
+             response.data.results.active !== true
+           ) {
+-            throw new Error("Symbol not found. Please check symbol entered.(be)");
++            throw etfClientError("Symbol not found. Please check symbol entered.(be)");
+           }
+           name = response.data.results.name;
+           listDate = response.data.results.list_date || null;
+           if (!name) {
+-            throw new Error("Symbol not found. Please check symbol entered.(be)");
++            throw etfClientError("Symbol not found. Please check symbol entered.(be)");
+           }
+         } catch (err) {
+-          if (err.response && err.response.status === 404) {
+-            throw new Error("Symbol not found. Please check symbol entered.(be)");
++          if (isEtfClientError(err) || (err && err.response && err.response.status === 404)) {
++            throw etfClientError("Symbol not found. Please check symbol entered.(be)");
+           }
+           logger.error(`Polygon validation error for [symbol omitted]: [details omitted]`);
+-          throw new Error("Symbol not found. Please check symbol entered.(be)");
++          throw err;
+         }
+         await connection.query(
+           'INSERT INTO etfSymbolT (symbol, name, listDate, etfCategoryID, UserID) VALUES (?, ?, ?, ?, ?)',
+@@ -246,7 +258,7 @@
+         res.json({ message: "Symbol saved", data: { symbol: upperSymbol, name, listDate } });
+       });
+     } catch (err) {
+-      if (err.message.endsWith("(be)")) {
++      if (isEtfClientError(err)) {
+         return res.status(400).json({ message: err.message });
+       }
+       logger.error(`POST /etf/symbol: [details omitted]`);
+@@ -292,12 +304,12 @@
+           [etfCategoryID, symbolID, userId]
+         );
+         if (result.affectedRows === 0) {
+-          throw new Error("Symbol not found (be)");
++          throw etfClientError("Symbol not found (be)");
+         }
+         res.json({ message: "Symbol updated" });
+       });
+     } catch (err) {
+-      if (err.message.endsWith("(be)")) {
++      if (isEtfClientError(err)) {
+         return res.status(400).json({ message: err.message });
+       }
+       logger.error(`PUT /etf/symbol/:id: [details omitted]`);
+@@ -332,7 +344,7 @@
+       const totalSold   = parseFloat(sellRows[0].totalSold)   || 0;
+ 
+       if (totalBought > totalSold) {
+-        throw new Error("Cannot delete symbol with shares still in inventory (be)");
++        throw etfClientError("Cannot delete symbol with shares still in inventory (be)");
+       }
+ 
+       // Check for SELL activity within the last 7 years
+@@ -348,7 +360,7 @@
+         [symbolID, userId, sevenYearsAgoStr]
+       );
+       if (recentSells[0].count > 0) {
+-        throw new Error("Cannot delete symbol with sale activity within the last 7 years (be)");
++        throw etfClientError("Cannot delete symbol with sale activity within the last 7 years (be)");
+       }
+ 
+       const [result] = await connection.query(
+@@ -356,12 +368,12 @@
+         [symbolID, userId]
+       );
+       if (result.affectedRows === 0) {
+-        throw new Error("Symbol not found (be)");
++        throw etfClientError("Symbol not found (be)");
+       }
+       res.json({ message: "Symbol deleted" });
+     });
+   } catch (err) {
+-    if (err.message.endsWith("(be)")) {
++    if (isEtfClientError(err)) {
+       return res.status(400).json({ message: err.message });
+     }
+     logger.error(`DELETE /etf/symbol/:id: [details omitted]`);
+@@ -731,7 +743,7 @@
+           [etfSymbolID, etfCategoryID, userId]
+         );
+         if (symCheck.length === 0) {
+-          throw new Error("Symbol not found for this category (be)");
++          throw etfClientError("Symbol not found for this category (be)");
+         }
+ 
+         const userEtfActivityID = await getNextUserSpecificID(userId, 'etfActivityT', 'UserEtfActivityID');
+@@ -749,7 +761,7 @@
+         res.json({ message: msgType });
+       });
+     } catch (err) {
+-      if (err.message.endsWith("(be)")) {
++      if (isEtfClientError(err)) {
+         return res.status(400).json({ message: err.message });
+       }
+       if (err.code === 'ER_DUP_ENTRY') {
+@@ -789,7 +801,7 @@
+           [etfSymbolID, etfCategoryID, userId]
+         );
+         if (symCheck.length === 0) {
+-          throw new Error("Symbol not found for this category (be)");
++          throw etfClientError("Symbol not found for this category (be)");
+         }
+ 
+         // Verify user is not selling more shares than they hold
+@@ -807,7 +819,7 @@
+         );
+         const currentInventory = parseFloat(buyRows[0].totalBought) - parseFloat(sellRows[0].totalSold);
+         if (parseFloat(Shares) > currentInventory) {
+-          throw new Error(`Cannot sell more shares than held. Current inventory: ${currentInventory.toFixed(6)} (be)`);
++          throw etfClientError(`Cannot sell more shares than held. Current inventory: ${currentInventory.toFixed(6)} (be)`);
+         }
+ 
+         const userEtfActivityID = await getNextUserSpecificID(userId, 'etfActivityT', 'UserEtfActivityID');
+@@ -823,7 +835,7 @@
+         res.json({ message: "Sale recorded" });
+       });
+     } catch (err) {
+-      if (err.message.endsWith("(be)")) {
++      if (isEtfClientError(err)) {
+         return res.status(400).json({ message: err.message });
+       }
+       if (err.code === 'ER_DUP_ENTRY') {
+@@ -1099,7 +1111,7 @@
+           [activityId, userId]
+         );
+         if (txRow.length === 0) {
+-          throw new Error("Transaction not found (be)");
++          throw etfClientError("Transaction not found (be)");
+         }
+         const tx = txRow[0];
+ 
+@@ -1122,11 +1134,11 @@
+             const newInventory = parseFloat(buyRows[0].totalBought) + shareDiff
+                                - parseFloat(sellRows[0].totalSold);
+             if (newInventory < 0) {
+-              throw new Error("Cannot reduce shares: would make inventory negative (be)");
++              throw etfClientError("Cannot reduce shares: would make inventory negative (be)");
+             }
+           }
+           if (!PurchaseCost) {
+-            throw new Error("PurchaseCost required for BUY transaction (be)");
++            throw etfClientError("PurchaseCost required for BUY transaction (be)");
+           }
+           await connection.query(
+             `UPDATE etfActivityT
+@@ -1151,10 +1163,10 @@
+           const currentInventory = parseFloat(buyRows[0].totalBought)
+                                  - (parseFloat(sellRows[0].totalSold) - parseFloat(tx.Shares));
+           if (parseFloat(Shares) > currentInventory) {
+-            throw new Error(`Cannot sell more shares than held. Available: ${currentInventory.toFixed(6)} (be)`);
++            throw etfClientError(`Cannot sell more shares than held. Available: ${currentInventory.toFixed(6)} (be)`);
+           }
+           if (!SalePrice) {
+-            throw new Error("SalePrice required for SELL transaction (be)");
++            throw etfClientError("SalePrice required for SELL transaction (be)");
+           }
+           await connection.query(
+             `UPDATE etfActivityT
+@@ -1166,7 +1178,7 @@
+         res.json({ message: "Transaction updated" });
+       });
+     } catch (err) {
+-      if (err.message.endsWith("(be)")) {
++      if (isEtfClientError(err)) {
+         return res.status(400).json({ message: err.message });
+       }
+       logger.error(`PUT /etf/activity/:id: [details omitted]`);
+@@ -1191,7 +1203,7 @@
+         [activityId, userId]
+       );
+       if (txRow.length === 0) {
+-        throw new Error("Transaction not found (be)");
++        throw etfClientError("Transaction not found (be)");
+       }
+       if (txRow[0].TransactionType === 'BUY') {
+         const [buyRows] = await connection.query(
+@@ -1209,7 +1221,7 @@
+         const newInventory = parseFloat(buyRows[0].totalBought) - parseFloat(txRow[0].Shares)
+                            - parseFloat(sellRows[0].totalSold);
+         if (newInventory < 0) {
+-          throw new Error("Cannot delete purchase: would make inventory negative (be)");
++          throw etfClientError("Cannot delete purchase: would make inventory negative (be)");
+         }
+       }
+       const [result] = await connection.query(
+@@ -1217,12 +1229,12 @@
+         [activityId, userId]
+       );
+       if (result.affectedRows === 0) {
+-        throw new Error("Transaction not found (be)");
++        throw etfClientError("Transaction not found (be)");
+       }
+       res.json({ message: "Transaction deleted" });
+     });
+   } catch (err) {
+-    if (err.message.endsWith("(be)")) {
++    if (isEtfClientError(err)) {
+       return res.status(400).json({ message: err.message });
+     }
+     logger.error(`DELETE /etf/activity/:id: [details omitted]`);
