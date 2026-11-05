@@ -1,0 +1,74 @@
+--- a/routes/subscriptions.js
++++ b/routes/subscriptions.js
+@@ -48,7 +48,7 @@
+         const result = await redeemPromoCode(req.user.userId, req.body.code);
+         res.json(result);
+     } catch (error) {
+-        if (error.status) return res.status(error.status).json({ error: error.message });
++        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+         next(error);
+     }
+ });
+@@ -59,7 +59,7 @@
+         await recordUsage(req.user.userId, appKey, eventType, quantity, detail);
+         res.status(201).json({ message: 'Usage recorded.' });
+     } catch (error) {
+-        if (error.status) return res.status(error.status).json({ error: error.message });
++        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+         next(error);
+     }
+ });
+@@ -77,7 +77,7 @@
+         const result = await createAdminPromoCode(req.body || {});
+         res.status(201).json(result);
+     } catch (error) {
+-        if (error.status) return res.status(error.status).json({ error: error.message });
++        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+         next(error);
+     }
+ });
+@@ -87,7 +87,7 @@
+         const result = await updateAdminPromoCode(req.params.promoCodeId, req.body || {});
+         res.json(result);
+     } catch (error) {
+-        if (error.status) return res.status(error.status).json({ error: error.message });
++        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+         next(error);
+     }
+ });
+@@ -96,7 +96,7 @@
+     try {
+         res.json(await getAdminUserSubscription(req.params.userId));
+     } catch (error) {
+-        if (error.status) return res.status(error.status).json({ error: error.message });
++        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+         next(error);
+     }
+ });
+@@ -124,7 +124,7 @@
+         const result = await grantAdminFreeUsage(userId, planId, endDate, req.user.userId);
+         res.json(result);
+     } catch (error) {
+-        if (error.status) return res.status(error.status).json({ error: error.message });
++        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+         next(error);
+     }
+ });
+@@ -141,7 +141,7 @@
+         );
+         res.json(result);
+     } catch (error) {
+-        if (error.status) return res.status(error.status).json({ error: error.message });
++        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+         next(error);
+     }
+ });
+@@ -151,7 +151,7 @@
+         const result = await revokeAdminFreeGrant(req.params.grantId, req.user.userId);
+         res.json(result);
+     } catch (error) {
+-        if (error.status) return res.status(error.status).json({ error: error.message });
++        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+         next(error);
+     }
+ });
