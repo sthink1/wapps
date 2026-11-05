@@ -75,6 +75,21 @@ const SOURCES = {
 };
 
 function bad(res, msg) { return res.status(400).json({ error: `${msg}(be)` }); }
+
+// R16: (be) marks backend origin; only errors explicitly created as expected
+// Budget client errors may expose their message to API callers.
+function budgetExpectedError(message, status = 400) {
+  const error = new Error(message);
+  error.status = status;
+  error.budgetExpected = true;
+  return error;
+}
+
+function isBudgetExpected(error, status) {
+  return Boolean(error && error.budgetExpected === true && error.status === status &&
+    typeof error.message === 'string');
+}
+
 function isoDate(v) {
   if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
   const d = new Date(`${v}T00:00:00.000Z`);
@@ -264,7 +279,7 @@ function finalOccurrence(startIso,r){
   const rec=normalizeRecurrence(r);
   const far=searchEnd(toDate(startIso),rec,addYears(toDate(startIso),200));
   const dates=occurrences(startIso,null,rec,startIso,toIso(far));
-  if(dates.length<rec.OccurrenceCount) throw new Error('Unable to calculate the requested number of occurrences(be)');
+  if(dates.length<rec.OccurrenceCount) throw budgetExpectedError('Unable to calculate the requested number of occurrences(be)');
   return dates[rec.OccurrenceCount-1];
 }
 
@@ -295,7 +310,7 @@ async function writeRecurrenceChildren(db,id,r){
 
 async function insertRecurrence(db,userId,raw,opts={}){
   const r=normalizeRecurrence(raw);
-  const err=validateRecurrence(r,opts); if(err) throw new Error(`${err}(be)`);
+  const err=validateRecurrence(r,opts); if(err) throw budgetExpectedError(`${err}(be)`);
   const userRecurrenceId=await getNextUserSpecificID(userId,'BudgetRecurrenceT','UserRecurrenceID');
   const [result]=await db.query(
     `INSERT INTO BudgetRecurrenceT
@@ -312,9 +327,9 @@ async function insertRecurrence(db,userId,raw,opts={}){
 
 async function updateRecurrence(db,id,userId,raw,opts={}){
   const r=normalizeRecurrence(raw);
-  const err=validateRecurrence(r,opts); if(err) throw new Error(`${err}(be)`);
+  const err=validateRecurrence(r,opts); if(err) throw budgetExpectedError(`${err}(be)`);
   const [owner]=await db.query('SELECT RecurrenceID FROM BudgetRecurrenceT WHERE RecurrenceID=? AND UserID=?',[id,userId]);
-  if(!owner.length) throw new Error('Recurrence record not found(be)');
+  if(!owner.length) throw budgetExpectedError('Recurrence record not found(be)');
   await db.query(
     `UPDATE BudgetRecurrenceT SET FrequencyType=?,IntervalNumber=?,DailyPattern=?,MonthlyPattern=?,
      OrdinalPosition=?,OrdinalWeekday=?,YearlyPattern=?,YearMonth=?,YearDay=?,RangeType=?,OccurrenceCount=?
@@ -355,7 +370,10 @@ function normalizeSource(raw,cfg){
   else if(r.RangeType==='EndDate'){
     if(!isoDate(b[cfg.end])) return {error:`${cfg.end} is required when recurrence ends on a date`};
   }else if(r.RangeType==='OccurrenceCount'){
-    try{ b[cfg.end]=finalOccurrence(b[cfg.start],r); }catch(e){ return {error:e.message.replace(/\(be\)$/,'')}; }
+    try{ b[cfg.end]=finalOccurrence(b[cfg.start],r); }catch(e){
+      if(isBudgetExpected(e,400)) return {error:e.message.replace(/\(be\)$/,'')};
+      return {unexpectedError:e};
+    }
   }
   if(b[cfg.end]&&toDate(b[cfg.end])<toDate(b[cfg.start])) return {error:`${cfg.end} may not precede ${cfg.start}`};
   return {body:b,recurrence:r};
@@ -401,7 +419,9 @@ function registerSource(cfg){
     });
 
   router.post(base,auth,async(req,res)=>{
-    const n=normalizeSource(req.body,cfg); if(n.error) return bad(res,n.error);
+    const n=normalizeSource(req.body,cfg);
+    if(n.unexpectedError) return handleDbError(n.unexpectedError,res,`Error validating ${cfg.path} record`);
+    if(n.error) return bad(res,n.error);
     const userId=req.user.userId;
     try{
       const userSpecificId=await getNextUserSpecificID(userId,cfg.table,cfg.userKey);
@@ -416,7 +436,7 @@ function registerSource(cfg){
       });
       res.status(201).json({message:'Budget record created(be)',data:result});
     }catch(e){
-      if(e.message&&e.message.endsWith('(be)')) return res.status(400).json({error:e.message});
+      if(isBudgetExpected(e,400)) return res.status(400).json({error:e.message});
       handleDbError(e,res,`Error creating ${cfg.path} record`);
     }
   });
@@ -425,14 +445,16 @@ function registerSource(cfg){
     param(cfg.userKey).isInt({min:1}).withMessage(`${cfg.userKey} must be a positive integer`),
     async(req,res)=>{
       if(!validExpress(req,res)) return;
-      const n=normalizeSource(req.body,cfg); if(n.error) return bad(res,n.error);
+      const n=normalizeSource(req.body,cfg);
+    if(n.unexpectedError) return handleDbError(n.unexpectedError,res,`Error validating ${cfg.path} record`);
+    if(n.error) return bad(res,n.error);
       const userId=req.user.userId, userSpecificId=Number(req.params[cfg.userKey]);
       try{
         const data=await withTransaction(async db=>{
           const [rows]=await db.query(
             `SELECT RecurrenceID FROM ${cfg.table} WHERE ${cfg.userKey}=? AND UserID=? FOR UPDATE`,
             [userSpecificId,userId]);
-          if(!rows.length){ const x=new Error('Budget record not found(be)'); x.status=404; throw x; }
+          if(!rows.length){ throw budgetExpectedError('Budget record not found(be)',404); }
           const recurrenceId=rows[0].RecurrenceID;
           await updateRecurrence(db,recurrenceId,userId,n.recurrence,{noNoEnd:!!cfg.noNoEnd});
           const names=cfg.fields.map(x=>x[0]), values=names.map(f=>n.body[f]);
@@ -444,8 +466,8 @@ function registerSource(cfg){
         });
         res.json({message:'Budget record updated(be)',data});
       }catch(e){
-        if(e.status===404) return res.status(404).json({error:e.message});
-        if(e.message&&e.message.endsWith('(be)')) return res.status(400).json({error:e.message});
+        if(isBudgetExpected(e,404)) return res.status(404).json({error:e.message});
+        if(isBudgetExpected(e,400)) return res.status(400).json({error:e.message});
         handleDbError(e,res,`Error updating ${cfg.path} record`);
       }
     });
@@ -459,13 +481,13 @@ function registerSource(cfg){
         await withTransaction(async db=>{
           const [rows]=await db.query(
             `SELECT RecurrenceID FROM ${cfg.table} WHERE ${cfg.userKey}=? AND UserID=? FOR UPDATE`,[id,userId]);
-          if(!rows.length){ const x=new Error('Budget record not found(be)'); x.status=404; throw x; }
+          if(!rows.length){ throw budgetExpectedError('Budget record not found(be)',404); }
           await db.query(`DELETE FROM ${cfg.table} WHERE ${cfg.userKey}=? AND UserID=?`,[id,userId]);
           await db.query('DELETE FROM BudgetRecurrenceT WHERE RecurrenceID=? AND UserID=?',[rows[0].RecurrenceID,userId]);
         });
         res.json({message:'Budget record deleted(be)'});
       }catch(e){
-        if(e.status===404) return res.status(404).json({error:e.message});
+        if(isBudgetExpected(e,404)) return res.status(404).json({error:e.message});
         handleDbError(e,res,`Error deleting ${cfg.path} record`);
       }
     });
@@ -890,7 +912,10 @@ router.post('/recurrence/preview',auth,async(req,res)=>{
     if(!isoDate(end)) return bad(res,'End Date is required');
     if(toDate(end)<toDate(start)) return bad(res,'End Date may not precede Start Date');
   }else if(r.RangeType==='OccurrenceCount'){
-    try{ effective=finalOccurrence(start,r); }catch(x){ return bad(res,x.message.replace(/\(be\)$/,'')); }
+    try{ effective=finalOccurrence(start,r); }catch(x){
+      if(isBudgetExpected(x,400)) return bad(res,x.message.replace(/\(be\)$/,''));
+      return handleDbError(x,res,'Error calculating Budget recurrence preview');
+    }
   }
   const previewEnd=effective||toIso(addYears(toDate(start),2));
   const dates=occurrences(start,effective,r,start,previewEnd);
