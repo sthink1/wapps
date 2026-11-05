@@ -439,11 +439,13 @@ router.post('/reset-password',async(req,res)=>{
   res.json({message:'Password reset successful. Please log in again.'});
 });
 
-router.get('/is-admin',auth,(req,res)=>{
+router.get('/is-admin',auth,async(req,res,next)=>{
   if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});
-  const adminUsername=process.env.ADMIN_USERNAME;
-  if(!adminUsername)return res.status(500).json({error:'Admin username not configured.'});
-  res.json({isAdmin:req.user.username===adminUsername,username:req.user.username});
+  try {
+    const status=await require('../services/administratorAccess').getAdministratorStatus(req.user);
+    if(!status.configuredUsername)return res.status(500).json({error:'Admin username not configured.'});
+    res.json({isAdmin:status.isAdmin,username:status.username});
+  } catch(e) { next(e); }
 });
 
 module.exports = router;

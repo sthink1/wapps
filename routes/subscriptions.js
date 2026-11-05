@@ -19,16 +19,18 @@ const {
 
 router.use(authenticateToken);
 
-function requireAdmin(req, res, next) {
-    if (!isAdminUser(req.user)) {
-        return res.status(403).json({ error: 'Administrator access is required.' });
-    }
-    next();
+async function requireAdmin(req, res, next) {
+    try {
+        if (!(await isAdminUser(req.user))) {
+            return res.status(403).json({ error: 'Administrator access is required.' });
+        }
+        next();
+    } catch (error) { next(error); }
 }
 
 router.get('/status', async (req, res, next) => {
     try {
-        res.json(await getStatusWithApps(req.user.userId, isAdminUser(req.user)));
+        res.json(await getStatusWithApps(req.user.userId, await isAdminUser(req.user)));
     } catch (error) {
         next(error);
     }
@@ -36,7 +38,7 @@ router.get('/status', async (req, res, next) => {
 
 router.get('/access/:appKey', async (req, res, next) => {
     try {
-        const result = await getAppAccess(req.user.userId, req.params.appKey, isAdminUser(req.user));
+        const result = await getAppAccess(req.user.userId, req.params.appKey, await isAdminUser(req.user));
         res.status(result.allowed ? 200 : 403).json(result);
     } catch (error) {
         next(error);

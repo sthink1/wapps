@@ -5,18 +5,12 @@ const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
 const { getStorageStats } = require('../r2Storage');
 
-function isAdminUser(user) {
-    if (!user) return false;
-    const adminUsername = String(process.env.ADMIN_USERNAME || '').trim().toLowerCase();
-    const username = String(user.username || '').trim().toLowerCase();
-    return Number(user.userId) === 1 || (adminUsername && username === adminUsername);
-}
-
-function requireAdmin(req, res, next) {
-    if (!isAdminUser(req.user)) {
-        return res.status(403).json({ error: 'Administrator access required.' });
-    }
-    next();
+async function requireAdmin(req, res, next) {
+    try {
+        const isAdmin = await require('../services/administratorAccess').isVerifiedAdministrator(req.user);
+        if (!isAdmin) return res.status(403).json({ error: 'Administrator access required.' });
+        next();
+    } catch (error) { next(error); }
 }
 
 function normalizePeriod(value) {

@@ -1,0 +1,320 @@
+--- a/middleware/subscriptionAccess.js
++++ b/middleware/subscriptionAccess.js
+@@ -1,11 +1,8 @@
+ const jwt = require('jsonwebtoken');
+ const { getAppAccess } = require('../services/subscriptionService');
+ 
+-function isAdminUser(user) {
+-    if (!user) return false;
+-    const adminUsername = String(process.env.ADMIN_USERNAME || '').trim().toLowerCase();
+-    const username = String(user.username || '').trim().toLowerCase();
+-    return Number(user.userId) === 1 || (adminUsername && username === adminUsername);
++async function isAdminUser(user) {
++    return require('../services/administratorAccess').isVerifiedAdministrator(user);
+ }
+ 
+ const auth = require('./auth');
+@@ -14,7 +11,7 @@
+ function requireAppAccess(appKey) {
+     return async (req, res, next) => {
+         try {
+-            if (isAdminUser(req.user)) {
++            if (await isAdminUser(req.user)) {
+                 req.subscriptionAccess = { allowed: true, reason: 'ADMIN_OVERRIDE', adminOverride: true };
+                 return next();
+             }
+--- a/routes/subscriptions.js
++++ b/routes/subscriptions.js
+@@ -19,16 +19,18 @@
+ 
+ router.use(authenticateToken);
+ 
+-function requireAdmin(req, res, next) {
+-    if (!isAdminUser(req.user)) {
+-        return res.status(403).json({ error: 'Administrator access is required.' });
+-    }
+-    next();
++async function requireAdmin(req, res, next) {
++    try {
++        if (!(await isAdminUser(req.user))) {
++            return res.status(403).json({ error: 'Administrator access is required.' });
++        }
++        next();
++    } catch (error) { next(error); }
+ }
+ 
+ router.get('/status', async (req, res, next) => {
+     try {
+-        res.json(await getStatusWithApps(req.user.userId, isAdminUser(req.user)));
++        res.json(await getStatusWithApps(req.user.userId, await isAdminUser(req.user)));
+     } catch (error) {
+         next(error);
+     }
+@@ -36,7 +38,7 @@
+ 
+ router.get('/access/:appKey', async (req, res, next) => {
+     try {
+-        const result = await getAppAccess(req.user.userId, req.params.appKey, isAdminUser(req.user));
++        const result = await getAppAccess(req.user.userId, req.params.appKey, await isAdminUser(req.user));
+         res.status(result.allowed ? 200 : 403).json(result);
+     } catch (error) {
+         next(error);
+--- a/routes/track.js
++++ b/routes/track.js
+@@ -5,18 +5,12 @@
+ const auth = require('../middleware/auth');
+ const { getStorageStats } = require('../r2Storage');
+ 
+-function isAdminUser(user) {
+-    if (!user) return false;
+-    const adminUsername = String(process.env.ADMIN_USERNAME || '').trim().toLowerCase();
+-    const username = String(user.username || '').trim().toLowerCase();
+-    return Number(user.userId) === 1 || (adminUsername && username === adminUsername);
+-}
+-
+-function requireAdmin(req, res, next) {
+-    if (!isAdminUser(req.user)) {
+-        return res.status(403).json({ error: 'Administrator access required.' });
+-    }
+-    next();
++async function requireAdmin(req, res, next) {
++    try {
++        const isAdmin = await require('../services/administratorAccess').isVerifiedAdministrator(req.user);
++        if (!isAdmin) return res.status(403).json({ error: 'Administrator access required.' });
++        next();
++    } catch (error) { next(error); }
+ }
+ 
+ function normalizePeriod(value) {
+--- a/routes/tnna.js
++++ b/routes/tnna.js
+@@ -425,13 +425,8 @@
+ 
+ async function requireAdmin(req, res, next) {
+     try {
+-        const [rows] = await pool.query(
+-            'SELECT UserName FROM UsersT WHERE UserID = ? LIMIT 1',
+-            [req.user.userId]
+-        );
+-        if (!rows.length || rows[0].UserName !== process.env.ADMIN_USERNAME) {
+-            return res.status(403).json({ error: 'Administrator access required.' });
+-        }
++        const isAdmin = await require('../services/administratorAccess').isVerifiedAdministrator(req.user);
++        if (!isAdmin) return res.status(403).json({ error: 'Administrator access required.' });
+         next();
+     } catch (error) {
+         handleDbError(error, res, 'Error checking administrator access');
+--- a/routes/users.js
++++ b/routes/users.js
+@@ -439,11 +439,13 @@
+   res.json({message:'Password reset successful. Please log in again.'});
+ });
+ 
+-router.get('/is-admin',auth,(req,res)=>{
++router.get('/is-admin',auth,async(req,res,next)=>{
+   if(req.user.client!=='web')return res.status(403).json({error:'WEB_SESSION_REQUIRED'});
+-  const adminUsername=process.env.ADMIN_USERNAME;
+-  if(!adminUsername)return res.status(500).json({error:'Admin username not configured.'});
+-  res.json({isAdmin:req.user.username===adminUsername,username:req.user.username});
++  try {
++    const status=await require('../services/administratorAccess').getAdministratorStatus(req.user);
++    if(!status.configuredUsername)return res.status(500).json({error:'Admin username not configured.'});
++    res.json({isAdmin:status.isAdmin,username:status.username});
++  } catch(e) { next(e); }
+ });
+ 
+ module.exports = router;
+--- a/httpdocs/SubControl.html
++++ b/httpdocs/SubControl.html
+@@ -248,6 +248,39 @@
+         </div>
+ 
+         <div id="pageStatus" class="status"></div>
++
++        <section class="section" id="administratorManagement">
++            <h2>Administrator Management</h2>
++            <p class="note">The Render ADMIN_USERNAME must be changed manually and match the selected account before the database administrator transfer can complete. An existing administrator must prepare the transfer first.</p>
++            <div class="user-summary" id="adminCurrentStatus">Loading administrator status...</div>
++            <div class="form-grid">
++                <div class="form-field">
++                    <label for="adminTargetId">New administrator User ID</label>
++                    <input id="adminTargetId" type="number" min="1" step="1">
++                </div>
++                <div class="form-field">
++                    <label>Verify selected account</label>
++                    <button id="adminLookupBtn" type="button">Find Account</button>
++                </div>
++                <div class="form-field full">
++                    <div id="adminTargetName" class="note">No account selected.</div>
++                </div>
++                <div class="form-field">
++                    <label for="adminCurrentPassword">Current administrator password (prepare only)</label>
++                    <input id="adminCurrentPassword" type="password" autocomplete="current-password">
++                </div>
++                <div class="form-field">
++                    <label>Preauthorize transfer</label>
++                    <button id="adminPrepareBtn" type="button" disabled>Prepare Transfer</button>
++                </div>
++            </div>
++            <div id="adminTransferStatus" class="status"></div>
++            <div id="adminPendingPanel" hidden>
++                <p class="note">Transfer prepared. Manually change ADMIN_USERNAME on the STAGING Render service to the proposed target; wait for the service to be Live. Keep this browser tab and its existing login session. Then refresh the check and complete.</p>
++                <button id="adminRefreshBtn" type="button">Check Render Administrator</button>
++                <button id="adminCompleteBtn" type="button" disabled>Complete Administrator Transfer</button>
++            </div>
++        </section>
+ 
+         <section class="section">
+             <h2>Promo Codes</h2>
+@@ -661,6 +694,14 @@
+                 const data = await readJson(response);
+ 
+                 if (!data.isAdmin) {
++                    if (storedAdminTransfer()) {
++                        document.querySelectorAll('section.section').forEach(section => {
++                            if (section.id !== 'administratorManagement') section.style.display = 'none';
++                        });
++                        try { await refreshAdminTransfer(); }
++                        catch (error) { adminText(error.message, 'error'); }
++                        return false;
++                    }
+                     window.location.href = 'home.html';
+                     return false;
+                 }
+@@ -989,9 +1030,113 @@
+             });
+         });
+ 
++        // Stage 6 administrator transfer: token is held only in this tab's session storage.
++        // It is never placed in a URL, an HTML field, localStorage, or a log.
++        const ADMIN_TRANSFER_STORAGE = 'wa_stage6_admin_transfer_v1';
++        let proposedAdmin = null;
++        let pendingTransfer = null;
++        function storedAdminTransfer() {
++            try { return JSON.parse(sessionStorage.getItem(ADMIN_TRANSFER_STORAGE) || 'null'); }
++            catch (_) { return null; }
++        }
++        function adminText(text, type = '') {
++            setStatus('adminTransferStatus', text, type);
++        }
++        async function adminApi(path, options = {}) {
++            const response = await fetch(`${BASE_URL}/admin-management/${path}`, {
++                ...options,
++                headers: authHeaders(Boolean(options.body)),
++                cache: 'no-store'
++            });
++            return readJson(response);
++        }
++        async function loadAdministratorStatus() {
++            const state = await adminApi('status');
++            const designated = state.designatedUsers.map(
++                u => `${u.UserName} (UserID ${u.UserID})`
++            ).join(', ') || 'None';
++            document.getElementById('adminCurrentStatus').textContent =
++                `Render ADMIN_USERNAME: ${state.configuredUsername} | UsersT administrator designation: ${designated}`;
++            adminText('');
++        }
++        async function refreshAdminTransfer() {
++            const stored = storedAdminTransfer();
++            if (!stored || !stored.transferToken) return false;
++            document.getElementById('adminPendingPanel').hidden = false;
++            const state = await adminApi('pending', {
++                method: 'POST',
++                body: JSON.stringify({ transferToken: stored.transferToken })
++            });
++            pendingTransfer = state;
++            document.getElementById('adminCurrentStatus').textContent =
++                `Render ADMIN_USERNAME: ${state.configuredUsername || '(unset)'} | Prepared target: ${state.targetUsername} (UserID ${state.targetUserId})`;
++            document.getElementById('adminCompleteBtn').disabled = !state.renderMatches;
++            adminText(state.renderMatches
++                ? 'Render now matches the prepared target. Completion is permitted after confirmation.'
++                : 'Render does not match the prepared target. Complete Transfer remains disabled.',
++                state.renderMatches ? 'success' : 'error');
++            return true;
++        }
++        document.getElementById('adminLookupBtn').addEventListener('click', async () => {
++            proposedAdmin = null;
++            document.getElementById('adminPrepareBtn').disabled = true;
++            try {
++                const id = Number(document.getElementById('adminTargetId').value);
++                if (!Number.isSafeInteger(id) || id < 1) throw Error('Enter a valid User ID.');
++                proposedAdmin = await adminApi(`target/${id}`);
++                document.getElementById('adminTargetName').textContent =
++                    `Selected: ${proposedAdmin.username} (UserID ${proposedAdmin.userId})`;
++                document.getElementById('adminPrepareBtn').disabled = false;
++                adminText('');
++            } catch (error) { adminText(error.message, 'error'); }
++        });
++        document.getElementById('adminPrepareBtn').addEventListener('click', async () => {
++            if (!proposedAdmin) return;
++            const password = document.getElementById('adminCurrentPassword').value;
++            if (!password) return adminText('Enter your current administrator password.', 'error');
++            if (!confirm(`Prepare transfer of administrator privileges to ${proposedAdmin.username}? Render must later be changed manually.`)) return;
++            try {
++                const prepared = await adminApi('prepare', {
++                    method: 'POST',
++                    body: JSON.stringify({ targetUserId: proposedAdmin.userId, password })
++                });
++                document.getElementById('adminCurrentPassword').value = '';
++                sessionStorage.setItem(ADMIN_TRANSFER_STORAGE,
++                    JSON.stringify({ transferToken: prepared.transferToken }));
++                document.getElementById('adminPendingPanel').hidden = false;
++                document.getElementById('adminCompleteBtn').disabled = true;
++                adminText(`Transfer prepared to ${prepared.targetUsername}. Expires ${prepared.expiresAt}. Change Render manually, then select Check Render Administrator.`, 'success');
++            } catch (error) {
++                document.getElementById('adminCurrentPassword').value = '';
++                adminText(error.message, 'error');
++            }
++        });
++        document.getElementById('adminRefreshBtn').addEventListener('click', async () => {
++            try { await refreshAdminTransfer(); }
++            catch (error) { adminText(error.message, 'error'); }
++        });
++        document.getElementById('adminCompleteBtn').addEventListener('click', async () => {
++            const stored = storedAdminTransfer();
++            if (!stored || !pendingTransfer || !pendingTransfer.renderMatches) return;
++            if (!confirm(`Permanently transfer administrator designation to ${pendingTransfer.targetUsername}?`)) return;
++            try {
++                const result = await adminApi('complete', {
++                    method: 'POST',
++                    body: JSON.stringify({ transferToken: stored.transferToken })
++                });
++                sessionStorage.removeItem(ADMIN_TRANSFER_STORAGE);
++                pendingTransfer = null;
++                document.getElementById('adminCompleteBtn').disabled = true;
++                adminText(result.message, 'success');
++                alert('Transfer complete. Sign out of the old account and sign in as the new administrator.');
++            } catch (error) { adminText(error.message, 'error'); }
++        });
++
+         document.addEventListener('DOMContentLoaded', async () => {
+             try {
+                 if (!(await verifyAdmin())) return;
++                await loadAdministratorStatus();
++                if (storedAdminTransfer()) await refreshAdminTransfer();
+                 await loadPromoData();
+                 await loadGrants();
+                 await loadPromoRedemptions();
+--- a/server.js
++++ b/server.js
+@@ -25,6 +25,7 @@
+ const subscriptionRoutes = require('./routes/subscriptions');
+ const notificationRoutes = require('./routes/notifications');
+ const tnnaRoutes = require('./routes/tnna');
++const adminManagementRoutes = require('./routes/adminManagement');
+ const { authenticateToken, requireAppAccess } = require('./middleware/subscriptionAccess');
+ const usageActivity = require('./middleware/usageActivity');
+ 
+@@ -116,6 +117,12 @@
+   res.set('Cache-Control', 'no-store');
+   next();
+ }, subscriptionRoutes);
++// Stage 6 administrator designations and one-time transfer completion.
++// The transfer routes enforce their own signed-session and origin requirements.
++app.use('/admin-management', (req, res, next) => {
++  res.set('Cache-Control', 'no-store');
++  next();
++}, adminManagementRoutes);
+ // Stage 6 R16: prevent storage of personal, admin, and native API responses.
+ // Apply before the routers so their 200/401/403/error responses are covered.
+ // Keep static assets and unrelated public routes on their existing cache policy.

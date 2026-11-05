@@ -1,11 +1,8 @@
 const jwt = require('jsonwebtoken');
 const { getAppAccess } = require('../services/subscriptionService');
 
-function isAdminUser(user) {
-    if (!user) return false;
-    const adminUsername = String(process.env.ADMIN_USERNAME || '').trim().toLowerCase();
-    const username = String(user.username || '').trim().toLowerCase();
-    return Number(user.userId) === 1 || (adminUsername && username === adminUsername);
+async function isAdminUser(user) {
+    return require('../services/administratorAccess').isVerifiedAdministrator(user);
 }
 
 const auth = require('./auth');
@@ -14,7 +11,7 @@ function authenticateToken(req,res,next){return auth(req,res,()=>{if(req.user.cl
 function requireAppAccess(appKey) {
     return async (req, res, next) => {
         try {
-            if (isAdminUser(req.user)) {
+            if (await isAdminUser(req.user)) {
                 req.subscriptionAccess = { allowed: true, reason: 'ADMIN_OVERRIDE', adminOverride: true };
                 return next();
             }

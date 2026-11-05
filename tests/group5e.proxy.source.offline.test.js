@@ -9,7 +9,16 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const server=read('server.js');
 const users=read('routes/users.js');
 const limiter=read('services/passwordResetLimiter.js');
-test('password-reset endpoint uses req.ip (source audit)',()=>assert.match(users,/resetLimiter\.allow\s*\(\s*c\s*,\s*email\s*,\s*req\.ip/));
+test('password-reset endpoint uses dedicated client IP resolver', () => {
+  assert.match(
+    users,
+    /resetLimiter\.allow\s*\(\s*c\s*,\s*email\s*,\s*clientIpForReset\s*\(\s*req\s*\)/
+  );
+  assert.match(
+    users,
+    /require\s*\(\s*['"]\.\.\/services\/passwordResetClientIp['"]\s*\)/
+  );
+});
 test('rate limiter has separate IP/email/global buckets',()=>{
   for(const scope of ['global','email','ip']) assert.match(limiter,new RegExp("type:'"+scope+"'"));
 });

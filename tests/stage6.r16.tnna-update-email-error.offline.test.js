@@ -34,6 +34,8 @@ function loadRoute({ users = [{ Email: 'first@example.test' }], sender, adminNam
     if (id === '../services/browserSession') return { securityVersion: () => 1 };
     if (id === '../services/credentialFence') return {};
     if (id === '../middleware/auth') return (_req, _res, next) => next();
+    if (id === '../services/administratorAccess')
+    return { isVerifiedAdministrator: async () => true };
     if (id === '../utils') return { handleDbError: dbError || ((err, res) => { state.errors.push(err); res.status(500).json({ error: 'Server error' }); }) };
     if (id === '../send_email') return { sendNotificationEmail: async (payload) => {
       state.sentTo.push(payload.email);

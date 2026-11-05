@@ -425,13 +425,8 @@ router.put('/update-email-preference', auth, async (req, res) => {
 
 async function requireAdmin(req, res, next) {
     try {
-        const [rows] = await pool.query(
-            'SELECT UserName FROM UsersT WHERE UserID = ? LIMIT 1',
-            [req.user.userId]
-        );
-        if (!rows.length || rows[0].UserName !== process.env.ADMIN_USERNAME) {
-            return res.status(403).json({ error: 'Administrator access required.' });
-        }
+        const isAdmin = await require('../services/administratorAccess').isVerifiedAdministrator(req.user);
+        if (!isAdmin) return res.status(403).json({ error: 'Administrator access required.' });
         next();
     } catch (error) {
         handleDbError(error, res, 'Error checking administrator access');

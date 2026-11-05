@@ -37,7 +37,7 @@ const files = {dotenv: {config: () => ({})}, './services/stage6Environment': { c
   './routes/users': userRoutes,
   './routes/ftPrivacy': {publicRouter: noop, privateRouter: noop, protection: noop}
 };
-for (const name of ['weights','activities','weightActivities','track','interestEarned','etf','budget','familyTree','subscriptions','notifications','tnna','geocode']) {
+for (const name of ['weights','activities','weightActivities','track','interestEarned','etf','budget','familyTree','subscriptions','notifications','tnna','geocode','adminManagement']) {
   files['./routes/' + name] = noop;
 }
 const sandbox = {

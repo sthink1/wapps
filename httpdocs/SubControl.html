@@ -167,6 +167,10 @@
             color: #176b1f;
         }
 
+        #adminCurrentStatus {
+            display: block;
+        }
+
         .user-summary {
             display: none;
             max-width: 760px;
@@ -248,6 +252,43 @@
         </div>
 
         <div id="pageStatus" class="status"></div>
+
+        <section class="section" id="administratorManagement">
+            <h2>Administrator Management</h2>
+            <p class="note">The Render ADMIN_USERNAME must be changed manually and match the selected account before the database administrator transfer can complete. An existing administrator must prepare the transfer first.</p>
+            <div class="user-summary" id="adminCurrentStatus">Loading administrator status...</div>
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="adminTargetId">New administrator User ID</label>
+                    <input id="adminTargetId" type="number" min="1" step="1">
+                </div>
+                <div class="form-field">
+                    <label>Verify selected account</label>
+                    <button id="adminLookupBtn" type="button">Find Account</button>
+                </div>
+                <div class="form-field full">
+                    <div id="adminTargetName" class="note">No account selected.</div>
+                </div>
+                <div class="form-field">
+                    <label for="adminCurrentPassword">Current administrator password (prepare only)</label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input id="adminCurrentPassword" type="password" autocomplete="current-password" style="flex: 1; min-width: 0;">
+                        <button id="adminPasswordVisibilityBtn" type="button" class="secondary" aria-controls="adminCurrentPassword" aria-label="Show administrator password" aria-pressed="false">SHOW</button>
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label>Preauthorize transfer</label>
+                    <button id="adminPrepareBtn" type="button" disabled>Prepare Transfer</button>
+                </div>
+            </div>
+            <div id="adminTransferStatus" class="status"></div>
+            <div id="adminPendingPanel" hidden>
+                <p class="note">Transfer prepared. Manually change ADMIN_USERNAME on the STAGING Render service to the proposed target; wait for the service to be Live. Keep this browser tab and its existing login session. Then refresh the check and complete.</p>
+                <button id="adminRefreshBtn" type="button">Check Render Administrator</button>
+                <button id="adminCompleteBtn" type="button" disabled>Complete Administrator Transfer</button>
+                <button id="adminCancelBtn" class="secondary" type="button" disabled>Cancel Pending Transfer</button>
+            </div>
+        </section>
 
         <section class="section">
             <h2>Promo Codes</h2>
@@ -661,6 +702,14 @@
                 const data = await readJson(response);
 
                 if (!data.isAdmin) {
+                    if (storedAdminTransfer()) {
+                        document.querySelectorAll('section.section').forEach(section => {
+                            if (section.id !== 'administratorManagement') section.style.display = 'none';
+                        });
+                        try { await refreshAdminTransfer(); }
+                        catch (error) { adminText(error.message, 'error'); }
+                        return false;
+                    }
                     window.location.href = 'home.html';
                     return false;
                 }
@@ -989,9 +1038,143 @@
             });
         });
 
+        // Stage 6 administrator transfer: token is held only in this tab's session storage.
+        // It is never placed in a URL, an HTML field, localStorage, or a log.
+        const ADMIN_TRANSFER_STORAGE = 'wa_stage6_admin_transfer_v1';
+        let proposedAdmin = null;
+        let pendingTransfer = null;
+        function storedAdminTransfer() {
+            try { return JSON.parse(sessionStorage.getItem(ADMIN_TRANSFER_STORAGE) || 'null'); }
+            catch (_) { return null; }
+        }
+        function adminText(text, type = '') {
+            setStatus('adminTransferStatus', text, type);
+        }
+        async function adminApi(path, options = {}) {
+            const response = await fetch(`${BASE_URL}/admin-management/${path}`, {
+                ...options,
+                headers: authHeaders(Boolean(options.body)),
+                cache: 'no-store'
+            });
+            return readJson(response);
+        }
+        async function loadAdministratorStatus() {
+            const state = await adminApi('status');
+            const designated = state.designatedUsers.map(
+                u => `${u.UserName} (UserID ${u.UserID})`
+            ).join(', ') || 'None';
+            document.getElementById('adminCurrentStatus').textContent =
+                `Render ADMIN_USERNAME: ${state.configuredUsername} | UsersT administrator designation: ${designated}`;
+            adminText('');
+        }
+        async function refreshAdminTransfer() {
+            const stored = storedAdminTransfer();
+            if (!stored || !stored.transferToken) return false;
+            document.getElementById('adminPendingPanel').hidden = false;
+            const state = await adminApi('pending', {
+                method: 'POST',
+                body: JSON.stringify({ transferToken: stored.transferToken })
+            });
+            pendingTransfer = state;
+            document.getElementById('adminCurrentStatus').textContent =
+                `Render ADMIN_USERNAME: ${state.configuredUsername || '(unset)'} | Prepared target: ${state.targetUsername} (UserID ${state.targetUserId})`;
+            document.getElementById('adminCompleteBtn').disabled = !state.renderMatches;
+            document.getElementById('adminCancelBtn').disabled =
+                state.configuredUsername.toLowerCase() !== state.initiatorUsername.toLowerCase();
+            adminText(state.renderMatches
+                ? 'Render now matches the prepared target. Completion is permitted after confirmation.'
+                : 'Render does not match the prepared target. Complete Transfer remains disabled.',
+                state.renderMatches ? 'success' : 'error');
+            return true;
+        }
+        document.getElementById('adminPasswordVisibilityBtn').addEventListener('click', () => {
+            const passwordInput = document.getElementById('adminCurrentPassword');
+            const toggle = document.getElementById('adminPasswordVisibilityBtn');
+            const showing = passwordInput.type === 'password';
+            passwordInput.type = showing ? 'text' : 'password';
+            toggle.textContent = showing ? 'HIDE' : 'SHOW';
+            toggle.setAttribute('aria-pressed', String(showing));
+            toggle.setAttribute('aria-label', showing ? 'Hide administrator password' : 'Show administrator password');
+        });
+        document.getElementById('adminLookupBtn').addEventListener('click', async () => {
+            proposedAdmin = null;
+            document.getElementById('adminPrepareBtn').disabled = true;
+            try {
+                const id = Number(document.getElementById('adminTargetId').value);
+                if (!Number.isSafeInteger(id) || id < 1) throw Error('Enter a valid User ID.');
+                proposedAdmin = await adminApi(`target/${id}`);
+                document.getElementById('adminTargetName').textContent =
+                    `Selected: ${proposedAdmin.username} (UserID ${proposedAdmin.userId})`;
+                document.getElementById('adminPrepareBtn').disabled = false;
+                adminText('');
+            } catch (error) { adminText(error.message, 'error'); }
+        });
+        document.getElementById('adminPrepareBtn').addEventListener('click', async () => {
+            if (!proposedAdmin) return;
+            const password = document.getElementById('adminCurrentPassword').value;
+            if (!password) return adminText('Enter your current administrator password.', 'error');
+            if (!confirm(`Prepare transfer of administrator privileges to ${proposedAdmin.username}? Render must later be changed manually.`)) return;
+            try {
+                const prepared = await adminApi('prepare', {
+                    method: 'POST',
+                    body: JSON.stringify({ targetUserId: proposedAdmin.userId, password })
+                });
+                document.getElementById('adminCurrentPassword').value = '';
+                sessionStorage.setItem(ADMIN_TRANSFER_STORAGE,
+                    JSON.stringify({ transferToken: prepared.transferToken }));
+                document.getElementById('adminPendingPanel').hidden = false;
+                document.getElementById('adminCompleteBtn').disabled = true;
+                document.getElementById('adminCancelBtn').disabled = false;
+                adminText(`Transfer prepared to ${prepared.targetUsername}. Expires ${prepared.expiresAt}. Change Render manually, then select Check Render Administrator.`, 'success');
+            } catch (error) {
+                document.getElementById('adminCurrentPassword').value = '';
+                adminText(error.message, 'error');
+            }
+        });
+        document.getElementById('adminRefreshBtn').addEventListener('click', async () => {
+            try { await refreshAdminTransfer(); }
+            catch (error) { adminText(error.message, 'error'); }
+        });
+        document.getElementById('adminCancelBtn').addEventListener('click', async () => {
+            const stored = storedAdminTransfer();
+            if (!stored || !stored.transferToken) return;
+            if (!confirm('Cancel this pending administrator transfer? The current database administrator will remain unchanged. If Render was changed, restore its ADMIN_USERNAME first.')) return;
+            try {
+                const result = await adminApi('cancel', {
+                    method: 'POST',
+                    body: JSON.stringify({ transferToken: stored.transferToken })
+                });
+                sessionStorage.removeItem(ADMIN_TRANSFER_STORAGE);
+                pendingTransfer = null;
+                document.getElementById('adminPendingPanel').hidden = true;
+                document.getElementById('adminCompleteBtn').disabled = true;
+                document.getElementById('adminCancelBtn').disabled = true;
+                await loadAdministratorStatus();
+                adminText(result.message, 'success');
+            } catch (error) { adminText(error.message, 'error'); }
+        });
+        document.getElementById('adminCompleteBtn').addEventListener('click', async () => {
+            const stored = storedAdminTransfer();
+            if (!stored || !pendingTransfer || !pendingTransfer.renderMatches) return;
+            if (!confirm(`Permanently transfer administrator designation to ${pendingTransfer.targetUsername}?`)) return;
+            try {
+                const result = await adminApi('complete', {
+                    method: 'POST',
+                    body: JSON.stringify({ transferToken: stored.transferToken })
+                });
+                sessionStorage.removeItem(ADMIN_TRANSFER_STORAGE);
+                pendingTransfer = null;
+                document.getElementById('adminCompleteBtn').disabled = true;
+                adminText(result.message, 'success');
+                alert('Transfer complete. Sign out of the old account and sign in as the new administrator.');
+            } catch (error) { adminText(error.message, 'error'); }
+        });
+
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 if (!(await verifyAdmin())) return;
+                await loadAdministratorStatus();
+                if (storedAdminTransfer()) await refreshAdminTransfer();
                 await loadPromoData();
                 await loadGrants();
                 await loadPromoRedemptions();

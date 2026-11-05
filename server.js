@@ -25,6 +25,7 @@ const ftPrivacy = require('./routes/ftPrivacy');
 const subscriptionRoutes = require('./routes/subscriptions');
 const notificationRoutes = require('./routes/notifications');
 const tnnaRoutes = require('./routes/tnna');
+const adminManagementRoutes = require('./routes/adminManagement');
 const { authenticateToken, requireAppAccess } = require('./middleware/subscriptionAccess');
 const usageActivity = require('./middleware/usageActivity');
 
@@ -116,6 +117,12 @@ app.use('/subscriptions', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 }, subscriptionRoutes);
+// Stage 6 administrator designations and one-time transfer completion.
+// The transfer routes enforce their own signed-session and origin requirements.
+app.use('/admin-management', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+}, adminManagementRoutes);
 // Stage 6 R16: prevent storage of personal, admin, and native API responses.
 // Apply before the routers so their 200/401/403/error responses are covered.
 // Keep static assets and unrelated public routes on their existing cache policy.
