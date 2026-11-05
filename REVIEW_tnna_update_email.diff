@@ -1,0 +1,11 @@
+--- a/routes/tnna.js
++++ b/routes/tnna.js
+@@ -493,7 +493,7 @@
+                 });
+                 sent += 1;
+             } catch (error) {
+-                failed.push({ email: user.Email, error: error.message });
++                failed.push({ email: user.Email, error: 'Email delivery failed (details omitted).' });
+             }
+         }
+ 

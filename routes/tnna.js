@@ -493,7 +493,7 @@ router.post('/admin/send-update', auth, requireAdmin, async (req, res) => {
                 });
                 sent += 1;
             } catch (error) {
-                failed.push({ email: user.Email, error: error.message });
+                failed.push({ email: user.Email, error: 'Email delivery failed (details omitted).' });
             }
         }
 
