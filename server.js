@@ -85,15 +85,28 @@ logger.info('Middleware setup complete: CORS, JSON parsing, URL-encoded parsing,
 
 // Send Email Endpoint
 app.post('/send-email', async (req, res) => {
-  const { name, email, phone, subject, message } = req.body;
+  // Validate form input before invoking the email template or delivery service.
+  // The public response shape remains {status, message} for Contact Us.
+  const input = req.body || {};
+  const { name, email, phone, subject, message } = input;
+  const required = [name, email, subject, message];
+  if (required.some(value => typeof value !== 'string' || !value.trim()) ||
+      (phone != null && typeof phone !== 'string')) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'All required fields must be filled.',
+    });
+  }
 
   try {
     const response = await sendEmail({ name, email, phone, subject, message });
     res.json(response);
-  } catch (error) {
+  } catch (_) {
+    // Do not expose unexpected JavaScript, transport, or provider error messages.
+    logger.error('Contact form request failed (details omitted)');
     res.status(400).json({
       status: 'error',
-      message: error.message,
+      message: 'Unable to send your message at this time.',
     });
   }
 });

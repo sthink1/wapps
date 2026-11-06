@@ -16,8 +16,10 @@ function escapeHtml(value) {
 
 // Function to send email
 const sendEmail = async ({ name, email, phone, subject, message }) => {
-  // Validate required fields
-  if (!name || !email || !subject || !message) {
+  // Keep the helper safe when called independently of the /send-email route.
+  if ([name, email, subject, message].some(value =>
+      typeof value !== 'string' || !value.trim()) ||
+      (phone != null && typeof phone !== 'string')) {
     throw new Error('All required fields must be filled.');
   }
 
@@ -33,11 +35,11 @@ Message: ${message}
   // Create HTML version
   const htmlBody = `
 <h2>Contact Form Submission</h2>
-<p><strong>Name:</strong> ${name}</p>
-<p><strong>Email:</strong> ${email}</p>
-<p><strong>Phone:</strong> ${phone || 'N/A'}</p>
-<p><strong>Subject:</strong> ${subject}</p>
-<p><strong>Message:</strong><br>${message.replace(/\n/g, '<br>')}</p>
+<p><strong>Name:</strong> ${escapeHtml(name)}</p>
+<p><strong>Email:</strong> ${escapeHtml(email)}</p>
+<p><strong>Phone:</strong> ${escapeHtml(phone || 'N/A')}</p>
+<p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
+<p><strong>Message:</strong><br>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
   `.trim();
 
   try {
