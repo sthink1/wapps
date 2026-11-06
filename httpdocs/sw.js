@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wonderful-apps-cache-v9';
+const CACHE_NAME = 'wonderful-apps-cache-v10';
 
 const HTML_PAGES = [
   "/index.html",
@@ -40,6 +40,7 @@ const HTML_PAGES = [
 ];
 const STATIC_ASSETS = [
   "/manifest.json",
+  "/js/waPlatform.js",
   "/favicon.ico",
   "/icons/android-chrome-192x192.png",
   "/icons/android-chrome-512x512.png"
@@ -83,6 +84,7 @@ const urlsToCache = [
   "/BcardReport.html",
   "/BestimateAllowanceReport.html",
   "/manifest.json",
+  "/js/waPlatform.js",
   "/favicon.ico",
   "/icons/android-chrome-192x192.png",
   "/icons/android-chrome-512x512.png"
@@ -90,6 +92,7 @@ const urlsToCache = [
 
 const HTML_PAGE_SET = new Set(HTML_PAGES);
 const STATIC_ASSET_SET = new Set(STATIC_ASSETS);
+const AUTH_MODULE_PATH = "/js/waPlatform.js";
 
 /*
   SECURITY RULES
@@ -128,13 +131,14 @@ self.addEventListener('fetch', event => {
   const pathname = requestUrl.pathname;
   const isKnownHtml = HTML_PAGE_SET.has(pathname) || (pathname === '/' && request.mode === 'navigate');
   const isKnownStaticAsset = STATIC_ASSET_SET.has(pathname);
+  const isAuthModule = pathname === AUTH_MODULE_PATH;
 
   // Anything not explicitly approved is network-only. This includes every API route.
-  if (!isKnownHtml && !isKnownStaticAsset) {
+  if (!isKnownHtml && !isKnownStaticAsset && !isAuthModule) {
     return;
   }
 
-  if (isKnownHtml) {
+  if (isKnownHtml || isAuthModule) {
     event.respondWith(
       fetch(request)
         .then(response => {
@@ -150,7 +154,8 @@ self.addEventListener('fetch', event => {
         .catch(() => {
           const cacheKey = pathname === '/' ? '/' : pathname;
           return caches.match(cacheKey)
-            .then(cachedResponse => cachedResponse || caches.match('/home.html'));
+            .then(cachedResponse => cachedResponse ||
+                (isKnownHtml ? caches.match('/home.html') : Response.error()));
         })
     );
     return;
