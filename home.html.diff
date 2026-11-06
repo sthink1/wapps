@@ -1,0 +1,25 @@
+--- a/httpdocs/home.html
++++ b/httpdocs/home.html
+@@ -1052,6 +1052,10 @@
+                 statusDisplay.textContent = '';
+                 return;
+             }
++
++            // Do not display previously verified subscription details
++            // while a new authorization lookup is pending.
++            statusDisplay.textContent = '';
+ 
+             try {
+                 const response = await fetch(
+@@ -1133,7 +1137,10 @@
+                     }
+                 });
+             } catch (error) {
+-                // Fail closed: permission lookup did not complete successfully.
++                // Fail closed and remove stale subscription information when
++                // permissions cannot be verified (network failure or HTTP error).
++                statusDisplay.textContent =
++                    'Subscription status unavailable — application access cannot be verified.';
+                 document.querySelectorAll('.restricted-btn').forEach(button => {
+                     button.disabled = true;
+                     button.title = 'Application access could not be verified.';
