@@ -1,0 +1,86 @@
+--- a/httpdocs/home.html
++++ b/httpdocs/home.html
+@@ -128,7 +128,7 @@
+         }
+ 
+         .app-buttons .restricted-btn:disabled,
+-        .other-buttons .restricted-btn:disabled {
++        .other-buttons button:disabled {
+             background-color: #999;
+             color: #eee;
+             cursor: not-allowed;
+@@ -625,6 +625,7 @@
+             <div class="button-group other-buttons">
+                 <button
+                     id="subscriptionBtn"
++                    disabled
+                     data-page="subscription.html"
+                 >
+                     Subscription
+@@ -632,6 +633,7 @@
+ 
+                 <button
+                     id="notificationsBtn"
++                    disabled
+                     data-page="notificationPreferences.html"
+                 >
+                     Notifications
+@@ -1211,9 +1213,9 @@
+                 if (!window.WA?.session?.restore) {
+                     window.waHomeAuthenticated = false;
+                     document.getElementById('userDisplay').textContent =
+-                        localStorage.getItem('token')
++                        navigator.onLine === false || localStorage.getItem('token')
+                             ? 'Offline — session cannot be verified'
+-                            : 'Not Logged In';
++                            : 'Session verification unavailable';
+                     document.getElementById('subscriptionStatus').textContent =
+                         'Application access unavailable while offline';
+                     document.getElementById('changePasswordLink').style.display = 'none';
+@@ -1221,9 +1223,13 @@
+                 }
+ 
+                 const waRestore = await WA.session.restore();
+-                const sessionUnverified = !waRestore.authenticated &&
+-                    ['network', 'server_error', 'restore_unavailable']
+-                        .includes(waRestore.reason);
++                // Offline is an unavailable state even when no token exists.
++                // A missing/expired credential is not proof of connectivity.
++                const browserOffline = navigator.onLine === false;
++                const sessionUnverified = browserOffline ||
++                    (!waRestore.authenticated &&
++                     ['network', 'server_error', 'restore_unavailable']
++                         .includes(waRestore.reason));
+                 // Trust the server-backed session check, not a decoded stale JWT.
+                 window.waHomeAuthenticated = waRestore.authenticated === true;
+                 // Only a verified server-side WebSessionT.IsRemembered value may
+@@ -1243,12 +1249,19 @@
+                     document.getElementById('subscriptionStatus').textContent =
+                         'Application access unavailable while offline';
+                 }
++                // The Other controls also start disabled until this check completes.
++                // When the browser is online, their existing click handlers
++                // show Login Required for a signed-out visitor.
++                if (!sessionUnverified) {
++                    document.getElementById('subscriptionBtn').disabled = false;
++                    document.getElementById('notificationsBtn').disabled = false;
++                }
+                 // Restore the pre-R10-14 signed-out experience: visitors can
+                 // select an application and receive the Login Required dialog.
+                 // The click handler checks server-verified authentication before
+                 // any navigation. Only confirmed signed-out states get this UI;
+                 // temporary outages retain the default-disabled safeguards.
+-                if (!waRestore.authenticated &&
++                if (!waRestore.authenticated && !sessionUnverified &&
+                     ['explicit_logout', 'login_required'].includes(waRestore.reason)) {
+                     document.querySelectorAll('.restricted-btn').forEach(button => {
+                         button.disabled = false;
+@@ -1452,7 +1465,7 @@
+ }
+                         );
+                 } else {
+-                    userDisplay.textContent = sessionUnverified && localStorage.getItem('token')
++                    userDisplay.textContent = sessionUnverified
+                         ? 'Offline — session cannot be verified'
+                         : 'Not Logged In';
+                 }

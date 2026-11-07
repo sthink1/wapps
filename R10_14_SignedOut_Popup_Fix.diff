@@ -1,0 +1,21 @@
+--- a/httpdocs/home.html
++++ b/httpdocs/home.html
+@@ -1243,6 +1243,18 @@
+                     document.getElementById('subscriptionStatus').textContent =
+                         'Application access unavailable while offline';
+                 }
++                // Restore the pre-R10-14 signed-out experience: visitors can
++                // select an application and receive the Login Required dialog.
++                // The click handler checks server-verified authentication before
++                // any navigation. Only confirmed signed-out states get this UI;
++                // temporary outages retain the default-disabled safeguards.
++                if (!waRestore.authenticated &&
++                    ['explicit_logout', 'login_required'].includes(waRestore.reason)) {
++                    document.querySelectorAll('.restricted-btn').forEach(button => {
++                        button.disabled = false;
++                        button.removeAttribute('title');
++                    });
++                }
+ 
+                 /*
+                  * Information controls do not require the user to enter
