@@ -1,10 +1,10 @@
 # Current authoritative reconciliation — November 7, 2026
 
-**Consolidated register revision: 3.1 (November 7 R10 supplement; prepared for user installation).** This file is intended to replace `docs/Stage6_OpenItems.md` *after review*. The sections below preserve the original 2.4 detailed requirements, S6-001–S6-041 issue IDs, acceptance criteria and historical observations. The historical environment statements within older sections are dated facts, not instructions for today's staging.
+**Consolidated register revision: 3.2 (November 7 R14 bounded acceptance supplement; prepared for user installation).** This file is intended to replace `docs/Stage6_OpenItems.md` *after review*. The sections below preserve the original 2.4 detailed requirements, S6-001–S6-041 issue IDs, acceptance criteria and historical observations. The historical environment statements within older sections are dated facts, not instructions for today's staging.
 
 **Current safeguards:** Branch `reviseLogIn`; staging service `wapps-stage6-test`, `https://wapps-stage6-test.onrender.com`; November 7 user-reported Live hosted commit `d4e5d1a` (earlier verified snapshot `f023cc3`, Nov 3); HelioHost Morty2 `morty2.heliohost.org`, MariaDB `wapps_test` user `wapps_test`, database `wapps_test`. Group 0d environment suite 16/16 passed. No production service, production DB, Git `main`, Google Drive or installed Samsung A15 TNNA modification permitted without separate authorization. Google Drive is read-only for this document preparation.
 
-**Completion:** approximately 70% remains a *provisional engineering estimate*, not an R01–R20 arithmetic completion fraction. No broad item is newly marked Verified Closed merely by narrow passing tests. Existing targeted Verified Closed S6-002 and S6-037 remain as recorded. **Formal R10 is now PASS (bounded) as of November 7; this does not close S6-008, S6-009, or S6-018.**
+**Completion:** approximately 70% remains a *provisional engineering estimate*, not an R01–R20 arithmetic completion fraction. No broad item is newly marked Verified Closed merely by narrow passing tests. Existing targeted Verified Closed S6-002 and S6-037 remain as recorded. **Formal R10 and R14 are now PASS (bounded) as of November 7; this does not close S6-008, S6-009, or S6-018.**
 
 ## New evidence and decision chronology (superseding outdated status statements only)
 
@@ -15,7 +15,34 @@
 | Nov 2 | `WA_Stage6_Group5E_Closure_and_Next_Acceptance_2026-11-02.md` | Six resolver unit tests, hosted CF header selection, rollback/removal of temporary diagnostic; alternative ingress provenance still open |
 | Nov 3 | `docs/Stage6_Group5G_Hosted_Acceptance_Evidence_2026-11-03.md` | Hosted `charter` UserID 64 web reset and Change Password revocation; TNNA Windows HTTP verification, rotation 28→29, consumed-token replay 401, password-change revocation and access/refresh 401; no Android app test |
 | Nov 7 | R10-01–R10-15 reconciliation; hosted `d4e5d1a` user-reported Live | Formal **R10 PASS (bounded)**: Home stale/invalid-token, simulated 503, offline fail-closed, signed-out popup preservation, authenticated Standard-plan recovery; Chrome Guest synthetic token rejected with two HTTP 401s and removed. This is not proof of every real 503/backend outage or global app auth handling. |
+| Nov 7 | R14-01–R14-23 hosted authorization tests and later deployed `track.html` / `SubControl.html` corrections | Formal **R14 PASS (bounded)**: expired/active subscription, representative protected GET/POST/PUT/DELETE, admin/non-admin API and UI checks, corrected unauthorized interface flashes. Post-fix staging commit not supplied. S6-009/018 remain In Progress. |
 | Nov 3 | R08 browser and PowerShell observations in current conversation | Unauthenticated session-status 401; unauthorized and missing refresh Origin 403; valid Origin/no cookie 401; unauthenticated Weights 401; Chrome cookie `HttpOnly`, `Secure`, `SameSite=Lax`, path `/users`, May 2027 expiry; authenticated session-status 200 + `Cache-Control: no-store`; `Sec-Fetch-Site: same-origin`; no unnecessary refresh seen in sampled browser activity |
+
+## November 7, 2026 — R14 bounded acceptance and linked-item reconciliation (current disposition)
+
+**Formal R14:** **PASSED (bounded).** The November 7 R14-01–R14-23 user-reported hosted tests satisfy the formal administrator-versus-Standard, expiry, protected-route and Home/admin-controls acceptance scenario within tested scope. See the complete R14 evidence ledger in `docs/Stage6_Render_TestPlan.md`. This updates older R14 PARTIAL classifications below **for R14 only**, retaining their dated statements as historical records.
+
+**Environment/provenance:** Render staging `wapps-stage6-test` on branch `reviseLogIn`, isolated Morty2 `wapps_test` DB; `charter` UserID 64 (non-admin), `sthink` (designated admin). Beginning November 7 Live commit reported `d4e5d1a`; later updated `track.html` and `SubControl.html` were deployed and tested, but their final deployment commit is **not documented**. Evidence comes from user-reported browser Console/Network output and phpMyAdmin query results; no independent post-fix code/security certification is implied.
+
+| Linked issue or finding | New November 7 R14 evidence / action | Current disposition |
+|---|---|---|
+| Formal R14 | R14-01–23: expiration and restoration; Home 8 disabled expired and 7 enabled/1 ETF restricted after Platinum restoration; seven central entitlement expiry reasons plus ETF development block; seven protected route GET denials; Interest Earned POST/PUT/DELETE 403; non-admin admin API 403; admin `sthink` status/management/ETF override 200; after reload Home/admin API; admin buttons visibility; direct navigation and corrected UI regressions | **PASSED (bounded)**; retain limits described in TestPlan |
+| S6-009 | Stronger authorization evidence across non-admin Platinum, prior Standard, expired/active subscription, actual protected APIs, admin control visibility and positive `sthink` override. Reload tested; actual JWT expiration + refresh during all admin/permission scenarios and route-wide matrix are **not** fully established | **In Progress** (do not mark Verified Closed) |
+| S6-018 | Expiry denials consistently 403; previously recorded offline/injected 503 behavior. Whole-project 401/403/transient/5xx distinctions, failed refresh, incorrect-password and unsaved-form preservation remain outside this bounded R14 result | **In Progress** |
+| S6-008 | Sampled protected APIs reject non-admin/expired accounts; selected methods fail closed. Global consistency and error-path handling remain open | **In Progress** |
+| H41 unauthorized Tracking interface flash | Previously observed and reproduced: brief Tracking UI before `/track/users` 403/Home redirect. Complete staged `track.html` revised, deployed and verified: non-admin sees verification message then Home; admin sees verification then functional Tracking, no unexpected Console errors | **Resolved for targeted staged regression**; preserve original H41 historical record |
+| Sub Control unauthorized UI flash | Same delayed-auth visibility issue; revised full `SubControl.html` deployed. Non-admin verifies then redirects with no privileged UI flash; admin verifies then loads administrator management/promos/grants without errors | **Resolved for targeted staged regression** |
+| Policy discussion — Contact Us | Contact Us remains enabled for authenticated expired user without subscription app key; behavior confirmed in Home; future product-policy decision explicitly deferred | **Deferred discussion; not a defect closure** |
+| Policy discussion — development Platinum trials | Current 30-day offer/eligibility to be reconsidered later at user's request | **Deferred discussion; do not silently change configuration or copy** |
+| S6-014 independent engineering review | User-observed R14 results do not replace the final independent design-engineer/security review before `main`/production | **Open — mandatory release gate** |
+
+**Test-account restoration note:** Guarded base subscription UPDATE affected 1 row; `charter` restored to Platinum `DEVELOPMENT_TRIAL`, Active=1, effectiveEndDate=2026-12-02. Server `GET /weights` 200 and Home 7 of 8 subscription-controlled applications enabled without relogin. Earlier Standard administrator grant is **not restored**. Reported zero active grants; whether the original grant row was deleted or merely deactivated is not proved by the final result. Do not treat restored Platinum as the earlier Standard baseline.
+
+**Bounded scope:** This is not an exhaustive review of every authorization endpoint/method; ETF development restriction precedes expiry for ordinary users; status query's HTTP code was not always copied; a page reload was observed but JWT renewal was not captured in the administrator scenario. No production/`main`/TNNA change authorized. Formal R15 is the next planned application-integration area, but other open high-risk Stage 6 issues and final review remain.
+
+**Status reconciliation:** The following original R10 supplement, historic R01–R20 working classifications and H05–H50 notes remain verbatim as dated evidence. Their references to R14 being PARTIAL or to expired/admin cases remaining untested are superseded **only by this R14 supplement**. Linked S6-009/S6-018 are still In Progress and must not be closed by this change.
+
+---
 
 ## November 7, 2026 — R10 bounded acceptance and linked-item reconciliation
 
@@ -49,8 +76,8 @@
 
 | Assessment | Formal cases | Qualification |
 |---|---|---|
-| Central planned scenario passed | R01, R02, R06, R09, R10 (bounded Nov 7), R12, R13 | Scoped evidence exists; do not infer full linked S6 closure |
-| Partially verified | R03, R04, R05, R07, R08, R11, R14, R15, R16, R18, R19, R20 | Specific accepted scenarios plus meaningful unverified requirements |
+| Central planned scenario passed | R01, R02, R06, R09, R10 (bounded Nov 7), R12, R13, R14 (bounded Nov 7) | Scoped evidence exists; do not infer full linked S6 closure |
+| Partially verified | R03, R04, R05, R07, R08, R11, R15, R16, R18, R19, R20 | Specific accepted scenarios plus meaningful unverified requirements |
 | Open | R17 | Dedicated DuckDuckGo/Edge/Firefox acceptance not evidenced |
 
 **Remaining high-risk gates:** authenticated Origin/CSRF negative behavior; caching of sensitive failures; trust/limiter provenance and error paths; broader authorization and subscription; rate/concurrency exceptional failures; cross-browser and native TNNA; S6-039 deferred; S6-041 review; production migration/rollback plan; final independent design-engineer/security review.
