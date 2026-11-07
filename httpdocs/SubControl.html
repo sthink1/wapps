@@ -237,11 +237,34 @@
         .danger-btn:hover {
             background-color: #8c1d18 !important;
         }
+        /* R14-22/R14-23: fail closed until the existing server-side
+           administrator check (or validated pending-transfer check) succeeds. */
+        body:not(.wa-subcontrol-authorized) > .container,
+        body:not(.wa-subcontrol-authorized) > footer {
+            visibility: hidden;
+        }
+        #adminVerificationStatus {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: #f4f4f4;
+            color: #222;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        body.wa-subcontrol-authorized #adminVerificationStatus {
+            display: none;
+        }
     </style>
     <link rel="stylesheet" href="css/wa-buttons.css">
 </head>
 
 <body class="wa-raised-buttons">
+    <div id="adminVerificationStatus" role="status" aria-live="polite">Verifying administrator access...</div>
     <div class="container">
         <h1>SUBSCRIPTION CONTROL</h1>
 
@@ -706,14 +729,24 @@
                         document.querySelectorAll('section.section').forEach(section => {
                             if (section.id !== 'administratorManagement') section.style.display = 'none';
                         });
-                        try { await refreshAdminTransfer(); }
-                        catch (error) { adminText(error.message, 'error'); }
+                        try {
+                            // Preserve the existing Stage 6 pending-transfer recovery
+                            // path, but reveal it only after server validation succeeds.
+                            if (await refreshAdminTransfer()) {
+                                document.body.classList.add('wa-subcontrol-authorized');
+                            }
+                        } catch (error) {
+                            adminText(error.message, 'error');
+                            document.getElementById('adminVerificationStatus').textContent =
+                                'Unable to verify administrator transfer. Return to Home.';
+                        }
                         return false;
                     }
                     window.location.href = 'home.html';
                     return false;
                 }
 
+                document.body.classList.add('wa-subcontrol-authorized');
                 return true;
             } catch (error) {
                 if (error.status === 401 || error.status === 403) {
@@ -1180,6 +1213,10 @@
                 await loadPromoRedemptions();
             } catch (error) {
                 setStatus('pageStatus', error.message, 'error');
+                if (!document.body.classList.contains('wa-subcontrol-authorized')) {
+                    document.getElementById('adminVerificationStatus').textContent =
+                        'Unable to verify administrator access. Return to Home.';
+                }
             }
         });
     </script>
