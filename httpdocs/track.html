@@ -9,6 +9,17 @@
 
     <style>
         :root { color-scheme: only light; }
+        /* R14-22: Keep all administrator interface content hidden until
+           the existing protected users API confirms authorization. */
+        .shell, footer { display: none; }
+        body.admin-authorized .shell, body.admin-authorized footer { display: block; }
+        #adminGateMessage {
+            max-width: 650px;
+            margin: 60px auto;
+            text-align: center;
+            font-size: 16px;
+        }
+        body.admin-authorized #adminGateMessage { display: none; }
         * { box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
@@ -210,6 +221,7 @@
     <link rel="stylesheet" href="css/wa-buttons.css">
 </head>
 <body class="wa-raised-buttons">
+    <div id="adminGateMessage" role="status" aria-live="polite">Verifying administrator access...</div>
     <div class="shell">
         <header>
             <h1>WONDERFUL APPS USAGE</h1>
@@ -696,11 +708,19 @@
             document.getElementById('refreshFreeTierBtn').addEventListener('click', loadCurrentPlans);
 
             try {
+                // Authorization succeeds only after the protected endpoint returns.
+                // A 401/403 keeps the interface hidden while existing redirects run.
                 await loadUsers();
+                document.body.classList.add('admin-authorized');
                 await loadAppUsage();
                 await loadUserUsage();
                 await loadCurrentPlans();
             } catch (error) {
+                if (!document.body.classList.contains('admin-authorized')) {
+                    document.getElementById('adminGateMessage').textContent =
+                        'Unable to verify administrator access. Please reload or return Home.';
+                    return;
+                }
                 document.getElementById('appUsageStatus').className = 'status error';
                 document.getElementById('appUsageStatus').textContent = error.message;
             }

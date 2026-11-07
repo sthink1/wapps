@@ -1,8 +1,8 @@
 # Stage 6 Render Acceptance Test Plan — consolidated current edition
 
-**Consolidated version 2.0 — November 3, 2026; prepared for manual installation.** This file is intended to replace `docs/Stage6_Render_TestPlan.md` and incorporate its dated October 31 append. The full prior formal plan and hosted H05–H50 ledger remain below as preserved evidence, not active deployment instructions.
+**Consolidated version 2.1 — November 7, 2026; prepared for manual installation.** This file is intended to replace `docs/Stage6_Render_TestPlan.md` and incorporate its dated October 31 append. The full prior formal plan and hosted H05–H50 ledger remain below as preserved evidence, not active deployment instructions.
 
-**Approved staging reality:** `reviseLogIn`; latest verified hosted commit `f023cc3`; service `wapps-stage6-test`; `https://wapps-stage6-test.onrender.com`; HelioHost Morty2 `wapps_test`, user `wapps_test`; 16/16 environment tests passed. Older references saying staging does not exist, pointing exclusively at `sql5838929`, or reporting commit `09ece26` are historic snapshots.
+**Approved staging reality:** `reviseLogIn`; November 7 user-reported Live commit `d4e5d1a` (superseding the November 3 hosted snapshot `f023cc3`); service `wapps-stage6-test`; `https://wapps-stage6-test.onrender.com`; HelioHost Morty2 `wapps_test`, user `wapps_test`; 16/16 environment tests passed. Older references saying staging does not exist, pointing exclusively at `sql5838929`, or reporting commit `09ece26` are historic snapshots.
 
 **Read-only Google Drive rule:** Never modify the authoritative `My Drive/wonderfulApp` folder using the assistant. All downloaded replacement documents require local user review/installation. No Stage 6 change to production, `main`, or installed TNNA approved.
 
@@ -19,7 +19,7 @@
 | R07 | PARTIAL | Nov 3 Group 5G reset used/reused link and session 115 revoked; exhaustive hosted invalid/expiry/negative cases incomplete. |
 | R08 | PARTIAL | Nov 3 HTTP Steps 1–8 pass; valid Chrome secure cookie observed; authenticated forged Origin and failure-response cache review pending. |
 | R09 | PASSED (bounded) | H23 server restart with remembered account. |
-| R10 | PARTIAL | S6-037 and H30-H44 selected 401/403; injected 5xx/outage unverified. |
+| R10 | PASSED (bounded) — Nov 7 | R10-01–R10-15, real earlier revocation, synthetic-invalid-token and hosted offline/recovery checks; 503 injected, not a real hosted backend outage. Linked S6-008/009/018 remain open; see Nov 7 supplement. |
 | R11 | PARTIAL | Nov 2 Group 5E hosted resolver selected CF header and 6 unit tests; spoof provenance and limiter fairness pending. |
 | R12 | PASSED (bounded) | Group 5D + H27 two-tab refresh/logout. |
 | R13 | PASSED (bounded) | Controlled Web Locks 9D and waPlatform 19/19. |
@@ -31,6 +31,29 @@
 | R19 | PARTIAL | Group 5B H109 real DB and Group 5G sequential TNNA replay 401; remaining stress/fairness/concurrent replay review. |
 | R20 | PARTIAL | Staging isolation guard and Morty2 startup verified; formal non-destructive reversal drill and production transition plan open. |
 
+
+## November 7, 2026 — R10 final acceptance supplement (current disposition)
+
+**Decision:** **R10 PASS — bounded acceptance** for the formal Home authentication and subscription-failure scenario. This supersedes the November 3 `R10 | PARTIAL` snapshot above/below **only for R10**. The historical R10 narrative and H05–H50 ledger are preserved unchanged. This is a focused acceptance decision, not a claim of complete application-wide authorization or Stage 6 release readiness.
+
+**Environment / provenance:** isolated Render staging service `wapps-stage6-test`, `https://wapps-stage6-test.onrender.com`, branch `reviseLogIn`. User reported commit **`d4e5d1a` Live** on November 7, 2026. The November 7 functional results are user-reported browser/DevTools observations, not an independently captured server audit. Prior revocation and authorization cases were run at earlier staging/local commits, as described in the dated evidence sections. Test environments included Chrome Normal and Incognito for previous cases and Chrome Guest for the synthetic-token check. No production or `main` changes were authorized.
+
+**Formal R10 definition:** Revoked/stale token on Home; subscription API 401/403/temporary 5xx. Expected: no false authenticated label, no unrestricted applications, appropriate unavailable state, and no forced logout merely because the service/network is temporarily unavailable.
+
+| Evidence | Verified result | Qualification |
+|---|---|---|
+| Earlier Change Password revocation and S6-037 | Revoked session rejected and Home corrected to signed-out, fail-closed behavior; new valid login restores permitted features | Real revocation evidence, from earlier targeted tests; not rerun as R10-15 |
+| R10-01–R10-13 | Selected invalid 401, forbidden 403, injected 503, network/offline, GET retry and non-replay behaviors passed | Some HTTP 503 and failure outcomes used controlled simulation; 19/19 existing shared-module tests reused |
+| R10-14 local, signed-out | Offline Home displayed unverified-session and unavailable-access messages; 9/9 restricted buttons and Subscription/Notifications disabled; online signed-out Home restored green buttons and Login Required popups for Loan Payment and Contact Us | Local functional test, followed by staged commit |
+| R10-14 hosted, signed-out | Loan Payment and Contact Us Login Required popups passed without protected navigation; offline reload: 9 restricted buttons, 9 disabled, Subscription/Notifications disabled; after restoring connection: `Not Logged In`, 9 enabled, Subscription/Notifications enabled | Chrome Incognito, user observations on reported Live `d4e5d1a` |
+| R10-14 hosted, authenticated | `charter` restored as authenticated; `Plan: Standard \| Access Expires: 2200-12-31`; 4 enabled/5 disabled; offline reload preserved session token but disabled 9/9; online recovery restored `charter` and 4/5 permissions | Standard-plan scenario, not proof of expired-plan/admin cases |
+| R10-15 hosted synthetic invalid JWT | Guest profile invalid token installed; `/users/session-status` 401, `/users/refresh-session` 401; Home remained `Not Logged In`, no subscription, authenticated `false`; 9 green buttons retained signed-out popup semantics; synthetic token removed successfully | Synthetic invalid token proves rejection, **not** revocation of a previously valid session |
+
+**Limitations / deliberately open scope:** A real hosted backend 503 outage was not induced; 503 handling was tested using controlled injection. R10-15 did not exercise authentic server-side revocation, which is supported separately by password-change tests. These acceptance results do not close cross-application 401/403/error behavior, unsafe mutation protection across all pages, administrator permissions, expired-subscription behavior, or the R14 authorization matrix. Those requirements remain tracked under **S6-008**, **S6-009**, **S6-018**, and other existing integration/security items. S6-037 remains Verified Closed for its targeted regression. Previously observed unauthorized-page UI errors remain for later triage.
+
+**Disposition and gate:** **R10 PASSED (bounded)**; R14 may resume. The global Stage 6 register, code/security review, independent engineering review, and separate user approval before any production/main decision remain outstanding. This supplement records test results and review disposition only; it does not imply that the November 7 results were independently verified by a different engineer.
+
+---
 
 ### R08 latest recorded bounded steps (Nov 3)
 

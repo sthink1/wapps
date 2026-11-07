@@ -1,10 +1,10 @@
-# Current authoritative reconciliation — November 3, 2026
+# Current authoritative reconciliation — November 7, 2026
 
-**Consolidated register revision: 3.0 (draft for user installation).** This file is intended to replace `docs/Stage6_OpenItems.md` *after review*. The sections below preserve the original 2.4 detailed requirements, S6-001–S6-041 issue IDs, acceptance criteria and historical observations. The historical environment statements within older sections are dated facts, not instructions for today's staging.
+**Consolidated register revision: 3.1 (November 7 R10 supplement; prepared for user installation).** This file is intended to replace `docs/Stage6_OpenItems.md` *after review*. The sections below preserve the original 2.4 detailed requirements, S6-001–S6-041 issue IDs, acceptance criteria and historical observations. The historical environment statements within older sections are dated facts, not instructions for today's staging.
 
-**Current safeguards:** Branch `reviseLogIn`; staging service `wapps-stage6-test`, `https://wapps-stage6-test.onrender.com`; last verified hosted commit `f023cc3` (Nov 3); HelioHost Morty2 `morty2.heliohost.org`, MariaDB `wapps_test` user `wapps_test`, database `wapps_test`. Group 0d environment suite 16/16 passed. No production service, production DB, Git `main`, Google Drive or installed Samsung A15 TNNA modification permitted without separate authorization. Google Drive is read-only for this document preparation.
+**Current safeguards:** Branch `reviseLogIn`; staging service `wapps-stage6-test`, `https://wapps-stage6-test.onrender.com`; November 7 user-reported Live hosted commit `d4e5d1a` (earlier verified snapshot `f023cc3`, Nov 3); HelioHost Morty2 `morty2.heliohost.org`, MariaDB `wapps_test` user `wapps_test`, database `wapps_test`. Group 0d environment suite 16/16 passed. No production service, production DB, Git `main`, Google Drive or installed Samsung A15 TNNA modification permitted without separate authorization. Google Drive is read-only for this document preparation.
 
-**Completion:** approximately 70% remains a *provisional engineering estimate*, not an R01–R20 arithmetic completion fraction. No broad item is newly marked Verified Closed merely by narrow passing tests. Existing targeted Verified Closed S6-002 and S6-037 remain as recorded.
+**Completion:** approximately 70% remains a *provisional engineering estimate*, not an R01–R20 arithmetic completion fraction. No broad item is newly marked Verified Closed merely by narrow passing tests. Existing targeted Verified Closed S6-002 and S6-037 remain as recorded. **Formal R10 is now PASS (bounded) as of November 7; this does not close S6-008, S6-009, or S6-018.**
 
 ## New evidence and decision chronology (superseding outdated status statements only)
 
@@ -14,7 +14,32 @@
 | Nov 1 | `WA_Stage6_Group5D_Results_and_Remaining_Acceptance_2026-11-01.md` | 19/19 offline module, 7/7 hosted preflight, two-tab refresh coordination and restart/logout evidence |
 | Nov 2 | `WA_Stage6_Group5E_Closure_and_Next_Acceptance_2026-11-02.md` | Six resolver unit tests, hosted CF header selection, rollback/removal of temporary diagnostic; alternative ingress provenance still open |
 | Nov 3 | `docs/Stage6_Group5G_Hosted_Acceptance_Evidence_2026-11-03.md` | Hosted `charter` UserID 64 web reset and Change Password revocation; TNNA Windows HTTP verification, rotation 28→29, consumed-token replay 401, password-change revocation and access/refresh 401; no Android app test |
+| Nov 7 | R10-01–R10-15 reconciliation; hosted `d4e5d1a` user-reported Live | Formal **R10 PASS (bounded)**: Home stale/invalid-token, simulated 503, offline fail-closed, signed-out popup preservation, authenticated Standard-plan recovery; Chrome Guest synthetic token rejected with two HTTP 401s and removed. This is not proof of every real 503/backend outage or global app auth handling. |
 | Nov 3 | R08 browser and PowerShell observations in current conversation | Unauthenticated session-status 401; unauthorized and missing refresh Origin 403; valid Origin/no cookie 401; unauthenticated Weights 401; Chrome cookie `HttpOnly`, `Secure`, `SameSite=Lax`, path `/users`, May 2027 expiry; authenticated session-status 200 + `Cache-Control: no-store`; `Sec-Fetch-Site: same-origin`; no unnecessary refresh seen in sampled browser activity |
+
+## November 7, 2026 — R10 bounded acceptance and linked-item reconciliation
+
+**Formal R10:** **PASS (bounded)**, based on R10-01–R10-15, earlier S6-037 real revocation evidence, selected hosted H30–H44 permissions denials and 19/19 shared-module tests. For details, see the November 7 supplement in `docs/Stage6_Render_TestPlan.md`. This updates the dated November 3 R10 partial status above and preserves all prior observations.
+
+**R10-14:** local and hosted signed-out and authenticated offline/online behavior passed. When offline, all 9 restricted buttons were disabled and unverified/unavailable messages shown; during signed-out online operation, 9 enabled buttons showed Login Required instead of granting access; authenticated `charter` Standard-plan operation restored the expected 4 enabled/5 disabled buttons. Session token retained through offline reload and authenticated recovery.
+
+**R10-15:** Chrome Guest synthetic, deliberately invalid JWT: `/users/session-status` **401**, `/users/refresh-session` **401**, Home authentication **false**, `Not Logged In`, blank subscription; 9 green buttons had only signed-out popup semantics. Synthetic token removed (`true`). This did **not** revoke a legitimate session and does not replace earlier actual revocation evidence.
+
+**Explicit scope limits:** HTTP 503 cases were simulated; no real backend 503 outage was intentionally caused. Do not infer complete route-wide 401/403 behavior, all page error contracts, admin/expired subscription handling or all unsafe mutation outcomes from Home/isolated tests. Hosted data mutation and production environment were not changed as part of these tests.
+
+**Linked items remain open, with newly relevant evidence:**
+
+| Issue | November 7 update | Disposition |
+|---|---|---|
+| S6-008 | Home 401/403/503/network distinctions, invalid-token Guest check, and selected protected API denials; broader page-level error consistency and unsafe mutations not exhaustively tested | In Progress |
+| S6-009 | Hosted authenticated Standard `charter` plan and 4/5 Home permission restoration, plus earlier selected admin/denial H30–H44; expired subscription, full admin and other protected routes remain | In Progress |
+| S6-018 | Controlled simulated 503, offline session preservation, and recovery passed for Home/shared module; incorrect-password and unsaved-form/other-page behaviors remain | In Progress |
+| S6-037 | Earlier real revoked session correction and fresh-login permissions remain valid; R10-15 Guest synthetic token is separate supporting evidence | Verified Closed (targeted regression) |
+| S6-024 | R10-14 verified cached/offline Home safeguards; stale mixed-version rollout tests remain incomplete | Open |
+
+**Release gate:** Formal R10 bounded PASS does not mean Stage 6 completion, R14 completion, security-review approval, or permission to modify `main`/production. R14 remains PARTIAL and is the next recommended test area. Keep all historical S6 item rows and approval rules below; this section supplements their November 3 snapshots without rewriting their original history.
+
+---
 
 **New R08/R16 finding:** Five tested unauthenticated/denied HTTP responses returned `ETag` but lacked `Cache-Control: no-store`. Sensitive error-response caching policy needs a route/middleware review; this *does not itself establish data exposure*. Successful authenticated session-status response had `Cache-Control: no-store`. Avoid sharing real token/cookie values.
 
@@ -24,8 +49,8 @@
 
 | Assessment | Formal cases | Qualification |
 |---|---|---|
-| Central planned scenario passed | R01, R02, R06, R09, R12, R13 | Scoped evidence exists; do not infer full linked S6 closure |
-| Partially verified | R03, R04, R05, R07, R08, R10, R11, R14, R15, R16, R18, R19, R20 | Specific accepted scenarios plus meaningful unverified requirements |
+| Central planned scenario passed | R01, R02, R06, R09, R10 (bounded Nov 7), R12, R13 | Scoped evidence exists; do not infer full linked S6 closure |
+| Partially verified | R03, R04, R05, R07, R08, R11, R14, R15, R16, R18, R19, R20 | Specific accepted scenarios plus meaningful unverified requirements |
 | Open | R17 | Dedicated DuckDuckGo/Edge/Firefox acceptance not evidenced |
 
 **Remaining high-risk gates:** authenticated Origin/CSRF negative behavior; caching of sensitive failures; trust/limiter provenance and error paths; broader authorization and subscription; rate/concurrency exceptional failures; cross-browser and native TNNA; S6-039 deferred; S6-041 review; production migration/rollback plan; final independent design-engineer/security review.
