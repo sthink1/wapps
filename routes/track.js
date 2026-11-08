@@ -32,7 +32,7 @@ function dateClause(period, columnName) {
 
 function pageToAppKeySql(pageExpression) {
     return `CASE
-        WHEN ${pageExpression} = 'FamilyTree.html' OR ${pageExpression} LIKE 'FT%.html' THEN 'family_tree'
+        WHEN ${pageExpression} IN ('FamilyTree.html', 'FamilyTree2.html') OR ${pageExpression} LIKE 'FT%.html' THEN 'family_tree'
         WHEN ${pageExpression} IN ('weighIn.html', 'Weights.html', 'Activities.html') THEN 'weigh_in'
         WHEN ${pageExpression} = 'amortization.html' THEN 'loan_payment'
         WHEN ${pageExpression} = 'propertyInfo.html' THEN 'property_info'

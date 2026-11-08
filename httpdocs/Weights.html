@@ -379,7 +379,7 @@
 </head>
 <body class="wa-raised-buttons">
     <div class="container">
-        <h1>Weights and Activities<a class="buttons" href="home.html"><button>Home</button></a></h1>
+        <h1>Weights and Activities<a class="buttons" href="weighIn.html"><button>Back</button></a></h1>
         <div class="buttons">
             <button id="btnDateRange">DATE RANGE</button>
             <button id="btnSearch">SEARCH</button>
@@ -1594,56 +1594,6 @@
             });
         }
 
-        // Existing tracking logic
-        document.addEventListener('DOMContentLoaded', async (event) => {
-            const session = await WA.session.restore();
-            if (!session.authenticated) return;
-            const page = window.location.pathname;
-            WA.api.request('/track/log/page', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // WA.api supplies the current access token
-                },
-                body: JSON.stringify({ page })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Page view tracked:', data.message || 'Success');
-            })
-            .catch(error => {
-                console.error('Error tracking page view:', error.message);
-            });
-
-            let startTime = Date.now();
-            window.addEventListener('beforeunload', () => {
-                const duration = Math.floor((Date.now() - startTime) / 1000);
-                if (duration > 0) {
-                    const liveToken = WA.session.getAccessToken();
-                    if (!liveToken) return;
-                    fetch(`${BASE_URL}/track/log/time-spent`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            // WA.api supplies the current access token
-                        },
-                        body: JSON.stringify({
-                            page: window.location.pathname,
-                            duration: duration
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => console.log('Time spent response:', data))
-                    .catch(error => console.error('Error sending time spent:', error.message));
-                }
-            });
-        });
-
         // Delete Button and Modal Logic
         const deleteBtn = document.getElementById('btnDelete');
         const deleteModal = document.getElementById('deleteModal');
@@ -1996,5 +1946,6 @@ printResultsBtn.onclick = () => {
     printWindow.print();
 };
     </script>
+    <script src="js/usageTracking.js?v=20261108-1"></script>
 </body>
 </html>

@@ -1,0 +1,110 @@
+[
+  {
+    "file": "BMoney.html",
+    "bytes_before": 20842,
+    "bytes_after": 20948,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BcardForm.html",
+    "bytes_before": 15237,
+    "bytes_after": 15343,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BcardReport.html",
+    "bytes_before": 9892,
+    "bytes_after": 9998,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BestimateAllowanceForm.html",
+    "bytes_before": 28838,
+    "bytes_after": 28944,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BestimateAllowanceReport.html",
+    "bytes_before": 9430,
+    "bytes_after": 9536,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BinForm.html",
+    "bytes_before": 48501,
+    "bytes_after": 48607,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BinReport.html",
+    "bytes_before": 9396,
+    "bytes_after": 9502,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BleaseRentForm.html",
+    "bytes_before": 27165,
+    "bytes_after": 27271,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BleaseRentReport.html",
+    "bytes_before": 9533,
+    "bytes_after": 9639,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BloanForm.html",
+    "bytes_before": 27740,
+    "bytes_after": 27846,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BloanReport.html",
+    "bytes_before": 9634,
+    "bytes_after": 9740,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BmonthBudget.html",
+    "bytes_before": 19433,
+    "bytes_after": 19539,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BmonthDetailReport.html",
+    "bytes_before": 17352,
+    "bytes_after": 17458,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BoutForm.html",
+    "bytes_before": 48824,
+    "bytes_after": 48930,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BoutReport.html",
+    "bytes_before": 9398,
+    "bytes_after": 9504,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "Breports.html",
+    "bytes_before": 8149,
+    "bytes_after": 8255,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BsubscriptionForm.html",
+    "bytes_before": 27234,
+    "bytes_after": 27340,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  },
+  {
+    "file": "BsubscriptionReport.html",
+    "bytes_before": 9548,
+    "bytes_after": 9654,
+    "changes": "Insert two script tags immediately before body close; all preceding content unchanged"
+  }
+]

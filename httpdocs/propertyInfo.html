@@ -551,60 +551,8 @@
                 document.getElementById('paste-modal').style.display = 'none';
             });
         });
-        document.addEventListener('DOMContentLoaded', (event) => {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                return;
-            }
-            const page = window.location.pathname;
-            fetch(`${BASE_URL}/track/log/page`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ page })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Page view tracked:', data.message || 'Success');
-            })
-            .catch(error => {
-                console.error('Error tracking page view:', error.message);
-            });
-            let startTime = Date.now();
-            window.addEventListener('beforeunload', () => {
-                const duration = Math.floor((Date.now() - startTime) / 1000);
-                console.log('Beforeunload duration:', duration);
-                if (duration > 0) {
-                    const timeSpentData = {
-                        page: window.location.pathname,
-                        duration: duration,
-                        token: token
-                    };
-                    console.log('Sending time spent data:', timeSpentData);
-                    fetch(`${BASE_URL}/track/log/time-spent`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify(timeSpentData)
-                    })
-                    .then(response => {
-                        console.log('Time spent response status:', response.status);
-                        return response.json();
-                    })
-                    .then(data => console.log('Time spent response:', data))
-                    .catch(error => console.error('Error sending time spent:', error.message));
-                }
-            });
-        });
-    </script>
+        </script>
+    <script src="js/waPlatform.js"></script>
+    <script src="js/usageTracking.js?v=20261108-1"></script>
 </body>
 </html>

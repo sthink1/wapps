@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="color-scheme" content="only light">
+    <title>Interest Earned Verification</title>
+    <link rel="manifest" href="/manifest.json">
+    <!-- Add canvas-confetti script -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="js/confetti.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.14/purify.min.js"></script>
+    <script src="js/inputSanitizer.js?v=20260914-1"></script>
+    <style>
+        :root {
+            color-scheme: only light;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8e8d9;
+            margin: 0;
+            padding: 0;
+        }
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+            margin: 10px 0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .section-top .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .section-top button, .section-statement button, .section-verification button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .section-top button:hover, .section-statement button:hover, .section-verification button:hover {
+            background-color: #0056b3;
+        }
+        .section-contract {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .section-statement {
+            background-color: #e6f0fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .section-verification {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .section-verification .toggles {
+            background-color: #e6f7e6;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .section-verification .toggles label {
+            margin-right: 15px;
+            padding: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .section-verification .toggles label.changed {
+            background-color: #ffebcc;
+        }
+        .section-verification .toggles select {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            text-align: center;
+            padding: 10px;
+        }
+        table th {
+            background-color: #f2f2f2;
+        }
+        .section-statement input[type="date"],
+        .section-statement input[type="text"] {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 120px;
+        }
+        .section-statement .action-btn {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .section-statement .action-btn:hover {
+            background-color: #0056b3;
+        }
+        .section-statement .error {
+            color: red;
+            margin-top: 5px;
+            text-align: center;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            padding: 20px 0;
+            box-sizing: border-box;
+            overflow-y: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            box-sizing: border-box;
+            border-radius: 10px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+        }
+        .modal form {
+            display: flex;
+            flex-direction: column;
+        }
+        .modal form label {
+            margin: 10px 0;
+        }
+        .modal form input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .modal form button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .modal form button:hover {
+            background-color: #0056b3;
+        }
+        .modal .error {
+            color: red;
+            margin-top: 5px;
+        }
+        .modal-table-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    
+
+        .contract-actions {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 0 auto 20px;
+        }
+        .contract-actions button {
+            padding: 10px 18px;
+            font-size: 16px;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .contract-actions .add-btn,
+        .contract-actions .reset-btn {
+            background-color: #007bff;
+        }
+        .contract-actions .edit-btn {
+            background-color: #d98200;
+        }
+        .contract-actions .delete-btn {
+            background-color: #c62828;
+        }
+        .contract-actions button:hover {
+            filter: brightness(0.9);
+        }
+        .contract-management-select {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto 12px;
+            display: block;
+        }
+        .contract-management-table {
+            margin: 12px 0;
+        }
+        .contract-management-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .contract-management-actions button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .contract-management-actions .save-btn {
+            background-color: #007bff;
+        }
+        .contract-management-actions .delete-btn {
+            background-color: #c62828;
+        }
+        .contract-management-actions button:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+        .modal form textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .app-description {
+            box-sizing: border-box;
+            background-color: #ffffff;
+            border: 3px solid #a66a00;
+            border-radius: 7px;
+            color: #654500;
+            font-weight: 700;
+            line-height: 1.4;
+            text-align: center;
+            padding: 14px 16px;
+            margin: 0 auto 14px;
+            max-width: 100%;
+        }
+            /* Development notices: large/visible to small/faint in one-second steps,
+           then back again. The fixed-height row prevents title movement. */
+        .development-notices {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            height: 30px;
+            margin: 0 0 10px;
+            color: #596574;
+        }
+
+        .development-notices span {
+            box-sizing: border-box;
+            width: 49%;
+            background-color: #ffe1e1;
+            border-radius: 4px;
+            padding: 4px 3px;
+            font-size: 20px;
+            line-height: 1.15;
+            font-weight: 800;
+            opacity: 1;
+            animation: development-notice-shrink 10s steps(1, end) infinite;
+        }
+
+        .development-notices span:first-child { text-align: left; }
+        .development-notices span:last-child { text-align: right; }
+
+        @keyframes development-notice-shrink {
+            0%, 100% { font-size: 20px; font-weight: 800; opacity: 1; }
+            10%, 90% { font-size: 18px; font-weight: 700; opacity: .82; }
+            20%, 80% { font-size: 16px; font-weight: 700; opacity: .64; }
+            30%, 70% { font-size: 14px; font-weight: 600; opacity: .46; }
+            40%, 60% { font-size: 12px; font-weight: 500; opacity: .28; }
+            50% { font-size: 10px; font-weight: 400; opacity: .12; }
+        }
+
+        @media (max-width: 520px) {
+            .development-notices { height: 26px; }
+            .development-notices span { animation-name: development-notice-shrink-mobile; }
+            @keyframes development-notice-shrink-mobile {
+                0%, 100% { font-size: 16px; font-weight: 800; opacity: 1; }
+                10%, 90% { font-size: 14.4px; font-weight: 700; opacity: .82; }
+                20%, 80% { font-size: 12.8px; font-weight: 700; opacity: .64; }
+                30%, 70% { font-size: 11.2px; font-weight: 600; opacity: .46; }
+                40%, 60% { font-size: 9.6px; font-weight: 500; opacity: .28; }
+                50% { font-size: 8px; font-weight: 400; opacity: .12; }
+            }
+        }
+
+        /* Animation intentionally remains enabled because this is an explicitly
+           requested animated status label. No reduced-motion override. */
+
+        /* Remove the h1's default top margin so the notice-to-title gap
+           is controlled solely by the 10px margin above. */
+        .development-notices + h1, .development-notices + h2, .development-notices + .property-header-title { margin-top: 0; }
+
+
+</style>
+    <link rel="stylesheet" href="css/wa-buttons.css">
+</head>
+<body class="wa-raised-buttons">
+    <div class="container">
+        <!-- Section 1: Top -->
+        <div class="section-top">
+            <div class="development-notices" aria-label="Website development status">
+            <span>Under Construction</span>
+            <span>Development Stage</span>
+        </div>
+        <h1>Interest Earned Verification</h1>
+            <div class="buttons">
+                <a href="home.html"><button>Home</button></a>
+            </div>
+        </div>
+
+        <div class="app-description">Verify the interest credited on an annuity or similar account statement. Enter the contract information, beginning and ending values, additions, withdrawals and reported interest to check the statement's interest calculation.</div>
+
+        <div class="contract-actions" aria-label="Contract management">
+            <button id="btnAddContract" class="add-btn" type="button">ADD CONTRACT</button>
+            <button id="btnDeleteContract" class="delete-btn" type="button">DELETE CONTRACT</button>
+            <button id="btnEditContract" class="edit-btn" type="button">EDIT CONTRACT</button>
+            <button class="reset-btn" type="button" onclick="location.reload()">RESET</button>
+        </div>
+
+        <!-- Section 2: Contract Info -->
+        <div class="section-contract">
+            <h2>Select Contract</h2>
+            <select id="contractDropdown">
+                <option value="">Select a Contract</option>
+            </select>
+            <table id="contractTable">
+                <tbody>
+                    <tr><td colspan="2">This data is required to do the interest verification.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section 3: Statement Information -->
+        <div class="section-statement">
+            <h2>Statement Information</h2>
+            <table id="statementTable">
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-type="valueBeginning">
+                        <td>Value Beginning</td>
+                        <td><input type="date" required></td>
+                        <td><input type="text" required data-numeric></td>
+                        <td></td>
+                    </tr>
+                    <tr data-type="additions">
+                        <td>Additions</td>
+                        <td><input type="date"></td>
+                        <td><input type="text" value="0" data-numeric></td>
+                        <td><button class="action-btn" onclick="addStatementRow('additions')">ADD LINE</button></td>
+                    </tr>
+                    <tr data-type="withdrawals">
+                        <td>Withdrawals</td>
+                        <td><input type="date"></td>
+                        <td><input type="text" value="0" data-numeric></td>
+                        <td><button class="action-btn" onclick="addStatementRow('withdrawals')">ADD LINE</button></td>
+                    </tr>
+                    <tr data-type="interest">
+                        <td>Interest</td>
+                        <td></td>
+                        <td><input type="text" required data-numeric></td>
+                        <td></td>
+                    </tr>
+                    <tr data-type="valueEnding">
+                        <td>Value Ending</td>
+                        <td><input type="date" required></td>
+                        <td><input type="text" required data-numeric></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div style="text-align: center; margin-top: 10px;">
+                <p>Please click when finished inputting statement information.</p>
+                <button onclick="validateStatement()">DONE</button>
+                <div id="statementError" class="error"></div>
+                <div id="verifyButtonContainer" style="display: none; margin-top: 10px;">
+                    <p>Click to calculate and verify statement’s calculation of interest.</p>
+                    <button onclick="verifyInterestCalculation()">VERIFY INTEREST CALCULATION</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Interest Calculation and Comparison -->
+        <div class="section-verification" id="verificationSection">
+            <h2>Interest Verification Results</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th colspan="3">Interest Verification</th>
+                    </tr>
+                    <tr>
+                        <th>Statement</th>
+                        <th>Calculated</th>
+                        <th>Difference</th>
+                    </tr>
+                </thead>
+                <tbody id="comparisonTable">
+                    <tr>
+                        <td id="statementInterest">0.00</td>
+                        <td id="calculatedInterest">0.00</td>
+                        <td id="differenceInterest">0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Toggles -->
+            <div class="toggles">
+                <h2>Toggles</h2>
+                <label id="interestTypeLabel">Type of Interest:
+                    <select id="interestType">
+                        <option value="compound">Compound (default)</option>
+                        <option value="straight">Straight Line</option>
+                    </select>
+                </label>
+                <label id="compoundPeriodLabel">Compound Period:
+                    <select id="compoundPeriod">
+                        <option value="annually">Annually (default)</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="semi-annually">Semi-Annually</option>
+                    </select>
+                </label>
+                <label id="dayCountMethodLabel">Method:
+                    <select id="dayCountMethod">
+                        <option value="actual/365">actual/365 (default)</option>
+                        <option value="actual/360">actual/360</option>
+                        <option value="30/360">30/360</option>
+                    </select>
+                </label>
+                <label id="dayCountConventionLabel">Day Count Convention:
+                    <select id="dayCountConvention">
+                        <option value="includeFirstExcludeLast">Include First Day, Exclude Last Day (default)</option>
+                        <option value="excludeFirstIncludeLast">Exclude First Day, Include Last Day</option>
+                    </select>
+                </label>
+                <button onclick="resetToggles()">Reset Toggles</button>
+                <button onclick="verifyInterestCalculation()">Recalculate</button>
+            </div>
+
+            <!-- Interest Calculation Schedule -->
+            <h2>Interest Calculation Schedule</h2>
+            <table id="calculationTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Days</th>
+                        <th>Interest</th>
+                        <th>Additions</th>
+                        <th>Withdrawals</th>
+                        <th>Balance</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Modal for Adding New Contract Record -->
+        <div id="addModal" class="modal">
+            <div class="modal-content">
+                <span class="close">×</span>
+                <h2>ADD NEW CONTRACT RECORD</h2>
+                <form id="addInterestForm">
+                    <label>
+                        Company Name:
+                        <input type="text" id="addCompanyName" maxlength="50" required>
+                    </label>
+                    <label>
+                        Contract Number:
+                        <input type="text" id="addContractNumber" maxlength="20" required>
+                    </label>
+                    <label>
+                        Date Opened:
+                        <input type="date" id="addDateOpened" required>
+                    </label>
+                    <label>
+                        Rate (%):
+                        <input type="number" id="addRate" step="0.01" min="0" max="100" required>
+                    </label>
+                    <button type="submit">Save</button>
+                    <div id="addError" class="error"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal for Deleting an Existing Contract -->
+        <div id="deleteModal" class="modal">
+            <div class="modal-content">
+                <span class="close">×</span>
+                <h2>DELETE CONTRACT</h2>
+                <p>Select the contract to delete.</p>
+                <select id="deleteContractDropdown" class="contract-management-select">
+                    <option value="">Select a Contract</option>
+                </select>
+                <table id="deleteContractTable" class="contract-management-table">
+                    <tbody>
+                        <tr>
+                            <td colspan="2">Select a contract to display its information.</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="contract-management-actions">
+                    <button id="confirmDeleteContract" class="delete-btn" type="button" disabled>
+                        DELETE SELECTED CONTRACT
+                    </button>
+                </div>
+                <div id="deleteError" class="error"></div>
+            </div>
+        </div>
+
+        <!-- Modal for Editing an Existing Contract -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <span class="close">×</span>
+                <h2>EDIT CONTRACT</h2>
+                <p>Select the contract to edit.</p>
+                <select id="editContractDropdown" class="contract-management-select">
+                    <option value="">Select a Contract</option>
+                </select>
+                <table id="editContractTable" class="contract-management-table">
+                    <tbody>
+                        <tr>
+                            <td colspan="2">Select a contract to display its information.</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <form id="editInterestForm" style="display: none;">
+                    <label>
+                        Company Name:
+                        <input type="text" id="editCompanyName" maxlength="50" required>
+                    </label>
+                    <label>
+                        Contract Number:
+                        <input type="text" id="editContractNumber" maxlength="20" required>
+                    </label>
+                    <label>
+                        Date Opened:
+                        <input type="date" id="editDateOpened" required>
+                    </label>
+                    <label>
+                        Rate (%):
+                        <input type="number" id="editRate" step="0.01" min="0" max="100" required>
+                    </label>
+                    <label>
+                        Notes:
+                        <textarea id="editNotes" maxlength="2000"></textarea>
+                    </label>
+                    <div class="contract-management-actions">
+                        <button class="save-btn" type="submit">SAVE CHANGES</button>
+                    </div>
+                    <div id="editError" class="error"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal for Principal Input -->
+        <div id="principalModal" class="modal">
+            <div class="modal-content">
+                <span class="close">×</span>
+                <h2>Simple Interest Principal Input</h2>
+                <p>In order to calculate simple interest please provide the following information:</p>
+                <div class="modal-table-container">
+                    <table id="principalTable">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Statement</th>
+                                <th>Principal Portion</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button id="principalOk">OK</button>
+                    <button id="principalClear">CLEAR</button>
+                    <div id="principalError" class="error"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td>Copyright © 2026 Wonderful Apps Company - All Rights Reserved</td>
+            <td style="text-align: center; border: 1px solid black;">Designed by MPG Jr</td>
+        </tr>
+    </table>
+</footer>
+    
+    <script>
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[ch]);
+        }
+
+        if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+        const BASE_URL = window.location.hostname === 'localhost' && window.location.port !== '8080' ? 'http://localhost:8080' : window.location.origin;
+        // Global variables
+        let simpleInterestPrincipals = {
+            beginning: null,
+            additions: [],
+            withdrawals: []
+        };
+        let previousStatementDates = { beginning: null, ending: null };
+        let justSubmittedPrincipal = false;
+
+        // Utility function to format numbers with commas and 2 decimals
+        function formatNumber(num) {
+            return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Parse formatted number string to raw float
+        function parseFormattedNumber(str) {
+            return parseFloat(str.replace(/,/g, '')) || 0;
+        }
+
+        // Make authenticated requests
+        function makeAuthenticatedRequest(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error('Please log in to perform this action');
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+            return fetch(url, options)
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            localStorage.removeItem('token');
+                            throw new Error('Unauthorized - please log in again');
+                        }
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.error || 'Request failed');
+                        });
+                    }
+                    if (response.status === 204) return { success: true };
+                    return response.json();
+                });
+        }
+
+        // Log actions
+        function logAction(action) {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            const page = `InterestEarned.html - ${action}`;
+            makeAuthenticatedRequest(`${BASE_URL}/track/log/page`, {
+                method: 'POST',
+                body: JSON.stringify({ page })
+            })
+            .catch(error => console.error(`Error logging action ${action}:`, error.message));
+        }
+
+        // Current contract records are cached for the management dropdowns.
+        let contractRecords = [];
+
+        function formatContractDate(value) {
+            if (!value) return '';
+            return String(value).split('T')[0];
+        }
+
+        function populateOneContractDropdown(dropdown, placeholder, selectedId = '') {
+            dropdown.textContent = '';
+
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = placeholder;
+            dropdown.appendChild(placeholderOption);
+
+            contractRecords.forEach(record => {
+                const option = document.createElement('option');
+                option.value = record.UserIntErndID;
+                option.textContent = `${record.CompanyName || ''} - ${record.ContractNumber || ''}`;
+                dropdown.appendChild(option);
+            });
+
+            if (selectedId) {
+                dropdown.value = String(selectedId);
+            }
+        }
+
+        function populateContractDropdown(selectedId = '') {
+            const dropdown = document.getElementById('contractDropdown');
+
+            return makeAuthenticatedRequest(`${BASE_URL}/interestEarned`)
+                .then(records => {
+                    contractRecords = [...records].sort((a, b) =>
+                        (`${a.CompanyName} - ${a.ContractNumber}`)
+                            .localeCompare(`${b.CompanyName} - ${b.ContractNumber}`)
+                    );
+
+                    populateOneContractDropdown(dropdown, 'Select a Contract', selectedId);
+                    populateOneContractDropdown(
+                        document.getElementById('deleteContractDropdown'),
+                        'Select a Contract'
+                    );
+                    populateOneContractDropdown(
+                        document.getElementById('editContractDropdown'),
+                        'Select a Contract'
+                    );
+                })
+                .catch(error => {
+                    dropdown.textContent = '';
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Error loading contracts';
+                    dropdown.appendChild(option);
+                    throw error;
+                });
+        }
+
+        function renderContractDetails(tableBody, record, emptyMessage = 'Select a contract to display its information.') {
+            tableBody.textContent = '';
+
+            if (!record) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 2;
+                cell.textContent = emptyMessage;
+                row.appendChild(cell);
+                tableBody.appendChild(row);
+                return;
+            }
+
+            const details = [
+                ['Company Name', record.CompanyName || ''],
+                ['Contract Number', record.ContractNumber || ''],
+                ['Date Opened', formatContractDate(record.DateOpened)],
+                ['Rate (%)', formatNumber(record.Rate)],
+                ['Notes', record.Notes || 'N/A']
+            ];
+
+            details.forEach(([label, value]) => {
+                const row = document.createElement('tr');
+                const labelCell = document.createElement('td');
+                const valueCell = document.createElement('td');
+                labelCell.textContent = label;
+                valueCell.textContent = value;
+                row.appendChild(labelCell);
+                row.appendChild(valueCell);
+                tableBody.appendChild(row);
+            });
+        }
+
+        function fetchContract(userIntErndId) {
+            return makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${userIntErndId}`);
+        }
+
+        // Display selected contract details
+        function displayContractDetails() {
+            const dropdown = document.getElementById('contractDropdown');
+            const tableBody = document.querySelector('#contractTable tbody');
+            const userIntErndId = dropdown.value;
+
+            if (!userIntErndId) {
+                renderContractDetails(
+                    tableBody,
+                    null,
+                    'This data is required to do the interest verification.'
+                );
+                return;
+            }
+
+            fetchContract(userIntErndId)
+                .then(record => {
+                    renderContractDetails(tableBody, record);
+                })
+                .catch(error => {
+                    renderContractDetails(tableBody, null, error.message);
+                });
+        }
+
+        // Add a new statement row
+        function addStatementRow(type) {
+            const tableBody = document.querySelector('#statementTable tbody');
+            const referenceRow = document.querySelector(`#statementTable tr[data-type="${type}"]`);
+            const newRow = document.createElement('tr');
+            newRow.setAttribute('data-type', `${type}-additional`);
+            newRow.innerHTML = `
+                <td>${type.charAt(0).toUpperCase() + type.slice(1)}</td>
+                <td><input type="date"></td>
+                <td><input type="text" value="0" data-numeric></td>
+                <td><button class="action-btn" onclick="removeStatementRow(this)">Remove</button></td>
+            `;
+            referenceRow.parentNode.insertBefore(newRow, referenceRow.nextSibling);
+            attachAmountFormatting(newRow.querySelector('input[data-numeric]'));
+        }
+
+        // Remove a statement row
+        function removeStatementRow(button) {
+            button.parentNode.parentNode.remove();
+        }
+
+        // Format amount inputs
+        function attachAmountFormatting(input) {
+            input.value = formatNumber(parseFormattedNumber(input.value));
+            input.addEventListener('focus', function() {
+                const rawValue = parseFormattedNumber(this.value);
+                this.value = rawValue.toString();
+            });
+            input.addEventListener('blur', function() {
+                const rawValue = parseFormattedNumber(this.value);
+                if (!isNaN(rawValue)) {
+                    this.value = formatNumber(rawValue);
+                } else {
+                    this.value = formatNumber(0);
+                }
+            });
+            input.addEventListener('keypress', function(e) {
+                const char = String.fromCharCode(e.keyCode || e.which);
+                if (!/[0-9.]/.test(char) || (char === '.' && this.value.includes('.'))) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // Validate statement information (modified for date range validation)
+        function validateStatement() {
+            const errorDiv = document.getElementById('statementError');
+            const verifyButtonContainer = document.getElementById('verifyButtonContainer');
+            errorDiv.textContent = '';
+
+            // Check required dates
+            const requiredDateRows = document.querySelectorAll('#statementTable tr[data-type="valueBeginning"], #statementTable tr[data-type="valueEnding"]');
+            for (let row of requiredDateRows) {
+                const dateInput = row.querySelector('input[type="date"]');
+                if (!dateInput || !dateInput.value) {
+                    errorDiv.textContent = 'Dates for Value Beginning and Value Ending are required.';
+                    verifyButtonContainer.style.display = 'none';
+                    return;
+                }
+            }
+
+            // Get Value Beginning and Value Ending dates
+            const valueBeginningDate = new Date(document.querySelector('#statementTable tr[data-type="valueBeginning"] input[type="date"]').value);
+            const valueEndingDate = new Date(document.querySelector('#statementTable tr[data-type="valueEnding"] input[type="date"]').value);
+
+            // Validate Value Ending >= Value Beginning
+            if (valueEndingDate < valueBeginningDate) {
+                errorDiv.textContent = 'Value Ending date must be on or after Value Beginning date.';
+                verifyButtonContainer.style.display = 'none';
+                return;
+            }
+
+            // Validate transaction dates
+            const transactionRows = document.querySelectorAll('#statementTable tr[data-type="additions"], #statementTable tr[data-type="withdrawals"], #statementTable tr[data-type^="additions-additional"], #statementTable tr[data-type^="withdrawals-additional"]');
+            for (let row of transactionRows) {
+                const dateInput = row.querySelector('input[type="date"]');
+                const amountInput = row.querySelector('input[data-numeric]');
+                const amount = parseFormattedNumber(amountInput.value);
+                if (amount !== 0) {
+                    if (!dateInput || !dateInput.value) {
+                        errorDiv.textContent = 'Dates are required for Additions and Withdrawals when the amount is non-zero.';
+                        verifyButtonContainer.style.display = 'none';
+                        return;
+                    }
+                    const txDate = new Date(dateInput.value);
+                    if (txDate < valueBeginningDate || txDate > valueEndingDate) {
+                        errorDiv.textContent = 'Additions and Withdrawals dates must be between Value Beginning and Value Ending dates.';
+                        verifyButtonContainer.style.display = 'none';
+                        return;
+                    }
+                }
+            }
+
+            // Validate amounts
+            const amountInputs = document.querySelectorAll('#statementTable input[data-numeric]');
+            for (let input of amountInputs) {
+                const amount = parseFormattedNumber(input.value);
+                if (isNaN(amount) || amount < 0) {
+                    errorDiv.textContent = 'All amounts must be provided and non-negative.';
+                    verifyButtonContainer.style.display = 'none';
+                    return;
+                }
+            }
+
+            let valueBeginning = 0;
+            let totalAdditions = 0;
+            let totalWithdrawals = 0;
+            let interest = 0;
+            let valueEnding = 0;
+
+            document.querySelectorAll('#statementTable tr').forEach(row => {
+                const type = row.getAttribute('data-type');
+                const amountInput = row.querySelector('input[data-numeric]');
+                if (!amountInput) return;
+                const amount = parseFormattedNumber(amountInput.value);
+                if (type === 'valueBeginning') valueBeginning = amount;
+                else if (type === 'additions' || type.startsWith('additions-additional')) totalAdditions += amount;
+                else if (type === 'withdrawals' || type.startsWith('withdrawals-additional')) totalWithdrawals += amount;
+                else if (type === 'interest') interest = amount;
+                else if (type === 'valueEnding') valueEnding = amount;
+            });
+
+            const calculatedEnding = Number((valueBeginning + totalAdditions - totalWithdrawals + interest).toFixed(2));
+            const tolerance = 0.01;
+            if (Math.abs(calculatedEnding - valueEnding) > tolerance) {
+                errorDiv.textContent = 'Input is not adding correctly: Value Beginning + Additions – Withdrawals + Interest = Value Ending. Please correct.';
+                verifyButtonContainer.style.display = 'none';
+            } else {
+                errorDiv.textContent = '';
+                verifyButtonContainer.style.display = 'block';
+                logAction('Validate Statement');
+                const beginningDate = document.querySelector('#statementTable tr[data-type="valueBeginning"] input[type="date"]').value;
+                const endingDate = document.querySelector('#statementTable tr[data-type="valueEnding"] input[type="date"]').value;
+                if (beginningDate !== previousStatementDates.beginning || endingDate !== previousStatementDates.ending) {
+                    simpleInterestPrincipals = { beginning: null, additions: [], withdrawals: [] };
+                    previousStatementDates = { beginning: beginningDate, ending: endingDate };
+                }
+            }
+        }
+
+        // Calculate days between dates
+        function calculateDays(fromDate, toDate, method, convention) {
+            const from = new Date(fromDate);
+            const to = new Date(toDate);
+            let includeFirst = convention === 'includeFirstExcludeLast';
+            let days;
+
+            if (method === 'actual/360' || method === 'actual/365') {
+                const yearDays = method === 'actual/360' ? 360 : 365;
+                let adjustedFrom = new Date(from);
+                let adjustedTo = new Date(to);
+                if (!includeFirst) adjustedFrom.setDate(adjustedFrom.getDate() + 1);
+                if (includeFirst) adjustedTo.setDate(adjustedTo.getDate() - 1);
+                days = Math.round((adjustedTo - adjustedFrom) / (1000 * 60 * 60 * 24));
+                if (includeFirst) days += 1;
+            } else {
+                let fromDay = Math.min(from.getDate(), 30);
+                let toDay = Math.min(to.getDate(), 30);
+                if (fromDay === 31) fromDay = 30;
+                if (toDay === 31 && fromDay === 30) toDay = 30;
+                let years = to.getFullYear() - from.getFullYear();
+                let months = to.getMonth() - from.getMonth();
+                let daysDiff = toDay - fromDay;
+
+                if (daysDiff < 0) {
+                    months -= 1;
+                    daysDiff += 30;
+                }
+                if (months < 0) {
+                    years -= 1;
+                    months += 12;
+                }
+                days = years * 360 + months * 30 + daysDiff;
+                if (!includeFirst) days -= 1;
+            }
+            return Math.max(0, days);
+        }
+
+        // Calculate interest for a period
+        function calculatePeriodInterest(principal, rate, days, yearDays, interestType, compoundPeriod) {
+            const annualRate = rate / 100;
+            let interest = 0;
+            if (interestType === 'straight') {
+                interest = principal * annualRate * (days / yearDays);
+            } else {
+                let n;
+                switch (compoundPeriod) {
+                    case 'daily': n = 365; break;
+                    case 'weekly': n = 52; break;
+                    case 'monthly': n = 12; break;
+                    case 'quarterly': n = 4; break;
+                    case 'semi-annually': n = 2; break;
+                    case 'annually': n = 1; break;
+                    default: n = 1;
+                }
+                const t = days / yearDays;
+                interest = principal * (Math.pow(1 + annualRate / n, n * t) - 1);
+            }
+            return interest;
+        }
+
+        // Reset toggles to defaults and recalculate
+        function resetToggles() {
+            document.getElementById('interestType').value = 'compound';
+            document.getElementById('compoundPeriod').value = 'annually';
+            document.getElementById('dayCountMethod').value = 'actual/365';
+            document.getElementById('dayCountConvention').value = 'includeFirstExcludeLast';
+            updateToggleLabels();
+            justSubmittedPrincipal = false;
+            verifyInterestCalculation();
+        }
+
+        // Update toggle label background colors
+        function updateToggleLabels() {
+            const defaults = {
+                interestType: 'compound',
+                compoundPeriod: 'annually',
+                dayCountMethod: 'actual/365',
+                dayCountConvention: 'includeFirstExcludeLast'
+            };
+            ['interestType', 'compoundPeriod', 'dayCountMethod', 'dayCountConvention'].forEach(id => {
+                const select = document.getElementById(id);
+                const label = document.getElementById(`${id}Label`);
+                if (select.value === defaults[id]) {
+                    label.classList.remove('changed');
+                } else {
+                    label.classList.add('changed');
+                }
+            });
+        }
+
+        // Show principal modal
+        function showPrincipalModal(transactions) {
+            const modal = document.getElementById('principalModal');
+            const tableBody = document.querySelector('#principalTable tbody');
+            const errorDiv = document.getElementById('principalError');
+            tableBody.innerHTML = '';
+            errorDiv.textContent = '';
+
+            transactions.forEach((tx, index) => {
+                if (tx.type === 'valueBeginning' || tx.type === 'addition' || tx.type === 'withdrawal') {
+                    const row = document.createElement('tr');
+                    const label = tx.type === 'valueBeginning' ? 'Beginning Balance' : 
+                                  tx.type === 'addition' ? 'Addition' : 'Withdrawal';
+                    row.innerHTML = `
+                        <td>${label} (${tx.date})</td>
+                        <td>${formatNumber(tx.amount)}</td>
+                        <td><input type="text" data-numeric data-index="${index}" value=""></td>
+                    `;
+                    tableBody.appendChild(row);
+                    attachAmountFormatting(row.querySelector('input[data-numeric]'));
+                }
+            });
+
+            modal.style.display = 'block';
+        }
+
+        // Verify interest calculation
+        function verifyInterestCalculation() {
+            const verificationSection = document.getElementById('verificationSection');
+            verificationSection.style.display = 'block';
+
+            const dropdown = document.getElementById('contractDropdown');
+            const userIntErndId = dropdown.value;
+            if (!userIntErndId) {
+                alert('Please select a contract to proceed with verification.');
+                return;
+            }
+
+            const interestType = document.getElementById('interestType').value;
+
+            if (interestType === 'straight' && !justSubmittedPrincipal) {
+                if (confirm('Straight Line requires fresh principal input. Resetting toggles—proceed?')) {
+                    resetToggles();
+                    document.getElementById('interestType').value = 'compound';
+                } else {
+                    return;
+                }
+            }
+
+            justSubmittedPrincipal = false;
+
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${userIntErndId}`)
+                .then(record => {
+                    const interestType = document.getElementById('interestType').value;
+                    const compoundPeriod = document.getElementById('compoundPeriod').value;
+                    const dayCountMethod = document.getElementById('dayCountMethod').value;
+                    const dayCountConvention = document.getElementById('dayCountConvention').value;
+
+                    const transactions = [];
+                    document.querySelectorAll('#statementTable tr').forEach(row => {
+                        const type = row.getAttribute('data-type');
+                        const dateInput = row.querySelector('input[type="date"]');
+                        const amountInput = row.querySelector('input[data-numeric]');
+                        if (!amountInput) return;
+                        const date = dateInput ? dateInput.value : null;
+                        const amount = parseFormattedNumber(amountInput.value);
+
+                        if (type === 'valueBeginning') {
+                            transactions.push({ type: 'valueBeginning', date, amount });
+                        } else if (type === 'additions' || type.startsWith('additions-additional')) {
+                            if (amount !== 0) transactions.push({ type: 'addition', date, amount });
+                        } else if (type === 'withdrawals' || type.startsWith('withdrawals-additional')) {
+                            if (amount !== 0) transactions.push({ type: 'withdrawal', date, amount });
+                        } else if (type === 'interest') {
+                            document.getElementById('statementInterest').textContent = formatNumber(amount);
+                        } else if (type === 'valueEnding') {
+                            transactions.push({ type: 'valueEnding', date, amount });
+                        }
+                    });
+
+                    transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    if (interestType === 'straight' && !simpleInterestPrincipals.beginning) {
+                        showPrincipalModal(transactions);
+                        return;
+                    }
+
+                    const tableBody = document.querySelector('#calculationTable tbody');
+                    tableBody.innerHTML = '';
+
+                    let currentBalance = transactions[0].amount;
+                    let currentPrincipal = interestType === 'straight' ? simpleInterestPrincipals.beginning : currentBalance;
+                    let totalDays = 0;
+                    let totalInterest = 0;
+                    let totalAdditions = 0;
+                    let totalWithdrawals = 0;
+                    const yearDays = dayCountMethod === 'actual/360' ? 360 : 365;
+
+                    const firstRow = document.createElement('tr');
+                    firstRow.innerHTML = `
+                        <td>${transactions[0].date}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>${formatNumber(currentBalance)}</td>
+                    `;
+                    tableBody.appendChild(firstRow);
+
+                    const statementStartDate = transactions[0].date;
+                    const statementEndDate = transactions[transactions.length - 1].date;
+                    const groupedTransactions = [];
+                    let currentGroup = { date: null, additions: 0, withdrawals: 0 };
+
+                    transactions.forEach((tx, index) => {
+                        if (tx.type === 'valueBeginning' || tx.type === 'valueEnding') return;
+                        if (!currentGroup.date || tx.date === currentGroup.date) {
+                            currentGroup.date = tx.date;
+                            if (tx.type === 'addition') currentGroup.additions += tx.amount;
+                            if (tx.type === 'withdrawal') currentGroup.withdrawals += tx.amount;
+                        } else {
+                            groupedTransactions.push({ ...currentGroup });
+                            currentGroup = { date: tx.date, additions: 0, withdrawals: 0 };
+                            if (tx.type === 'addition') currentGroup.additions += tx.amount;
+                            if (tx.type === 'withdrawal') currentGroup.withdrawals += tx.amount;
+                        }
+                    });
+                    if (currentGroup.date) groupedTransactions.push({ ...currentGroup });
+
+                    let currentDate = new Date(transactions[0].date);
+
+                    if (groupedTransactions.length === 0) {
+                        const days = calculateDays(statementStartDate, statementEndDate, dayCountMethod, dayCountConvention);
+                        const interest = calculatePeriodInterest(currentPrincipal, record.Rate, days, yearDays, interestType, compoundPeriod);
+
+                        totalDays += days;
+                        totalInterest += interest;
+
+                        const txRow = document.createElement('tr');
+                        txRow.innerHTML = `
+                            <td>${statementEndDate}</td>
+                            <td>${statementStartDate}</td>
+                            <td>${statementEndDate}</td>
+                            <td>${days}</td>
+                            <td>${formatNumber(interest)}</td>
+                            <td></td>
+                            <td></td>
+                            <td>${formatNumber(currentBalance + interest)}</td>
+                        `;
+                        tableBody.appendChild(txRow);
+
+                        currentBalance += interest;
+                        if (interestType !== 'straight') currentPrincipal = currentBalance;
+                    } else {
+                        for (let i = 0; i < groupedTransactions.length; i++) {
+                            const tx = groupedTransactions[i];
+                            const nextDate = tx.date;
+
+                            const days = calculateDays(currentDate, nextDate, dayCountMethod, dayCountConvention);
+                            const interest = calculatePeriodInterest(currentPrincipal, record.Rate, days, yearDays, interestType, compoundPeriod);
+
+                            totalDays += days;
+                            totalInterest += interest;
+                            totalAdditions += tx.additions;
+                            totalWithdrawals += tx.withdrawals;
+
+                            const balanceAfterInterest = currentBalance + interest;
+                            const newBalance = balanceAfterInterest + tx.additions - tx.withdrawals;
+
+                            if (interestType === 'straight') {
+                                simpleInterestPrincipals.additions
+                                    .filter(add => add.date === nextDate)
+                                    .forEach(add => currentPrincipal += add.amount);
+                                simpleInterestPrincipals.withdrawals
+                                    .filter(wd => wd.date === nextDate)
+                                    .forEach(wd => currentPrincipal -= wd.amount);
+                                if (currentPrincipal < 0) {
+                                    tableBody.innerHTML = '';
+                                    showPrincipalModal(transactions);
+                                    document.getElementById('principalError').textContent = 'Principal cannot be negative. Please adjust principal portions.';
+                                    return;
+                                }
+                            } else {
+                                currentPrincipal = newBalance;
+                            }
+
+                            const txRow = document.createElement('tr');
+                            txRow.innerHTML = `
+                                <td>${tx.date}</td>
+                                <td>${currentDate.toISOString().split('T')[0]}</td>
+                                <td>${nextDate}</td>
+                                <td>${days}</td>
+                                <td>${formatNumber(interest)}</td>
+                                <td>${tx.additions > 0 ? formatNumber(tx.additions) : ''}</td>
+                                <td>${tx.withdrawals > 0 ? formatNumber(tx.withdrawals) : ''}</td>
+                                <td>${formatNumber(newBalance)}</td>
+                            `;
+                            tableBody.appendChild(txRow);
+
+                            currentBalance = newBalance;
+                            currentDate = new Date(nextDate);
+                        }
+
+                        const daysToEnd = calculateDays(currentDate, statementEndDate, dayCountMethod, dayCountConvention);
+                        if (daysToEnd > 0) {
+                            const finalInterest = calculatePeriodInterest(currentPrincipal, record.Rate, daysToEnd, yearDays, interestType, compoundPeriod);
+                            totalDays += daysToEnd;
+                            totalInterest += finalInterest;
+
+                            const finalBalance = currentBalance + finalInterest;
+
+                            const finalRow = document.createElement('tr');
+                            finalRow.innerHTML = `
+                                <td>${statementEndDate}</td>
+                                <td>${currentDate.toISOString().split('T')[0]}</td>
+                                <td>${statementEndDate}</td>
+                                <td>${daysToEnd}</td>
+                                <td>${formatNumber(finalInterest)}</td>
+                                <td></td>
+                                <td></td>
+                                <td>${formatNumber(finalBalance)}</td>
+                            `;
+                            tableBody.appendChild(finalRow);
+
+                            currentBalance = finalBalance;
+                            if (interestType !== 'straight') currentPrincipal = currentBalance;
+                        }
+                    }
+
+                    const totalsRow = document.createElement('tr');
+                    totalsRow.innerHTML = `
+                        <td><strong>TOTAL</strong></td>
+                        <td>${statementStartDate}</td>
+                        <td>${statementEndDate}</td>
+                        <td>${totalDays}</td>
+                        <td>${formatNumber(totalInterest)}</td>
+                        <td>${formatNumber(totalAdditions)}</td>
+                        <td>${formatNumber(totalWithdrawals)}</td>
+                        <td></td>
+                    `;
+                    tableBody.appendChild(totalsRow);
+
+                    const statementInterest = parseFloat(document.getElementById('statementInterest').textContent.replace(/,/g, ''));
+                    document.getElementById('calculatedInterest').textContent = formatNumber(totalInterest);
+                    document.getElementById('differenceInterest').textContent = formatNumber(statementInterest - totalInterest);
+
+                    logAction('Verify Interest');
+                })
+                .catch(error => {
+                    alert(`Error calculating interest: ${error.message}`);
+                });
+        }
+
+        // Contract-management modal handling
+        const addModal = document.getElementById('addModal');
+        const deleteModal = document.getElementById('deleteModal');
+        const editModal = document.getElementById('editModal');
+
+        const btnAddContract = document.getElementById('btnAddContract');
+        const btnDeleteContract = document.getElementById('btnDeleteContract');
+        const btnEditContract = document.getElementById('btnEditContract');
+
+        const spanCloseAdd = addModal.querySelector('.close');
+        const spanCloseDelete = deleteModal.querySelector('.close');
+        const spanCloseEdit = editModal.querySelector('.close');
+
+        function resetDeleteModal() {
+            const dropdown = document.getElementById('deleteContractDropdown');
+            dropdown.value = '';
+            renderContractDetails(
+                document.querySelector('#deleteContractTable tbody'),
+                null
+            );
+            document.getElementById('confirmDeleteContract').disabled = true;
+            document.getElementById('deleteError').textContent = '';
+        }
+
+        function resetEditModal() {
+            const dropdown = document.getElementById('editContractDropdown');
+            dropdown.value = '';
+            renderContractDetails(
+                document.querySelector('#editContractTable tbody'),
+                null
+            );
+            document.getElementById('editInterestForm').reset();
+            document.getElementById('editInterestForm').style.display = 'none';
+            document.getElementById('editError').textContent = '';
+        }
+
+        btnAddContract.onclick = function() {
+            addModal.style.display = 'block';
+            document.getElementById('addInterestForm').reset();
+            document.getElementById('addError').textContent = '';
+        };
+
+        btnDeleteContract.onclick = function() {
+            populateContractDropdown()
+                .then(() => {
+                    resetDeleteModal();
+                    deleteModal.style.display = 'block';
+                })
+                .catch(error => {
+                    alert(`Unable to load contracts: ${error.message}`);
+                });
+        };
+
+        btnEditContract.onclick = function() {
+            populateContractDropdown()
+                .then(() => {
+                    resetEditModal();
+                    editModal.style.display = 'block';
+                })
+                .catch(error => {
+                    alert(`Unable to load contracts: ${error.message}`);
+                });
+        };
+
+        spanCloseAdd.onclick = function() {
+            addModal.style.display = 'none';
+        };
+
+        spanCloseDelete.onclick = function() {
+            deleteModal.style.display = 'none';
+        };
+
+        spanCloseEdit.onclick = function() {
+            editModal.style.display = 'none';
+        };
+
+        window.addEventListener('click', event => {
+            [addModal, deleteModal, editModal, principalModal].forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+
+        document.getElementById('deleteContractDropdown').addEventListener('change', function() {
+            const id = this.value;
+            const tableBody = document.querySelector('#deleteContractTable tbody');
+            const deleteButton = document.getElementById('confirmDeleteContract');
+            const errorDiv = document.getElementById('deleteError');
+
+            errorDiv.textContent = '';
+            deleteButton.disabled = true;
+
+            if (!id) {
+                renderContractDetails(tableBody, null);
+                return;
+            }
+
+            fetchContract(id)
+                .then(record => {
+                    renderContractDetails(tableBody, record);
+                    deleteButton.disabled = false;
+                })
+                .catch(error => {
+                    renderContractDetails(tableBody, null, error.message);
+                });
+        });
+
+        document.getElementById('confirmDeleteContract').addEventListener('click', function() {
+            const id = document.getElementById('deleteContractDropdown').value;
+            const errorDiv = document.getElementById('deleteError');
+
+            if (!id) return;
+
+            const record = contractRecords.find(item =>
+                String(item.UserIntErndID) === String(id)
+            );
+            const contractLabel = record
+                ? `${record.CompanyName} - ${record.ContractNumber}`
+                : 'this contract';
+
+            if (!confirm(`Delete ${contractLabel}? This action cannot be undone.`)) {
+                return;
+            }
+
+            this.disabled = true;
+            errorDiv.textContent = '';
+
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${id}`, {
+                method: 'DELETE'
+            })
+                .then(() => {
+                    deleteModal.style.display = 'none';
+                    const mainDropdown = document.getElementById('contractDropdown');
+                    const wasSelected = String(mainDropdown.value) === String(id);
+
+                    return populateContractDropdown().then(() => {
+                        if (wasSelected) {
+                            renderContractDetails(
+                                document.querySelector('#contractTable tbody'),
+                                null,
+                                'This data is required to do the interest verification.'
+                            );
+                        }
+                        alert('Contract deleted successfully');
+                        logAction('Delete Contract');
+                    });
+                })
+                .catch(error => {
+                    errorDiv.textContent = error.message;
+                    this.disabled = false;
+                });
+        });
+
+        document.getElementById('editContractDropdown').addEventListener('change', function() {
+            const id = this.value;
+            const tableBody = document.querySelector('#editContractTable tbody');
+            const editForm = document.getElementById('editInterestForm');
+            const errorDiv = document.getElementById('editError');
+
+            errorDiv.textContent = '';
+            editForm.style.display = 'none';
+
+            if (!id) {
+                renderContractDetails(tableBody, null);
+                editForm.reset();
+                return;
+            }
+
+            fetchContract(id)
+                .then(record => {
+                    renderContractDetails(tableBody, record);
+                    document.getElementById('editCompanyName').value = record.CompanyName || '';
+                    document.getElementById('editContractNumber').value = record.ContractNumber || '';
+                    document.getElementById('editDateOpened').value = formatContractDate(record.DateOpened);
+                    document.getElementById('editRate').value = record.Rate ?? '';
+                    document.getElementById('editNotes').value = record.Notes || '';
+                    editForm.style.display = 'flex';
+                })
+                .catch(error => {
+                    renderContractDetails(tableBody, null, error.message);
+                });
+        });
+
+        document.getElementById('editInterestForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('editContractDropdown').value;
+            const companyName = document.getElementById('editCompanyName').value.trim();
+            const contractNumber = document.getElementById('editContractNumber').value.trim();
+            const dateOpened = document.getElementById('editDateOpened').value;
+            const rate = document.getElementById('editRate').value;
+            const notes = document.getElementById('editNotes').value.trim();
+            const errorDiv = document.getElementById('editError');
+
+            errorDiv.textContent = '';
+
+            if (!id) {
+                errorDiv.textContent = 'Please select a contract.';
+                return;
+            }
+            if (!companyName) {
+                errorDiv.textContent = 'Company name cannot be empty.';
+                return;
+            }
+            if (!contractNumber) {
+                errorDiv.textContent = 'Contract number cannot be empty.';
+                return;
+            }
+            if (!dateOpened) {
+                errorDiv.textContent = 'Date opened cannot be empty.';
+                return;
+            }
+            if (!rate || Number(rate) < 0 || Number(rate) > 100) {
+                errorDiv.textContent = 'Rate must be between 0 and 100.';
+                return;
+            }
+
+            const data = {
+                CompanyName: companyName,
+                ContractNumber: contractNumber,
+                DateOpened: dateOpened,
+                Rate: parseFloat(rate),
+                Notes: notes || null
+            };
+
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            })
+                .then(() => {
+                    editModal.style.display = 'none';
+                    return populateContractDropdown(id).then(() => {
+                        displayContractDetails();
+                        alert('Contract updated successfully');
+                        logAction('Edit Contract');
+                    });
+                })
+                .catch(error => {
+                    errorDiv.textContent = error.message;
+                });
+        });
+
+        // Principal modal handling (modified for new validation)
+        const principalModal = document.getElementById('principalModal');
+        const spanClosePrincipal = principalModal.querySelector('.close');
+        const btnPrincipalOk = document.getElementById('principalOk');
+        const btnPrincipalClear = document.getElementById('principalClear');
+
+        spanClosePrincipal.onclick = function() {
+            principalModal.style.display = 'none';
+        };
+
+        btnPrincipalClear.onclick = function() {
+            simpleInterestPrincipals = { beginning: null, additions: [], withdrawals: [] };
+            document.getElementById('interestType').value = 'compound';
+            updateToggleLabels();
+            principalModal.style.display = 'none';
+        };
+
+        btnPrincipalOk.onclick = function() {
+            const errorDiv = document.getElementById('principalError');
+            errorDiv.textContent = '';
+            const inputs = document.querySelectorAll('#principalTable input[data-numeric]');
+            const transactions = Array.from(document.querySelectorAll('#statementTable tr'))
+                .map(row => {
+                    const type = row.getAttribute('data-type');
+                    const dateInput = row.querySelector('input[type="date"]');
+                    const amountInput = row.querySelector('input[data-numeric]');
+                    if (!amountInput) return null;
+                    return {
+                        type: type === 'valueBeginning' ? 'valueBeginning' : 
+                              (type === 'additions' || type.startsWith('additions-additional')) ? 'addition' : 
+                              (type === 'withdrawals' || type.startsWith('withdrawals-additional')) ? 'withdrawal' : null,
+                        date: dateInput ? dateInput.value : null,
+                        amount: parseFormattedNumber(amountInput.value)
+                    };
+                })
+                .filter(tx => tx && (tx.type === 'valueBeginning' || tx.type === 'addition' || tx.type === 'withdrawal') && tx.amount !== 0);
+
+            simpleInterestPrincipals = { beginning: null, additions: [], withdrawals: [] };
+            let valid = true;
+            let hasPositivePrincipal = false;
+
+            inputs.forEach((input, idx) => {
+                const amount = parseFormattedNumber(input.value);
+                const tx = transactions[idx];
+                if (isNaN(amount) || amount < 0) {
+                    errorDiv.textContent = 'All principal portions must be non-negative.';
+                    valid = false;
+                } else if (amount > tx.amount) {
+                    errorDiv.textContent = 'Principal portions cannot exceed statement amounts.';
+                    valid = false;
+                } else {
+                    if (amount > 0) hasPositivePrincipal = true;
+                    if (tx.type === 'valueBeginning') {
+                        simpleInterestPrincipals.beginning = amount;
+                    } else if (tx.type === 'addition') {
+                        simpleInterestPrincipals.additions.push({ date: tx.date, amount });
+                    } else if (tx.type === 'withdrawal') {
+                        simpleInterestPrincipals.withdrawals.push({ date: tx.date, amount });
+                    }
+                }
+            });
+
+            if (valid && !hasPositivePrincipal) {
+                errorDiv.textContent = 'At least one Principal Portion must be greater than 0.';
+                valid = false;
+            }
+
+            if (valid) {
+                principalModal.style.display = 'none';
+                document.getElementById('interestType').value = 'straight';
+                document.getElementById('compoundPeriod').value = 'annually';
+                document.getElementById('dayCountMethod').value = 'actual/365';
+                updateToggleLabels();
+                justSubmittedPrincipal = true;
+                verifyInterestCalculation();
+            }
+        };
+
+        // Event listeners
+        document.getElementById('contractDropdown').addEventListener('change', () => {
+            displayContractDetails();
+            simpleInterestPrincipals = { beginning: null, additions: [], withdrawals: [] };
+        });
+        document.getElementById('interestType').addEventListener('change', (e) => {
+            updateToggleLabels();
+            if (e.target.value === 'straight') {
+                const transactions = Array.from(document.querySelectorAll('#statementTable tr'))
+                    .map(row => {
+                        const type = row.getAttribute('data-type');
+                        const dateInput = row.querySelector('input[type="date"]');
+                        const amountInput = row.querySelector('input[data-numeric]');
+                        if (!amountInput) return null;
+                        return {
+                            type: type === 'valueBeginning' ? 'valueBeginning' : 
+                                  (type === 'additions' || type.startsWith('additions-additional')) ? 'addition' : 
+                                  (type === 'withdrawals' || type.startsWith('withdrawals-additional')) ? 'withdrawal' : null,
+                            date: dateInput ? dateInput.value : null,
+                            amount: parseFormattedNumber(amountInput.value)
+                        };
+                    })
+                    .filter(tx => tx && (tx.type === 'valueBeginning' || tx.type === 'addition' || tx.type === 'withdrawal') && tx.amount !== 0);
+                if (transactions.length > 0) showPrincipalModal(transactions);
+            }
+        });
+        document.getElementById('compoundPeriod').addEventListener('change', updateToggleLabels);
+        document.getElementById('dayCountMethod').addEventListener('change', updateToggleLabels);
+        document.getElementById('dayCountConvention').addEventListener('change', updateToggleLabels);
+
+        document.getElementById('addInterestForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const companyName = document.getElementById('addCompanyName').value.trim();
+            const contractNumber = document.getElementById('addContractNumber').value.trim();
+            const dateOpened = document.getElementById('addDateOpened').value;
+            const rate = document.getElementById('addRate').value;
+            const errorMessage = document.getElementById('addError');
+
+            errorMessage.textContent = '';
+
+            if (!companyName) {
+                errorMessage.textContent = 'Company name cannot be empty.';
+                return;
+            }
+            if (!contractNumber) {
+                errorMessage.textContent = 'Contract number cannot be empty.';
+                return;
+            }
+            if (!dateOpened) {
+                errorMessage.textContent = 'Date opened cannot be empty.';
+                return;
+            }
+            if (!rate || rate < 0 || rate > 100) {
+                errorMessage.textContent = 'Rate must be between 0 and 100.';
+                return;
+            }
+
+            const data = {
+                CompanyName: companyName,
+                ContractNumber: contractNumber,
+                DateOpened: dateOpened,
+                Rate: parseFloat(rate)
+            };
+
+            makeAuthenticatedRequest(`${BASE_URL}/interestEarned`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                triggerConfetti();
+                addModal.style.display = 'none';
+                return populateContractDropdown(response.UserIntErndID).then(() => {
+                    displayContractDetails();
+                    alert('Contract added successfully');
+                    logAction('Add Contract');
+                });
+            })
+            .catch(error => {
+                errorMessage.textContent = error.message;
+            });
+        });
+
+        // Page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            populateContractDropdown();
+            updateToggleLabels();
+
+            document.querySelectorAll('#statementTable input[data-numeric]').forEach(input => {
+                attachAmountFormatting(input);
+            });
+
+        });
+    </script>
+    <script src="js/usageTracking.js?v=20260927-1"></script>
+</body>
+</html>

@@ -550,49 +550,10 @@
                 });
             });
 
-            // Track page view.
-            fetch(`${BASE_URL}/track/log/page`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ page: window.location.pathname })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => console.log('Page view tracked:', data.message || 'Success'))
-            .catch(error => console.error('Error tracking page view:', error.message));
-
-            // Track time spent on page.
-            const startTime = Date.now();
-
-            window.addEventListener('beforeunload', () => {
-                const duration = Math.floor((Date.now() - startTime) / 1000);
-
-                if (duration > 0) {
-                    fetch(`${BASE_URL}/track/log/time-spent`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            page: window.location.pathname,
-                            duration: duration,
-                            token: token
-                        })
-                    }).catch(error =>
-                        console.error('Error sending time spent:', error.message)
-                    );
-                }
-            });
         });
     </script>
     <script src="js/BudgetPrintDetails.js?v=20260926-1"></script>
+    <script src="js/waPlatform.js"></script>
+    <script src="js/usageTracking.js?v=20261108-1"></script>
 </body>
 </html>

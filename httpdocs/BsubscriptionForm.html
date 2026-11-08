@@ -76,4 +76,6 @@ async function previewRecurrence(useIt=false){clearFreqMsg();const r=readRecurre
 frequencyType.addEventListener('change',()=>{renderPatternControls();toggleRange();const v=DISALLOW_NO_END?'EndDate':'NoEnd';document.querySelectorAll('input[name=rangeType]').forEach(x=>x.checked=x.value===v)});frequencyClose.addEventListener('click',closeFrequencyModal);cancelFrequency.addEventListener('click',closeFrequencyModal);previewFrequency.addEventListener('click',()=>previewRecurrence(false));saveFrequency.addEventListener('click',()=>previewRecurrence(true));frequencyModal.addEventListener('click',e=>{if(e.target.id==='frequencyModal')closeFrequencyModal()});
 
 document.addEventListener('DOMContentLoaded',async()=>{if(!requireLogin())return;syncFrequencySummary();await loadRecords();const id=requestedId();if(id==='invalid')showMessage('The requested record ID is invalid.','error');else if(id)await editRecord(id,document.querySelector(`#recordsBody tr[data-id="${id}"]`))});
-</script></body></html>
+</script>    <script src="js/waPlatform.js"></script>
+    <script src="js/usageTracking.js?v=20261108-1"></script>
+</body></html>
