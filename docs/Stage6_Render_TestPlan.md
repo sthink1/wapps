@@ -1,8 +1,8 @@
 # Stage 6 Render Acceptance Test Plan — consolidated current edition
 
-**Consolidated version 2.2 — November 7, 2026; R14 bounded acceptance supplement prepared for manual installation.** This file is intended to replace `docs/Stage6_Render_TestPlan.md` and incorporate its dated October 31 append. The full prior formal plan and hosted H05–H50 ledger remain below as preserved evidence, not active deployment instructions.
+**Consolidated version 2.3 — November 9, 2026; R15 bounded acceptance supplement prepared for manual installation.** This file is intended to replace `docs/Stage6_Render_TestPlan.md` and incorporate its dated October 31 append. The full prior formal plan and hosted H05–H50 ledger remain below as preserved evidence, not active deployment instructions.
 
-**Approved staging reality:** `reviseLogIn`; November 7 user-reported Live commit `d4e5d1a` (superseding the November 3 hosted snapshot `f023cc3`); service `wapps-stage6-test`; `https://wapps-stage6-test.onrender.com`; HelioHost Morty2 `wapps_test`, user `wapps_test`; 16/16 environment tests passed. Older references saying staging does not exist, pointing exclusively at `sql5838929`, or reporting commit `09ece26` are historic snapshots.
+**Approved staging reality:** `reviseLogIn`; November 9 user-reported Live ETF tracking commit `2602795` (superseding November 8 tracking commit `6434509` and November 7 snapshot `d4e5d1a`; earlier `f023cc3`); service `wapps-stage6-test`; `https://wapps-stage6-test.onrender.com`; HelioHost Morty2 `wapps_test`, user `wapps_test`; 16/16 environment tests passed. Older references saying staging does not exist, pointing exclusively at `sql5838929`, or reporting commit `09ece26` are historic snapshots.
 
 **Read-only Google Drive rule:** Never modify the authoritative `My Drive/wonderfulApp` folder using the assistant. All downloaded replacement documents require local user review/installation. No Stage 6 change to production, `main`, or installed TNNA approved.
 
@@ -24,13 +24,64 @@
 | R12 | PASSED (bounded) | Group 5D + H27 two-tab refresh/logout. |
 | R13 | PASSED (bounded) | Controlled Web Locks 9D and waPlatform 19/19. |
 | R14 | PASSED (bounded) — Nov 7 | R14-01–R14-23 hosted expired/active subscription, centralized entitlement, protected GET/POST/PUT/DELETE, admin/non-admin, and corrected page-visibility checks. S6-009/018 remain In Progress; see R14 supplement below. |
-| R15 | PARTIAL | H08-H19 reads, H34/H35 controlled mutations; uploads/privacy and tracking edge paths incomplete. |
+| R15 | PASSED (bounded) — Nov 9 | R15-01–53C representative app reads/writes, privacy-header cases, upload lifecycle, Budget/Family Tree/Weigh In/ETF and other app tracking, hosted and local user-observed verification. Full S6-005/017/025 lifecycle/privacy/auth acceptance remains separately open; see Nov 9 supplement. |
 | R16 | PARTIAL | H21/H22 bounded logs, Group 5E cleanup; May 2027 cookie; five 401/403 responses lack no-store; source-wide log/caches open. |
 | R17 | OPEN | DuckDuckGo dedicated browser, Edge, Firefox not yet evidenced. |
 | R18 | PARTIAL | Nov 3 Group 5G real TNNA HTTP success; no native Android app tests. |
 | R19 | PARTIAL | Group 5B H109 real DB and Group 5G sequential TNNA replay 401; remaining stress/fairness/concurrent replay review. |
 | R20 | PARTIAL | Staging isolation guard and Morty2 startup verified; formal non-destructive reversal drill and production transition plan open. |
 
+
+## November 9, 2026 — R15 final bounded acceptance supplement (current disposition)
+
+**Formal decision: R15 PASSED (bounded).** This supersedes the earlier `R15 | PARTIAL` master-row classification **for R15 only**. The accepted scope is representative Family Tree/Networking, Budget and ETF authenticated browser operations; uploads, selected privacy-header paths, standard usage tracking across eight app categories, and three narrow page/session lifecycle checks. It is **not** acceptance of exhaustive application authorization, privacy, unsafe-request retries, all browser lifecycle transitions, token-expiry handling or release readiness.
+
+**Environment and evidence provenance:** Local `http://localhost:8080` using `.env.test` and separate Render staging `https://wapps-stage6-test.onrender.com`, both using isolated HelioHost Morty2 `wapps_test`; `reviseLogIn` branch. Accounts: administrator `sthink` (UserID 1) and nonadministrator `charter` (UserID 64), as specified per test. Browser work was primarily Chrome Incognito. Browser Network/Console screenshots and phpMyAdmin query outputs were supplied by the user; this is **user-observed acceptance evidence**, not an independently captured automated server audit. User reported staging commit `6434509` Live after broad tracker deployment (November 8) and `2602795` Live after six ETF HTML revisions (November 9). Both commits also included `_COPY` files per user statement; inspect and remove public-path backup/copy assets in a future **separately reviewed** cleanup before any production merge. Do not infer these commits reached `main` or production.
+
+### Representative application integration evidence (R15-01–R15-32)
+
+| Test range | Representative scenario | Observed evidence and scope |
+|---|---|---|
+| R15-01–05 | Family Tree entry, navigation and privacy/page-token boundary | Selected valid navigation and missing `X-FT-Page-Token` rejection/guard were exercised. **Not** an audit of every `FTPrivacy.js`, public contact verification, networking privacy or token propagation path. |
+| R15-06–11 | Budget protected reads | Selected authenticated pages and data loaded. Not an exhaustive role/subscription/error matrix. |
+| R15-12–18 | ETF protected reads, comparison and disabled configuration | Selected ETF endpoints/pages exercised; development-mode and disabled endpoint behavior remained bounded to tested paths. |
+| R15-19–21 and R15-32 | Image/upload lifecycle | Controlled upload persisted across reload without duplicate creation; matching delete succeeded. Not all file types, permissions or public/private sharing paths. |
+| R15-22–27 | Budget controlled In/Out mutation lifecycle | Authenticated create, reload without duplication, and delete returned expected results. Not a controlled 401/timeout/ambiguous-outcome replay test. |
+| R15-28–31 | ETF activity, inventory, sales report and transaction history | Representative existing-data views, reports and reloads succeeded; no new ETF transaction mutation was required. |
+
+### Usage-tracking correction and evidence (R15-33–R15-51C)
+
+| Tests | Evidence | Result / limit |
+|---|---|---|
+| R15-33–45C | Existing Budget tracking missed time on `B*.html` subpages; 18 Budget subpages instrumented using shared `waPlatform.js` then `usageTracking.js`; local `BinForm.html` page/time POST 200. November 8 SQL for `sthink`: `/BinForm.html` two views, seven TimeSpent records, 155 seconds; `/budget.html` nine views, eight TimeSpent records, 70 seconds. Dashboard Budget 12 visits, three sessions, 3m49s. | PASS for tested local page and aggregated Budget reporting; no independent all-pages functional mutation rerun. |
+| R15-43 / Family Tree | `FamilyTree2.html` added to `family_tree` SQL page mapping, and shared tracking scripts installed on Family Tree menu/subpages. November 8 SQL showed `/FamilyTree.html` 63 seconds, `/FamilyTree2.html` 358 seconds; dashboard later 7m17s. | PASS for bounded Family Tree page tracking; wider privacy behavior remains under S6-017. |
+| R15-46A–46D | Hosted `charter` `/BinForm.html`: scripts and page-view POST 200; periodic TimeSpent POST 200 at ~30s; Nov 9 SQL two views, 13 TimeSpent rows totaling 330 seconds. Hosted Budget dashboard four visits, one session, 7m39s across Budget pages. | PASS. 7m39s includes Budget activity beyond the SQL query for `/BinForm.html`; do not equate all seconds to one page. |
+| R15-47 | Hosted `charter` dashboard reports time for Loan Payment 2m57s, Property Info 1m25s, Town Notice 2m16s, Weigh In 2m09s, Interest Earned 2m30s, Family Tree 2m33s; Budget already separately verified. | PASS for bounded multi-app dashboard reporting; Property Info 1m25s alone is not evidence of a defect absent measured foreground duration. |
+| R15-48A–48D | Hosted ETF originally displayed one visit, zero time; browser found only `usageTracking.js?v=20260927-1`, no `window.WA` session facade and no time-spent requests despite no Console errors. | Confirmed instrumentation gap. |
+| R15-49A–50A | All six ETF pages (`etf.html`, `etfCategory.html`, `etfSymbol.html`, `etfCompare.html`, `etfActivity.html`, `etfAPItest.html`) revised to load existing `waPlatform.js` before shared `usageTracking.js?v=20261108-1`. Local ETF `/etf.html` multiple TimeSpent POST 200; Nov 9 SQL two views, seven TimeSpent rows totaling 163 seconds. Dashboard 2m43s then 8m22s after all five further pages produced view/time requests. | PASS local six-page tracking/browser check; no ETF business-logic source change requested. |
+| R15-51A–51C | User-reported Render staging commit `2602795` Live; hosted ETF scripts, page-view and periodic time-spent POSTs 200 with no unexpected Console errors; `sthink` ETF dashboard increased from 8m22s to 10m45s (17 visits, five sessions). | PASS hosted representative ETF page and cumulative dashboard. Local and staging share the **same test database**, so dashboard total mixes both sources. |
+
+### Targeted tracking lifecycle tests (R15-53A–53C)
+
+| Test | Browser observation | Disposition and limitation |
+|---|---|---|
+| R15-53A | Hosted Chrome Incognito `charter` authenticated reload of `/BinForm.html` produced **one** `POST /track/log/page` with HTTP 200. | PASS for reload/restore single-view check. **Not** complete browser-restart restoration or every refresh/expiry path; other scripted assets and session-status status were not separately enumerated in the final user response. |
+| R15-53B | After explicit `charter` logout, Home displayed `Not Logged In`; 70-second signed-out observation showed no newly initiated `/track/log/page` or `/track/log/time-spent` POST requests and no Console errors. | PASS for tested logged-out interval; a pre-logout in-flight request could complete afterward. |
+| R15-53C | Hosted `/BinForm.html`: first foreground time-spent event observed, then browser tab backgrounded ~80s; at return, a second time-spent request payload had `duration: 3`, and ~30s after return the third had `duration: 30`. | PASS for bounded background/foreground behavior. Observations are consistent with flush-on-hide/pause and resumed periodic accounting, **not proof** of exact server-side duplicate-free totals in every pagehide/visibilitychange race. |
+
+**Important distinctions and remaining work:**
+
+- **S6-005 remains Open:** The broader file-by-file migration to session-aware authenticated API handling and app-specific error/refresh regressions was not completed by adding a tracking script. Cross-page session-expiry, denied-access and unsaved-form scenarios remain.
+- **S6-017 remains Open:** Representative Family Tree `X-FT-Page-Token` rejection/navigation and an upload lifecycle were tested, but token propagation, FT privacy/contact verification, file access permissions and page-specific fetch interception require further review.
+- **S6-025 remains In Progress:** Current-token tracking, periodic checkpoints, sign-out stop and one reload/background path passed. The full acceptance criterion still requires exact-event accounting across token expiry, refresh, restoration, page navigation/pagehide, logout and uncertain delivery, including authenticated error/401 outcomes and duplicate suppression.
+- **No unsafe replay:** Controlled Budget/upload reload tests and the shared tracking module's no-automatic-retry design support narrow no-duplicate conclusions. They **do not** establish no unsafe POST replay under an actual 401, network timeout or concurrent refresh for every application. S6-008 and related error handling remain open.
+- **Operational cleanup:** `_COPY` files were included in commits by user report, potentially exposing alternate HTML/JS in publicly served `httpdocs`. Review staging/public URLs and correct through a separate user-approved change before any production decision. Do not silently remove files or alter the already deployed test environment.
+- **Deferred unrelated defect:** `amortization.html` day-31 date-warning discrepancy was reported; current Drive source includes 29/30/31 in change-handler validation but Calculate lacks independent check. The user explicitly deferred revision. Weights date-range initialization defect S6-039 also remains deferred.
+- **Release gates:** Formal R15 bounded PASS does not alter the rest of R01–R20 statuses, close linked S6 issues, satisfy browser matrix R17, certify production readiness or replace mandatory independent design-engineer/security review S6-014 before `main`/production.
+
+**Next formal area:** R16 logs/caches, subject to user-selected priorities and evidence reconciliation. All changes in this document are prepared only as a download for user review/manual installation; the source Drive document and user's local project remain untouched by the assistant.
+
+---
 
 ## November 7, 2026 — R14 final bounded acceptance supplement (current disposition)
 
