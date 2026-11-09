@@ -226,6 +226,7 @@ async function start() {
   });
 }
 start().catch(err => {
-  console.error(`Stage 6 startup refused: ${err.message}`);
+  // Never expose underlying database or startup exception details in hosted logs.
+  console.error('Stage 6 startup refused (details omitted)');
   rateCleanupPool.end().catch(()=>{}).finally(()=>{ process.exitCode=1; });
 });
