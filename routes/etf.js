@@ -401,7 +401,7 @@ router.get('/compare', auth, async (req, res) => {
 
   const cached = compareCache.get(cacheKey);
   if (!bypassCache && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    logger.info(`Cache hit for ${cacheKey}`);
+    logger.info('ETF comparison cache hit (identifiers omitted)');
     let { current, past } = cached.data;
 
     const numRows = rows === 'all' ? current.length : parseInt(rows);
@@ -694,7 +694,7 @@ router.get('/polygon-proxy', auth, async (req, res) => {
     res.json({ adjClose, rawClose });
   } catch (err) {
     if (err.response?.status === 429) {
-      logger.error(`Polygon rate limit (429) for ${symbol} on ${date}`);
+      logger.error('Polygon rate limit (429; symbol and date omitted)');
       return res.status(429).json({ message: 'Polygon rate limit' });
     }
     logger.error(`GET /etf/polygon-proxy: [details omitted]`);

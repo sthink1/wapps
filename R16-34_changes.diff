@@ -1,0 +1,44 @@
+--- a/routes/etf.js
++++ b/routes/etf.js
+@@ -401,7 +401,7 @@
+ 
+   const cached = compareCache.get(cacheKey);
+   if (!bypassCache && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+-    logger.info(`Cache hit for ${cacheKey}`);
++    logger.info('ETF comparison cache hit (identifiers omitted)');
+     let { current, past } = cached.data;
+ 
+     const numRows = rows === 'all' ? current.length : parseInt(rows);
+@@ -694,7 +694,7 @@
+     res.json({ adjClose, rawClose });
+   } catch (err) {
+     if (err.response?.status === 429) {
+-      logger.error(`Polygon rate limit (429) for ${symbol} on ${date}`);
++      logger.error('Polygon rate limit (429; symbol and date omitted)');
+       return res.status(429).json({ message: 'Polygon rate limit' });
+     }
+     logger.error(`GET /etf/polygon-proxy: [details omitted]`);
+
+--- a/routes/weights.js
++++ b/routes/weights.js
+@@ -276,7 +276,7 @@
+     auth,
+     [param('id').isInt().withMessage('ID must be an integer(be)')],
+     async (req, res) => {
+-        logger.info(`Handling DELETE /weights/:id with id=${req.params.id}`);
++        logger.info('Handling DELETE /weights/:id (identifier omitted)');
+         const errors = validationResult(req);
+         if (!errors.isEmpty()) {
+             return res.status(400).json({ error: errors.array()[0].msg });
+
+--- a/httpdocs/js/usageTracking.js
++++ b/httpdocs/js/usageTracking.js
+@@ -34,7 +34,7 @@
+             if (!response.ok) console.warn('Usage tracking request rejected:', path, response.status);
+         } catch (error) {
+             // Do not retry a request when delivery status is uncertain.
+-            console.warn('Usage tracking request unavailable:', path, error?.message);
++            console.warn('Usage tracking request unavailable (exception details omitted):', path);
+         }
+     }
+ 

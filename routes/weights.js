@@ -276,7 +276,7 @@ router.delete(
     auth,
     [param('id').isInt().withMessage('ID must be an integer(be)')],
     async (req, res) => {
-        logger.info(`Handling DELETE /weights/:id with id=${req.params.id}`);
+        logger.info('Handling DELETE /weights/:id (identifier omitted)');
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ error: errors.array()[0].msg });

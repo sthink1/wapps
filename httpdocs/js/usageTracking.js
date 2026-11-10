@@ -34,7 +34,7 @@
             if (!response.ok) console.warn('Usage tracking request rejected:', path, response.status);
         } catch (error) {
             // Do not retry a request when delivery status is uncertain.
-            console.warn('Usage tracking request unavailable:', path, error?.message);
+            console.warn('Usage tracking request unavailable (exception details omitted):', path);
         }
     }
 
