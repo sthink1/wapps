@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { pool } = require('../dbConnection');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { isExpectedClientError } = require('../services/stage6ExpectedClientError');
 const {
     getPreferences,
     updatePreferences,
@@ -18,7 +19,8 @@ function sendSafeNotificationError(res, error) {
         : 500;
     const message = status >= 500
         ? 'Internal Server Error'
-        : (typeof error.message === 'string' && error.message ? error.message : 'Request failed');
+        : (isExpectedClientError(error) && typeof error.message === 'string' && error.message
+            ? error.message : 'Request failed');
     return res.status(status).json({ message });
 }
 

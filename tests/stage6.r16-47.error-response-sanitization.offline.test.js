@@ -8,6 +8,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+const { markExpectedClientError, isExpectedClientError } = require('../services/stage6ExpectedClientError');
+
 const root = path.resolve(__dirname, '..');
 const source = p => fs.readFileSync(path.join(root, p), 'utf8');
 
@@ -21,7 +23,7 @@ function extractThroughNext(sourceText, start, end, label) {
 
 function isolatedFunction(file, startMarker, endMarker, functionName) {
   const block = extractThroughNext(source(file), startMarker, endMarker, file);
-  const context = vm.createContext({ Number, Error });
+  const context = vm.createContext({ Number, Error, isExpectedClientError });
   vm.runInContext(`${block}\nthis.selected = ${functionName};`, context, { timeout: 1000 });
   assert.equal(typeof context.selected, 'function');
   return context.selected;
@@ -87,7 +89,7 @@ test('R16-47-01 Family Tree unexpected 500 does not disclose exception text', ()
 });
 
 test('R16-47-02 Family Tree explicit 400 remains descriptive; 503 is generic', () => {
-  assert.equal(family(error('Enter a valid date.', 400)), 'Enter a valid date.');
+  assert.equal(family(markExpectedClientError(error('Enter a valid date.', 400))), 'Enter a valid date.');
   assert.equal(family(error(secret, 503)), 'Internal Server Error');
 });
 
@@ -107,11 +109,11 @@ test('R16-47-04 Notifications unexpected 500 and 503 are sanitized', () => {
   }
 });
 
-test('R16-47-05 Notifications explicit 400 remains descriptive', () => {
+test('R16-47-05 Notifications deliberate 404 remains descriptive', () => {
   const res = fakeResponse();
-  notification(res, error('marketingEmail must be true or false.', 400));
-  assert.equal(res.statusCode, 400);
-  assert.equal(res.body.message, 'marketingEmail must be true or false.');
+  notification(res, markExpectedClientError(error('This unsubscribe link is not valid.', 404)));
+  assert.equal(res.statusCode, 404);
+  assert.equal(res.body.message, 'This unsubscribe link is not valid.');
 });
 
 test('R16-47-06 Notification preference routes call the sanitizing helper', () => {

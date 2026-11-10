@@ -1,0 +1,15 @@
+--- a/services/notificationService.js
++++ b/services/notificationService.js
+@@ -1,3 +1,4 @@
++const { markExpectedClientError } = require('./stage6ExpectedClientError');
+ const crypto = require('crypto');
+ const { pool } = require('../dbConnection');
+ const { sendNotificationEmail } = require('../send_email');
+@@ -464,6 +465,7 @@
+         if (!rows.length || !OPTIONAL_CATEGORIES.has(rows[0].NotificationCategory)) {
+             const err = new Error('This unsubscribe link is not valid.');
+             err.status = 404;
++            markExpectedClientError(err);
+             throw err;
+         }
+ 

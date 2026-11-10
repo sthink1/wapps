@@ -5,6 +5,7 @@ const router = express.Router();
 
 const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
+const { markExpectedClientError, isExpectedClientError } = require('../services/stage6ExpectedClientError');
 const { sendNotification } = require('../services/notificationService');
 const {
     optimizeFamilyTreeImage,
@@ -41,14 +42,14 @@ const upload = multer({
 // not alter authorization, privacy checks, or error status codes.
 function safeFamilyTreeErrorMessage(error, responseStatus = error && error.status) {
     const status = responseStatus;
-    return Number.isInteger(status) && status >= 400 && status < 500
+    return isExpectedClientError(error) && Number.isInteger(status) && status >= 400 && status < 500
         ? (typeof error.message === 'string' && error.message ? error.message : 'Request failed')
         : 'Internal Server Error';
 }
 
 function safeFamilyTreeErrorDetail(error, field) {
     const status = error && error.status;
-    return Number.isInteger(status) && status >= 400 && status < 500
+    return isExpectedClientError(error) && Number.isInteger(status) && status >= 400 && status < 500
         ? (error[field] || undefined)
         : undefined;
 }
@@ -232,7 +233,7 @@ async function userHasTree(c, treeID, userID) {
 async function requireTree(c, code, userID) {
     if (!code) {
         const err = new Error('FamilyTreeCode is required.');
-        err.status = 400;
+        err.status = 400; markExpectedClientError(err);
         throw err;
     }
 
@@ -243,7 +244,7 @@ async function requireTree(c, code, userID) {
 
     if (!resolved) {
         const err = new Error('FamilyTreeCode was not found.');
-        err.status = 404;
+        err.status = 404; markExpectedClientError(err);
         throw err;
     }
 
@@ -251,7 +252,7 @@ async function requireTree(c, code, userID) {
 
     if (!(await userHasTree(c, tree.FamilyTreeID, userID))) {
         const err = new Error('You are not authorized for this Family Tree.');
-        err.status = 403;
+        err.status = 403; markExpectedClientError(err);
         throw err;
     }
 
@@ -872,7 +873,7 @@ async function adoptTreeForUser(c, userID, targetTree) {
 
     if (!resolvedTarget) {
         const err = new Error('Target Family Tree was not found.');
-        err.status = 404;
+        err.status = 404; markExpectedClientError(err);
         throw err;
     }
 
@@ -956,7 +957,7 @@ async function addSiblingLink(c, treeID, userID, personID, siblingPersonID) {
 
     if (!a || !z || a === z) {
         const err = new Error('Two different people are required for a sibling relationship.');
-        err.status = 400;
+        err.status = 400; markExpectedClientError(err);
         throw err;
     }
 
@@ -1033,7 +1034,7 @@ async function addConfirmedParentLink(
             const err = new Error(
                 `That Person already has a different biological ${String(side).toLowerCase()}.`
             );
-            err.status = 409;
+            err.status = 409; markExpectedClientError(err);
             throw err;
         }
     }
@@ -1086,7 +1087,7 @@ async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
         );
     } else {
         const err = new Error('Unsupported relationship type.');
-        err.status = 400;
+        err.status = 400; markExpectedClientError(err);
         throw err;
     }
 }
@@ -1814,7 +1815,7 @@ router.post('/enter-code', auth, async (req, res) => {
                 const err = new Error(
                     'FamilyTreeCode was not found.'
                 );
-                err.status = 404;
+                err.status = 404; markExpectedClientError(err);
                 throw err;
             }
 
@@ -2162,7 +2163,7 @@ async function requireDuplicateReviewOrContinue(c, body, excludePersonID = 0) {
     const unresolved = matches.filter(row => !confirmed.has(Number(row.PersonID)));
     if (unresolved.length) {
         const err = new Error('Possible duplicate Person records require review before a new Person can be created.');
-        err.status = 409;
+        err.status = 409; markExpectedClientError(err);
         err.responseCode = 'DUPLICATE_REVIEW_REQUIRED';
         err.matches = unresolved;
         throw err;
@@ -2448,7 +2449,7 @@ async function restorePersonFromSnapshot(c, person) {
         const err = new Error(
             `PersonID ${person.PersonID} already exists and cannot be safely restored.`
         );
-        err.status = 409;
+        err.status = 409; markExpectedClientError(err);
         throw err;
     }
 
@@ -2663,7 +2664,7 @@ async function restoreSourceImage(c, row, sourcePersonID, survivingPersonID) {
     }
 
     const err = new Error(`ImageID ${row.ImageID} cannot be safely restored.`);
-    err.status = 409;
+    err.status = 409; markExpectedClientError(err);
     throw err;
 }
 
@@ -2796,7 +2797,7 @@ async function undoOneTreeMerge(c, mergeRow, userID) {
         Number(mergeRow.MergedByUserID) !== Number(userID)
     ) {
         const err = new Error('Only the creator of the merged source Tree or the user who completed the merge may undo it.');
-        err.status = 403;
+        err.status = 403; markExpectedClientError(err);
         throw err;
     }
 
@@ -2809,7 +2810,7 @@ async function undoOneTreeMerge(c, mergeRow, userID) {
     );
     if (newerActiveMerge) {
         const err = new Error('A newer One Tree merge depends on this Tree. Undo the newer merge first.');
-        err.status = 409;
+        err.status = 409; markExpectedClientError(err);
         throw err;
     }
 
@@ -2823,7 +2824,7 @@ async function undoOneTreeMerge(c, mergeRow, userID) {
         Number(sourceCurrent.MergedIntoFamilyTreeID) !== survivingTreeID
     ) {
         const err = new Error('The source Family Tree is no longer in the state required for this undo.');
-        err.status = 409;
+        err.status = 409; markExpectedClientError(err);
         throw err;
     }
 
@@ -2840,7 +2841,7 @@ async function undoOneTreeMerge(c, mergeRow, userID) {
         Number(unexpected.partnerCount) || Number(unexpected.siblingCount)
     ) {
         const err = new Error('The historical source Tree contains unexpected current data. Undo was stopped to protect it.');
-        err.status = 409;
+        err.status = 409; markExpectedClientError(err);
         throw err;
     }
 
@@ -3104,7 +3105,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
     const [[newerPerson]] = await c.query('SELECT * FROM FTPersonT WHERE PersonID=? FOR UPDATE', [newerPersonID]);
     if (!olderPerson || !newerPerson) {
         const err = new Error('A Person selected for merge no longer exists.');
-        err.status = 409;
+        err.status = 409; markExpectedClientError(err);
         throw err;
     }
 
@@ -3197,7 +3198,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
 
     if (olderImages.length + newerImages.length > 5) {
         const err = new Error(`PersonID ${olderPersonID} and PersonID ${newerPersonID} have more than five selected pictures. Select no more than five pictures to keep.`);
-        err.status = 409;
+        err.status = 409; markExpectedClientError(err);
         err.responseCode = 'IMAGE_LIMIT_REVIEW_REQUIRED';
         throw err;
     }
@@ -3221,7 +3222,7 @@ async function mergePersonPairOneTree(c, olderTreeID, newerTreeID, newerPersonID
             while (slot <= 4 && usedLife.has(slot)) slot++;
             if (slot > 4) {
                 const err = new Error('No picture slot is available while merging Person records.');
-                err.status = 409;
+                err.status = 409; markExpectedClientError(err);
                 err.responseCode = 'IMAGE_LIMIT_REVIEW_REQUIRED';
                 throw err;
             }
@@ -3305,7 +3306,7 @@ async function mergeTreesOneTree(c, olderTree, newerTree, decisions, userID, bri
         if (!(await treeHasPerson(c, newerTree.FamilyTreeID, newerPersonID)) ||
             !(await treeHasPerson(c, olderTree.FamilyTreeID, olderPersonID))) {
             const err = new Error('A selected Person merge no longer matches the two Family Trees. Reload the review.');
-            err.status = 409;
+            err.status = 409; markExpectedClientError(err);
             throw err;
         }
         await mergePersonPairOneTree(
@@ -3523,7 +3524,7 @@ router.post('/use-existing-person', auth, async (req, res) => {
             const targetTree = await getPersonTree(c, existingPersonID);
             if (!targetTree) {
                 const err = new Error('The selected person is not associated with a Family Tree.');
-                err.status = 404;
+                err.status = 404; markExpectedClientError(err);
                 throw err;
             }
 
@@ -3583,7 +3584,7 @@ router.post('/use-existing-person', auth, async (req, res) => {
                     }
                 );
                 const err = new Error(review.message);
-                err.status = 409;
+                err.status = 409; markExpectedClientError(err);
                 err.responseCode = review.code;
                 err.review = review;
                 throw err;
@@ -4070,7 +4071,7 @@ router.put('/persons/:id', auth, async (req, res) => {
                 const err = new Error(
                     'Person is not in this Family Tree.'
                 );
-                err.status = 404;
+                err.status = 404; markExpectedClientError(err);
                 throw err;
             }
 
@@ -4084,7 +4085,7 @@ router.put('/persons/:id', auth, async (req, res) => {
 
             if (!existing.length) {
                 const err = new Error('Person not found.');
-                err.status = 404;
+                err.status = 404; markExpectedClientError(err);
                 throw err;
             }
 
@@ -4777,7 +4778,7 @@ router.post('/relationships', auth, async (req, res) => {
 
             if (persons.length !== 2) {
                 const e = new Error('Person not found.');
-                e.status = 404;
+                e.status = 404; markExpectedClientError(e);
                 throw e;
             }
 
@@ -4861,7 +4862,7 @@ router.post('/relationships', auth, async (req, res) => {
                 );
             } else {
                 const e = new Error('Unsupported relationship type.');
-                e.status = 400;
+                e.status = 400; markExpectedClientError(e);
                 throw e;
             }
 
@@ -4995,7 +4996,7 @@ router.post('/related-person', auth, async (req, res) => {
                 );
             } else {
                 const e = new Error('Unsupported relationship type.');
-                e.status = 400;
+                e.status = 400; markExpectedClientError(e);
                 throw e;
             }
 
@@ -5038,7 +5039,7 @@ router.post('/siblings/:siblingID/shared-parents', auth, async (req, res) => {
 
             if (!siblingIDs.has(siblingID)) {
                 const err = new Error('The selected Person is not a biological sibling of the focal Person.');
-                err.status = 409;
+                err.status = 409; markExpectedClientError(err);
                 throw err;
             }
 
@@ -5061,7 +5062,7 @@ router.post('/siblings/:siblingID/shared-parents', auth, async (req, res) => {
             for (const parentPersonID of parentPersonIDs) {
                 if (!allowed.has(parentPersonID)) {
                     const err = new Error('A selected Person is not a recorded biological parent of the focal Person.');
-                    err.status = 409;
+                    err.status = 409; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -5126,7 +5127,7 @@ router.post('/parents/:parentID/shared-siblings', auth, async (req, res) => {
 
             if (!parentRows.length) {
                 const err = new Error('That Person is not a recorded biological parent of the focal Person.');
-                err.status = 409;
+                err.status = 409; markExpectedClientError(err);
                 throw err;
             }
 
@@ -5137,7 +5138,7 @@ router.post('/parents/:parentID/shared-siblings', auth, async (req, res) => {
             for (const siblingPersonID of siblingPersonIDs) {
                 if (!validSiblings.has(siblingPersonID)) {
                     const err = new Error('A selected Person is not a biological sibling of the focal Person.');
-                    err.status = 409;
+                    err.status = 409; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -5195,7 +5196,7 @@ router.post('/children/:childID/partner-parent', auth, async (req, res) => {
             );
             if (!partnerRows.length) {
                 const err = new Error("The selected person is not recorded as this Person's partner.");
-                err.status = 400;
+                err.status = 400; markExpectedClientError(err);
                 throw err;
             }
 
@@ -5206,7 +5207,7 @@ router.post('/children/:childID/partner-parent', auth, async (req, res) => {
             );
             if (members.length !== 2) {
                 const err = new Error('Child or partner is not in this Family Tree.');
-                err.status = 404;
+                err.status = 404; markExpectedClientError(err);
                 throw err;
             }
 
@@ -5229,7 +5230,7 @@ function emailIsValidForVerification(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.te
 async function createContactEmailVerification(c, personID, contactID, email, userID) {
     const cleaned = String(email||'').trim().toLowerCase();
     if (!emailIsValidForVerification(cleaned)) {
-        const e = new Error('A valid email address is required.'); e.status=400; throw e;
+        const e = new Error('A valid email address is required.'); e.status=400; markExpectedClientError(e); throw e;
     }
     await c.query(`UPDATE FTContactEmailVerificationT SET RespondedAt=NOW(),Response='SUPERSEDED'
         WHERE ContactID=? AND RespondedAt IS NULL`,[contactID]);
@@ -5281,11 +5282,11 @@ router.post('/contact-email-verification/:token',async(req,res)=>{
          c.ContactValue,c.ContactType FROM FTContactEmailVerificationT v
          LEFT JOIN FTContactT c ON c.ContactID=v.ContactID
          WHERE v.TokenHash=? LIMIT 1 FOR UPDATE`,[hash]);
-      if(!rows.length) {const e=new Error('Request not found.');e.status=404;throw e;}
+      if(!rows.length) {const e=new Error('Request not found.');e.status=404; markExpectedClientError(e);throw e;}
       const x=rows[0];
       if(x.RespondedAt || new Date(x.ExpiresAt)<=new Date() || x.ContactType!=='Email' ||
         String(x.ContactValue||'').trim().toLowerCase()!==String(x.EmailAddress).toLowerCase()) {
-        const e=new Error('Verification request is expired or no longer valid.');e.status=400;throw e;
+        const e=new Error('Verification request is expired or no longer valid.');e.status=400; markExpectedClientError(e);throw e;
       }
       await c.query(`UPDATE FTContactEmailVerificationT SET RespondedAt=NOW(),Response='VERIFIED'
        WHERE VerificationID=?`,[x.VerificationID]);
@@ -5300,9 +5301,9 @@ router.post('/persons/:id/contacts/:contactID/resend-verification',auth,async(re
    const pending=await withTx(async c=>{
      const tree=await requireTree(c,String((req.body||{}).familyTreeCode||''),userID);
      const [m]=await c.query('SELECT 1 FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=? LIMIT 1',[tree.FamilyTreeID,personID]);
-     if(!m.length){const e=new Error('Person not in Family Tree.');e.status=404;throw e;}
+     if(!m.length){const e=new Error('Person not in Family Tree.');e.status=404; markExpectedClientError(e);throw e;}
      const [rows]=await c.query('SELECT ContactValue,ContactType FROM FTContactT WHERE PersonID=? AND ContactID=? LIMIT 1',[personID,contactID]);
-     if(!rows.length || rows[0].ContactType!=='Email'){const e=new Error('Email contact not found.');e.status=404;throw e;}
+     if(!rows.length || rows[0].ContactType!=='Email'){const e=new Error('Email contact not found.');e.status=404; markExpectedClientError(e);throw e;}
      return createContactEmailVerification(c,personID,contactID,rows[0].ContactValue,userID);
    });
    await sendContactVerification(pending);
@@ -5350,7 +5351,7 @@ router.post('/persons/:id/contacts', auth, async (req, res) => {
         const result = await withTx(async c => {
             const tree = await requireTree(c, b.familyTreeCode, userID);
             const [member] = await c.query(`SELECT 1 FROM FTFamilyTreePersonT WHERE FamilyTreeID=? AND PersonID=? LIMIT 1`, [tree.FamilyTreeID, id]);
-            if (!member.length) { const e=new Error('Person is not in this Family Tree.'); e.status=404; throw e; }
+            if (!member.length) { const e=new Error('Person is not in this Family Tree.'); e.status=404; markExpectedClientError(e); throw e; }
             if (b.IsPrimary) {
                 await c.query(`UPDATE FTContactT SET IsPrimary=0,UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=? AND ContactType=?`, [userID,id,b.ContactType]);
             }
@@ -5377,7 +5378,7 @@ router.put('/persons/:id/contacts/:contactID', auth, async (req, res) => {
         const result=await withTx(async c=>{
             const tree=await requireTree(c,b.familyTreeCode,userID);
             const [existing]=await c.query(`SELECT ContactID,ContactType,ContactValue FROM FTContactT WHERE ContactID=? AND PersonID=? LIMIT 1`,[contactID,id]);
-            if(!existing.length){const e=new Error('Contact not found.');e.status=404;throw e;}
+            if(!existing.length){const e=new Error('Contact not found.');e.status=404; markExpectedClientError(e);throw e;}
             if(b.IsPrimary){
                 await c.query(`UPDATE FTContactT SET IsPrimary=0,UpdatedByUserID=?,UpdatedAt=NOW() WHERE PersonID=? AND ContactType=? AND ContactID<>?`,[userID,id,b.ContactType,contactID]);
             }
@@ -5403,7 +5404,7 @@ router.delete('/persons/:id/contacts/:contactID', auth, async (req,res)=>{
         const result=await withTx(async c=>{
             const tree=await requireTree(c,code,userID);
             const [existing]=await c.query(`SELECT ContactType FROM FTContactT WHERE ContactID=? AND PersonID=? LIMIT 1`,[contactID,id]);
-            if(!existing.length){const e=new Error('Contact not found.');e.status=404;throw e;}
+            if(!existing.length){const e=new Error('Contact not found.');e.status=404; markExpectedClientError(e);throw e;}
             await c.query(`DELETE FROM FTContactT WHERE ContactID=? AND PersonID=?`,[contactID,id]);
             await logActivity(c,tree.FamilyTreeID,userID,'DELETE','FTContactT',contactID,id,`Deleted ${existing[0].ContactType||''} contact`);
             return { message:'Contact deleted.' };
@@ -5474,7 +5475,7 @@ router.post('/persons/:id/events', auth, async (req, res) => {
 
             if (['Birth','Death'].includes(b.eventType)) {
                 const err=new Error('Birth and Death events are managed on the Person page.');
-                err.status=400; throw err;
+                err.status=400; markExpectedClientError(err); throw err;
             }
             const [ev] = await c.query(
                 `INSERT INTO FTEventT
@@ -5544,12 +5545,12 @@ router.put('/persons/:id/events/:eventID', auth, async (req,res)=>{
         const result=await withTx(async c=>{
             const tree=await requireTree(c,b.familyTreeCode,userID);
             const [existing]=await c.query(`SELECT e.EventID,e.AutoPersonID FROM FTEventPersonT ep JOIN FTEventT e ON e.EventID=ep.EventID WHERE ep.PersonID=? AND e.EventID=? LIMIT 1`,[id,eventID]);
-            if(!existing.length){const e=new Error('Event not found.');e.status=404;throw e;}
+            if(!existing.length){const e=new Error('Event not found.');e.status=404; markExpectedClientError(e);throw e;}
             if(existing[0].AutoPersonID){
                 await c.query('UPDATE FTEventT SET EventDescription=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE EventID=?',[b.eventDescription||null,userID,eventID]);
             } else {
                 if (['Birth','Death'].includes(b.eventType)) {
-                    const err=new Error('Birth and Death events are managed on the Person page.'); err.status=400; throw err;
+                    const err=new Error('Birth and Death events are managed on the Person page.'); err.status=400; markExpectedClientError(err); throw err;
                 }
                 await c.query(`UPDATE FTEventT SET EventType=?,EventDate=?,EventPlace=?,EventDescription=?,UpdatedByUserID=?,UpdatedAt=NOW() WHERE EventID=?`,[b.eventType,b.eventDate||null,b.eventPlace||null,b.eventDescription||null,userID,eventID]);
             }
@@ -5566,8 +5567,8 @@ router.delete('/persons/:id/events/:eventID', auth, async (req,res)=>{
         const result=await withTx(async c=>{
             const tree=await requireTree(c,code,userID);
             const [link]=await c.query(`SELECT ep.EventPersonID,e.AutoPersonID FROM FTEventPersonT ep JOIN FTEventT e ON e.EventID=ep.EventID WHERE ep.EventID=? AND ep.PersonID=? LIMIT 1`,[eventID,id]);
-            if(!link.length){const e=new Error('Event not found for this person.');e.status=404;throw e;}
-            if(link[0].AutoPersonID){const err=new Error('Automatically managed Birth/Death events must be changed on the Person page.');err.status=409;throw err;}
+            if(!link.length){const e=new Error('Event not found for this person.');e.status=404; markExpectedClientError(e);throw e;}
+            if(link[0].AutoPersonID){const err=new Error('Automatically managed Birth/Death events must be changed on the Person page.');err.status=409; markExpectedClientError(err);throw err;}
             await c.query(`DELETE FROM FTEventPersonT WHERE EventID=? AND PersonID=?`,[eventID,id]);
             const [[remaining]]=await c.query(`SELECT COUNT(*) AS n FROM FTEventPersonT WHERE EventID=?`,[eventID]);
             if(Number(remaining.n)===0) await c.query(`DELETE FROM FTEventT WHERE EventID=?`,[eventID]);
@@ -5665,7 +5666,7 @@ router.post(
                     const e = new Error(
                         'Person is not in this Family Tree.'
                     );
-                    e.status = 404;
+                    e.status = 404; markExpectedClientError(e);
                     throw e;
                 }
 
@@ -5694,7 +5695,7 @@ router.post(
                     const err = new Error(
                         'A profile picture already exists for this PersonID. Confirm replacement.'
                     );
-                    err.status = 409;
+                    err.status = 409; markExpectedClientError(err);
                     err.requiresConfirmation = true;
                     throw err;
                 }
@@ -5896,7 +5897,7 @@ router.post(
                     const e = new Error(
                         'Person is not in this Family Tree.'
                     );
-                    e.status = 404;
+                    e.status = 404; markExpectedClientError(e);
                     throw e;
                 }
 
@@ -5915,7 +5916,7 @@ router.post(
                     const e = new Error(
                         'A person may have no more than four life-stage images.'
                     );
-                    e.status = 400;
+                    e.status = 400; markExpectedClientError(e);
                     throw e;
                 }
 
@@ -5938,7 +5939,7 @@ router.post(
                     const e = new Error(
                         'No available life-image position remains.'
                     );
-                    e.status = 400;
+                    e.status = 400; markExpectedClientError(e);
                     throw e;
                 }
 
@@ -6081,7 +6082,7 @@ router.post(
                     const err = new Error(
                         'Person is not in this Family Tree.'
                     );
-                    err.status = 404;
+                    err.status = 404; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -6097,7 +6098,7 @@ router.post(
                     const err = new Error(
                         'A person may have no more than five pictures.'
                     );
-                    err.status = 400;
+                    err.status = 400; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -6136,7 +6137,7 @@ router.post(
                         const err = new Error(
                             'No available picture position remains.'
                         );
-                        err.status = 400;
+                        err.status = 400; markExpectedClientError(err);
                         throw err;
                     }
 
@@ -6266,7 +6267,7 @@ router.delete(
                     const err = new Error(
                         'Person is not in this Family Tree.'
                     );
-                    err.status = 404;
+                    err.status = 404; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -6289,7 +6290,7 @@ router.delete(
                     const err = new Error(
                         'One or more selected pictures could not be found.'
                     );
-                    err.status = 404;
+                    err.status = 404; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -6367,7 +6368,7 @@ router.post(
                     const err = new Error(
                         'Person is not in this Family Tree.'
                     );
-                    err.status = 404;
+                    err.status = 404; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -6381,7 +6382,7 @@ router.post(
 
                 if (!selectedRows.length) {
                     const err = new Error('Picture not found.');
-                    err.status = 404;
+                    err.status = 404; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -6401,7 +6402,7 @@ router.post(
                     const err = new Error(
                         'Only one of the four other pictures can be made Profile.'
                     );
-                    err.status = 400;
+                    err.status = 400; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -6429,7 +6430,7 @@ router.post(
                     const err = new Error(
                         'The selected picture file could not be found in R2.'
                     );
-                    err.status = 404;
+                    err.status = 404; markExpectedClientError(err);
                     throw err;
                 }
 
@@ -6462,7 +6463,7 @@ router.post(
                         const err = new Error(
                             'The current Profile Picture file could not be found in R2.'
                         );
-                        err.status = 404;
+                        err.status = 404; markExpectedClientError(err);
                         throw err;
                     }
 
@@ -6615,7 +6616,7 @@ router.delete('/persons/:id', auth, async (req, res) => {
                 const err = new Error(
                     'Person is not in this Family Tree.'
                 );
-                err.status = 404;
+                err.status = 404; markExpectedClientError(err);
                 throw err;
             }
 
@@ -6633,7 +6634,7 @@ router.delete('/persons/:id', auth, async (req, res) => {
 
             if (!personRows.length) {
                 const err = new Error('Person not found.');
-                err.status = 404;
+                err.status = 404; markExpectedClientError(err);
                 throw err;
             }
 
@@ -7190,7 +7191,7 @@ router.post('/one-tree/merge', auth, async (req, res) => {
             const targetTree = await getPersonTree(c, targetPersonID);
             if (!targetTree) {
                 const err = new Error('The selected existing Person is not associated with an active Family Tree.');
-                err.status = 404;
+                err.status = 404; markExpectedClientError(err);
                 throw err;
             }
 
@@ -7225,7 +7226,7 @@ router.post('/one-tree/merge', auth, async (req, res) => {
                 const decision = decisionsByNewer.get(newerPersonID);
                 if (!decision || !['same', 'different'].includes(decision.decision)) {
                     const err = new Error(`PersonID ${newerPersonID} has possible duplicates that still require a Same Person / Different Person decision.`);
-                    err.status = 409;
+                    err.status = 409; markExpectedClientError(err);
                     err.responseCode = 'ONE_TREE_REVIEW_INCOMPLETE';
                     throw err;
                 }
@@ -7235,12 +7236,12 @@ router.post('/one-tree/merge', auth, async (req, res) => {
                     const allowed = group.candidates.some(candidate => Number(candidate.PersonID) === olderPersonID);
                     if (!allowed) {
                         const err = new Error(`The selected match for PersonID ${newerPersonID} is no longer a current duplicate candidate. Reload the review.`);
-                        err.status = 409;
+                        err.status = 409; markExpectedClientError(err);
                         throw err;
                     }
                     if (selectedOlder.has(olderPersonID)) {
                         const err = new Error(`Two newer Person records cannot both be merged into PersonID ${olderPersonID} in the same operation.`);
-                        err.status = 409;
+                        err.status = 409; markExpectedClientError(err);
                         throw err;
                     }
                     selectedOlder.add(olderPersonID);
@@ -7427,12 +7428,12 @@ router.post('/one-tree/undo', auth, async (req, res) => {
             );
             if (!mergeRow) {
                 const err = new Error('One Tree merge history was not found.');
-                err.status = 404;
+                err.status = 404; markExpectedClientError(err);
                 throw err;
             }
             if (mergeRow.Status !== 'ACTIVE') {
                 const err = new Error('This One Tree merge has already been undone.');
-                err.status = 409;
+                err.status = 409; markExpectedClientError(err);
                 throw err;
             }
             return undoOneTreeMerge(c,mergeRow,req.user.userId);
@@ -7868,7 +7869,7 @@ router.put('/persons/:id/network', auth, async (req, res) => {
                 const error = new Error(
                     'Person is not in this Family Tree.'
                 );
-                error.status = 404;
+                error.status = 404; markExpectedClientError(error);
                 throw error;
             }
 
@@ -7888,7 +7889,7 @@ router.put('/persons/:id/network', auth, async (req, res) => {
                 const error = new Error(
                     'Networking is not available for a deceased Person.'
                 );
-                error.status = 400;
+                error.status = 400; markExpectedClientError(error);
                 throw error;
             }
 
@@ -8355,9 +8356,9 @@ const petHandler = async (req, res, action) => {
 const parsePetDate = (value) => {
     if (value == null || value === '') return null;
     const text = String(value);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw Object.assign(new Error('Enter a valid date.'),{status:400});
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw markExpectedClientError(Object.assign(new Error('Enter a valid date.'),{status:400}));
     const d = new Date(text + 'T00:00:00Z');
-    if (Number.isNaN(d.getTime()) || d.toISOString().slice(0,10) !== text) throw Object.assign(new Error('Enter a valid date.'),{status:400});
+    if (Number.isNaN(d.getTime()) || d.toISOString().slice(0,10) !== text) throw markExpectedClientError(Object.assign(new Error('Enter a valid date.'),{status:400}));
     return text;
 };
 const petValues = (body) => {
@@ -8366,10 +8367,10 @@ const petValues = (body) => {
     const birth = parsePetDate(body.birthDate);
     const death = parsePetDate(body.deathDate);
     const died = body.died === true || body.died === 'true' || body.died === '1' || body.died === 1 || !!death;
-    if (!name || name.length > 100) throw Object.assign(new Error('Pet name is required (maximum 100 characters).'),{status:400});
-    if (comment.length > 500) throw Object.assign(new Error('Comments may not exceed 500 characters.'),{status:400});
-    if (birth && death && death < birth) throw Object.assign(new Error('Death date cannot precede birth date.'),{status:400});
-    if (!died && death) throw Object.assign(new Error('Death date requires Died.'),{status:400});
+    if (!name || name.length > 100) throw markExpectedClientError(Object.assign(new Error('Pet name is required (maximum 100 characters).'),{status:400}));
+    if (comment.length > 500) throw markExpectedClientError(Object.assign(new Error('Comments may not exceed 500 characters.'),{status:400}));
+    if (birth && death && death < birth) throw markExpectedClientError(Object.assign(new Error('Death date cannot precede birth date.'),{status:400}));
+    if (!died && death) throw markExpectedClientError(Object.assign(new Error('Death date requires Died.'),{status:400}));
     return {name, comment:comment||null, birth, death, died:died?1:0};
 };
 router.get('/persons/:id/pets', auth, (req,res) => petHandler(req,res,async(c,id)=>{
@@ -8386,9 +8387,9 @@ router.post('/persons/:id/pets', auth, (req,res)=>petHandler(req,res,async(c,id)
     await c.beginTransaction();
     try {
         const [person] = await c.query('SELECT PersonID FROM FTPersonT WHERE PersonID=? FOR UPDATE',[id]);
-        if(!person.length) throw Object.assign(new Error('Person not found.'),{status:404});
+        if(!person.length) throw markExpectedClientError(Object.assign(new Error('Person not found.'),{status:404}));
         const [[count]] = await c.query('SELECT COUNT(*) AS total FROM FTPetT WHERE PersonID=?',[id]);
-        if(count.total>=4) throw Object.assign(new Error('Maximum of four pets per Person.'),{status:409});
+        if(count.total>=4) throw markExpectedClientError(Object.assign(new Error('Maximum of four pets per Person.'),{status:409}));
         const [result] = await c.query('INSERT INTO FTPetT (PersonID,PetName,BirthDate,Died,DeathDate,Comment,CreatedByUserID,CreatedAt) VALUES (?,?,?,?,?,?,?,NOW())',[id,v.name,v.birth,v.died,v.death,v.comment,req.user.userId]);
         await c.commit();res.status(201).json({message:'Pet added.',petID:result.insertId});
     } catch(e){await c.rollback();throw e;}
@@ -8407,7 +8408,7 @@ router.delete('/persons/:id/pets/:petID',auth,(req,res)=>petHandler(req,res,asyn
     res.json({message:'Pet deleted.'});
 }));
 router.post('/persons/:id/pets/:petID/picture',auth,upload.single('picture'),(req,res)=>petHandler(req,res,async(c,id)=>{
-    if(!req.file) throw Object.assign(new Error('Choose a JPG, PNG, or WEBP image.'),{status:400});
+    if(!req.file) throw markExpectedClientError(Object.assign(new Error('Choose a JPG, PNG, or WEBP image.'),{status:400}));
     const petID=Number(req.params.petID);
     const [rows]=await c.query('SELECT PictureStorageKey FROM FTPetT WHERE PersonID=? AND PetID=?',[id,petID]);
     if(!rows.length) return res.status(404).json({message:'Pet not found.'});

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { isExpectedClientError } = require('../services/stage6ExpectedClientError');
 const { authenticateToken, isAdminUser } = require('../middleware/subscriptionAccess');
 const {
     getStatusWithApps,
@@ -50,7 +51,11 @@ router.post('/promo', async (req, res, next) => {
         const result = await redeemPromoCode(req.user.userId, req.body.code);
         res.json(result);
     } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            // Central handler preserves 4xx messages; replace an untrusted one first.
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
         next(error);
     }
 });
@@ -61,7 +66,11 @@ router.post('/usage', async (req, res, next) => {
         await recordUsage(req.user.userId, appKey, eventType, quantity, detail);
         res.status(201).json({ message: 'Usage recorded.' });
     } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            // Central handler preserves 4xx messages; replace an untrusted one first.
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
         next(error);
     }
 });
@@ -79,7 +88,11 @@ router.post('/admin/promos', requireAdmin, async (req, res, next) => {
         const result = await createAdminPromoCode(req.body || {});
         res.status(201).json(result);
     } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            // Central handler preserves 4xx messages; replace an untrusted one first.
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
         next(error);
     }
 });
@@ -89,7 +102,11 @@ router.put('/admin/promos/:promoCodeId', requireAdmin, async (req, res, next) =>
         const result = await updateAdminPromoCode(req.params.promoCodeId, req.body || {});
         res.json(result);
     } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            // Central handler preserves 4xx messages; replace an untrusted one first.
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
         next(error);
     }
 });
@@ -98,7 +115,11 @@ router.get('/admin/user/:userId', requireAdmin, async (req, res, next) => {
     try {
         res.json(await getAdminUserSubscription(req.params.userId));
     } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            // Central handler preserves 4xx messages; replace an untrusted one first.
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
         next(error);
     }
 });
@@ -126,7 +147,11 @@ router.post('/admin/grant', requireAdmin, async (req, res, next) => {
         const result = await grantAdminFreeUsage(userId, planId, endDate, req.user.userId);
         res.json(result);
     } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            // Central handler preserves 4xx messages; replace an untrusted one first.
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
         next(error);
     }
 });
@@ -143,7 +168,11 @@ router.put('/admin/grants/:grantId', requireAdmin, async (req, res, next) => {
         );
         res.json(result);
     } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            // Central handler preserves 4xx messages; replace an untrusted one first.
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
         next(error);
     }
 });
@@ -153,7 +182,11 @@ router.delete('/admin/grants/:grantId', requireAdmin, async (req, res, next) => 
         const result = await revokeAdminFreeGrant(req.params.grantId, req.user.userId);
         res.json(result);
     } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) return res.status(error.status).json({ error: error.message });
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            // Central handler preserves 4xx messages; replace an untrusted one first.
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
         next(error);
     }
 });
