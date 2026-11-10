@@ -9,6 +9,7 @@ const { handleDbError } = require('../utils');
 const { sendVerificationCode, sendPasswordResetLink, sendPasswordChangedNotice } = require('../send_email');
 const crypto = require('crypto');
 const sessions = require('../services/browserSession');
+const { isExpectedClientError } = require('../services/stage6ExpectedClientError');
 const fence = require('../services/credentialFence');
 const auth = require('../middleware/auth');
 const { getOrCreateDevelopmentTrial } = require('../services/subscriptionService');
@@ -264,7 +265,7 @@ router.post('/refresh-session',async(req,res)=>{
   catch(e){
     // Preserve expected 4xx auth errors; never disclose unexpected 5xx details.
     const status=Number.isInteger(e&&e.status)&&e.status>=400&&e.status<=599?e.status:503;
-    const publicError=status<500&&e.message?e.message:'AUTH_SERVICE_UNAVAILABLE';
+    const publicError=status<500&&isExpectedClientError(e)&&e.message?e.message:'AUTH_SERVICE_UNAVAILABLE';
     res.status(status).json({error:publicError});
   }
 });
