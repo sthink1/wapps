@@ -261,7 +261,12 @@ router.post('/logout', auth, async (req,res)=>{
 
 router.post('/refresh-session',async(req,res)=>{
   try { sessions.requireOrigin(req);const result=await sessions.rotate(pool,sessions.cookie(req));sessions.setCookie(res,req,result.refresh.secret,result.refresh.expires);res.set('Cache-Control','no-store');res.json({token:result.token}); }
-  catch(e){res.status(e.status||503).json({error:e.status?e.message:'AUTH_SERVICE_UNAVAILABLE'});}
+  catch(e){
+    // Preserve expected 4xx auth errors; never disclose unexpected 5xx details.
+    const status=Number.isInteger(e&&e.status)&&e.status>=400&&e.status<=599?e.status:503;
+    const publicError=status<500&&e.message?e.message:'AUTH_SERVICE_UNAVAILABLE';
+    res.status(status).json({error:publicError});
+  }
 });
 
 router.get('/session-status', auth, async (req, res) => {
