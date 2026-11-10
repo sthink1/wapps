@@ -336,7 +336,7 @@ async function loadCurrentPlans() {
             status: 'unavailable',
             source: 'Unavailable',
             plan: PLAN_DETAILS.database,
-            note: `Automatic database-size query failed: ${error.message}`
+            note: 'Automatic database-size query is temporarily unavailable.'
         }));
     }
 
@@ -378,7 +378,7 @@ async function loadCurrentPlans() {
                 status: 'unavailable',
                 source: 'Unavailable',
                 plan: PLAN_DETAILS.resend,
-                note: `Resend metrics are temporarily unavailable: ${error.message}`
+                note: 'Resend metrics are temporarily unavailable.'
             }));
         });
     }
@@ -416,7 +416,7 @@ async function loadCurrentPlans() {
             status: 'unavailable',
             source: 'Unavailable',
             plan: PLAN_DETAILS.r2,
-            note: `R2 storage could not be measured automatically: ${error.message}`
+            note: 'R2 storage metrics are temporarily unavailable.'
         }));
     }
 
