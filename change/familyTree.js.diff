@@ -1,0 +1,62 @@
+--- a/routes/familyTree.js
++++ b/routes/familyTree.js
+@@ -4,8 +4,9 @@
+ const router = express.Router();
+ 
+ const { pool } = require('../dbConnection');
+ const auth = require('../middleware/auth');
++const { isVerifiedAdministrator } = require('../services/administratorAccess');
+ const { markExpectedClientError, isExpectedClientError } = require('../services/stage6ExpectedClientError');
+ const { sendNotification } = require('../services/notificationService');
+ const {
+     optimizeFamilyTreeImage,
+@@ -226,9 +227,12 @@
+             AND UserID=?
+           LIMIT 1`,
+         [treeID, userID]
+     );
+-    return !!rows.length;
++    // Preserve ordinary Tree membership; an explicitly verified administrator
++    // can administer any Tree without becoming an ordinary Tree member.
++    if (rows.length) return true;
++    return isVerifiedAdministrator({ userId: userID }, c);
+ }
+ 
+ async function requireTree(c, code, userID) {
+     if (!code) {
+@@ -2793,9 +2797,10 @@
+     const sourceTree = snapshot.sourceTree || {};
+ 
+     if (
+         Number(sourceTree.CreatedByUserID) !== Number(userID) &&
+-        Number(mergeRow.MergedByUserID) !== Number(userID)
++        Number(mergeRow.MergedByUserID) !== Number(userID) &&
++        !(await isVerifiedAdministrator({ userId: userID }, c))
+     ) {
+         const err = new Error('Only the creator of the merged source Tree or the user who completed the merge may undo it.');
+         err.status = 403; markExpectedClientError(err);
+         throw err;
+@@ -7336,9 +7341,11 @@
+                  ORDER BY tm.MergedAt DESC,tm.TreeMergeID DESC`,
+                 [tree.FamilyTreeID]
+             );
+ 
++            const isAdmin = await isVerifiedAdministrator(req.user, c);
+             const visible = rows.filter(row =>
++                isAdmin ||
+                 Number(row.SourceCreatedByUserID) === Number(req.user.userId) ||
+                 Number(row.MergedByUserID) === Number(req.user.userId)
+             );
+ 
+@@ -7383,9 +7390,10 @@
+             return res.status(409).json({ message: 'This One Tree merge has already been undone.' });
+         }
+         if (
+             Number(row.SourceCreatedByUserID) !== Number(req.user.userId) &&
+-            Number(row.MergedByUserID) !== Number(req.user.userId)
++            Number(row.MergedByUserID) !== Number(req.user.userId) &&
++            !(await isVerifiedAdministrator(req.user))
+         ) {
+             return res.status(403).json({ message: 'You are not authorized to undo this One Tree merge.' });
+         }
+ 

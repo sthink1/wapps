@@ -5,6 +5,7 @@ const router = express.Router();
 
 const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
+const { isVerifiedAdministrator } = require('../services/administratorAccess');
 const { markExpectedClientError, isExpectedClientError } = require('../services/stage6ExpectedClientError');
 const { sendNotification } = require('../services/notificationService');
 const {
@@ -227,7 +228,10 @@ async function userHasTree(c, treeID, userID) {
           LIMIT 1`,
         [treeID, userID]
     );
-    return !!rows.length;
+    // Preserve ordinary Tree membership; an explicitly verified administrator
+    // can administer any Tree without becoming an ordinary Tree member.
+    if (rows.length) return true;
+    return isVerifiedAdministrator({ userId: userID }, c);
 }
 
 async function requireTree(c, code, userID) {
@@ -2794,7 +2798,8 @@ async function undoOneTreeMerge(c, mergeRow, userID) {
 
     if (
         Number(sourceTree.CreatedByUserID) !== Number(userID) &&
-        Number(mergeRow.MergedByUserID) !== Number(userID)
+        Number(mergeRow.MergedByUserID) !== Number(userID) &&
+        !(await isVerifiedAdministrator({ userId: userID }, c))
     ) {
         const err = new Error('Only the creator of the merged source Tree or the user who completed the merge may undo it.');
         err.status = 403; markExpectedClientError(err);
@@ -7337,7 +7342,9 @@ router.get('/one-tree/undo-options', auth, async (req, res) => {
                 [tree.FamilyTreeID]
             );
 
+            const isAdmin = await isVerifiedAdministrator(req.user, c);
             const visible = rows.filter(row =>
+                isAdmin ||
                 Number(row.SourceCreatedByUserID) === Number(req.user.userId) ||
                 Number(row.MergedByUserID) === Number(req.user.userId)
             );
@@ -7384,7 +7391,8 @@ router.get('/one-tree/undo-review/:treeMergeID', auth, async (req, res) => {
         }
         if (
             Number(row.SourceCreatedByUserID) !== Number(req.user.userId) &&
-            Number(row.MergedByUserID) !== Number(req.user.userId)
+            Number(row.MergedByUserID) !== Number(req.user.userId) &&
+            !(await isVerifiedAdministrator(req.user))
         ) {
             return res.status(403).json({ message: 'You are not authorized to undo this One Tree merge.' });
         }

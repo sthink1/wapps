@@ -1,18 +1,73 @@
 # CLAUDE.md – WonderfulApps Developer Onboarding Guide
 
-**Last updated:** October 13, 2026  
+**Last updated:** November 12, 2026 (standards and administrator-policy reconciliation; historical sections retain their original dates)  
 **Project:** WonderfulApps (WA)  
-**Database ground truth:** `wappsDump.sql`
+**Database reference:** historical `wappsDump.sql`; verify a fresh authoritative schema/export for the intended environment
+
+---
+
+## Mandatory Standards Discovery — November 12, 2026
+
+**Before any Wonderful Apps review, design, file creation or code change:**
+
+1. Read the project-root [`README.md`](README.md), especially its mandatory Section 0.
+2. Read [`standard/WA_Core_Programming_Standards_DRAFT_v1.0_2026-11-12.md`](standard/WA_Core_Programming_Standards_DRAFT_v1.0_2026-11-12.md), [`standard/WA_Detailed_Technical_Standards_DRAFT_v0.4.1_3A-3C_2026-11-12.md`](standard/WA_Detailed_Technical_Standards_DRAFT_v0.4.1_3A-3C_2026-11-12.md), and [`standard/WA_Standards_Decision_Register_v1.0_2026-11-12.md`](standard/WA_Standards_Decision_Register_v1.0_2026-11-12.md). Confirm each document's approved/effective status; a `DRAFT` filename is not by itself an approval.
+3. Consult this `CLAUDE.md`, `TechSummary.md`, relevant Stage 6 records, and the exact current authoritative code and schema. If guidance conflicts, identify it and request an owner decision; do not infer permissions from outdated wording.
+4. **Preserve all existing application behavior and appearance unless specifically approved otherwise.** For every revised file provide the full proposed file, original-to-final unified `.diff`, separate `.md` difference-verification report, final-file SHA-256, affected-dependency review, and risk-based test evidence. New source must be pretty formatted.
+5. **Read-only project access:** do not alter Google Drive, GitHub, local WA source, databases, Render, or deployed devices. Deliver standalone proposals for owner review and manual installation. Never claim approval of standards proves code conformance, or that historical bounded Stage 6 passes are blanket certification.
+
+This section is the mandatory entrypoint. The November 12 policy and implementation-status update below supersedes contradictory older onboarding descriptions; unreconciled historical statements must not override approved standards.
+
+---
+
+## November 12, 2026 — Approved Standards and Current Verification Boundaries
+
+**Status:** Owner-approved policy and documentation reconciliation; **not** a certification of code compliance or a deployment authorization. The pre-existing architectural and historical descriptions below are retained unless expressly corrected here.
+
+### Mandatory development and source-control hierarchy
+
+Before any design, test plan, or source revision, review the project-root `README.md` Section 0, `AGENTS.md` and/or `.github/copilot-instructions.md` as applicable, and the following documents in `standard/`:
+
+- `WA_Core_Programming_Standards_DRAFT_v1.0_2026-11-12.md` — twelve Core Programming Standards, expressly approved by the owner on November 12, 2026.
+- `WA_Detailed_Technical_Standards_DRAFT_v0.4.1_3A-3C_2026-11-12.md` — detailed technical requirements, expressly approved by the owner on November 12, 2026.
+- `WA_Standards_Decision_Register_v1.0_2026-11-12.md` — D01–D14 approved design policies and unresolved implementation items.
+
+The approved status is based on the owner's explicit November 12 approval; legacy `DRAFT` filenames do not override the approval record. If documents conflict, surface the conflict for resolution; source files are evidence of implemented behavior, not authority to override approved policy. For database structure use a **fresh schema/export of the actual intended environment**; historic dumps named in this guide may not reflect its current schema.
+
+### Preservation, change-package and `change/` folder
+
+**CS-01:** Do not alter existing WA functionality, appearance, business rules, database behavior, API contracts, or application-specific behavior outside expressly approved scope. For **every revised file**, identify the exact current authoritative original and deliver the **complete final proposed file** with a unified original-to-final `.diff`, a standalone `.md` change-verification summary, SHA-256 of the exact delivered file, affected-dependency analysis, and risk-based test evidence. Account separately for formatting-only changes, including existing whole-file HTML pretty-formatting requirements. All newly created source files must be pretty formatted and human-readable. Recheck if the authoritative original changes.
+
+Store **documentation artifacts** such as `.diff` comparisons and change-specific `.md` verification reports in the project-root `change/` folder after owner installation. New/revised source files belong in their actual source directories, **not** `change/`. Historical `README_*.md`, `INSTALL_*.md`, test evidence and design records must not be moved automatically based on extension or age; identify dependencies first.
+
+**Authority and installation:** Google Drive `My Drive/wonderfulApp` is the owner's authoritative reference; GitHub and the WA local project are strictly read-only for ChatGPT. Create downloadable proposals only. The owner alone authorizes and installs any replacement. Do not modify Render, databases, deployed environments, or `main` merely because documentation was approved.
+
+### Administrator policy and current implementation discrepancy
+
+**Current approved administrator identity and access policy (November 12, 2026; D01 and approved Step 3B-01):** The administrator is verified centrally through `services/administratorAccess.js`, using the authenticated user's current `UsersT` row. The row must have `IsAdministrator = 1` **and** its `UserName` must match the configured `ADMIN_USERNAME` after trimming and case-insensitive comparison. An absent configuration, missing record, failed verification or either failed condition cannot grant administrator status. A hard-coded `UserID`, a username-only match, a JWT assertion or subscription level is insufficient. After successful verification, the administrator has **full Family Tree authority** to view private data, create and modify records, delete records, manage privacy settings/codes, and transfer Family Tree record ownership, without ordinary-user ownership or privacy-code barriers; all essential validation, relationship integrity, transactions, audit safeguards and approved administrator-transfer workflow remain in force. This Family Tree authority does not automatically confer unrelated system permissions. The subscription override is downstream of verified administrator status, not an alternative identity test. **Current-source limitation:** the Drive copy of `routes/ftPrivacy.js` still contains a local hard-coded `sthink` username check (`isAdmin`); that route has not been certified as conforming, and no source-code correction is authorized by this documentation update.
+
+### Stage 6 authentication, API, privacy and compatibility policy
+
+- **D02:** Retain the pending / cancellation / completion administrator-account transfer procedure; preserve its identity checks, one-time authorization, transaction boundaries and rollback requirements. **Administrator-account transfer is different from administrator-initiated ownership transfer of Family Tree records.**
+- **D03 / D04 / D05:** Intentionally created safe client errors use the shared `services/stage6ExpectedClientError.js` `WeakSet` provenance mechanism. Unexpected errors must yield generic client responses even if assigned an HTTP 4xx status. Future API errors use flat `{ "error": "message", "code": "CODE" }` under a gradual, compatibility-tested migration. R16-75 remains **prepare-only / paused**; approval of this policy does not mean the central handler has been fixed.
+- **D06:** Family Tree privacy codes retain a minimum of four characters, need not be hashed or encrypted, and must remain recoverable as the **same code** through properly verified registered-email recovery. This is the approved design policy; it does not certify a working recovery endpoint. Preserve brute-force precautions and avoid logging codes.
+- **D07:** Support current Chrome, Edge, Firefox and DuckDuckGo on Windows; Safari on macOS and iPhone/iPad; Chrome on Android. Maintain fail-closed coordinated browser refresh when safe Web Locks support is absent; do not invent a fallback.
+- **D08 / D09:** Browser token-storage modernization is a staged future design choice, **not** an already deployed architecture. Preserve multiple-device sessions, refresh rotation and replay protection, race safety and account-switch behavior while requiring tests before migration; failed verification must not revoke an existing valid remembered session.
+- **D10:** Preserve native TNNA's eight-hour access JWT, 180-day rotating refresh credential and conditional up-to-30-day offline continuity, without imposing a new absolute lifetime cap. Native Android Keystore protection remains separate from browser storage design.
+- **D11:** Preserve existing public `/api/geocode/reverse` and Contact Us `/send-email` behavior; extra endpoint validation, throttling, caching and timeout hardening remains **explicitly deferred**, notwithstanding engineering findings.
+- **D12–D14:** Use the twelve-rule Core Standards plus detailed annexes; record every change's compliance, tests and approval; preserve reviewer read-only restrictions and owner-controlled release decisions.
+
+**Evidence status:** The authoritative Drive `services/administratorAccess.js` source was checked for dual-gate logic; `routes/ftPrivacy.js` still has username-only recognition. Current project-wide compliance, latest deployed SHA, fully reconciled endpoint inventory, and full Stage 6 acceptance were **not** established by this documentation-only change. Preserve prior bounded R10/R14/R15/R16 PASS evidence but do not elevate it to overall certification. Independent engineering review remains required before any production release.
 
 ---
 
 ## 1. Purpose of This File
 
-This file is the primary development guide for WonderfulApps. Before making code changes, use this document together with the current source files and `wappsDump.sql`.
+This file is a detailed historical/technical development guide used together with the approved Core and Detailed Standards, Decision Register and current authoritative source/schema. Before proposing changes, check the exact current environment and source baseline.
 
 When documentation conflicts with current executable code or the current SQL dump:
 
-1. `wappsDump.sql` is authoritative for the current database schema.
+1. Verify the actual intended database schema with a fresh authoritative environment-specific dump; `wappsDump.sql` is a historical/reference dump and must not be presumed current.
 2. Current source files are authoritative for application behavior.
 3. This document should then be corrected to match the implementation.
 
@@ -414,7 +469,7 @@ SUBSCRIPTION_EXPIRED
 PLAN_TOO_LOW
 ```
 
-The current admin override recognizes UserID 1 or the configured `ADMIN_USERNAME` value.
+**Current approved administrator identity and access policy (November 12, 2026; D01 and approved Step 3B-01):** The administrator is verified centrally through `services/administratorAccess.js`, using the authenticated user's current `UsersT` row. The row must have `IsAdministrator = 1` **and** its `UserName` must match the configured `ADMIN_USERNAME` after trimming and case-insensitive comparison. An absent configuration, missing record, failed verification or either failed condition cannot grant administrator status. A hard-coded `UserID`, a username-only match, a JWT assertion or subscription level is insufficient. After successful verification, the administrator has **full Family Tree authority** to view private data, create and modify records, delete records, manage privacy settings/codes, and transfer Family Tree record ownership, without ordinary-user ownership or privacy-code barriers; all essential validation, relationship integrity, transactions, audit safeguards and approved administrator-transfer workflow remain in force. This Family Tree authority does not automatically confer unrelated system permissions. The subscription override is downstream of verified administrator status, not an alternative identity test. **Current-source limitation:** the Drive copy of `routes/ftPrivacy.js` still contains a local hard-coded `sthink` username check (`isAdmin`); that route has not been certified as conforming, and no source-code correction is authorized by this documentation update.
 
 Do not rely on a frontend-only subscription check.
 
