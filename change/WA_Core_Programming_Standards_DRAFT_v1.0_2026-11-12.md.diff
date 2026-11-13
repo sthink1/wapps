@@ -1,0 +1,31 @@
+--- a/standard/WA_Core_Programming_Standards_DRAFT_v1.0_2026-11-12.md
++++ b/standard/WA_Core_Programming_Standards_DRAFT_v1.0_2026-11-12.md
+@@ -1,14 +1,14 @@
+ # Wonderful Apps — Core Programming Standards
+ 
+ **Document ID:** WA-CORE-STD  
+-**Version:** 1.0 — **DRAFT FOR PROJECT-OWNER REVIEW; NOT YET ADOPTED**  
++**Version:** 1.0 — **APPROVED by project owner November 12, 2026; governing Core Standards**  
+ **Prepared:** November 12, 2026  
+-**Purpose:** Mandatory daily development checklist *after owner adoption*.  
+-**Detailed reference:** `standard/WA_Detailed_Technical_Standards_DRAFT_v0.4.1_3A-3C_2026-11-12.md` (Step 3 consolidated **draft**, not yet adopted in its entirety).  
++**Purpose:** Mandatory daily development checklist for owner-authorized WA work.  
++**Detailed reference:** `standard/WA_Detailed_Technical_Standards_DRAFT_v0.4.1_3A-3C_2026-11-12.md` (Step 3 consolidated and approved by the owner).  
+ **Approved policy record:** `standard/WA_Standards_Decision_Register_v1.0_2026-11-12.md` (D01–D14), together with subsequently approved 3A/3B/3C clarifications.  
+ 
+-> **Interpretation:** The owner's individual D01–D14 and Step 3A/3B/3C decisions are approved policies. This Core document and the consolidated Detailed Standards v0.4.1 remain **draft documents**, pending separate owner approval of their exact versions. “MUST” describes the rule once adopted or an already binding underlying requirement; it does not mean current source has passed conformance tests. The Core is a working index, not permission to implement, install, deploy, or waive a detailed requirement.
++> **Interpretation:** The owner approved the Core v1.0 and Detailed Standards v0.4.1 documents on November 12, 2026, together with D01–D14 and Step 3A/3B/3C clarifications. These are governing rules for owner-authorized WA development. “MUST” states a normative obligation; approval does **not** certify that current code complies or grant authority to implement, install, test against live services, deploy, or waive a detailed requirement. The historical `DRAFT` filenames are retained solely for existing cross-document link compatibility pending a separately reviewed renaming/link update.
+ 
+ ## Read before any programming work
+ 
+ 1. Read this Core document and **CS-01** first; identify the applicable rules and the corresponding detailed clauses.
+@@ -131,7 +131,7 @@
+ ```
+ 
+ ## Cross-reference / effective status
+ 
+-The Detailed Standards clauses are the full technical reference and cannot be weakened by this shortened index. If a Core summary conflicts with an approved detailed or owner decision, **stop** and resolve the discrepancy; no automated precedence choice. The Detailed Standards v0.4.1 document is currently still **draft pending whole-document owner approval**. Once both documents are approved, publish stable non-`DRAFT` filenames and update project-entry links **through separately approved manual installation**. The present Step 2 draft authorizes no changes to root README, `CLAUDE.md`, GitHub, project files, staging or production.
++The Detailed Standards clauses are the full technical reference and cannot be weakened by this shortened index. If a Core summary conflicts with an approved detailed or owner decision, **stop** and resolve the discrepancy; no automated precedence choice. The Detailed Standards v0.4.1 and this Core v1.0 were **approved by the owner on November 12, 2026**. Their historical `DRAFT` filenames remain as installed reference paths; any later rename and related link changes require a separately compared, owner-approved package. The standards approval does not authorize changes to root README, `CLAUDE.md`, GitHub, project files, staging or production.
+ 
+-**Change history:** v1.0 draft — initial 12-rule Step 2 synthesis of v0.4.1 and explicit CS-01 diff/formatting instructions; prepared for owner review, not deployed.
++**Change history:** v1.0 drafted November 12, 2026; owner-approved November 12, 2026. November 13, 2026: approval-status text reconciled without changing the twelve rules. This separate document revision is for manual owner installation; no application-code change or runtime test is implied.

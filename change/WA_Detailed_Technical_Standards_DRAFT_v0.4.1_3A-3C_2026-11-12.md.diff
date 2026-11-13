@@ -1,0 +1,123 @@
+--- a/standard/WA_Detailed_Technical_Standards_DRAFT_v0.4.1_3A-3C_2026-11-12.md
++++ b/standard/WA_Detailed_Technical_Standards_DRAFT_v0.4.1_3A-3C_2026-11-12.md
+@@ -1,22 +1,22 @@
+ # Wonderful Apps — Detailed Technical Programming and Security Standards
+ 
+ **Document:** `WA_Detailed_Technical_Standards_DRAFT_v0.4.1_3A-3C_2026-11-12.md`  
+-**Version:** 0.4.1 — **CONSOLIDATED STEP 3A/3B/3C REVIEW DRAFT; NOT ADOPTED AS A WHOLE**  
++**Version:** 0.4.1 — **APPROVED consolidated Detailed Technical Standards (owner approval November 12, 2026)**  
+ **Prepared:** November 12, 2026  
+-**Step:** Phase 1, Step 3 — detailed standardization before generation of Step 2 Core Standards  
++**Step:** Phase 1, Step 3 — approved detailed standards supporting the approved Step 2 Core Standards v1.0  
+ **Development basis:** Step 3 v0.4, B9 draft v0.3, both independent design-engineer reports, owner-approved D01–D14 Decision Register v1.0, and the **subsequent explicit owner approvals of Step 3A, revised Step 3B, and Step 3C** (November 12, 2026).  
+-**Authority:** D01–D14 and approved 3A/3B/3C clarifications are owner decisions. **This consolidated document as a whole is submitted for separate owner approval**; it is not an installed governing replacement, code-conformance certificate, or permission to implement.  
++**Authority:** This consolidated document and the twelve-rule Core Standards v1.0 were expressly approved by the project owner on November 12, 2026, following D01–D14 and approved Step 3A/3B/3C clarifications. Approval establishes governing development requirements; it is not a code-conformance certificate, runtime test outcome or permission to implement without separate authorization. Its historical `DRAFT` filename is retained to preserve existing references until a separately approved renaming/link-update package.  
+ **Operating restriction:** No changes to authoritative Google Drive, GitHub, local WA files, servers, databases, staging, or production. Proposed replacements must be delivered separately for owner review and manual installation.
+ 
+ ## 1. Purpose, use and approval boundaries
+ 
+-This detailed document is the **technical reference** supporting a future short `WA_Core_Programming_Standards` document. The Core document will identify approximately 12 daily invariants and refer to the stable requirement IDs in this specification. **Step 2 must not be generated, installed, or treated as approved yet.** There is no independent permission to modify source simply because an approved policy is reflected here.
++This detailed document is the **approved technical reference** supporting the approved twelve-rule `WA_Core_Programming_Standards_DRAFT_v1.0_2026-11-12.md`. The Core document refers to the stable requirement IDs in this specification. Both documents were approved by the owner on November 12, 2026. There is no independent permission to modify application source or deploy merely because the policy was approved.
+ 
+ ### 1.1 Distinguish four statuses
+ 
+ - **Approved policy:** Explicitly agreed by the owner (D01–D14) or established existing project rules. This is a design mandate, **not** implementation certification.
+-- **Draft specification:** Detailed instructions in this document awaiting owner review, including proposed test and migration mechanics.
++- **Approved specification:** This document contains the owner-approved technical standard; individual future architectures, tests, migrations and exceptions explicitly identified as proposals or deferrals still require separate decisions.
+ - **Implementation observation:** A particular file/commit contains code with stated behavior; a source observation is not an executed test.
+ - **Verification:** A particular test was executed against a pinned code and environment, with defined assertions and outcomes. Bounded passes do not confer project-wide compliance.
+ 
+ Record each material finding as `APPROVED-POLICY`, `EXISTING-DOC`, `PROPOSED-DETAIL`, `DEFERRED`, `IMPLEMENTED-UNVERIFIED`, `TEST-PASS-BOUNDED`, `TEST-FAIL`, or `OPEN-TECHNICAL-DESIGN` as applicable. Do not merge these dimensions into a single “complete” label.
+@@ -28,17 +28,17 @@
+ Google Drive `My Drive/wonderfulApp` is the authoritative WA project source. GitHub may be inspected **read-only**. Local WA project files are **read-only** to ChatGPT and engineers. Exact source baseline, paths, branch/commit, file hashes where accessible, schema identity, and applicable staging deployment are prerequisites for proposing source changes. The pinned historical GitHub `b5e2b06` and the engineer's later inspected `a53f7ef` are evidence baselines, not claims of present deployment.
+ 
+ ### 1.3 Daily discovery and instruction routing — proposed detail
+ 
+-**Approved 3C-05 discovery requirement:** A proposed root `README.md` must prominently direct every human/AI developer to the approved Core Standards, this detailed specification, the decision register, `CLAUDE.md`, and `TechSummary.md` **before** starting work. The README is a proposed **separate deliverable**, not automatically installed or automatically read by every tool. Compatible AI instruction mechanisms should point to the same canonical sources. Merely placing a README in a folder **does not guarantee** automatic ingestion by an IDE or coding assistant; explicit task kickoff acknowledgement, review evidence and test gates are required. Do not create a competing copy of the detailed rules in multiple instruction files. Confirm the project's existing root README and AI-instruction files before proposing replacement; do not overwrite or truncate unrelated content.
++**Approved 3C-05 discovery requirement:** The current root `README.md` directs every human/AI developer to the approved Core Standards, this detailed specification, the decision register, `CLAUDE.md`, and `TechSummary.md` **before** starting work. It is present in the authoritative Google Drive root, but is not automatically read by every tool. Compatible AI instruction mechanisms should point to the same canonical sources. Merely placing a README in a folder **does not guarantee** automatic ingestion by an IDE or coding assistant; explicit task kickoff acknowledgement, review evidence and test gates are required. Do not create a competing copy of the detailed rules in multiple instruction files. Confirm the project's existing root README and AI-instruction files before proposing replacement; do not overwrite or truncate unrelated content.
+ 
+ ### 1.4 Approval records
+ 
+ Each standards approval must identify exact version, section/ID, effective date, owner authorization, known exceptions, and required future engineering work. Each code change must separately identify approved scope, current-source provenance, affected consumers, test plan, final diff and rollback. Final Stage 6 independent implementation review is **separate** from this standards review and remains mandatory before merge/release.
+ 
+ ## 2. Numbered governing technical requirements
+ 
+-**Use of MUST:** Within this **draft**, MUST expresses the proposed normative text for review. It does not turn an unapproved proposed detail into existing authority. Source-backed obligations and owner-approved decisions are marked explicitly.
++**Use of MUST:** Within this **approved specification**, MUST denotes a governing WA requirement. Any specific future architecture, implementation, migration or exception separately identified as proposed or deferred still requires its own authorization. Approval of the document does not prove compliance.
+ 
+ ### WA-PRESERVE-001 — Preserve existing functionality, behavior and appearance
+ 
+ **Basis:** Owner-approved Step 3A primary preservation and comparison requirements, including the two approved clarifications. Detailed language consolidated here for full-document review. **Scope:** All changes to existing WA source, documentation affecting execution, assets, styles, schemas, or shared components.
+@@ -252,15 +252,15 @@
+ | D08 | Remove unnecessary persistent JS-readable token storage as long-term goal | AUTH-001, SESSION-001, FRONT-001 | Choose final architecture after compatibility design |
+ | D09 | Multi-device, rotation, replay containment, safe tabs, same-browser supersession | SESSION-001 | Precise race/token-family rules and concurrency cases |
+ | D10 | Preserve TNNA native lifetime and offline policy; no new cap | NATIVE-001 | Device regression for shared server changes |
+ | D11 | Preserve public geocode/mail behavior, defer safeguards | ABUSE-001 | Keep findings open; no hardening without new approval |
+-| D12 | 10–12 short Core rules plus detailed annexes | CORE-001, REVIEW-001 | Generate Step 2 **after** Step 3 wording is reviewed |
++| D12 | 10–12 short Core rules plus detailed annexes | CORE-001, REVIEW-001 | Step 2 Core v1.0 prepared and owner-approved; continue implementation conformance and test evidence |
+ | D13 | Compliance review and risk-based testing for every change | PRESERVE-001, REVIEW-001 | Adopt and operationalize checks/evidence |
+ | D14 | Drive authoritative, read-only reviewer access, manual owner installation | CORE-001, REVIEW-001 | Versioned approvals and task kickoff |
+ 
+-**Subsequent owner requests for Step 2 review:** (i) preservation of behavior/appearance as **primary** Core CS-01; (ii) mandatory full original-versus-final revised file comparison; (iii) pretty formatting for **new** source. These are expressly incorporated above as proposed detailed clauses for final standards approval and are not omitted simply because the older D01–D14 register predates them.
+-
+-## 4. Draft technical annexes — detailed review reference
++**Subsequent owner-approved Step 2 requirements:** (i) preservation of behavior/appearance as **primary** Core CS-01; (ii) mandatory full original-versus-final revised file comparison; (iii) pretty formatting for **new** source. These are incorporated above as approved requirements; the older D01–D14 register predates these clarifications.
++
++## 4. Approved technical annexes — implementation and verification reference
+ 
+ ### Annex A — Endpoint and frontend consumer registry schema (approved 3C-02 requirement)
+ 
+ The **current registry is incomplete**. **Every new or revised endpoint MUST have a reviewed registry row before delivery.** A whole-project compliance claim requires a complete method-level inventory; do not infer completeness from representative examples. The per-method row template must include:
+@@ -383,13 +383,13 @@
+ | DE-07 XSS/front-end rules omitted | FRONT-001 and FORMAT | Included for review; CSP architecture pending D08 |
+ | DE-08 privacy-code key storage | PRIV-002 | D06 owner chose recoverability/no mandatory encryption; risk explicit |
+ | DE-09 endpoint registry incomplete | API-001, Annex A | Registry still incomplete |
+ | DE-10 errors before no-store mount | CACHE-001, ERR-EARLY | Coverage pending |
+-| DE-11 transport/page token composition | PRIV-002, SHARED | Integration untested in this draft |
++| DE-11 transport/page token composition | PRIV-002, SHARED | Integration not yet verified in controlled tests |
+ | DE-12 database/resource constraints | DATA-001, ENV-001 | Verification pending |
+ | DE-13 undefined test references | Annexes D/E describe essential cases | Execution/complete catalog pending |
+ | DE-14 dependency and public build artifacts | ENV-001 | Inventory/removal separately approved |
+-| DE-15 simplified governance and ownership | §§1, REVIEW, future Core | Step 2 not yet authored |
++| DE-15 simplified governance and ownership | §§1, REVIEW, Core v1.0 | Core Standards approved; ongoing adoption and evidence gates remain |
+ 
+ **Claude additional findings:** Public geocode and Contact Us protection are recorded **DEFERRED-D11**, not silently fixed; broader security headers/CSP depend on staged design and approvals; script/PWA cache skew is covered in CACHE-001; readable daily Core and generated endpoint inventory are proposed governance mechanisms; platform versions and actual hosting headers require fresh inspection. Small hygiene suggestions are **not** an automatic license to alter source code.
+ 
+ ### Annex G — Known documentation drift; proposed reconciliation only (approved 3C-05)
+@@ -405,11 +405,11 @@
+ ### Annex H — Preservation of prior Stage 6 evidence
+ 
+ Preserve all bounded R10, R14, R15 passes and earlier focused R16 passes. Preserve R16-74B synthetic disclosure failure; R16-75 remains paused pending separate owner approval of an actual correction. The larger S6 open-items register and existing testing plan remain controlling historical evidence; some snapshots have old status cutoffs. A new standards policy does not retroactively void a test nor close a linked broad acceptance requirement. When D08/D09 or shared error/session code changes are eventually installed, identify **exactly** which prior assertions require rerun and why. No tests were executed while writing v0.4.
+ 
+-## 5. Consolidated Step 3 review disposition and Step 2 dependency gate
+-
+-**Step 3A, Step 3B (with revised 3B-01), and Step 3C were explicitly approved as review dispositions by the owner.** The consolidated v0.4.1 text below is presented to confirm consistent incorporation; **the entire document is not yet adopted**. The review covered:
++## 5. Consolidated Step 3 approval and Step 2 adoption record
++
++**Step 3A, Step 3B (with revised 3B-01), and Step 3C were approved; the consolidated v0.4.1 Detailed Standards and v1.0 Core Standards were subsequently approved by the owner on November 12, 2026.** The review covered:
+ 
+ 1. **WA-PRESERVE-001:** Require full final-file diff and separate verification summary **for every revised source file**, including one-line changes; decide any exceptions (currently none proposed).
+ 2. **WA-FORMAT-001:** Readable new files in all languages; reconcile existing mandatory whole-HTML formatting with limited-scope diff protection.
+ 3. **D01/ADMIN (updated by owner 3B-01):** Full verified-administrator Family Tree viewing, creating, modifying, deleting, privacy management and record-ownership transfers; preserve all integrity/audit obligations and D02 *administrator account-transfer* workflow as a distinct flow.
+@@ -418,9 +418,9 @@
+ 6. **D11:** Defer public geocoding and Contact Us hardening without deleting findings or making unsupported security assurances.
+ 7. **Discovery:** Decide how root `README.md` and tool-specific instructions reference the eventual Core and this detailed spec. No README is guaranteed to be automatically read by every tool.
+ 8. **Annex test readiness:** This is a structured initial acceptance catalog, **not** an exhaustive executable test suite or proof of project conformance.
+ 
+-**Step 2 is explicitly ON HOLD under the latest owner instruction until this consolidated Step 3 draft is reviewed and separately accepted.** Step 2 should define 12 short Core rules, beginning with CS-01 preservation of functionality/appearance and full changed-file comparisons. It must cite actual detailed requirement IDs in this v0.4.1 document and D01–D14, not nonexistent annexes. A separate root README/AI-entry proposal must be built from actual current originals and diffed under WA-PRESERVE-001.
++**Step 2 is complete and owner-approved:** The twelve-rule Core v1.0 begins with CS-01 preservation of functionality/appearance and mandatory full-file comparisons, and cites the relevant Detailed v0.4.1 IDs and D01–D14. The root `README.md` and AI discovery files have been prepared and found in the authoritative Drive copy. Their presence does not itself certify automatic AI instruction loading or runtime application compliance.
+ 
+ ## 6. Source references and version history
+ 
+ Primary Drive sources inspected for this revision:
+@@ -435,7 +435,7 @@
+ - [Stage 6 Render test plan](https://drive.google.com/file/d/1DUyRKaa9vph6oetGgIVe0LC6X55vTJye/view)
+ 
+ - **0.3 / B9 — November 11:** Earlier review draft; 17 primary clauses and initial annexes; multiple owner decisions still open at the time.
+ - **0.4 / Step 3 — November 12:** Initial detailed revision using D01–D14, preservation/diff/formatting requests, both independent reviews and initial annexes. Draft.
+-- **0.4.1 / consolidated Step 3 — November 12:** Incorporates explicitly approved 3A source comparison/SHA-256/HTML formatting rules; **revised 3B-01 full Family Tree administrator privileges** and 3B-02–04; **3C-01–05** annex, testing, discovery and governance clarifications. **Still a full-document DRAFT; no WA project-file changes and no tests executed.**
+-
+-**Requested owner disposition:** Review this consolidated v0.4.1 draft for accuracy and any remaining corrections. Approve the exact detailed standard/version in a separate explicit action if satisfactory. **Do not begin Step 2 until the owner specifically authorizes it.** Neither document approval nor policy approval authorizes WA project installation, staging changes or production release.
++- **0.4.1 / consolidated Step 3 — November 12:** Incorporates explicitly approved 3A source comparison/SHA-256/HTML formatting rules; **revised 3B-01 full Family Tree administrator privileges** and 3B-02–04; **3C-01–05** annex, testing, discovery and governance clarifications. **Approved by owner November 12, 2026.** Original drafting did not execute runtime tests.
++
++**Owner disposition:** The project owner approved Detailed v0.4.1 and Core v1.0 on November 12, 2026. This November 13 documentation-only update corrects historical approval-status statements. The approved standards do not authorize application source changes, staging changes, database mutations or production release.
