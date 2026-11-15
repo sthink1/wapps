@@ -1,0 +1,8 @@
+PASS Invalid field
+PASS Controlled nested message
+PASS Fallback message
+PASS HTTP error 400
+PASS Top level message
+PASS HTTP error 400
+PASS successful mutation result; sent once
+7/7 bounded isolated tests passed

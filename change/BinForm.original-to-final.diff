@@ -1,0 +1,16 @@
+--- authoritative/httpdocs/BinForm.html
++++ proposed/httpdocs/BinForm.html
+@@ -501,7 +501,12 @@
+             let data = null;
+             try { data = await response.json(); } catch (_) {}
+             if (!response.ok) {
+-                const message = (data && (data.error || data.message)) || `HTTP error ${response.status}`;
++                const error = data && data.error;
++                const message =
++                    (typeof error === 'string' && error) ||
++                    (error && typeof error.message === 'string' && error.message) ||
++                    (data && typeof data.message === 'string' && data.message) ||
++                    `HTTP error ${response.status}`;
+                 throw new Error(String(message).replace(/\(be\)$/,''));
+             }
+             return data;

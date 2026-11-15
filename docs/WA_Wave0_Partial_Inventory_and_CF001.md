@@ -1,0 +1,7 @@
+# Wave 0 — Partial Inventory Reconciliation (15 Nov 2026)
+
+**Incomplete / not a full project-wide inventory.** Connector listing confirmed 75 direct root children, 121 direct `httpdocs` children, 19 `standard` children, and 47 `docs` children. These figures include folder entries, cannot be added to form a deduplicated file count, and do not establish recursively complete coverage. At least `routes` and `httpdocs/js` contain files despite a folder-parent search reporting zero; a separate folder fetch found their contents. The root includes live code, archived/COPY-named artifacts, SQL, logs, TNNA, tests, and project documentation; nothing was deleted or treated as obsolete. More recursive traversal, pagination, size/hash capture and per-file entries remain necessary.
+
+**First audit unit:** `httpdocs/BinForm.html` (WA-CF-001). Direct legacy `apiFetch` at original lines 493–508; nested error can stringify to `[object Object]` at line 504. GET descriptions and records; POST/PUT/DELETE item and POST descriptions; POST recurrence preview are observed. No broad source audit or hosted/browser compliance conclusion is made.
+
+**Register state:** `docs/WA_Standards_Compliance_Register.md` is present in Drive, labeled seeded v1.0 but its own header says owner installation/review required. Preserve the 18 seeded findings and prior bounded R16 evidence. This update is supplementary, not a replacement of the authoritative register.

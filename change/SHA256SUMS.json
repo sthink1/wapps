@@ -1,17 +1,11 @@
 {
   "algorithm": "SHA-256",
-  "generated_utc_date": "2026-11-14",
-  "checksum_scope": "All files in this package except this manifest itself",
   "files": {
-    "change/waPlatform.js.diff": "b8007132af0e49e7955b639f079ec903dc2ab452ec7ba251e0a7db11a90ddb10",
-    "change/waPlatform.js_Change_Verification.md": "3bcdfbd12a49d2c42c43881cfd39a78956b95e2d31a778e18e36754278ac41b3",
-    "docs/WA_R16-75_T09_Corrected_Combined_Tests_2026-11-14.tap": "6f1869692ba89dc2531bd5b6ed795be5b63207b74464ae201671605b109f2f38",
-    "docs/WA_R16-75_T09_Correction_Results_2026-11-14.md": "d75c96596dd12caccbddffb6a0f1db664eef1ea300f1d9ebe9f61126c38ea122",
-    "docs/WA_R16-75_T09_Installation_2026-11-14.md": "33efc289080f7f69238fde5ee6be5f9e42a2a7c2c40f45d621de27dd9663bf4a",
-    "docs/WA_R16-75_T09_Original_Baseline_Test_2026-11-14.tap": "37bfe32d26e6dce440b4db8b4609c9b7ebc02774ccf2b994c1dd8bcf576e4039",
-    "httpdocs/js/waPlatform.js": "57a5aae55188ab89d279dc69466414f14f2b3965b8c17f8f64eeb7d568ecc17d",
-    "tests/stage6.r16-75.t09.additional-regression.offline.test.js": "6399dcd5b3db72d27b85257a0b8102fe5a9960f29ff138b010b5e48ba0f5e960",
-    "tests/stage6.r16-75.t09.offline.test.js": "d1f532d0ce80de21acd475c7ffb3a870138a13372a1fcb7b7efbc1c79c574162",
-    "tests/waPlatform.unit.test.js": "4d52641ba4a5fc177c64371e9a8411b6cc96dcb3e74e07cba25ad57b57317ea5"
+    "change/BinForm.original-to-final.diff": "0ff002bd44c93a5e5281441eaebf5116a71e9da431eb1647423827ed2c163c58",
+    "change/BinForm_Change_Verification.md": "bae2f8215ac84f202a52638cc39dd0ebb321a7dc538ad2ec3e55f19286d1f66b",
+    "change/WA_CF_001_Offline_Test_Results.txt": "f82a3a75a41b0e6664d99278bf47042b4bba437f7a422fa51b46a360ba3276d8",
+    "docs/WA_Wave0_Partial_Inventory_and_CF001.md": "651c5c556465a1f627cb246845e938fe24daf0ca4a1cd6e154d4e631bbde544b",
+    "httpdocs/BinForm.html": "07898f5d291b1f296fe0f0aa85fe1f91c96815bb19782d0cbe98b8c8a28700a2",
+    "tests/WA_CF_001_BinForm_Error_Offline.test.cjs": "7379bf45d1075264ac958c7701647979a2173ccb7c29b0f4fba30ba66fa8a726"
   }
 }
