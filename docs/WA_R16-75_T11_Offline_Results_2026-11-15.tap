@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: T11-A every protected API prefix and child has no-store for parser-stage synthetic 400 and 500
+ok 1 - T11-A every protected API prefix and child has no-store for parser-stage synthetic 400 and 500
+  ---
+  duration_ms: 2.09115
+  type: 'test'
+  ...
+# Subtest: T11-B route-level no-store remains for protected paths before ordinary responses, 401, and 403
+ok 2 - T11-B route-level no-store remains for protected paths before ordinary responses, 401, and 403
+  ---
+  duration_ms: 3.340827
+  type: 'test'
+  ...
+# Subtest: T11-C unrelated public paths and look-alike prefix are not assigned new no-store
+ok 3 - T11-C unrelated public paths and look-alike prefix are not assigned new no-store
+  ---
+  duration_ms: 0.16004
+  type: 'test'
+  ...
+# Subtest: T11-D messages are never included in central logs for marked/unmarked client or server errors
+ok 4 - T11-D messages are never included in central logs for marked/unmarked client or server errors
+  ---
+  duration_ms: 0.808233
+  type: 'test'
+  ...
+# Subtest: T11-E headers-sent does not overwrite a response or write cache headers
+ok 5 - T11-E headers-sent does not overwrite a response or write cache headers
+  ---
+  duration_ms: 0.148994
+  type: 'test'
+  ...
+# Subtest: T11-F handler log text and catch-all do not record request URL
+ok 6 - T11-F handler log text and catch-all do not record request URL
+  ---
+  duration_ms: 0.100611
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 89.920853

@@ -1,0 +1,11 @@
+--- a/tests/stage6.r16-75.central-error.offline.test.js
++++ b/tests/stage6.r16-75.central-error.offline.test.js
+@@ -15,7 +15,7 @@
+ const start = source.indexOf('app.use((err, req, res, next) => {', source.indexOf(marker));
+ const end = source.indexOf('\n});', start);
+ assert.ok(source.includes(marker) && start >= 0 && end > start, 'Central error handler not found');
+-const handlerSource = source.slice(start + 'app.use('.length, end + '\n})'.length);
++const handlerSource = source.slice(start + 'app.use('.length, end + '\n}'.length);
+ 
+ function run(error, { requestPath = '/users/refresh-session', headersSent = false } = {}) {
+   const logs = [];

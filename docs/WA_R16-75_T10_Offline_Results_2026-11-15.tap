@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: T10-A: GET 401 rotates once and retries GET with updated bearer, not old token
+ok 1 - T10-A: GET 401 rotates once and retries GET with updated bearer, not old token
+  ---
+  duration_ms: 30.167113
+  type: 'test'
+  ...
+# Subtest: T10-B: GET 401 refresh failure returns the original unauthorized response and does not replay GET
+ok 2 - T10-B: GET 401 refresh failure returns the original unauthorized response and does not replay GET
+  ---
+  duration_ms: 2.119192
+  type: 'test'
+  ...
+# Subtest: T10-C: 403 returns its server message and code without refresh or replay
+ok 3 - T10-C: 403 returns its server message and code without refresh or replay
+  ---
+  duration_ms: 1.555245
+  type: 'test'
+  ...
+# Subtest: T10-D: 503 nested server error retains status and public message; no refresh or retry
+ok 4 - T10-D: 503 nested server error retains status and public message; no refresh or retry
+  ---
+  duration_ms: 1.620464
+  type: 'test'
+  ...
+# Subtest: T10-E: denied POST is submitted exactly once, does not refresh, and preserves its body
+ok 5 - T10-E: denied POST is submitted exactly once, does not refresh, and preserves its body
+  ---
+  duration_ms: 0.860161
+  type: 'test'
+  ...
+# Subtest: T10-F: POST 503 not replayed and API error still propagated
+ok 6 - T10-F: POST 503 not replayed and API error still propagated
+  ---
+  duration_ms: 2.075928
+  type: 'test'
+  ...
+# Subtest: T10-G: POST transport timeout/rejection is propagated without a retry
+ok 7 - T10-G: POST transport timeout/rejection is propagated without a retry
+  ---
+  duration_ms: 0.895665
+  type: 'test'
+  ...
+# Subtest: T10-H: logout success sends one server revocation before removing the local token
+ok 8 - T10-H: logout success sends one server revocation before removing the local token
+  ---
+  duration_ms: 1.081724
+  type: 'test'
+  ...
+# Subtest: T10-I: logout transport failure fails closed locally but reports revocation unconfirmed
+ok 9 - T10-I: logout transport failure fails closed locally but reports revocation unconfirmed
+  ---
+  duration_ms: 0.989706
+  type: 'test'
+  ...
+# Subtest: T10-J: expired session refresh rejection prevents sending protected GET
+ok 10 - T10-J: expired session refresh rejection prevents sending protected GET
+  ---
+  duration_ms: 1.760063
+  type: 'test'
+  ...
+# Subtest: T10-K: form-like POST payload preserved; no automatic replay after 401 (UI unsaved-state not tested)
+ok 11 - T10-K: form-like POST payload preserved; no automatic replay after 401 (UI unsaved-state not tested)
+  ---
+  duration_ms: 1.467794
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 137.807323

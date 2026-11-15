@@ -1,0 +1,124 @@
+TAP version 13
+# Subtest: restores a valid web session using session-status without rotation
+ok 1 - restores a valid web session using session-status without rotation
+  ---
+  duration_ms: 31.235268
+  type: 'test'
+  ...
+# Subtest: expired token triggers one refresh then GET request
+ok 2 - expired token triggers one refresh then GET request
+  ---
+  duration_ms: 3.180081
+  type: 'test'
+  ...
+# Subtest: 401 GET is retried once after rotation; 403 does not rotate
+ok 3 - 401 GET is retried once after rotation; 403 does not rotate
+  ---
+  duration_ms: 5.444399
+  type: 'test'
+  ...
+# Subtest: unsafe POST returns original 401 and is not repeated
+ok 4 - unsafe POST returns original 401 and is not repeated
+  ---
+  duration_ms: 1.395698
+  type: 'test'
+  ...
+# Subtest: logout revokes server before clearing token
+ok 5 - logout revokes server before clearing token
+  ---
+  duration_ms: 1.792158
+  type: 'test'
+  ...
+# Subtest: logout failure clears local token without claiming server revocation
+ok 6 - logout failure clears local token without claiming server revocation
+  ---
+  duration_ms: 1.357699
+  type: 'test'
+  ...
+# Subtest: cross-tab lock unavailable fails closed
+ok 7 - cross-tab lock unavailable fails closed
+  ---
+  duration_ms: 1.146964
+  type: 'test'
+  ...
+# Subtest: same-origin only: never send Bearer to external origin
+ok 8 - same-origin only: never send Bearer to external origin
+  ---
+  duration_ms: 1.671363
+  type: 'test'
+  ...
+# Subtest: concurrent refresh within tab is single-flight
+ok 9 - concurrent refresh within tab is single-flight
+  ---
+  duration_ms: 2.137069
+  type: 'test'
+  ...
+# Subtest: refresh failure with expired token does not send protected API request
+ok 10 - refresh failure with expired token does not send protected API request
+  ---
+  duration_ms: 2.608022
+  type: 'test'
+  ...
+# Subtest: mutation 401 neither refreshes nor replays; original response preserved
+ok 11 - mutation 401 neither refreshes nor replays; original response preserved
+  ---
+  duration_ms: 1.530978
+  type: 'test'
+  ...
+# Subtest: expired remembered session refreshes then revokes server on logout
+ok 12 - expired remembered session refreshes then revokes server on logout
+  ---
+  duration_ms: 1.878416
+  type: 'test'
+  ...
+# Subtest: expired ordinary session with rejected refresh clears local token and reports unconfirmed revocation
+ok 13 - expired ordinary session with rejected refresh clears local token and reports unconfirmed revocation
+  ---
+  duration_ms: 1.821603
+  type: 'test'
+  ...
+# Subtest: explicit logout prevents restoration until a new login
+ok 14 - explicit logout prevents restoration until a new login
+  ---
+  duration_ms: 1.564505
+  type: 'test'
+  ...
+# Subtest: ordinary expired session without refresh cookie returns login_required
+ok 15 - ordinary expired session without refresh cookie returns login_required
+  ---
+  duration_ms: 1.60112
+  type: 'test'
+  ...
+# Subtest: server remains authority on remembered versus ordinary browser restart
+ok 16 - server remains authority on remembered versus ordinary browser restart
+  ---
+  duration_ms: 4.787462
+  type: 'test'
+  ...
+# Subtest: caller-supplied Authorization header cannot override WA token
+ok 17 - caller-supplied Authorization header cannot override WA token
+  ---
+  duration_ms: 1.445305
+  type: 'test'
+  ...
+# Subtest: two tabs with shared lock and storage rotate the refresh cookie once
+ok 18 - two tabs with shared lock and storage rotate the refresh cookie once
+  ---
+  duration_ms: 4.941815
+  type: 'test'
+  ...
+# Subtest: refresh response cannot overwrite an intervening explicit different-account login
+ok 19 - refresh response cannot overwrite an intervening explicit different-account login
+  ---
+  duration_ms: 1.300097
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 167.392001

@@ -1,0 +1,10 @@
+{
+  "purpose": "R16-75-T09 evidence file integrity",
+  "date": "2026-11-14",
+  "files": {
+    "tests/stage6.r16-75.t09.offline.test.js": "d1f532d0ce80de21acd475c7ffb3a870138a13372a1fcb7b7efbc1c79c574162",
+    "docs/WA_R16-75_T09_Offline_Test_Results_2026-11-14.md": "1e88d46fc10c07788ed5653ab17db32de14b9fe6db41e90d3903b276cdb82580",
+    "docs/WA_R16-75_T09_TAP_2026-11-14.txt": "18ad61293e79731eee8daa4a2ed238d68e43562c6c7ea30faa50e6fe1bb519aa",
+    "docs/WA_R16-75_T09_Existing_Unit_TAP_2026-11-14.txt": "0a0987e891c8347e1018e4af678d8fdc5de63c3289dc9b64f84d267d37a01dd1"
+  }
+}

@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: T08-A Family Tree approved errors preserve messages and selective domain fields
+ok 1 - T08-A Family Tree approved errors preserve messages and selective domain fields
+  ---
+  duration_ms: 1.400986
+  type: 'test'
+  ...
+# Subtest: T08-B Family Tree unexpected errors cannot expose messages or domain fields
+ok 2 - T08-B Family Tree unexpected errors cannot expose messages or domain fields
+  ---
+  duration_ms: 0.636394
+  type: 'test'
+  ...
+# Subtest: T08-C Family Tree privacy preserves flat message and deliberate 403/404; unexpected sanitization
+ok 3 - T08-C Family Tree privacy preserves flat message and deliberate 403/404; unexpected sanitization
+  ---
+  duration_ms: 1.502821
+  type: 'test'
+  ...
+# Subtest: T08-D Notifications preserves message field, appropriate status and protected sanitization
+ok 4 - T08-D Notifications preserves message field, appropriate status and protected sanitization
+  ---
+  duration_ms: 0.718229
+  type: 'test'
+  ...
+# Subtest: T08-E Subscriptions approved promo errors preserve flat error and unexpected 4xx delegation sanitizes
+ok 5 - T08-E Subscriptions approved promo errors preserve flat error and unexpected 4xx delegation sanitizes
+  ---
+  duration_ms: 11.995384
+  type: 'test'
+  ...
+# Subtest: T08-F Budget local marker remains distinct; approved error status preserved in local branch
+ok 6 - T08-F Budget local marker remains distinct; approved error status preserved in local branch
+  ---
+  duration_ms: 1.831625
+  type: 'test'
+  ...
+# Subtest: T08-G ETF local marker retains intentional 400 and does not trust spoofed error
+ok 7 - T08-G ETF local marker retains intentional 400 and does not trust spoofed error
+  ---
+  duration_ms: 2.28844
+  type: 'test'
+  ...
+# Subtest: T08-H Users refresh-session retains flat auth errors and safe unexpected fallback by source inspection
+ok 8 - T08-H Users refresh-session retains flat auth errors and safe unexpected fallback by source inspection
+  ---
+  duration_ms: 0.258346
+  type: 'test'
+  ...
+# Subtest: T08-I Proposed central handler keeps nested form for delegated unexpected 4xx and marked expected 4xx
+ok 9 - T08-I Proposed central handler keeps nested form for delegated unexpected 4xx and marked expected 4xx
+  ---
+  duration_ms: 3.587459
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 207.285246

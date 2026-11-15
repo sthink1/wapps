@@ -1,0 +1,9 @@
+{
+  "package": "WA_R16-75_T11_Offline_Evidence_2026-11-15.zip",
+  "source_server_sha256": "00b8fe5e521ab65cd41dca62d48968d8739d7282f8b0458f79660d06dd60cc81",
+  "files": {
+    "wonderfulApp/tests/stage6.r16-75.t11.cache-log.offline.test.js": "786f9e92f0afa2bab6d8eba664b291e1da31187de75c20e9328458425fc35a10",
+    "wonderfulApp/docs/WA_R16-75_T11_Offline_Test_Results_2026-11-15.md": "52102f2d9f5aa820048937cd6895a699d365e98360560255d3de04b992ad2239",
+    "wonderfulApp/docs/WA_R16-75_T11_Offline_Results_2026-11-15.tap": "1222948b564585811208a8d7b53b8ba0c3c7d295c0a3a64af25c0e09b79ef898"
+  }
+}

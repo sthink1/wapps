@@ -1,0 +1,10 @@
+{
+  "test": "R16-75-T08",
+  "date": "2026-11-14",
+  "proposed_server_sha256": "00b8fe5e521ab65cd41dca62d48968d8739d7282f8b0458f79660d06dd60cc81",
+  "files": {
+    "tests/stage6.r16-75.t08.offline.test.js": "98fa78817f162c854d69fb6a4bb6b83a2e5ba37a93ac54969aa901f12649de80",
+    "docs/WA_R16-75_T08_Offline_Test_Results_2026-11-14.md": "debc6e76f444175fbf2300e13d0fa75df58efef076ecaeb6fee7a2f6628a5c4c",
+    "docs/WA_R16-75_T08_TAP_2026-11-14.txt": "ad1be2b6b9fdc98db346af28da3886f890bddd628269c86d31db9177572d32d1"
+  }
+}

@@ -41,11 +41,18 @@
   async function readError(response) {
     let data;
     try { data = await response.clone().json(); } catch (_) { /* non-JSON response */ }
-    return new ApiError(
-      (data && (data.message || data.error)) || `HTTP ${response.status}`,
-      response.status,
-      data && (data.code || data.error)
-    );
+    // Preserve flat legacy errors and read the central handler's nested envelope.
+    // Only strings are suitable public messages; an error object is not text.
+    const error = data && data.error;
+    const message =
+      (data && typeof data.message === 'string' && data.message) ||
+      (typeof error === 'string' && error) ||
+      (error && typeof error.message === 'string' && error.message) ||
+      `HTTP ${response.status}`;
+    const code = (data && data.code) ||
+      (error && typeof error === 'object' && error.code) ||
+      (typeof error === 'string' ? error : null);
+    return new ApiError(message, response.status, code);
   }
   async function raw(path, options, token) {
     const headers = new Headers((options && options.headers) || {});

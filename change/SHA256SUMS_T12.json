@@ -1,0 +1,10 @@
+{
+  "algorithm": "SHA-256",
+  "scope": "paths relative to wonderfulApp/",
+  "files": {
+    "docs/WA_R16-75_T12_Full_Regression_2026-11-15.tap": "25c06e0ff7d97b836c0bdcc77406f146dfa29f2fde25535ab37a0ed2099fe37e",
+    "docs/WA_R16-75_T12_Offline_Results_2026-11-15.md": "93adff06c568e16e957dea0c36fea91cd13d8f0f1e6e6b8efa3fa816a0a432df",
+    "docs/WA_R16-75_T12_Preservation_2026-11-15.tap": "e2af2989feadcc390ae16f5d87b115e8ec42b2d0536fa1a579f7e39744f8d6ee",
+    "tests/stage6.r16-75.t12.preservation.offline.test.js": "76ea57855f28a6294759504110b455b10578a0f29754aa2582da9b10741b2767"
+  }
+}

@@ -1,0 +1,45 @@
+--- a/server.js
++++ b/server.js
+@@ -31,6 +31,7 @@
+ 
+ const { pool: rateCleanupPool, ready: dbReady } = require('./dbConnection');
+ const resetRateCleanup = require('./services/passwordResetRateCleanup');
++const { isExpectedClientError } = require('./services/stage6ExpectedClientError');
+ 
+ const app = express();
+ const port = process.env.PORT || 8080;
+@@ -202,12 +203,30 @@
+   const statusCode = Number.isInteger(err && err.status) && err.status >= 400 && err.status <= 599
+     ? err.status
+     : 500;
+-  // Preserve explicitly supplied client-error messages, but never expose an
+-  // unexpected exception's message or stack trace to the HTTP caller.
++  logger.error(`Request error (HTTP ${statusCode}; message omitted)`);
++
++  // Once headers are committed, delegate to Express rather than sending twice.
++  if (res.headersSent) return next(err);
++
++  // Body parsers run before route-specific cache guards. Protect early failures
++  // for the same sensitive API prefixes without changing public/static caching.
++  const protectedPrefixes = [
++    '/users', '/subscriptions', '/admin-management', '/notifications', '/track',
++    '/tnna', '/weights', '/activities', '/weightActivities', '/interestEarned',
++    '/budget', '/familytree', '/etf'
++  ];
++  const requestPath = req && typeof req.path === 'string' ? req.path : '';
++  if (protectedPrefixes.some(prefix => requestPath === prefix || requestPath.startsWith(`${prefix}/`))) {
++    res.set('Cache-Control', 'no-store');
++  }
++
++  // Only deliberately marked 4xx errors may expose their bounded public text.
++  // Status alone is never evidence that an exception message is safe.
++  const expectedClientError = statusCode < 500 && isExpectedClientError(err);
+   const publicMessage = statusCode >= 500
+     ? 'Internal Server Error'
+-    : (typeof err.message === 'string' && err.message ? err.message : 'Request failed');
+-  logger.error(`Request error (HTTP ${statusCode}; message omitted)`);
++    : (expectedClientError && typeof err.message === 'string' && err.message
++      ? err.message : 'Request failed');
+   res.status(statusCode).json({
+     error: {
+       message: publicMessage,

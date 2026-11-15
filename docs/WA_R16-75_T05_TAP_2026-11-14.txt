@@ -1,0 +1,16 @@
+TAP version 13
+# Subtest: T05: headers already sent delegates original exception without second send
+ok 1 - T05: headers already sent delegates original exception without second send
+  ---
+  duration_ms: 2.288146
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 72.483023

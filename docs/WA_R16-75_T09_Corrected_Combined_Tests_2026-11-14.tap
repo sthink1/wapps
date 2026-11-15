@@ -1,0 +1,226 @@
+TAP version 13
+# Subtest: T09-K: a nested error lacking a message uses HTTP status, not object coercion
+ok 1 - T09-K: a nested error lacking a message uses HTTP status, not object coercion
+  ---
+  duration_ms: 81.142997
+  type: 'test'
+  ...
+# Subtest: T09-L: top-level message and code retain precedence over nested metadata
+ok 2 - T09-L: top-level message and code retain precedence over nested metadata
+  ---
+  duration_ms: 4.06071
+  type: 'test'
+  ...
+# Subtest: T09-M: nested code without a message is preserved separately from fallback
+ok 3 - T09-M: nested code without a message is preserved separately from fallback
+  ---
+  duration_ms: 4.966643
+  type: 'test'
+  ...
+# Subtest: T09-N: 401 GET may refresh and retry once; nested errors are decoded afterwards
+ok 4 - T09-N: 401 GET may refresh and retry once; nested errors are decoded afterwards
+  ---
+  duration_ms: 6.165384
+  type: 'test'
+  ...
+# Subtest: T09-O: 401 POST must not be replayed or refresh the session
+ok 5 - T09-O: 401 POST must not be replayed or refresh the session
+  ---
+  duration_ms: 4.504107
+  type: 'test'
+  ...
+# Subtest: T09-P: nested 403 must not trigger refresh or replay
+ok 6 - T09-P: nested 403 must not trigger refresh or replay
+  ---
+  duration_ms: 2.843217
+  type: 'test'
+  ...
+# Subtest: T09-Q: same-origin restriction remains enforced
+ok 7 - T09-Q: same-origin restriction remains enforced
+  ---
+  duration_ms: 0.878299
+  type: 'test'
+  ...
+# Subtest: T09-A: flat error string and code remain readable
+ok 8 - T09-A: flat error string and code remain readable
+  ---
+  duration_ms: 26.548802
+  type: 'test'
+  ...
+# Subtest: T09-B: legacy message field remains readable
+ok 9 - T09-B: legacy message field remains readable
+  ---
+  duration_ms: 1.414597
+  type: 'test'
+  ...
+# Subtest: T09-C: nested central-handler error.message remains readable
+ok 10 - T09-C: nested central-handler error.message remains readable
+  ---
+  duration_ms: 1.455567
+  type: 'test'
+  ...
+# Subtest: T09-D: nested central-handler error with code remains a string message
+ok 11 - T09-D: nested central-handler error with code remains a string message
+  ---
+  duration_ms: 1.316626
+  type: 'test'
+  ...
+# Subtest: T09-E: empty JSON object uses HTTP-status fallback
+ok 12 - T09-E: empty JSON object uses HTTP-status fallback
+  ---
+  duration_ms: 1.392541
+  type: 'test'
+  ...
+# Subtest: T09-F: JSON null uses HTTP-status fallback
+ok 13 - T09-F: JSON null uses HTTP-status fallback
+  ---
+  duration_ms: 1.219805
+  type: 'test'
+  ...
+# Subtest: T09-G: non-JSON text uses HTTP-status fallback
+ok 14 - T09-G: non-JSON text uses HTTP-status fallback
+  ---
+  duration_ms: 1.276303
+  type: 'test'
+  ...
+# Subtest: T09-H: empty response body uses HTTP-status fallback
+ok 15 - T09-H: empty response body uses HTTP-status fallback
+  ---
+  duration_ms: 1.226979
+  type: 'test'
+  ...
+# Subtest: T09-I: flat error-only code legacy behavior retained
+ok 16 - T09-I: flat error-only code legacy behavior retained
+  ---
+  duration_ms: 2.020633
+  type: 'test'
+  ...
+# Subtest: T09-J: error response read without an additional fetch
+ok 17 - T09-J: error response read without an additional fetch
+  ---
+  duration_ms: 1.570277
+  type: 'test'
+  ...
+# Subtest: restores a valid web session using session-status without rotation
+ok 18 - restores a valid web session using session-status without rotation
+  ---
+  duration_ms: 34.543786
+  type: 'test'
+  ...
+# Subtest: expired token triggers one refresh then GET request
+ok 19 - expired token triggers one refresh then GET request
+  ---
+  duration_ms: 3.723453
+  type: 'test'
+  ...
+# Subtest: 401 GET is retried once after rotation; 403 does not rotate
+ok 20 - 401 GET is retried once after rotation; 403 does not rotate
+  ---
+  duration_ms: 5.865947
+  type: 'test'
+  ...
+# Subtest: unsafe POST returns original 401 and is not repeated
+ok 21 - unsafe POST returns original 401 and is not repeated
+  ---
+  duration_ms: 1.274139
+  type: 'test'
+  ...
+# Subtest: logout revokes server before clearing token
+ok 22 - logout revokes server before clearing token
+  ---
+  duration_ms: 1.410136
+  type: 'test'
+  ...
+# Subtest: logout failure clears local token without claiming server revocation
+ok 23 - logout failure clears local token without claiming server revocation
+  ---
+  duration_ms: 1.701226
+  type: 'test'
+  ...
+# Subtest: cross-tab lock unavailable fails closed
+ok 24 - cross-tab lock unavailable fails closed
+  ---
+  duration_ms: 0.859635
+  type: 'test'
+  ...
+# Subtest: same-origin only: never send Bearer to external origin
+ok 25 - same-origin only: never send Bearer to external origin
+  ---
+  duration_ms: 1.121029
+  type: 'test'
+  ...
+# Subtest: concurrent refresh within tab is single-flight
+ok 26 - concurrent refresh within tab is single-flight
+  ---
+  duration_ms: 2.026731
+  type: 'test'
+  ...
+# Subtest: refresh failure with expired token does not send protected API request
+ok 27 - refresh failure with expired token does not send protected API request
+  ---
+  duration_ms: 3.050952
+  type: 'test'
+  ...
+# Subtest: mutation 401 neither refreshes nor replays; original response preserved
+ok 28 - mutation 401 neither refreshes nor replays; original response preserved
+  ---
+  duration_ms: 1.946934
+  type: 'test'
+  ...
+# Subtest: expired remembered session refreshes then revokes server on logout
+ok 29 - expired remembered session refreshes then revokes server on logout
+  ---
+  duration_ms: 1.703033
+  type: 'test'
+  ...
+# Subtest: expired ordinary session with rejected refresh clears local token and reports unconfirmed revocation
+ok 30 - expired ordinary session with rejected refresh clears local token and reports unconfirmed revocation
+  ---
+  duration_ms: 1.751415
+  type: 'test'
+  ...
+# Subtest: explicit logout prevents restoration until a new login
+ok 31 - explicit logout prevents restoration until a new login
+  ---
+  duration_ms: 1.297572
+  type: 'test'
+  ...
+# Subtest: ordinary expired session without refresh cookie returns login_required
+ok 32 - ordinary expired session without refresh cookie returns login_required
+  ---
+  duration_ms: 1.321629
+  type: 'test'
+  ...
+# Subtest: server remains authority on remembered versus ordinary browser restart
+ok 33 - server remains authority on remembered versus ordinary browser restart
+  ---
+  duration_ms: 4.261414
+  type: 'test'
+  ...
+# Subtest: caller-supplied Authorization header cannot override WA token
+ok 34 - caller-supplied Authorization header cannot override WA token
+  ---
+  duration_ms: 1.090971
+  type: 'test'
+  ...
+# Subtest: two tabs with shared lock and storage rotate the refresh cookie once
+ok 35 - two tabs with shared lock and storage rotate the refresh cookie once
+  ---
+  duration_ms: 3.828699
+  type: 'test'
+  ...
+# Subtest: refresh response cannot overwrite an intervening explicit different-account login
+ok 36 - refresh response cannot overwrite an intervening explicit different-account login
+  ---
+  duration_ms: 1.185255
+  type: 'test'
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 373.14668

@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: T07-A catch-all 404 retains exact flat response and sanitized log
+ok 1 - T07-A catch-all 404 retains exact flat response and sanitized log
+  ---
+  duration_ms: 2.507355
+  type: 'test'
+  ...
+# Subtest: T07-B direct auth: no bearer => existing 401 flat error, no next
+ok 2 - T07-B direct auth: no bearer => existing 401 flat error, no next
+  ---
+  duration_ms: 0.459406
+  type: 'test'
+  ...
+# Subtest: T07-C direct auth: invalid bearer => existing coded 401, no next
+ok 3 - T07-C direct auth: invalid bearer => existing coded 401, no next
+  ---
+  duration_ms: 0.316183
+  type: 'test'
+  ...
+# Subtest: T07-D native token on browser endpoint => flat 403, no next
+ok 4 - T07-D native token on browser endpoint => flat 403, no next
+  ---
+  duration_ms: 0.32635
+  type: 'test'
+  ...
+# Subtest: T07-E subscription denied => existing 403 fields, no next
+ok 5 - T07-E subscription denied => existing 403 fields, no next
+  ---
+  duration_ms: 0.501471
+  type: 'test'
+  ...
+# Subtest: T07-F positive auth and subscription allowed => next invoked, no 401/403
+ok 6 - T07-F positive auth and subscription allowed => next invoked, no 401/403
+  ---
+  duration_ms: 0.308592
+  type: 'test'
+  ...
+# Subtest: T07-G source route order and route-level no-store preserved
+ok 7 - T07-G source route order and route-level no-store preserved
+  ---
+  duration_ms: 0.231784
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 92.724857

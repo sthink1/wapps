@@ -1,0 +1,106 @@
+TAP version 13
+# Subtest: T09-A: flat error string and code remain readable
+ok 1 - T09-A: flat error string and code remain readable
+  ---
+  duration_ms: 45.260305
+  type: 'test'
+  ...
+# Subtest: T09-B: legacy message field remains readable
+ok 2 - T09-B: legacy message field remains readable
+  ---
+  duration_ms: 1.818845
+  type: 'test'
+  ...
+# Subtest: T09-C: nested central-handler error.message remains readable
+not ok 3 - T09-C: nested central-handler error.message remains readable
+  ---
+  duration_ms: 3.113764
+  type: 'test'
+  location: '/mnt/data/WA_R16-75_T09_Isolated_Run_2026-11-14/wonderfulApp/tests/stage6.r16-75.t09.offline.test.js:78:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + '[object Object]'
+    - 'Request failed'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'Request failed'
+  actual: '[object Object]'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/mnt/data/WA_R16-75_T09_Isolated_Run_2026-11-14/wonderfulApp/tests/stage6.r16-75.t09.offline.test.js:81:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: T09-D: nested central-handler error with code remains a string message
+not ok 4 - T09-D: nested central-handler error with code remains a string message
+  ---
+  duration_ms: 3.178548
+  type: 'test'
+  location: '/mnt/data/WA_R16-75_T09_Isolated_Run_2026-11-14/wonderfulApp/tests/stage6.r16-75.t09.offline.test.js:85:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + '[object Object]'
+    - 'Access denied'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'Access denied'
+  actual: '[object Object]'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/mnt/data/WA_R16-75_T09_Isolated_Run_2026-11-14/wonderfulApp/tests/stage6.r16-75.t09.offline.test.js:88:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: T09-E: empty JSON object uses HTTP-status fallback
+ok 5 - T09-E: empty JSON object uses HTTP-status fallback
+  ---
+  duration_ms: 3.014003
+  type: 'test'
+  ...
+# Subtest: T09-F: JSON null uses HTTP-status fallback
+ok 6 - T09-F: JSON null uses HTTP-status fallback
+  ---
+  duration_ms: 2.319945
+  type: 'test'
+  ...
+# Subtest: T09-G: non-JSON text uses HTTP-status fallback
+ok 7 - T09-G: non-JSON text uses HTTP-status fallback
+  ---
+  duration_ms: 3.144824
+  type: 'test'
+  ...
+# Subtest: T09-H: empty response body uses HTTP-status fallback
+ok 8 - T09-H: empty response body uses HTTP-status fallback
+  ---
+  duration_ms: 2.593215
+  type: 'test'
+  ...
+# Subtest: T09-I: flat error-only code legacy behavior retained
+ok 9 - T09-I: flat error-only code legacy behavior retained
+  ---
+  duration_ms: 3.45357
+  type: 'test'
+  ...
+# Subtest: T09-J: response body consumed safely without replaying mutation
+ok 10 - T09-J: response body consumed safely without replaying mutation
+  ---
+  duration_ms: 3.24783
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 8
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 184.645203

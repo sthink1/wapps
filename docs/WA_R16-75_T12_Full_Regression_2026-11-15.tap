@@ -1,0 +1,550 @@
+TAP version 13
+# Subtest: R16-55A Family Tree: expected 400 validation message preserved
+ok 1 - R16-55A Family Tree: expected 400 validation message preserved
+  ---
+  duration_ms: 2.354796
+  type: 'test'
+  ...
+# Subtest: R16-55B Family Tree: unexpected 500 details hidden
+ok 2 - R16-55B Family Tree: unexpected 500 details hidden
+  ---
+  duration_ms: 5.911088
+  type: 'test'
+  ...
+# Subtest: R16-55C Family Tree: unexpected 400 details must be hidden
+ok 3 - R16-55C Family Tree: unexpected 400 details must be hidden
+  ---
+  duration_ms: 3.065524
+  type: 'test'
+  ...
+# Subtest: R16-55D Notifications: expected 400 validation message preserved
+ok 4 - R16-55D Notifications: expected 400 validation message preserved
+  ---
+  duration_ms: 0.647422
+  type: 'test'
+  ...
+# Subtest: R16-55E Notifications: unexpected 500 details hidden
+ok 5 - R16-55E Notifications: unexpected 500 details hidden
+  ---
+  duration_ms: 0.683526
+  type: 'test'
+  ...
+# Subtest: R16-55F Notifications: unexpected 400 details must be hidden
+ok 6 - R16-55F Notifications: unexpected 400 details must be hidden
+  ---
+  duration_ms: 0.456045
+  type: 'test'
+  ...
+# Subtest: R16-55G Subscriptions: expected 400 validation message preserved
+ok 7 - R16-55G Subscriptions: expected 400 validation message preserved
+  ---
+  duration_ms: 1.773113
+  type: 'test'
+  ...
+# Subtest: R16-55H Subscriptions: unexpected 500 delegated to central handler
+ok 8 - R16-55H Subscriptions: unexpected 500 delegated to central handler
+  ---
+  duration_ms: 1.632121
+  type: 'test'
+  ...
+# Subtest: R16-55I Subscriptions: unexpected 400 details must be hidden or delegated
+ok 9 - R16-55I Subscriptions: unexpected 400 details must be hidden or delegated
+  ---
+  duration_ms: 1.969127
+  type: 'test'
+  ...
+# Subtest: R16-56A Family Tree: deliberate application 400/403/404/409 messages remain visible
+ok 10 - R16-56A Family Tree: deliberate application 400/403/404/409 messages remain visible
+  ---
+  duration_ms: 0.894233
+  type: 'test'
+  ...
+# Subtest: R16-56B Family Tree: unexpected 4xx messages sanitized
+ok 11 - R16-56B Family Tree: unexpected 4xx messages sanitized
+  ---
+  duration_ms: 0.168724
+  type: 'test'
+  ...
+# Subtest: R16-56C Family Tree: 500 and 503 messages sanitized even when marked
+ok 12 - R16-56C Family Tree: 500 and 503 messages sanitized even when marked
+  ---
+  duration_ms: 0.124116
+  type: 'test'
+  ...
+# Subtest: R16-56D Family Tree: review and responseCode details require marked expected errors
+ok 13 - R16-56D Family Tree: review and responseCode details require marked expected errors
+  ---
+  duration_ms: 0.107612
+  type: 'test'
+  ...
+# Subtest: R16-56E Family Tree: requireTree missing-code exception marked at creation
+ok 14 - R16-56E Family Tree: requireTree missing-code exception marked at creation
+  ---
+  duration_ms: 4.326298
+  type: 'test'
+  ...
+# Subtest: R16-56F Family Tree: all explicit 4xx status assignments are marked
+ok 15 - R16-56F Family Tree: all explicit 4xx status assignments are marked
+  ---
+  duration_ms: 2.12347
+  type: 'test'
+  ...
+# Subtest: R16-56G Family Tree: Favorite Pets errors marked at creation
+ok 16 - R16-56G Family Tree: Favorite Pets errors marked at creation
+  ---
+  duration_ms: 2.980676
+  type: 'test'
+  ...
+# Subtest: R16-56H Notifications: expected unsubscribe 404 remains visible
+ok 17 - R16-56H Notifications: expected unsubscribe 404 remains visible
+  ---
+  duration_ms: 0.169515
+  type: 'test'
+  ...
+# Subtest: R16-56I Notifications: unexpected 400/404 details are hidden
+ok 18 - R16-56I Notifications: unexpected 400/404 details are hidden
+  ---
+  duration_ms: 0.390256
+  type: 'test'
+  ...
+# Subtest: R16-56J Notifications: unexpected 500/503 details are hidden
+ok 19 - R16-56J Notifications: unexpected 500/503 details are hidden
+  ---
+  duration_ms: 0.329585
+  type: 'test'
+  ...
+# Subtest: R16-56K Notifications: unsubscribe service marks its deliberate 404 error
+ok 20 - R16-56K Notifications: unsubscribe service marks its deliberate 404 error
+  ---
+  duration_ms: 0.235384
+  type: 'test'
+  ...
+# Subtest: R16-56L Subscriptions: expected 400 and 404 are returned
+ok 21 - R16-56L Subscriptions: expected 400 and 404 are returned
+  ---
+  duration_ms: 2.321287
+  type: 'test'
+  ...
+# Subtest: R16-56M Subscriptions: unexpected 400/404/500 delegated, no raw response
+ok 22 - R16-56M Subscriptions: unexpected 400/404/500 delegated, no raw response
+  ---
+  duration_ms: 3.625195
+  type: 'test'
+  ...
+# Subtest: R16-56N Subscription service: actual missing-code validation error is marked
+ok 23 - R16-56N Subscription service: actual missing-code validation error is marked
+  ---
+  duration_ms: 3.199335
+  type: 'test'
+  ...
+# Subtest: R16-56O Shared marker does not trust numeric status or matching public message
+ok 24 - R16-56O Shared marker does not trust numeric status or matching public message
+  ---
+  duration_ms: 0.14004
+  type: 'test'
+  ...
+# Subtest: T01: marked 400/401/403/404/409 preserve status, safe message and nested shape
+ok 25 - T01: marked 400/401/403/404/409 preserve status, safe message and nested shape
+  ---
+  duration_ms: 6.473412
+  type: 'test'
+  ...
+# Subtest: T02: unmarked 400/401/403/404/409 never expose exception text
+ok 26 - T02: unmarked 400/401/403/404/409 never expose exception text
+  ---
+  duration_ms: 8.000334
+  type: 'test'
+  ...
+# Subtest: T03: marked and unmarked 500/503 always return generic error
+ok 27 - T03: marked and unmarked 500/503 always return generic error
+  ---
+  duration_ms: 3.370411
+  type: 'test'
+  ...
+# Subtest: T04: absent/invalid status and missing error receive 500 without disclosure
+ok 28 - T04: absent/invalid status and missing error receive 500 without disclosure
+  ---
+  duration_ms: 5.975674
+  type: 'test'
+  ...
+# Subtest: T05: headers already sent delegates original exception without second send
+ok 29 - T05: headers already sent delegates original exception without second send
+  ---
+  duration_ms: 1.15159
+  type: 'test'
+  ...
+# Subtest: T06/T11: early protected prefix errors set no-store; public/static path unchanged
+ok 30 - T06/T11: early protected prefix errors set no-store; public/static path unchanged
+  ---
+  duration_ms: 9.899497
+  type: 'test'
+  ...
+# Subtest: T01 fallback: marked 4xx with empty or nonstring messages gets safe fallback
+ok 31 - T01 fallback: marked 4xx with empty or nonstring messages gets safe fallback
+  ---
+  duration_ms: 2.605623
+  type: 'test'
+  ...
+# Subtest: T09-K: a nested error lacking a message uses HTTP status, not object coercion
+ok 32 - T09-K: a nested error lacking a message uses HTTP status, not object coercion
+  ---
+  duration_ms: 24.181235
+  type: 'test'
+  ...
+# Subtest: T09-L: top-level message and code retain precedence over nested metadata
+ok 33 - T09-L: top-level message and code retain precedence over nested metadata
+  ---
+  duration_ms: 1.465891
+  type: 'test'
+  ...
+# Subtest: T09-M: nested code without a message is preserved separately from fallback
+ok 34 - T09-M: nested code without a message is preserved separately from fallback
+  ---
+  duration_ms: 1.700063
+  type: 'test'
+  ...
+# Subtest: T09-N: 401 GET may refresh and retry once; nested errors are decoded afterwards
+ok 35 - T09-N: 401 GET may refresh and retry once; nested errors are decoded afterwards
+  ---
+  duration_ms: 5.691017
+  type: 'test'
+  ...
+# Subtest: T09-O: 401 POST must not be replayed or refresh the session
+ok 36 - T09-O: 401 POST must not be replayed or refresh the session
+  ---
+  duration_ms: 2.203329
+  type: 'test'
+  ...
+# Subtest: T09-P: nested 403 must not trigger refresh or replay
+ok 37 - T09-P: nested 403 must not trigger refresh or replay
+  ---
+  duration_ms: 1.959583
+  type: 'test'
+  ...
+# Subtest: T09-Q: same-origin restriction remains enforced
+ok 38 - T09-Q: same-origin restriction remains enforced
+  ---
+  duration_ms: 1.507924
+  type: 'test'
+  ...
+# Subtest: T09-A: flat error string and code remain readable
+ok 39 - T09-A: flat error string and code remain readable
+  ---
+  duration_ms: 35.801497
+  type: 'test'
+  ...
+# Subtest: T09-B: legacy message field remains readable
+ok 40 - T09-B: legacy message field remains readable
+  ---
+  duration_ms: 2.185072
+  type: 'test'
+  ...
+# Subtest: T09-C: nested central-handler error.message remains readable
+ok 41 - T09-C: nested central-handler error.message remains readable
+  ---
+  duration_ms: 2.580185
+  type: 'test'
+  ...
+# Subtest: T09-D: nested central-handler error with code remains a string message
+ok 42 - T09-D: nested central-handler error with code remains a string message
+  ---
+  duration_ms: 2.060955
+  type: 'test'
+  ...
+# Subtest: T09-E: empty JSON object uses HTTP-status fallback
+ok 43 - T09-E: empty JSON object uses HTTP-status fallback
+  ---
+  duration_ms: 2.695758
+  type: 'test'
+  ...
+# Subtest: T09-F: JSON null uses HTTP-status fallback
+ok 44 - T09-F: JSON null uses HTTP-status fallback
+  ---
+  duration_ms: 1.923328
+  type: 'test'
+  ...
+# Subtest: T09-G: non-JSON text uses HTTP-status fallback
+ok 45 - T09-G: non-JSON text uses HTTP-status fallback
+  ---
+  duration_ms: 2.230289
+  type: 'test'
+  ...
+# Subtest: T09-H: empty response body uses HTTP-status fallback
+ok 46 - T09-H: empty response body uses HTTP-status fallback
+  ---
+  duration_ms: 2.240464
+  type: 'test'
+  ...
+# Subtest: T09-I: flat error-only code legacy behavior retained
+ok 47 - T09-I: flat error-only code legacy behavior retained
+  ---
+  duration_ms: 3.564303
+  type: 'test'
+  ...
+# Subtest: T09-J: error response read without an additional fetch
+ok 48 - T09-J: error response read without an additional fetch
+  ---
+  duration_ms: 3.400156
+  type: 'test'
+  ...
+# Subtest: T10-A: GET 401 rotates once and retries GET with updated bearer, not old token
+ok 49 - T10-A: GET 401 rotates once and retries GET with updated bearer, not old token
+  ---
+  duration_ms: 22.813682
+  type: 'test'
+  ...
+# Subtest: T10-B: GET 401 refresh failure returns the original unauthorized response and does not replay GET
+ok 50 - T10-B: GET 401 refresh failure returns the original unauthorized response and does not replay GET
+  ---
+  duration_ms: 1.853824
+  type: 'test'
+  ...
+# Subtest: T10-C: 403 returns its server message and code without refresh or replay
+ok 51 - T10-C: 403 returns its server message and code without refresh or replay
+  ---
+  duration_ms: 1.507083
+  type: 'test'
+  ...
+# Subtest: T10-D: 503 nested server error retains status and public message; no refresh or retry
+ok 52 - T10-D: 503 nested server error retains status and public message; no refresh or retry
+  ---
+  duration_ms: 1.209677
+  type: 'test'
+  ...
+# Subtest: T10-E: denied POST is submitted exactly once, does not refresh, and preserves its body
+ok 53 - T10-E: denied POST is submitted exactly once, does not refresh, and preserves its body
+  ---
+  duration_ms: 0.805209
+  type: 'test'
+  ...
+# Subtest: T10-F: POST 503 not replayed and API error still propagated
+ok 54 - T10-F: POST 503 not replayed and API error still propagated
+  ---
+  duration_ms: 1.196597
+  type: 'test'
+  ...
+# Subtest: T10-G: POST transport timeout/rejection is propagated without a retry
+ok 55 - T10-G: POST transport timeout/rejection is propagated without a retry
+  ---
+  duration_ms: 0.775405
+  type: 'test'
+  ...
+# Subtest: T10-H: logout success sends one server revocation before removing the local token
+ok 56 - T10-H: logout success sends one server revocation before removing the local token
+  ---
+  duration_ms: 1.017809
+  type: 'test'
+  ...
+# Subtest: T10-I: logout transport failure fails closed locally but reports revocation unconfirmed
+ok 57 - T10-I: logout transport failure fails closed locally but reports revocation unconfirmed
+  ---
+  duration_ms: 0.973752
+  type: 'test'
+  ...
+# Subtest: T10-J: expired session refresh rejection prevents sending protected GET
+ok 58 - T10-J: expired session refresh rejection prevents sending protected GET
+  ---
+  duration_ms: 1.261455
+  type: 'test'
+  ...
+# Subtest: T10-K: form-like POST payload preserved; no automatic replay after 401 (UI unsaved-state not tested)
+ok 59 - T10-K: form-like POST payload preserved; no automatic replay after 401 (UI unsaved-state not tested)
+  ---
+  duration_ms: 1.229086
+  type: 'test'
+  ...
+# Subtest: T11-A every protected API prefix and child has no-store for parser-stage synthetic 400 and 500
+ok 60 - T11-A every protected API prefix and child has no-store for parser-stage synthetic 400 and 500
+  ---
+  duration_ms: 1.443588
+  type: 'test'
+  ...
+# Subtest: T11-B route-level no-store remains for protected paths before ordinary responses, 401, and 403
+ok 61 - T11-B route-level no-store remains for protected paths before ordinary responses, 401, and 403
+  ---
+  duration_ms: 2.019683
+  type: 'test'
+  ...
+# Subtest: T11-C unrelated public paths and look-alike prefix are not assigned new no-store
+ok 62 - T11-C unrelated public paths and look-alike prefix are not assigned new no-store
+  ---
+  duration_ms: 0.174212
+  type: 'test'
+  ...
+# Subtest: T11-D messages are never included in central logs for marked/unmarked client or server errors
+ok 63 - T11-D messages are never included in central logs for marked/unmarked client or server errors
+  ---
+  duration_ms: 0.837848
+  type: 'test'
+  ...
+# Subtest: T11-E headers-sent does not overwrite a response or write cache headers
+ok 64 - T11-E headers-sent does not overwrite a response or write cache headers
+  ---
+  duration_ms: 0.162614
+  type: 'test'
+  ...
+# Subtest: T11-F handler log text and catch-all do not record request URL
+ok 65 - T11-F handler log text and catch-all do not record request URL
+  ---
+  duration_ms: 0.100971
+  type: 'test'
+  ...
+# Subtest: T12-A: server preserves auth and subscription gates on protected app routes
+ok 66 - T12-A: server preserves auth and subscription gates on protected app routes
+  ---
+  duration_ms: 1.752001
+  type: 'test'
+  ...
+# Subtest: T12-B: user session and subscription cache guards remain before routers
+ok 67 - T12-B: user session and subscription cache guards remain before routers
+  ---
+  duration_ms: 0.278669
+  type: 'test'
+  ...
+# Subtest: T12-C: client retains fail-closed session recovery and one-flight cross-tab locking
+ok 68 - T12-C: client retains fail-closed session recovery and one-flight cross-tab locking
+  ---
+  duration_ms: 0.330887
+  type: 'test'
+  ...
+# Subtest: T12-D: client retains same-origin credential and unsafe-mutation replay fences
+ok 69 - T12-D: client retains same-origin credential and unsafe-mutation replay fences
+  ---
+  duration_ms: 0.317898
+  type: 'test'
+  ...
+# Subtest: T12-E: central classifier preserves marked client errors but never unmarked exception text
+ok 70 - T12-E: central classifier preserves marked client errors but never unmarked exception text
+  ---
+  duration_ms: 1.310228
+  type: 'test'
+  ...
+# Subtest: T12-F: client handles flat and nested errors without changing session API exports
+ok 71 - T12-F: client handles flat and nested errors without changing session API exports
+  ---
+  duration_ms: 0.336466
+  type: 'test'
+  ...
+# Subtest: restores a valid web session using session-status without rotation
+ok 72 - restores a valid web session using session-status without rotation
+  ---
+  duration_ms: 21.001441
+  type: 'test'
+  ...
+# Subtest: expired token triggers one refresh then GET request
+ok 73 - expired token triggers one refresh then GET request
+  ---
+  duration_ms: 2.195938
+  type: 'test'
+  ...
+# Subtest: 401 GET is retried once after rotation; 403 does not rotate
+ok 74 - 401 GET is retried once after rotation; 403 does not rotate
+  ---
+  duration_ms: 3.539877
+  type: 'test'
+  ...
+# Subtest: unsafe POST returns original 401 and is not repeated
+ok 75 - unsafe POST returns original 401 and is not repeated
+  ---
+  duration_ms: 0.795715
+  type: 'test'
+  ...
+# Subtest: logout revokes server before clearing token
+ok 76 - logout revokes server before clearing token
+  ---
+  duration_ms: 1.152792
+  type: 'test'
+  ...
+# Subtest: logout failure clears local token without claiming server revocation
+ok 77 - logout failure clears local token without claiming server revocation
+  ---
+  duration_ms: 0.808654
+  type: 'test'
+  ...
+# Subtest: cross-tab lock unavailable fails closed
+ok 78 - cross-tab lock unavailable fails closed
+  ---
+  duration_ms: 0.860282
+  type: 'test'
+  ...
+# Subtest: same-origin only: never send Bearer to external origin
+ok 79 - same-origin only: never send Bearer to external origin
+  ---
+  duration_ms: 1.015916
+  type: 'test'
+  ...
+# Subtest: concurrent refresh within tab is single-flight
+ok 80 - concurrent refresh within tab is single-flight
+  ---
+  duration_ms: 2.843751
+  type: 'test'
+  ...
+# Subtest: refresh failure with expired token does not send protected API request
+ok 81 - refresh failure with expired token does not send protected API request
+  ---
+  duration_ms: 2.387616
+  type: 'test'
+  ...
+# Subtest: mutation 401 neither refreshes nor replays; original response preserved
+ok 82 - mutation 401 neither refreshes nor replays; original response preserved
+  ---
+  duration_ms: 1.517479
+  type: 'test'
+  ...
+# Subtest: expired remembered session refreshes then revokes server on logout
+ok 83 - expired remembered session refreshes then revokes server on logout
+  ---
+  duration_ms: 2.121305
+  type: 'test'
+  ...
+# Subtest: expired ordinary session with rejected refresh clears local token and reports unconfirmed revocation
+ok 84 - expired ordinary session with rejected refresh clears local token and reports unconfirmed revocation
+  ---
+  duration_ms: 1.968566
+  type: 'test'
+  ...
+# Subtest: explicit logout prevents restoration until a new login
+ok 85 - explicit logout prevents restoration until a new login
+  ---
+  duration_ms: 1.55801
+  type: 'test'
+  ...
+# Subtest: ordinary expired session without refresh cookie returns login_required
+ok 86 - ordinary expired session without refresh cookie returns login_required
+  ---
+  duration_ms: 1.646152
+  type: 'test'
+  ...
+# Subtest: server remains authority on remembered versus ordinary browser restart
+ok 87 - server remains authority on remembered versus ordinary browser restart
+  ---
+  duration_ms: 4.900831
+  type: 'test'
+  ...
+# Subtest: caller-supplied Authorization header cannot override WA token
+ok 88 - caller-supplied Authorization header cannot override WA token
+  ---
+  duration_ms: 1.31831
+  type: 'test'
+  ...
+# Subtest: two tabs with shared lock and storage rotate the refresh cookie once
+ok 89 - two tabs with shared lock and storage rotate the refresh cookie once
+  ---
+  duration_ms: 3.602019
+  type: 'test'
+  ...
+# Subtest: refresh response cannot overwrite an intervening explicit different-account login
+ok 90 - refresh response cannot overwrite an intervening explicit different-account login
+  ---
+  duration_ms: 1.226431
+  type: 'test'
+  ...
+1..90
+# tests 90
+# suites 0
+# pass 90
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 333.26295

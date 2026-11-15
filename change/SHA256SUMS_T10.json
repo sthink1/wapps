@@ -1,0 +1,12 @@
+{
+  "algorithm": "SHA-256",
+  "date": "2026-11-15",
+  "scope": "All files in this T10 evidence ZIP except the manifest itself",
+  "source_proposed_sha256": "57a5aae55188ab89d279dc69466414f14f2b3965b8c17f8f64eeb7d568ecc17d",
+  "files": {
+    "tests/stage6.r16-75.t10.session-mutation.offline.test.js": "360f91518f4a45ecbddc402f21afdcd557b5932b59a1bdd27cfa63e85a499a66",
+    "docs/WA_R16-75_T10_Offline_Test_Results_2026-11-15.md": "ea14fe0620776539608d044ad5f30eb89192ee0014981eb16483522d43e75e68",
+    "docs/WA_R16-75_T10_Offline_Results_2026-11-15.tap": "ab1ec1d0da904a43c42c80af5a8c96c422101da219240ea9476589bb81ce97cd",
+    "docs/WA_R16-75_T10_Combined_Regression_2026-11-15.tap": "7d0eff88fe37d80d832edb73314a6244ee1b77e5813403ff68911dbde671cd4c"
+  }
+}

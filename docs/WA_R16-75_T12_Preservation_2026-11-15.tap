@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: T12-A: server preserves auth and subscription gates on protected app routes
+ok 1 - T12-A: server preserves auth and subscription gates on protected app routes
+  ---
+  duration_ms: 1.600013
+  type: 'test'
+  ...
+# Subtest: T12-B: user session and subscription cache guards remain before routers
+ok 2 - T12-B: user session and subscription cache guards remain before routers
+  ---
+  duration_ms: 0.30623
+  type: 'test'
+  ...
+# Subtest: T12-C: client retains fail-closed session recovery and one-flight cross-tab locking
+ok 3 - T12-C: client retains fail-closed session recovery and one-flight cross-tab locking
+  ---
+  duration_ms: 0.317307
+  type: 'test'
+  ...
+# Subtest: T12-D: client retains same-origin credential and unsafe-mutation replay fences
+ok 4 - T12-D: client retains same-origin credential and unsafe-mutation replay fences
+  ---
+  duration_ms: 0.29345
+  type: 'test'
+  ...
+# Subtest: T12-E: central classifier preserves marked client errors but never unmarked exception text
+ok 5 - T12-E: central classifier preserves marked client errors but never unmarked exception text
+  ---
+  duration_ms: 1.930529
+  type: 'test'
+  ...
+# Subtest: T12-F: client handles flat and nested errors without changing session API exports
+ok 6 - T12-F: client handles flat and nested errors without changing session API exports
+  ---
+  duration_ms: 0.367282
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 74.492806
