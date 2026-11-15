@@ -1,11 +1,11 @@
 {
-  "algorithm": "SHA-256",
+  "schema": "WA-SHA256SUMS-v1",
+  "date": "2026-11-15",
+  "source_drive_file_id": "17ykGRkVsmrvKB4kXVd3Kh7r2DizS3zWa",
+  "original_sha256": "98802fb680668fc0547aa11445f058aa4274e6a34390e223bffc8877411a6a6f",
   "files": {
-    "change/BinForm.original-to-final.diff": "0ff002bd44c93a5e5281441eaebf5116a71e9da431eb1647423827ed2c163c58",
-    "change/BinForm_Change_Verification.md": "bae2f8215ac84f202a52638cc39dd0ebb321a7dc538ad2ec3e55f19286d1f66b",
-    "change/WA_CF_001_Offline_Test_Results.txt": "f82a3a75a41b0e6664d99278bf47042b4bba437f7a422fa51b46a360ba3276d8",
-    "docs/WA_Wave0_Partial_Inventory_and_CF001.md": "651c5c556465a1f627cb246845e938fe24daf0ca4a1cd6e154d4e631bbde544b",
-    "httpdocs/BinForm.html": "07898f5d291b1f296fe0f0aa85fe1f91c96815bb19782d0cbe98b8c8a28700a2",
-    "tests/WA_CF_001_BinForm_Error_Offline.test.cjs": "7379bf45d1075264ac958c7701647979a2173ccb7c29b0f4fba30ba66fa8a726"
+    "change/WA_Standards_Compliance_Register_Change_Verification.md": "d9ecf17395000ffaccced0d095ebc6d91b68ad68455409e9465a6ec3008c5dd9",
+    "change/WA_Standards_Compliance_Register_v1.0_to_v1.1.diff": "b337b0ea842ad9cf5535a8b6feba280c32a6230537b1b5b91912e9a237291237",
+    "docs/WA_Standards_Compliance_Register.md": "94dce444aed2f2679ae2579189680a863fa34fe01f19ed993a30fafc327db344"
   }
 }

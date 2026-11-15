@@ -1,0 +1,284 @@
+--- original/docs/WA_Standards_Compliance_Register.md
++++ proposed/docs/WA_Standards_Compliance_Register.md
+@@ -1,21 +1,52 @@
+ # Wonderful Apps — Comprehensive Standards Compliance Register
+ 
+-**Register version:** 1.0 (initial seeded baseline)  
+-**Prepared:** 2026-11-15  
++**Register version:** 1.1 — functional application scope (proposed replacement)  
++**Original baseline:** version 1.0, November 15, 2026; SHA-256 `98802fb680668fc0547aa11445f058aa4274e6a34390e223bffc8877411a6a6f`  
++**Revised:** 2026-11-15  
+ **Proposed installation path:** `docs/WA_Standards_Compliance_Register.md`  
+ **Authority:** Owner review and installation required; this download does **not** change any authoritative file.  
+-**Scope:** Entire WA project; first pass seeded from identified documents; **not a completed whole-project audit**.
+-
+-> **Project completion objective:** Examine every applicable WA file, correct all confirmed nonconformances or obtain owner-approved, documented exceptions, and verify functionality, compatibility, and compliance. The register is a work-control instrument, not the deliverable that completes standardization.
+-
+-## 1. Status and truthfulness rules
+-
+-- **Audit state:** `Not inventoried` → `Inventoried` → `Audited` → `Gap identified` or `Conforming (verified)` / `Approved exception`. Code being present does not equal audited.
+-- **Correction state:** `Not proposed` → `Scoped` → `Approved` → `Prepared for download` → `Owner installed` → `Tested` → `Verified closed`. Installation and testing are separate.
+-- **Finding classification:** `Confirmed source nonconformance`, `Permitted legacy / migration debt`, `Unverified risk`, `Documentation conflict`, `Candidate exception`, `Approved exception`, `Test/evidence gap`. *Legacy code is not automatically a vulnerability.*
+-- **Evidence tiers:** Document/source observation; isolated/offline; local HTTP/browser; hosted staging; device/native; independent reviewer. Never promote a bounded result to universal certification.
+-- **No automatic edits:** Drive, GitHub, and existing local WA files are read-only for the assistant. All replacements are separate full downloadables, with original-to-final `.diff`, verification `.md`, checksum manifest in `change/`, rollback and tests. Owner installs and controls rollout.
+-- **No silent scope widening:** Code modernization, security tightening, server contracts, database changes, UI changes and production deployment must follow the approved scope/exception decisions.
++**Scope:** Files required to build, serve, execute, secure, configure, or deliver functional Wonderful Apps browser/backend/TNNA behavior; **not a completed functional-file audit**. Documentation, historical copies and unrelated administrative files are out of the application-file denominator.
++
++> **Project completion objective:** Examine every *functional* WA file, correct confirmed nonconformances or obtain documented owner-approved exceptions, and verify functionality, compatibility and compliance. Include TNNA under the same approved WA standards with only technically warranted, documented and verified native-specific differences. This register is a work-control instrument; it does not itself certify implementation.
++
++## 1. Status, approved scope and truthfulness rules
++
++### 1.1 Functional-source inclusion rule — owner approved November 15, 2026
++
++**One WA standards framework governs browser apps, shared backend and TNNA.** All twelve approved Core Standards and relevant Detailed Standards apply to every functional file. A native implementation may vary only when a specific Android/Capacitor/device feature warrants it, consistent with D10, and the reason, affected contract, security implications, compensating safeguards and native-specific regression evidence are recorded. Differences do not waive privacy, authorization, data integrity, change control or preservation rules. Apply standards **where relevant**; record N/A with reasons rather than demanding irrelevant browser-only mechanics in native code.
++
++**Include** hand-maintained and generated functional artifacts, in proportion to their role, when they are loaded, imported, mounted, invoked, bundled, built, packaged, configured, referenced as runtime assets, or required for an operational migration. The primary groups are:
++
++| Group | In-scope functional examples | Applicability focus |
++|---|---|---|
++| A1 Browser UI | `httpdocs/*.html`; nested HTML and browser-facing templates | UI/DOM/CSS/scripts, accessibility, auth/session, privacy, fetch and PWA |
++| A2 Browser code | `httpdocs/js/*.js`, nested JS modules, service worker(s) | API contracts, error/refresh/retry, security, caching, shared library use |
++| A3 Browser assets | `httpdocs/css/`, manifest, icons, images, fonts and other referenced assets | Functional references, browser compatibility, rendering, integrity, cache; only applicable standards |
++| A4 Server entry/utilities | Root `server.js`, `send_email.js`, `dbConnection.js`, `utils.js`, `logger.js`, other imported/invoked root code | Execution, security, API, logging, DB and credentials |
++| A5 Routes and middleware | `routes/`, `middleware/` functional sources | Methods/paths, validation, access, errors, side effects |
++| A6 Services and supporting modules | `services/` and other imported runtime modules | Auth, sessions, data, API, admin, storage and environment controls |
++| A7 Build/runtime configuration | `package.json`, lockfiles, `.node-version`, relevant deployment/env templates, server or asset build configuration | Dependencies, startup, platform drift, configuration; do not collect secret `.env` values |
++| A8 SQL needed for operation | SQL schema/migration/seed scripts **only when** operationally required for current functionality, permitted migration or deployment | SQL safety, schema/data compatibility, controlled migration; **database dumps and backups excluded** |
++| B TNNA native | Active `TNNA/` app code, Capacitor/Android configuration, assets, manifests, build/packaging files | Same WA standards plus justified native token, offline, lifecycle, permissions and D10 differences |
++| T Supporting tests | Active test files **only as dependencies and evidence**, not part of the functional application conformance denominator unless shipped/invoked by an app in operation | Preserve and review when a source correction affects their assertions; no wholesale test-file audit |
++
++**Exclude from the functional-file audit denominator:** `standard/`, `docs/`, `change/`, `skills/`, root `README*`, `INSTALL*`, historical design/review documents, logs, backups, copies and other material not needed for app operation. Such files may still be **read as authority or evidence**, and newly authored tests/change reports must follow their own applicable quality and preservation requirements. Do not discard or delete them. `CLAUDE.md`, `AGENTS.md`, `TechSummary.md`, and AI tool instructions are authority/context, **not operational audit units** unless actually used at runtime/build time. An apparent backup such as `*_COPY*` is excluded only after checking actual references, entrypoints and package/deployment inclusion; naming alone is not proof.
++
++**Inclusion test:** Is this exact file used by execution, API routing, database operation, frontend rendering, native app, build, deployment/runtime configuration or a required operational migration? If yes, include (or link as a functional dependency). If no, exclude with a short reason *only when encountered during functional source discovery*; no inventory of excluded documentation is required. Unknown dependency status is `Needs classification`, not automatically excluded. Avoid treating package dependencies (`node_modules`), generated Android outputs or third-party artifacts as hand-maintained source: record their version/build provenance and relevant operational security, not line-by-line formatting audit.
++
++### 1.2 Status and evidence rules
++
++- **Audit state:** `Not inventoried` → `Inventoried` → `Audited` → `Gap identified` or `Conforming (verified)` / `Approved exception`. A file can have several open findings. Code existence does not equal audit completion.
++- **Correction state:** `Not proposed` → `Scoped` → `Approved` → `Prepared for download` → `Owner installed` → `Tested` → `Verified closed`; each is separately evidenced.
++- **Finding classification:** `Confirmed source nonconformance`, `Permitted legacy / migration debt`, `Unverified risk`, `Documentation-only reference`, `Candidate exception`, `Approved exception`, `Test/evidence gap`. Direct fetch by itself is not a proven vulnerability.
++- **Evidence tiers:** Source/document observation; isolated/offline; local HTTP/browser; hosted staging; native/device; independent review. Preserve bounded scope. A Render `Live` indicator does not demonstrate app acceptance.
++- **No automatic edits:** Drive, GitHub and owner's existing local WA files are strictly read-only. Proposal downloads must include complete final files and per-revised-file `.diff`, `.md` verification, SHA-256, dependencies/rollback and required tests. Owner controls installation and all environments.
++- **No new policies by implication:** Modernization, browser token architecture, changes to public safeguards, full admin capabilities, native session policy and database changes retain existing approved/explicitly deferred boundaries.
++- **Current reference checkpoint:** Owner screenshot shows staging branch `reviseLogIn` at abbreviated commit `2a92b2f` (`wave 0`, Live November 15, 2026, 10:09 AM). Owner reports its contents include the prior Wave 0 `BinForm.html` download and that fresh local files were copied to Drive. This is an owner-reported/screenshot-supported checkpoint, **not** a verified full Git SHA, file equality or browser acceptance; recheck current Drive file IDs/hashes and corresponding GitHub baseline before the next correction.
++
++### 1.3 Verified-denominator completion accounting
++
++Track separately: `functional files inventoried`, `functional files audited`, `conforming verified`, `open gaps`, `legacy debt`, `corrections prepared`, `owner installed`, `verified closed`, `approved exceptions`, `needs classification`, and `native files audited`. The denominator is **verified active functional files**, not all Drive items. Do not publish a completion percentage before recursive functional discovery and dependency reconciliation are complete. Cross-file findings are linked to affected file rows, never multiplied into fake file counts. Source and test evidence are distinct.
+ 
+ ## 2. Approved Core Standards — all 12 are in scope
+ 
+@@ -106,9 +137,9 @@
+ 
+ **Source reconciliation caveat:** The inspected `Stage6_OpenItems.md` contains a formal detailed table through S6-037. Other preserved conversations and documents reference S6-039 (Weights range-delete issue, deferred) and S6-041 (unexpected exception disclosure audit), but **S6-038–S6-041 have not been independently reconciled to authoritative full original rows in this pass**. Do not fabricate their original severity/status/closure. Add those rows only after original issue provenance is retrieved. **S6-002** and **S6-037** stay `Verified Closed` only in their historically bounded scope; do not reopen them without a distinct regression.
+ 
+-## 4. Seeded file-by-file and cross-file corrective findings
+-
+-A confirmed *source adoption gap* means approved shared facilities are not universally used; it does not mean an immediate mandatory wholesale rewrite. `Prepared`, `Installed`, `Tested`, `Closed` must be tracked separately. All items below are **open register rows** unless explicit bounded correction noted.
++## 4. Seeded functional-file and cross-file corrective findings (plus retained documentation reference)
++
++A confirmed *source adoption gap* means approved shared facilities are not universally used; it does not mean an immediate mandatory wholesale rewrite. `Prepared`, `Installed`, `Tested`, `Closed` must be tracked separately. All original WA-CF-001–018 IDs and historical descriptions are retained for traceability. WA-CF-012 is **documentation-only** and excluded from functional-file counts; its history remains a reference. All items below are **open register rows** unless bounded correction evidence is explicitly noted.
+ 
+ | ID | Affected files | Classification | Priority | Related issues | Correction / next gate | Current correction state |
+ |---|---|---|---|---|---|---|
+@@ -123,19 +154,20 @@
+ | WA-CF-009 | `routes/weights.js, routes/budget.js, routes/etf.js` | Possible duplication; NOT a proven bypass | Medium | B3-09; S6-005 | Trace whether inner auth is independently needed; remove only after compatibility proof | Not proposed |
+ | WA-CF-010 | `server.js + routes/geocode` | Documented public exception; risk decision deferred | Medium | D11; B3-11 | Maintain existing public behavior; do not add policy without owner approval | Deferred by D11 |
+ | WA-CF-011 | `services/administratorAccess.js and Family Tree admin/privacy callers` | Documentation mismatch and implementation coverage to check | Critical | D01; B6-02; B8-09/10 | Inspect all admin recognition callers; verify full authorized FT admin rights and failed-gate denials; reconcile TechSummary | Not proposed |
+-| WA-CF-012 | `TechSummary.md` | Documented documentation nonconformance candidate | High | B6-01/14; B8-10/11/12 | Prepare a separately approved complete documentation replacement after current version review | Not proposed |
++| WA-CF-012 | `TechSummary.md` (**documentation-only; excluded from functional file denominator**) | Documented documentation nonconformance candidate | High | B6-01/14; B8-10/11/12 | Prepare a separately approved complete documentation replacement after current version review | Not proposed |
+ | WA-CF-013 | `httpdocs/amortization.html` | Historical reported exposure; current state unverified | High | S6-030 | Audit current code and browser Console; sanitize without breaking calculations | Not proposed |
+ | WA-CF-014 | `Family Tree public verification/unsubscribe routes` | Audit/test gap, not established defect | High | S6-017/019; B4-12/14; B8-07 | Method-by-method capability token/Origin/log/redaction matrix | Not proposed |
+ | WA-CF-015 | `HTML pages / service worker / JS assets` | Unverified compatibility risk | High | S6-024; B6-08; B8-13 | Trace script query versions/SW cache lifecycle; verify mixed-version rollback | Not proposed |
+ | WA-CF-016 | `Routes and frontend API consumers (project-wide)` | Coverage gap — requires comprehensive inventory | Critical | S6-005/035; B4; B8-05/06 | Complete route-to-consumer matrix and negative permission tests | Not proposed |
+ | WA-CF-017 | `Web, native and staging platform files` | Program-wide acceptance gap | Critical | S6-006/010/011/019/026/031/036 | Reconcile risk-based browser/native/hosted tests; do not change native policy automatically | Not proposed |
+-| WA-CF-018 | `WA project source inventory` | Audit coverage gap | Critical | S6-034/035; B8-16/17 | Enumerate every authoritative source file; mark applicability, evidence and gap; close each confirmed issue or approve exception | Not proposed |
++| WA-CF-018 | `WA functional-source inventory only` | Audit coverage gap | Critical | S6-034/035; B8-16/17 | Enumerate each active functional source file and dependency; mark applicability and evidence; close proven gaps or approve exceptions | Not proposed |
+ 
+ ### 4A. Detailed finding sheets (requirements, evidence and closure)
+ 
+ 
+ #### WA-CF-001 — httpdocs/BinForm.html
+ 
++- **November 15 follow-up (owner-reported):** A separate Wave 0 `BinForm.html` correction package was downloaded and included in staging commit `2a92b2f`. Earlier proposed isolated tests were reported 7/7 bounded PASS; independent verification of the newly copied Drive file, exact installed diff, Git blob and browser/hosted behavior is still required. Nested-error correction is **not** closure of direct-fetch migration or S6-005.
+ - **Observed finding:** Independent bearer `apiFetch()` despite loading `waPlatform.js`; nested error may stringify as `[object Object]`.
+ - **Classification / risk:** Confirmed source adoption gap; legacy permitted; priority **High**.
+ - **Standards:** CS-03, CS-05, CS-08; WA-SESSION-001, WA-API-002, WA-SHARED-001.
+@@ -268,6 +300,7 @@
+ 
+ #### WA-CF-012 — TechSummary.md
+ 
++- **Audit scope disposition:** Documentation-only reference; retained for history and for resolving authority conflicts, but **not a functional application file**, not in file-by-file compliance denominator, and not a condition for declaring the functional-source inventory complete. Documentation maintenance remains a separately authorized workstream.
+ - **Observed finding:** Historic administrator wording/format coverage may conflict with approved standards.
+ - **Classification / risk:** Documented documentation nonconformance candidate; priority **High**.
+ - **Standards:** CS-02/07/12; WA-CORE-001, WA-FORMAT-001.
+@@ -338,8 +371,9 @@
+ - **Closure condition:** Current authoritative file baseline verified; caller/contract inventory finished; necessary correction or owner-approved exception recorded; complete source difference reviewed; relevant risk-based regressions and applicable browser/HTTP/hosted checks accepted; user confirms installation; independent review gate retained for release.
+ 
+ 
+-#### WA-CF-018 — WA project source inventory
+-
++#### WA-CF-018 — WA functional-source inventory
++
++- **Scope revision:** Inventory only actual functional application/build/runtime/native dependencies. Exclude `docs/`, `standard/`, `change/`, `skills/`, README/INSTALL documents and history except as reference. A classification decision must be evidence-based, particularly for copied and generated artifacts.
+ - **Observed finding:** Whole-project CS-01–CS-12 conformance scan not certified.
+ - **Classification / risk:** Audit coverage gap; priority **Critical**.
+ - **Standards:** CS-01–CS-12; all applicable detailed standards.
+@@ -350,41 +384,67 @@
+ - **Closure condition:** Current authoritative file baseline verified; caller/contract inventory finished; necessary correction or owner-approved exception recorded; complete source difference reviewed; relevant risk-based regressions and applicable browser/HTTP/hosted checks accepted; user confirms installation; independent review gate retained for release.
+ 
+ 
+-## 5. Audit coverage queue — no implied file certification
+-
+-| Audit group | Starting file families / examples | Next verification action | Coverage state |
++## 5. Functional-file audit queue — coverage is not certification
++
++The audit proceeds in **two groups under one standards framework**: A (browser/backend/shared files) first, B (TNNA/native files) second. Each actual functional file obtains its own row in the working functional inventory. Existing WA-CF findings are linked, not treated as substitutes for a file audit. Dependencies may be read earlier than their file's scheduled compliance review.
++
++| Priority group | Functional paths and roles | Per-file assessment focus | State |
+ |---|---|---|---|
+-| App frontend | `httpdocs/*.html`, shared JS, CSS, service worker, manifest | Enumerate all paths, helper use, UI/HTML formatting, error shapes, PWA caching | **Not exhaustively inventoried** |
+-| Browser auth and API | `httpdocs/js/waPlatform.js`, `auth.js`, independent `apiFetch`/Bearer clients | Per-page call list, auth/retry/unsafe mutations, form retention | Sampled; migration open |
+-| Server route registration | `server.js`, `routes/*.js`, `middleware/*.js` | Full method+path/Origin/cookie/token/entitlement/owner/cache/error ledger | B4 representative 17 entries only |
+-| Domain privacy | Family Tree, public links, image uploads | Row-ownership, private redaction, capability flow, multipart | Selected tests only |
+-| Database | `dbConnection.js`, schemas, migrations, SQL dumps, query services | Authoritative schema, UTC, transactions, rollback, effect boundaries | Not exhaustively audited here |
+-| Security/operations | Session services, logger/Morgan, environment guards, rate controls | Credential scopes, sensitive logs, replay, proxy trust | Selected Stage 6 evidence only |
+-| Mobile/native | TNNA, Capacitor/Android integration | Existing token/device/offline behavior, no unapproved lifetime change | In Progress; device matrix open |
+-| Documentation/test assets | `README.md`, `CLAUDE.md`, `TechSummary.md`, `tests/`, `docs/`, `change/` | Rule precedence, formatting, references, source provenance and test evidence | Partial |
+-| Delivery/build assets | `package.json`, lockfiles, dependency scripts, deployment settings | Env drift, dependency security, test-start safeguards, rollback | Not exhaustively audited here |
+-
+-## 6. Standardization corrective work packages (sequencing, not authorization to change)
+-
+-| Wave | Purpose | Prerequisites | Exit criterion |
++| A1 UI | `httpdocs/` active `.html` files | CS-01–12 as applicable; UI, forms, session/error compatibility, HTML formatting | **Pending verified recursive list**; WA-CF-001 first follow-up |
++| A2 Browser code | `httpdocs/js/`, embedded code and active service workers | Caller/endpoint matrix, unsafe replay, privacy token, caching, logging | Sampled only |
++| A3 Browser styles/assets | Active `httpdocs/css/`, icons/images/manifest and referenced assets | Appearance, link resolution, cache/versioning, browser/native interactions | Not comprehensively audited |
++| A4 Root runtime | Active root `.js` and similar executable files | API/SQL/DB/security/service init, logging, error responses | Selected R16 evidence only |
++| A5 Server routes/middleware | `routes/`, `middleware/` | Exact method+path, auth, ownership, user input, expected errors | B4 selected snapshot only |
++| A6 Services | `services/` and imported modules | Shared session, storage, admin, auth, environment | Sampled only |
++| A7 Configuration/dependencies | Active `package.json`, `package-lock.json`, `.node-version`, runtime/build configs | Security, startup, version/drift and operational compatibility | Pending |
++| A8 Operational SQL | Only schema/migration scripts necessary for current function or authorized deployment | Data integrity and schema/migration safety | Classify before inclusion |
++| B TNNA | Active `TNNA/` source/config/build inputs and native assets | Same CS-01–12 and Detailed standards; documented native-specific variation under D10 | Separate later phase, not excluded |
++
++**Excluded nonfunctional materials** are not individually inventoried or tracked, and there is no documentation-audit wave. Active tests are referenced by the functional source rows they verify, not counted as app files. Do not infer obsolete status from filename alone. If a dependency is uncertain, classify as `Needs classification` until an actual reference/entrypoint/build check resolves it.
++
++### 5A. Functional file row schema (one row per verified active file)
++
++| Field | Required record |
++|---|---|
++| Relative path, group, role | Exact rooted path, A1–A8 or B; runtime/build/config/asset classification |
++| Baseline | Drive ID, modified time/revision, size, SHA-256 where byte access permits; matching current Git branch/blob if inspected |
++| Dependency evidence | Import/references, build manifest, route mount, page/script load, PWA cache or native build relationship |
++| Standard applicability | CS-01–CS-12 and applicable Detailed IDs; each non-applicable requirement has reason |
++| Observed disposition | Not inventoried / Inventoried / Audited / Conforming verified / Gap identified / Approved exception / Needs classification |
++| Findings | WA-CF and S6 links; confirmed failure vs permitted legacy vs unresolved risk |
++| Correction record | Approved scope, original/final hashes, full diff, separate verification report, formatting-only hunks, rollback |
++| Verification | Isolation, syntax, UI/browser, HTTP, hosted, native, integration and independent reviewer as relevant; exact status |
++| Installation and closure | Owner installation evidence, deployed commit and test scope, exceptions, final closure owner/date |
++
++### 5B. Wave 0 functional discovery boundary
++
++1. Read the current root `README.md` and installed governing standards as authority; **do not** add them to the functional audit denominator.
++2. Enumerate active browser entrypoints, referenced scripts/styles/assets and service-worker caches, then trace actual imports and loads.
++3. Enumerate root runtime entrypoints, mounted routes, middleware, services and invoked utilities using current authoritative source; include dynamic route registration.
++4. Trace package scripts and relevant runtime/build settings, then classify required operational SQL and assets; exclude secrets, backups and copied history unless an actual dependency proves otherwise.
++5. Separately enumerate TNNA source and native build/runtime dependencies and their backend/API consumers; preserve D10 behavior.
++6. Reconcile Drive files to current `reviseLogIn` where independently possible, documenting mismatches; owner screenshot `2a92b2f` is a checkpoint, not byte equality proof.
++7. Give each functional file a row before claiming the functional inventory complete. Do not infer totals from first 100 folder entries or incomplete pagination. Do not enumerate nonfunctional archives merely to count them.
++
++## 6. Sequenced functional-source review and correction (not blanket change approval)
++
++| Wave | Purpose | Prerequisites | Exit condition |
+ |---|---|---|---|
+-| 0 — Inventory | Enumerate complete Drive source tree, classify code/test/generated/backup and linked endpoints | Read-only authoritative Drive + GitHub checkpoint | Every applicable file has a row or explicit excluded rationale |
+-| 1 — Safety contracts | R16-75 verification, shared error/provenance, cache/log checks | Existing T01–T12 evidence, hosted T06/T11 evidence | Reconcile remaining browser tests and every affected error consumer |
+-| 2 — Shared browser APIs | Migrate small compatible page groups, beginning with ordinary Budget/ETF case | Per-page endpoint/response/UX matrix and owner scope approval | Corrected files + no duplicate writes + form/401/403/5xx tests |
+-| 3 — Privacy and admin | FT privacy, page capabilities, admin recognition and ownership | Full verified-admin D01 requirements, token/upload matrices | Positive/negative privacy and owner tests; no loss of admin authority |
+-| 4 — Service + native | Session/race, logging, rate limits, environment, native compatibility | Credential design decisions and tested staging identity | Risk-appropriate browser, database and device evidence |
+-| 5 — Whole-project close | File audits, exceptions, documentation and verified release | All prior waves verified; S6 issue linkage reconciled | Every file disposition recorded, exceptions approved, independent engineer review completed |
+-
+-**Priorities are proposed work-order guidance, not approval for production or database operations.** Avoid repeating R10/R14/R15 bounded tests unless code changes affect their assertions.
++| 0 — Functional inventory | Identify all operational browser/backend/native files and dependencies, excluding nonfunctional records | Read-only Drive, current README/standards, relevant Git comparison | Every active functional file counted and classified, no unverified directory coverage |
++| 1 — File-by-file browser/backend | For each file, apply relevant CS/Detailed IDs, trace consumers, prepare justified correction and evidence or record verified conformity | Current complete file and contracts; approved scope; current installed baseline | Each reviewed file has explicit disposition and appropriate tests; no premature closure |
++| 2 — TNNA file-by-file | Apply same standards with warranted documented native differences and native/browser-backend compatibility | D10 and verified native sources/contracts | Every active TNNA file reviewed; required native tests and exceptions recorded |
++| 3 — Cross-file/acceptance close | Reconcile all shared dependencies, S6 evidence and remaining browser/native acceptance, final independent review | Verified per-file evidence, owner installations, exception approvals | No open required functional file or unexplained dependency; separate release authorization still necessary |
++
++Within Wave 1, use the approved risk-based priority and stable per-file order; WA-CF-001 `httpdocs/BinForm.html` is the initial file because a correction was reportedly installed at `2a92b2f` and needs exact-source and browser follow-up. Do not automatically redo previously accepted bounded R10/R14/R15/R16 tests unless the affected code warrants it.
+ 
+ ## 7. Standard register row template for additions
+ 
+ ```text
+ Finding ID: WA-CF-NNN
+-File(s) / source URI / Drive ID / revision / Git blob:
+-File role / owners / dependent consumers:
++Functional file(s) / group (A1–A8 or B) / source URI / Drive ID / revision / Git blob:
++Functional role / inclusion proof / owners / dependent consumers:
+ Core ID(s) / Detailed ID(s) / Dxx decision(s):
+-Finding type: Confirmed | Legacy permitted | Risk unverified | Exception candidate | Document conflict
++Finding type: Confirmed | Legacy permitted | Risk unverified | Exception candidate | Documentation-only reference
+ Observed precise code/behavior; confidence and date:
+ Existing issue IDs / audit IDs:
+ Security/privacy/data/UX effect and priority:
+@@ -397,26 +457,25 @@
+ Correction status; test status; compliance disposition; closure evidence/date:
+ ```
+ 
+-## 8. Verification, exceptions and authoritative closure gates
+-
+-A row can be `Verified closed` only when (1) an unambiguous current baseline and approved scope exist; (2) all affected consumers/side effects are reviewed; (3) correction is installed by owner **or** exception approved with explicit justification, compensating control, owner and review trigger; (4) complete `.diff`, verification `.md`, formatting/provenance evidence and SHA manifest are recorded for revised existing files; (5) proportionate tests demonstrate required behavior and absence of regression; (6) outstanding caveats are separately tracked; and (7) authorized reviewer signs off.
+-
+-A source item that was previously closed within a narrow test remains bounded; a new finding needs a separate ID rather than silently reclassifying historical evidence. No row or overall project is deemed complete merely because tests passed in mocks or because a commit is Live.
+-
+-## 9. R16-75 evidence already available for reconciliation (as of Nov 15)
+-
+-- Source checkpoint: owner-reported commit `f794eb7` on `reviseLogIn`; verified GitHub branch identical. `server.js` and `httpdocs/js/waPlatform.js` compared with authoritative Drive in prior read-only review.
++## 8. Functional-file verification, exceptions and authoritative closure gates
++
++A functional-file finding can be `Verified closed` only when (1) an unambiguous current baseline and approved scope exist; (2) all affected consumers/side effects are reviewed; (3) correction is installed by owner **or** exception approved with explicit justification, compensating control, owner and review trigger; (4) complete `.diff`, verification `.md`, formatting/provenance evidence and SHA manifest are recorded for revised existing files; (5) proportionate tests demonstrate required behavior and absence of regression; (6) outstanding caveats are separately tracked; and (7) authorized reviewer signs off.
++
++A source item that was previously closed within a narrow test remains bounded; a new finding needs a separate ID rather than silently reclassifying historical evidence. No functional file or overall project is deemed compliant merely because tests passed in mocks or because a commit is Live. Documentation-only references (including WA-CF-012) are not counted in this denominator. Full TNNA compliance remains mandatory, while native-specific deviations require documented justification and acceptance.
++
++## 9. R16-75 evidence already available for reconciliation (historical Nov 15 scope)
++
++- Historical source checkpoint: owner-reported commit `f794eb7` on `reviseLogIn`; previously compared GitHub branch identical. **Later owner screenshot** shows staging commit `2a92b2f` Live at 10:09 AM Nov 15, including reported Wave 0 BinForm correction; independently verify full SHA/installed content before new code review.  `server.js` and `httpdocs/js/waPlatform.js` compared with authoritative Drive in prior read-only review.
+ - T01–T05/T07–T08: bounded offline passes; T09 shared client offline regressions passed; T10 bounded offline tests passed; T12 combined 90/90 offline passed.
+ - T06 hosted parser probes: 3/3 reported pass (malformed JSON 400, URL-encoded parameter limit 413, incomplete multipart 500), each sanitized nested response and `Cache-Control: no-store`. This is only those three requests.
+ - T11 hosted logging evidence: provided entries for 400, 413 and 500 use `Request error (HTTP NNN; message omitted)` and no sensitive details; broader logging review remains under S6-030.
+ - **Still unverified within R16-75:** T09 browser nested error display; T10 actual unsaved-form retention and real browser failed-save/session behavior; project-wide direct-`fetch` consumers including BinForm; full browser/device/route matrix.
+ - R10/R14/R15 remain previously `PASS (bounded)`; do not promote to whole-project compliance.
+ 
+-## 10. Source register and provenance
++## 10. Standards and evidence provenance (reference-only; not in functional audit)
+ 
+ | Short name | Source (authoritative Google Drive folder `My Drive/wonderfulApp`) | Scope of use |
+ |---|---|---|
+-
+ | Core | [Drive file](https://drive.google.com/file/d/15OKI6N_SF6b1d9-bmF3JL2qBs7kNsYVB/view) | CS-01–CS-12 |
+ | Detailed | [Drive file](https://drive.google.com/file/d/118GV8F6C5Wi3D9IvwIMKwX67rQ2qBsEk/view) | Detailed technical standards/annexes |
+ | Decision | [Drive file](https://drive.google.com/file/d/1MxG5Ubgzi531pwc8Ln1MkfSxoujM8-lJ/view) | D01–D14 |
+@@ -428,9 +487,20 @@
+ | B8 | [Drive file](https://drive.google.com/file/d/17ZVAlWmMn7B1_GpgmhyfzE2wUmnG8Kxp/view) | Validation findings |
+ | README | [Drive file](https://drive.google.com/file/d/1B9k1uTn_NuPvhKkWCs1Xug-EZvHpkb_F/view) | Project entry and precedence |
+ 
+-The first-stage source observations were extracted from the above docs and compared with the GitHub `sthink1/wapps` `reviseLogIn` branch as specifically noted. Historic audit line numbers refer to their pinned November 11 snapshots, not necessarily the installed files after commit `f794eb7`. No claim is made that the complete Drive tree or all source files were exhaustively listed during preparation of this v1.0.
+-
+-## 11. Next concrete action
+-
+-**Start Wave 0:** Read-only enumerate the authoritative WA file tree and make a complete per-file audit inventory (path, role, current SHA/revision, applicable CS/detailed rules, audited yes/no), then reconcile each existing finding and record unreviewed files. Carry forward remaining R16-75 browser testing in parallel. **No source revisions in this register itself.**
+-
++The listed links are historical version-specific reference pointers; the owner recopied local project files into Drive on November 15, which may change Drive file IDs without changing content. Re-resolve the current file IDs by canonical project path before reliance. The first-stage source observations were extracted from the above docs and compared with the GitHub `sthink1/wapps` `reviseLogIn` branch as specifically noted. Historic audit line numbers refer to their pinned November 11 snapshots, not necessarily the installed files after commit `f794eb7`. No claim is made that the complete Drive tree or all source files were exhaustively listed during preparation of this v1.0.
++
++## 11. Next concrete action and owner-controlled gate
++
++1. **Owner reviews this version 1.1 scope replacement** and, if approved, manually places it at `docs/WA_Standards_Compliance_Register.md`. No automatic modification of Drive or the owner's local files.
++2. Begin Wave 0 by enumerating *functional files only*, with authoritative current paths/IDs, inclusion evidence, applicability and pending audit state. Do not count README, standards, docs, change reports, skills or unreferenced backups.
++3. Reconcile `httpdocs/BinForm.html` against the owner-installed Wave 0 package, the newly copied Drive baseline and staging commit `2a92b2f`; retain offline tests, then arrange relevant owner-executed browser checks. Do not declare WA-CF-001 or S6-005 closed based on the correction alone.
++4. Thereafter assess **one functional file at a time**; record compliant findings or issue separately packaged full-file corrections with original-to-final `.diff`, per-file change verification, SHA-256, and proportionate tests. Keep TNNA as the second-phase group under the same WA standards with documented native-specific differences.
++
++**Compliance status at issue of this draft:** a scope revision to the control document only. No new functional source test has been run for this register revision; no complete functional file denominator verified; no Stage 6 closure or deployment authorization implied.
++
++## 12. Revision history
++
++| Version | Date | Change | Status |
++|---|---|---|---|
++| 1.0 | 2026-11-15 | Seeded complete-project standards register and 18 findings | Original authoritative Drive baseline for this proposal |
++| 1.1 | 2026-11-15 | Owner-approved functional-files-only scope; same standards for TNNA with justified native-specific differences; adjusted denominator, discovery, audit queue and evidence status; historical S6/WA-CF findings retained | **Proposed download for manual owner review/installation** |
