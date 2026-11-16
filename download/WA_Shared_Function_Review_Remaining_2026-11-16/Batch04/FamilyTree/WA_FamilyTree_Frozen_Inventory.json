@@ -1,0 +1,74 @@
+{
+  "page": "FamilyTree",
+  "start": "2026-11-16T10:06:11.3615982-05:00",
+  "candidates": [
+    [
+      "FT01",
+      "HOME/MENU handoff",
+      "318-321;665-669",
+      "C",
+      "Move between instructional and functional pages",
+      "Same-origin navigation/session continuity",
+      "WA.session related; static anchors",
+      "Instructional entry point and destinations",
+      "High"
+    ],
+    [
+      "FT02",
+      "Current-tree credentialed lookup and error handling",
+      "417-419;770-780",
+      "C",
+      "Load current tree code using local bearer",
+      "Shared auth restoration and HTTP distinctions",
+      "WA.session/WA.api loaded later, not used here",
+      "Optional tree-code display",
+      "High"
+    ],
+    [
+      "FT03",
+      "Late response/account-switch protection",
+      "770-780",
+      "A",
+      "Prevent earlier identity response updating current display",
+      "Cross-app session isolation",
+      "WA.session identity protection related",
+      "Reset displayed current-tree code",
+      "High"
+    ],
+    [
+      "FT04",
+      "Instruction dialog lifecycle/accessibility",
+      "405-410;421-432;647-669;751-768",
+      "C",
+      "Present and dismiss instructional dialogs",
+      "Reusable dialog focus/keyboard behavior",
+      "No shared dialog helper identified",
+      "Instruction text and static samples",
+      "High"
+    ],
+    [
+      "FT05",
+      "Safe DOM output and static template boundaries",
+      "425-447;450-645;657-660;673-764;775-777",
+      "C",
+      "Render samples and fetched tree label safely",
+      "WA safe output rules",
+      "FT_INSTRUCTIONS; textContent",
+      "Fictional illustrations and instructions",
+      "High"
+    ],
+    [
+      "FT06",
+      "Platform/usage lifecycle integration",
+      "782-783",
+      "A",
+      "Record Family Tree visit using shared components",
+      "WA-wide session/tracking contract",
+      "waPlatform.js; usageTracking.js",
+      "Family Tree page attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: instructional relationship, privacy, code, networking, contact/event/history and picture explanations; fictional cards are demonstrations, not active CRUD/upload/recovery controls. No sanitizer needed for static noneditable examples.",
+  "inventoryCompletedObserved": "2026-11-16T10:07:03.729524-05:00"
+}

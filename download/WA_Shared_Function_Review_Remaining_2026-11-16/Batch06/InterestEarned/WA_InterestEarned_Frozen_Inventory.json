@@ -1,0 +1,107 @@
+{
+  "page": "InterestEarned",
+  "start": "2026-11-16T13:46:37.9569505-05:00",
+  "candidates": [
+    [
+      "I01",
+      "Bearer/session startup",
+      "httpdocs/InterestEarned.html:686-708,1731-1748",
+      "A",
+      "Guard and restore current session",
+      "WA session lifecycle",
+      "Local request helper; platform loaded later",
+      "Contract load and statement state",
+      "High"
+    ],
+    [
+      "I02",
+      "HTTP/error/204 adapter",
+      "httpdocs/InterestEarned.html:686-708,750-777,1455-1478,1553-1567,1712-1727",
+      "C",
+      "Parse read/mutation outcomes",
+      "WA status/category/transitional errors",
+      "WA.api related; direct fetch",
+      "Contract messages/204 shape",
+      "High"
+    ],
+    [
+      "I03",
+      "Record ownership/authorization",
+      "httpdocs/InterestEarned.html:753,813-815,1455-1457,1553-1556",
+      "C",
+      "Restrict contracts to permitted user",
+      "WA server ownership/subscription",
+      "Server interestEarned routes",
+      "Contract CRUD rules",
+      "High"
+    ],
+    [
+      "I04",
+      "Safe contract/calculation DOM",
+      "httpdocs/InterestEarned.html:652-656,730-810,842-855,1073-1096,1160-1314",
+      "C",
+      "Render untrusted text and numeric/date results",
+      "WA safe text/context",
+      "textContent/escaping; numeric formatting",
+      "Statement/calculation schedule presentation",
+      "High"
+    ],
+    [
+      "I05",
+      "Free-text/numeric/date adapters",
+      "httpdocs/InterestEarned.html:13-14,676-683,725-728,842-883,1511-1551",
+      "C",
+      "Sanitize text, format amount/date fields",
+      "WA reusable field/date semantics",
+      "DOMPurify/inputSanitizer; local formatters",
+      "Financial arithmetic excluded",
+      "High"
+    ],
+    [
+      "I06",
+      "Mutation draft/committed-followup lifecycle",
+      "httpdocs/InterestEarned.html:1363-1408,1435-1478,1511-1567,1678-1727",
+      "C",
+      "Retain drafts and distinguish save from refresh/action logging",
+      "WA no replay/uncertain outcome",
+      "Local promises/disable; no shared pending helper",
+      "Contract selection and statement draft",
+      "High"
+    ],
+    [
+      "I07",
+      "Account switch/selection ordering",
+      "httpdocs/InterestEarned.html:698,723-777,832-838,1411-1432,1481-1508",
+      "A",
+      "Fence delayed identity/selection responses",
+      "WA identity/late response rules",
+      "Shared session related; contractRecords cache",
+      "Selected contract/principal state",
+      "High"
+    ],
+    [
+      "I08",
+      "Modal/field/status accessibility",
+      "httpdocs/InterestEarned.html:372-374,385-430,517-638,1363-1408",
+      "C",
+      "Operate contract/principal forms and errors",
+      "WA programmatic labels/focus/keyboard",
+      "Local overlays and close spans",
+      "Calculation feedback wording",
+      "High"
+    ],
+    [
+      "I09",
+      "Action tracking/shared telemetry/cache",
+      "httpdocs/InterestEarned.html:658-664,711-720,971,1472,1562,1722,1747-1748",
+      "A",
+      "Log explicit action and page/time lifecycle",
+      "WA tracking/cache/diagnostics",
+      "Legacy logAction plus shared usageTracking",
+      "Interest action names",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: interest/compound/day-count math, financial input validation and principal-business semantics. Review field adapters/sinks only, no arithmetic certification. Functional discovery complete before any selected-page register/prior findings.",
+  "inventoryCompletedObserved": "2026-11-16T13:47:15.632733-05:00"
+}

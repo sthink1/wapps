@@ -1,0 +1,74 @@
+{
+  "page": "amortization",
+  "start": "2026-11-16T09:47:10.734011-05:00",
+  "candidates": [
+    [
+      "AM01",
+      "formatNumber",
+      "210-212;250-254",
+      "C",
+      "Format numeric schedule output",
+      "Number display reusable",
+      "Native Number/Intl; no shared formatter equivalent identified",
+      "Two-decimal comma formatting; financial arithmetic stays local",
+      "High"
+    ],
+    [
+      "AM02",
+      "Shared sanitizer / typed input boundary",
+      "10-11;180-188;221-229",
+      "C",
+      "Clean ordinary text before calculation",
+      "Input defense and type conversion reusable",
+      "DOMPurify; httpdocs/js/inputSanitizer.js",
+      "Principal/rate/term validation and date business rule",
+      "High"
+    ],
+    [
+      "AM03",
+      "Schedule table rendering",
+      "233-263",
+      "C",
+      "Render calculated values safely",
+      "DOM output context safety common",
+      "Native textContent/DOM; no shared schedule renderer equivalent identified",
+      "Amortization columns/generated payment dates and amounts",
+      "High"
+    ],
+    [
+      "AM04",
+      "Home navigation / keyboard semantics",
+      "174-176",
+      "C",
+      "Return to Home",
+      "Safe navigation and accessible controls common",
+      "Native anchor/home.html",
+      "Nested button/anchor behavior and focus",
+      "High"
+    ],
+    [
+      "AM05",
+      "Service-worker registration / diagnostics",
+      "202-209",
+      "A",
+      "Register common PWA worker",
+      "Shared cache/version and secret-free diagnostics",
+      "httpdocs/sw.js",
+      "Fixed registration message and error path",
+      "High"
+    ],
+    [
+      "AM06",
+      "Platform and usage-tracking integration",
+      "266-267",
+      "A",
+      "Track authenticated calculator usage",
+      "Cross-WA session/usage lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Local calculation has no business transport or credential gate",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: payment/interest/principal/remaining-balance calculations and term loop; validateDate213-220 rejecting29/30/31 is calculator-specific, existing historical concern not reopened. No business API requests, credentials/DB operations or reusable text persisted. Styling/formatting/financial arithmetic audit excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:48:42.126686-05:00"
+}

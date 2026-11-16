@@ -1,0 +1,74 @@
+{
+  "page": "FTEmailVerification",
+  "start": "2026-11-16T10:40:48.2671108-05:00",
+  "candidates": [
+    [
+      "E01",
+      "Public email capability preview/confirm",
+      "httpdocs/FTEmailVerification.html:2-8",
+      "C",
+      "Verify ownership through purpose-specific email link",
+      "WA public method/token authority separation",
+      "Native fetch; exact public server GET/POST bypass",
+      "Contact email ownership only",
+      "High"
+    ],
+    [
+      "E02",
+      "HTTP/error/disabled-state/no replay",
+      "httpdocs/FTEmailVerification.html:4-8",
+      "C",
+      "Report invalid/failed/uncertain verification outcome",
+      "WA compatible HTTP/outcome/no replay contract",
+      "Raw response.json/textContent; no WA.api required",
+      "Valid flag and one confirmation",
+      "High"
+    ],
+    [
+      "E03",
+      "Stored-contact identity/expiry/one-use/commit contract",
+      "httpdocs/FTEmailVerification.html:5-8",
+      "C",
+      "Confirm only current stored email contact under token",
+      "WA capability/DB/privacy authority",
+      "Existing contact verification issuer/GET/POST routes",
+      "Contact value/type matching, ownership verification",
+      "High"
+    ],
+    [
+      "E04",
+      "Token URL/cache/log/referrer/account boundary",
+      "httpdocs/FTEmailVerification.html:1-8",
+      "A",
+      "Contain bearer capability exposure and audience",
+      "WA privacy/secret-free diagnostics/cache",
+      "Query token to same-origin relative path",
+      "Email link independent of logged-in user",
+      "High"
+    ],
+    [
+      "E05",
+      "Safe message/URL/input boundary",
+      "httpdocs/FTEmailVerification.html:2-8",
+      "A",
+      "Display server messages safely and encode token path",
+      "WA safe DOM and credential handling",
+      "textContent/encodeURIComponent/hex validation",
+      "Verification display",
+      "High"
+    ],
+    [
+      "E06",
+      "Status/control accessibility",
+      "httpdocs/FTEmailVerification.html:1,4-8",
+      "C",
+      "Announce readiness/invalid/outcome changes",
+      "WA accessible async statuses/focus",
+      "Named button and p#status",
+      "Email verification feedback",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: contact-email ownership wording. No login/session restoration/tracker/free-text sanitizer requirement for public capability page; no privacy-code recovery/GO PRIVATE authority implied by email verification. No external action is issued by this page except verification HTTP.",
+  "inventoryCompletedObserved": "2026-11-16T10:41:14.559948-05:00"
+}

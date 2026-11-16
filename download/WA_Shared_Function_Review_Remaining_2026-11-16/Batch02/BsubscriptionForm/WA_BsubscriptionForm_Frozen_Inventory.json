@@ -1,0 +1,129 @@
+{
+  "page": "BsubscriptionForm",
+  "start": "2026-11-16T09:01:11.794233-05:00",
+  "candidates": [
+    [
+      "SF01",
+      "getToken / requireLogin / BASE_URL",
+      "44-47;78",
+      "A",
+      "Gate page and attach current stored token to requests",
+      "Credential/session lifetime and request origin common across WA",
+      "WA.session.restore; WA.api.request",
+      "Budget endpoints and localhost development-origin compatibility",
+      "High"
+    ],
+    [
+      "SF02",
+      "apiFetch response and exception contract",
+      "47;55;57-58;61-62;75",
+      "A",
+      "Parse errors and report failures",
+      "HTTP categories and flat/nested safe-message compatibility common",
+      "WA.api.json / WA.ApiError",
+      "Budget business messages and (be) suffix compatibility",
+      "High"
+    ],
+    [
+      "SF03",
+      "Shared free-text sanitization",
+      "2-3;31;60-61",
+      "C",
+      "Sanitize normal user text before save",
+      "Project-wide defense-in-depth input contract",
+      "DOMPurify; httpdocs/js/inputSanitizer.js",
+      "To/Description/PaymentAccount/Note field schema and validation",
+      "High"
+    ],
+    [
+      "SF04",
+      "escapeHtml / record and frequency-preview rendering",
+      "50;57;68;75",
+      "C",
+      "Render database/provider results and modal controls safely",
+      "Context-aware output safety common",
+      "Native textContent/value; no equivalent shared output encoder identified",
+      "Subscription columns, date/occurrence contracts and generated recurrence markup",
+      "High"
+    ],
+    [
+      "SF05",
+      "CRUD / reset / draft and message lifecycle",
+      "55;57-63",
+      "C",
+      "Submit one mutation and retain/manage editing state",
+      "No-replay and unsaved-form/failure behavior common",
+      "WA.api.request after contract-preserving migration",
+      "Subscription payload, roundUpAmount business rule, recurrence and selected record",
+      "High"
+    ],
+    [
+      "SF06",
+      "requestedId / startup/edit link / navigation",
+      "51;63;78",
+      "C",
+      "Validate query ID and open linked record",
+      "Safe URL parameter parsing and navigation common",
+      "URLSearchParams; no equivalent shared ID/navigation helper identified",
+      "Positive Subscription record ID, Budget destination",
+      "High"
+    ],
+    [
+      "SF07",
+      "Frequency builder and preview integration",
+      "54;64-76",
+      "C",
+      "Edit recurrence and request preview",
+      "Modal/server-preview integration and asynchronous state reusable",
+      "No equivalent shared recurrence UI identified; WA.api for transport only",
+      "All frequency rules, flags, date changes, recurrence schema and summaries",
+      "High"
+    ],
+    [
+      "SF08",
+      "Modal / row keyboard and focus behavior",
+      "31-35;57;73;76",
+      "C",
+      "Operate record selection and dialog accessibly",
+      "Keyboard/focus accessibility common across WA",
+      "No shared dialog/row-selection component identified",
+      "Frequency fields and row-to-subscription mapping",
+      "High"
+    ],
+    [
+      "SF09",
+      "moneyDisplay / formatting boundary",
+      "48-49;57;60",
+      "C",
+      "Format amount while preserving saved-value rules",
+      "Numeric display formatting reusable",
+      "Native Number/Intl; no shared formatter equivalent established",
+      "Integer display, Math.ceil save rule are Budget business decisions",
+      "High"
+    ],
+    [
+      "SF10",
+      "Service-worker registration",
+      "52",
+      "A",
+      "Register shared PWA worker",
+      "Cross-WA cache/version lifecycle",
+      "httpdocs/sw.js",
+      "Root worker scope and page availability",
+      "High"
+    ],
+    [
+      "SF11",
+      "Platform and tracker integration",
+      "79-80",
+      "A",
+      "Record session-aware page/time usage",
+      "Cross-WA usage lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Subscription page path; independent business adapter remains local",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: Subscription schema and CRUD semantics, auto-renew/active/estimated meaning, amount ceiling, recurrence date expansion and business validation remain local. Recurrence UI included only for generic integration/rendering/accessibility boundaries; no recurrence arithmetic audit. Broad CSS/formatting excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:01:55.924929-05:00"
+}

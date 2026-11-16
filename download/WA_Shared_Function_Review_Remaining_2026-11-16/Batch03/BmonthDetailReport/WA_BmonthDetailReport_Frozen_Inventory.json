@@ -1,0 +1,96 @@
+{
+  "page": "BmonthDetailReport",
+  "start": "2026-11-16T09:39:38.213319-05:00",
+  "candidates": [
+    [
+      "MD01",
+      "Credential gate / request origin",
+      "387-390;402-425;415-446;603-608",
+      "A",
+      "Authenticate detail request",
+      "Session/origin contract common",
+      "WA.session.restore; WA.api.request",
+      "Monthly detail endpoint/local8080 routing",
+      "High"
+    ],
+    [
+      "MD02",
+      "apiFetch / error feedback",
+      "415-446;464-474;577-578",
+      "A",
+      "Decode/report failures",
+      "Common status/error-envelope contract",
+      "WA.api.json / WA.ApiError",
+      "Budget message/suffix compatibility",
+      "High"
+    ],
+    [
+      "MD03",
+      "Year/month query validation",
+      "476-493;538-555",
+      "C",
+      "Validate route inputs before read",
+      "Generic URL/input boundary reusable",
+      "URLSearchParams; native Number",
+      "Year1900-9999/month1-12 and detail route",
+      "High"
+    ],
+    [
+      "MD04",
+      "Safe detail rendering / display",
+      "448-462;506-536;557-576",
+      "C",
+      "Render source activity safely",
+      "Context-safe DOM/display common",
+      "Native textContent; escapeHtml; Number/Intl",
+      "In/Out fields/totals/deficit classes and integer display",
+      "High"
+    ],
+    [
+      "MD05",
+      "Source-page mapping/navigation and keyboard semantics",
+      "282-310;325-353;392-400;495-504;533;582-588",
+      "C",
+      "Open source records and menus accessibly",
+      "Safe URL and keyboard actions reusable",
+      "Native links/location; no shared accessible table helper identified",
+      "Seven fixed Budget source destinations, encoded source ID",
+      "High"
+    ],
+    [
+      "MD06",
+      "Async load/outcome state",
+      "538-580;603-609",
+      "C",
+      "Load chosen month and handle errors",
+      "Request/identity/feedback lifecycle common",
+      "WA.api transport; native DOM",
+      "Single initial month request and In/Out presentation",
+      "High"
+    ],
+    [
+      "MD07",
+      "Worker registration",
+      "590-601",
+      "A",
+      "Register common PWA worker",
+      "Shared cache/version boundary",
+      "httpdocs/sw.js",
+      "Root scope",
+      "High"
+    ],
+    [
+      "MD08",
+      "Platform and usage tracker",
+      "611-612",
+      "A",
+      "Track authenticated detail usage",
+      "Cross-WA lifecycle tracking",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Detail page path; business adapter independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: In/Out/source labels, detail totals/deficit computation and fixed source destinations. No writes/free text or generic sanitizer requirement. Source form files not reopened as navigation dependencies; financial/layout/formatting audit excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:40:16.163044-05:00"
+}

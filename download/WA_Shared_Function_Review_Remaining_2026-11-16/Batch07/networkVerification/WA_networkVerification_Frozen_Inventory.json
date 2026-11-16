@@ -1,0 +1,74 @@
+{
+  "page": "networkVerification",
+  "start": "2026-11-16T14:16:20.7208425-05:00",
+  "candidates": [
+    [
+      "NV01",
+      "Public verification capability/preview",
+      "httpdocs/networkVerification.html:100-102,148-178",
+      "C",
+      "Read scoped email request",
+      "Public token authority contract",
+      "Encoded token GET; no bearer",
+      "Person/tree consent preview",
+      "High"
+    ],
+    [
+      "NV02",
+      "Explicit consent mutation/outcome",
+      "httpdocs/networkVerification.html:113-145,180-203",
+      "C",
+      "Approve/decline once confirmed",
+      "No automatic mutation/replay; HTTP outcome contract",
+      "Explicit POST; no WA.api",
+      "Consent choice semantics",
+      "High"
+    ],
+    [
+      "NV03",
+      "Async failure/recovery",
+      "httpdocs/networkVerification.html:180-207",
+      "A",
+      "Retain useful state on failure",
+      "Shared user-facing error rules",
+      "Load catch only; click promises uncaught",
+      "Pending choice UI",
+      "High"
+    ],
+    [
+      "NV04",
+      "Safe DOM/accessibility",
+      "httpdocs/networkVerification.html:85-96,117-145,150-173,197-206",
+      "A",
+      "Render prompt and status safely",
+      "Common DOM and live feedback",
+      "textContent; named buttons",
+      "Choice-specific wording",
+      "High"
+    ],
+    [
+      "NV05",
+      "Capability privacy/cache boundary",
+      "httpdocs/networkVerification.html:4-7,79,100-102,154-156,184-195",
+      "C",
+      "Protect link capability",
+      "Public token/referrer/cache policy",
+      "URL query remains; local CSS",
+      "Email link workflow",
+      "High"
+    ],
+    [
+      "NV06",
+      "Session-independent authorization boundary",
+      "httpdocs/networkVerification.html:100-111,154-166,184-195",
+      "C",
+      "Separate emailed permission from browser login",
+      "Capability binding/revocation and account switch",
+      "No browser identity storage",
+      "Network inclusion only",
+      "High"
+    ]
+  ],
+  "excluded": "B-only consent prompt wording/tree network business rules. Token/enum are protocol capability values, not ordinary free-text fields; do not indiscriminately sanitize tokens.",
+  "inventoryCompletedObserved": "2026-11-16T14:16:39.459253-05:00"
+}

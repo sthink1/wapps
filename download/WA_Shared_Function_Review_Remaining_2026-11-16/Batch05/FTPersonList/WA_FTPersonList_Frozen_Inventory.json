@@ -1,0 +1,107 @@
+{
+  "page": "FTPersonList",
+  "start": "2026-11-16T10:33:49.1701701-05:00",
+  "candidates": [
+    [
+      "L01",
+      "Token startup/current-tree/navigation",
+      "httpdocs/FTPersonList.html:179-182,234-237;httpdocs/js/FTPersonList.js:16-22,240-267,291-300",
+      "C",
+      "Load current/separated trees and guard navigation",
+      "WA restoration/context contract",
+      "WA.session related; local guard",
+      "Separated vs current tree semantics",
+      "High"
+    ],
+    [
+      "L02",
+      "HTTP/failure adapters",
+      "httpdocs/js/FTPersonList.js:93-115,240-254,302-324",
+      "C",
+      "Fetch split view and explicit use-tree mutation",
+      "WA status/error contract",
+      "WA.api related but not business delegate",
+      "Split-view and enter-code fields",
+      "High"
+    ],
+    [
+      "L03",
+      "Private redaction/capability handoff",
+      "httpdocs/FTPersonList.html:234-235;httpdocs/js/FTPersonList.js:117-123,159-176,219-225",
+      "C",
+      "Render private placeholders and open private Person",
+      "WA specialized privacy/admin/navigation",
+      "FTPrivacy.openPerson actual use",
+      "Separated-tree Person navigation",
+      "High"
+    ],
+    [
+      "L04",
+      "Safe DOM/date/attribute output",
+      "httpdocs/js/FTPersonList.js:6-14,44-51,125-217,267-288",
+      "C",
+      "Encode server tree/person values",
+      "WA output safety/date adapter boundary",
+      "Local escapeHtml; textContent",
+      "Tree rows/date columns",
+      "High"
+    ],
+    [
+      "L05",
+      "Reusable free-text sanitation/filtering",
+      "httpdocs/FTPersonList.html:188-190,234-237;httpdocs/js/FTPersonList.js:53-90,308-311",
+      "C",
+      "Handle free-text filter safely",
+      "Mandatory shared text-input defense",
+      "No DOMPurify/inputSanitizer import",
+      "Local list matching remains domain-specific",
+      "High"
+    ],
+    [
+      "L06",
+      "Use-tree mutation/pending/context lifecycle",
+      "httpdocs/js/FTPersonList.js:93-115,228-237",
+      "C",
+      "Change current tree intentionally once per action",
+      "WA no replay/uncertain result contract",
+      "Direct POST then reload",
+      "Use this tree distinct from read-only Person open",
+      "High"
+    ],
+    [
+      "L07",
+      "Account switch/asynchronous state",
+      "httpdocs/js/FTPersonList.js:18-22,93-115,240-289,302-324",
+      "C",
+      "Keep loaded tree/person/cache aligned with identity",
+      "WA late-response/session isolation",
+      "Shared session related; local caches",
+      "Tree set/filter/current code",
+      "High"
+    ],
+    [
+      "L08",
+      "Filter/control/status and popup accessibility",
+      "httpdocs/FTPersonList.html:188-197,230,234;httpdocs/js/FTPersonList.js:117-123,228-237,302-324",
+      "C",
+      "Operate filter/actions and announce load/privacy errors",
+      "WA labels/focus/error semantics",
+      "FTPrivacy popup; local status/filter",
+      "List controls/status",
+      "High"
+    ],
+    [
+      "L09",
+      "Shared platform/tracker/asset composition",
+      "httpdocs/FTPersonList.html:234-237",
+      "A",
+      "Use common telemetry beside privacy helper",
+      "WA tracker/cache/scoped fetch integration",
+      "FTPrivacy; waPlatform; usageTracking",
+      "Family Tree attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: alphabet matching, family-name sorting/filter terms, original/separated tree presentation. Calendar dates are escaped display values under output candidate; no arithmetic audit. No generic global fetch replacement proposed.",
+  "inventoryCompletedObserved": "2026-11-16T10:34:21.502070-05:00"
+}

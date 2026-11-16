@@ -1,0 +1,96 @@
+{
+  "page": "subscription",
+  "start": "2026-11-16T14:11:31.5617994-05:00",
+  "candidates": [
+    [
+      "SU01",
+      "Captured bearer/status startup",
+      "httpdocs/subscription.html:438,450-479,521",
+      "A",
+      "Load current subscription under authenticated session",
+      "WA restore/current identity contract",
+      "Raw fetch/local token; no WA.session",
+      "Current access panel",
+      "High"
+    ],
+    [
+      "SU02",
+      "HTTP/error/denial parsing",
+      "httpdocs/subscription.html:457-478,495-513",
+      "A",
+      "Retain failure categories/domain metadata",
+      "WA API/session/error contracts",
+      "Local JSON/Error branches",
+      "Promo redemption messages",
+      "High"
+    ],
+    [
+      "SU03",
+      "Server entitlement/promo authorization",
+      "httpdocs/subscription.html:450-475,495-510",
+      "C",
+      "Restrict status/redemption to current account",
+      "WA API/ownership/admin/DB contract",
+      "subscriptions routes/service",
+      "Plan/uses/redemption business rules",
+      "High"
+    ],
+    [
+      "SU04",
+      "Promo text sanitation",
+      "httpdocs/subscription.html:289,482-501",
+      "C",
+      "Sanitize reusable free text before submit",
+      "WA shared text defense",
+      "No DOMPurify/inputSanitizer; trim only",
+      "Promo syntax local",
+      "High"
+    ],
+    [
+      "SU05",
+      "Mutation pending/unsaved/outcome",
+      "httpdocs/subscription.html:482-515",
+      "A",
+      "Submit once and retain failures without replay",
+      "WA no replay/draft/uncertain commit",
+      "Explicit POST; no pending guard",
+      "Cleared code/refresh current plan",
+      "High"
+    ],
+    [
+      "SU06",
+      "Account switch/late-response isolation",
+      "httpdocs/subscription.html:438,458-475,499-510",
+      "A",
+      "Fence stale credential/401/UI updates",
+      "WA identity/session safety",
+      "Captured token; no storage/request generation",
+      "Subscription data/promo target account",
+      "High"
+    ],
+    [
+      "SU07",
+      "Safe text/accessibility/navigation",
+      "httpdocs/subscription.html:262,268-292,472-478,507-518",
+      "A",
+      "Display access/errors safely and name controls",
+      "WA safe DOM/live feedback",
+      "textContent/aria-labelled input/live message",
+      "Plan presentation/Home",
+      "High"
+    ],
+    [
+      "SU08",
+      "Sensitive cache/assets/diagnostic scope",
+      "httpdocs/subscription.html:8-9,457-458,495-504",
+      "A",
+      "Protect account data/API/error cache",
+      "WA privacy/cache/log/asset contract",
+      "Manifest/assets; direct requests",
+      "Subscription UI",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: development trial/plan hierarchy/promotional economics/future price placeholders. No live financial recommendation or pricing certification. No actual payment provider/mutation beyond promo exists; no new payment behavior proposed.",
+  "inventoryCompletedObserved": "2026-11-16T14:12:09.651552-05:00"
+}

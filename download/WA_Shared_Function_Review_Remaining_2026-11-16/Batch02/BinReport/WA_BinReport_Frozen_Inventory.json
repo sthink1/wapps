@@ -1,0 +1,96 @@
+{
+  "page": "BinReport",
+  "start": "2026-11-16T09:11:01.718330-05:00",
+  "candidates": [
+    [
+      "IR01",
+      "getToken / requireLogin / request-origin setup",
+      "37-40;55-56",
+      "A",
+      "Authenticate report reads and gate startup",
+      "Common session credential/origin boundary",
+      "WA.session.restore; WA.api.request",
+      "Budget In endpoint and localhost8080 routing",
+      "High"
+    ],
+    [
+      "IR02",
+      "apiFetch error decoding / msg",
+      "40;46;53",
+      "A",
+      "Translate request failures to report feedback",
+      "Shared status/error-envelope interoperability",
+      "WA.api.json / WA.ApiError",
+      "Budget legacy error/message and suffix behavior",
+      "High"
+    ],
+    [
+      "IR03",
+      "escapeHtml / moneyDisplay and report table",
+      "41-42;50-52",
+      "C",
+      "Render API rows safely",
+      "Context-safe output and display formatting reusable",
+      "Native DOM/Intl; no equivalent shared report renderer identified",
+      "In report From/Description/dates/amount/flags",
+      "High"
+    ],
+    [
+      "IR04",
+      "Source-form and menu navigation / keyboard access",
+      "29;52;57-58",
+      "C",
+      "Open a source In record and Budget/Reports pages",
+      "Safe URLs and keyboard operation common",
+      "Native links/location; no shared row-navigation helper identified",
+      "BinForm and UserInID; no BinForm re-examination",
+      "High"
+    ],
+    [
+      "IR05",
+      "Status filtering / asynchronous load state",
+      "29;46-60",
+      "C",
+      "Load active/inactive/all rows and show outcomes",
+      "Async result ordering and error-state lifecycle reusable",
+      "WA.api transport; native select and message element",
+      "Budget In status semantics and empty result",
+      "High"
+    ],
+    [
+      "IR06",
+      "Unused requestedId parser",
+      "43",
+      "A",
+      "Validate query record ID if used",
+      "Generic URL validation responsibility",
+      "URLSearchParams; no shared equivalent identified",
+      "No consumer on current report",
+      "High"
+    ],
+    [
+      "IR07",
+      "Service-worker registration",
+      "44",
+      "A",
+      "Register shared PWA worker",
+      "Cross-WA asset/cache lifecycle",
+      "httpdocs/sw.js",
+      "Root worker integration",
+      "High"
+    ],
+    [
+      "IR08",
+      "Platform and usage-tracking integration",
+      "62-63",
+      "A",
+      "Record session-aware report usage",
+      "Cross-WA page/time lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "In report path; business apiFetch is independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: In report schema/status selection and source record mapping; no calculations/writes. No reusable free-text input and no sanitizer requirement for select-only report. BinForm examination already completed, not repeated. Broad CSS/formatting excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:11:42.054811-05:00"
+}

@@ -1,0 +1,85 @@
+{
+  "page": "notificationPreferences",
+  "start": "2026-11-16T14:17:18.4590995-05:00",
+  "candidates": [
+    [
+      "NP01",
+      "Captured authenticated startup/restore",
+      "httpdocs/notificationPreferences.html:133-148,158-170,196-198",
+      "A",
+      "Load signed-in preferences",
+      "WA session restoration contract",
+      "Raw fetch/token snapshot",
+      "Current preference values",
+      "High"
+    ],
+    [
+      "NP02",
+      "HTTP error/denial classification",
+      "httpdocs/notificationPreferences.html:158-169,181-193",
+      "A",
+      "Distinguish authorization and transient failure",
+      "Shared API outcome/error contract",
+      "Plain Errors;401 startup clear",
+      "Preference error wording",
+      "High"
+    ],
+    [
+      "NP03",
+      "Identity and asynchronous response fencing",
+      "httpdocs/notificationPreferences.html:136-147,151-169,182-190",
+      "A",
+      "Prevent stale identity/state application",
+      "Current-account asynchronous contract",
+      "No identity/version fence",
+      "Loaded/saved checkbox state",
+      "High"
+    ],
+    [
+      "NP04",
+      "Draft/pending/explicit save lifecycle",
+      "httpdocs/notificationPreferences.html:101-129,151-170,172-198",
+      "C",
+      "Preserve preference edits/outcomes",
+      "Unsaved/pending/no replay",
+      "No dirty/pending guards",
+      "Four boolean preferences",
+      "High"
+    ],
+    [
+      "NP05",
+      "Server user and required-message authority",
+      "httpdocs/notificationPreferences.html:89-121,174-189",
+      "C",
+      "Update only own optional consent",
+      "Server authorization/consent contract",
+      "Authenticated routes; no client user ID",
+      "Required vs optional category policy",
+      "High"
+    ],
+    [
+      "NP06",
+      "Safe accessible boolean input/output",
+      "httpdocs/notificationPreferences.html:99-129,151-155,190-197",
+      "A",
+      "Label controls and announce status",
+      "Common accessibility/DOM rules",
+      "Wrapped labels;role=status;textContent",
+      "Boolean controls no ordinary text",
+      "High"
+    ],
+    [
+      "NP07",
+      "Environment/cache/log scope",
+      "httpdocs/notificationPreferences.html:4-7,133-148,158-161,182-185",
+      "C",
+      "Select origin and protect session",
+      "Environment/headers/log policies",
+      "Localhost fallback; bearer header",
+      "Utility page assets",
+      "High"
+    ]
+  ],
+  "excluded": "B-only category business policy/SMS provider status. Checkbox booleans not free-text sanitation targets. CSS independently seen, no layout alterations proposed.",
+  "inventoryCompletedObserved": "2026-11-16T14:17:38.214079-05:00"
+}

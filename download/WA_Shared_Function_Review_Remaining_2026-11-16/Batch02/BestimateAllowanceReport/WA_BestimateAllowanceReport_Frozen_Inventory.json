@@ -1,0 +1,96 @@
+{
+  "page": "BestimateAllowanceReport",
+  "start": "2026-11-16T09:09:56.640748-05:00",
+  "candidates": [
+    [
+      "ER01",
+      "Credential gate / request origin",
+      "37-40;45",
+      "A",
+      "Authenticate Estimate report read",
+      "Session and origin contract common",
+      "WA.session.restore; WA.api.request",
+      "Estimate endpoint and localhost8080 behavior",
+      "High"
+    ],
+    [
+      "ER02",
+      "apiFetch / error-message catch",
+      "40;45",
+      "A",
+      "Decode and communicate request failures",
+      "Shared HTTP and error-envelope contract",
+      "WA.api.json / WA.ApiError",
+      "Budget safe messages/suffix",
+      "High"
+    ],
+    [
+      "ER03",
+      "Safe table rendering / numeric display",
+      "41-42;45",
+      "C",
+      "Render Estimate data safely",
+      "Safe output and number display reusable",
+      "Native DOM/Intl; no equivalent shared table helper identified",
+      "Estimate columns, integer amount and flags",
+      "High"
+    ],
+    [
+      "ER04",
+      "Row-to-source navigation and keyboard access",
+      "29;45",
+      "C",
+      "Open selected Estimate form",
+      "Safe URLs and keyboard operability common",
+      "Native links/location; no shared row-navigation helper identified",
+      "BestimateAllowanceForm and UserEstimateID mapping",
+      "High"
+    ],
+    [
+      "ER05",
+      "Filter / async loading / feedback state",
+      "29;45",
+      "C",
+      "Refresh active-status report",
+      "Request ordering and outcome feedback reusable",
+      "WA.api transport and native select/status nodes",
+      "Active/inactive/all Estimate records",
+      "High"
+    ],
+    [
+      "ER06",
+      "Dormant requestedId helper",
+      "43",
+      "A",
+      "Parse positive query ID if called",
+      "Generic URL input responsibility",
+      "URLSearchParams; no equivalent shared helper identified",
+      "Not called on current report",
+      "High"
+    ],
+    [
+      "ER07",
+      "Worker registration",
+      "44",
+      "A",
+      "Register common PWA worker",
+      "Cross-WA cache/version behavior",
+      "httpdocs/sw.js",
+      "Root worker integration",
+      "High"
+    ],
+    [
+      "ER08",
+      "Platform and usage-tracking integration",
+      "45-46",
+      "A",
+      "Record authenticated report usage",
+      "Cross-WA lifecycle tracking",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Estimate report path; separate local business adapter",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: Estimate direction/FromTo/Description/status-filter semantics and columns. No writes/calculations or reusable free-text input. General CSS/formatting excluded; no generic sanitizer needed for select-only UI.",
+  "inventoryCompletedObserved": "2026-11-16T09:10:35.107972-05:00"
+}

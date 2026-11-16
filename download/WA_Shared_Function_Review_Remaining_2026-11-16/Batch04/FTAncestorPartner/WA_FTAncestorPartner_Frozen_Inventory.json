@@ -1,0 +1,96 @@
+{
+  "page": "FTAncestorPartner",
+  "start": "2026-11-16T10:13:34.5281880-05:00",
+  "candidates": [
+    [
+      "FPB01",
+      "Authenticated relationship startup",
+      "131-133",
+      "C",
+      "Require credential before Partner load",
+      "Common auth/session restoration",
+      "FTAncestorPartner.js:22-31,166-170; WA.session related",
+      "Partner view focal context",
+      "High"
+    ],
+    [
+      "FPB02",
+      "Relationships/person request and failure handling",
+      "123;131-132",
+      "C",
+      "Perform two dependent GETs and expose errors",
+      "WA HTTP/status/failure contract",
+      "FTAncestorPartner.js:98-135,177-180; WA.api related",
+      "Partner results and person name",
+      "High"
+    ],
+    [
+      "FPB03",
+      "Private focal data and Person transition",
+      "100-101;107;120;131",
+      "C",
+      "Access private focal details and related Person page",
+      "WA privacy capabilities/redaction/admin boundaries",
+      "FTAncestorPartner.js:92-135; no FTPrivacy script",
+      "Partner list/context",
+      "High"
+    ],
+    [
+      "FPB04",
+      "Safe row/text/URL output",
+      "107;120;131",
+      "C",
+      "Encode rows, assign name, encode context links",
+      "Common context-sensitive DOM safety",
+      "FTAncestorPartner.js:7-21,92-95,137-163,172-174",
+      "Partner names/gender/age",
+      "High"
+    ],
+    [
+      "FPB05",
+      "Account/context and delayed result lifecycle",
+      "131",
+      "C",
+      "Associate query/session context and responses with identity",
+      "WA account-switch isolation",
+      "FTAncestorPartner.js:25-31,98-164",
+      "Focal Person/tree",
+      "High"
+    ],
+    [
+      "FPB06",
+      "Date-only display conversion",
+      "131",
+      "C",
+      "Interpret date fields for presentation",
+      "Shared calendar/date contract",
+      "FTAncestorPartner.js:57-90",
+      "Partner age/deceased semantics",
+      "Medium"
+    ],
+    [
+      "FPB07",
+      "Person action and asynchronous status accessibility",
+      "113-123;131",
+      "C",
+      "Expose row actions and loading errors",
+      "WA accessible actions/error announcements",
+      "FTAncestorPartner.js:145-151,177-180",
+      "Partner list errors",
+      "High"
+    ],
+    [
+      "FPB08",
+      "Shared telemetry and asset integration",
+      "131-133",
+      "A",
+      "Load platform/tracker beside page code",
+      "WA session/tracking/PWA dependency contract",
+      "waPlatform; usageTracking",
+      "Family Tree attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: partner relationship selection and biological age/deceased semantics. No editable text fields, uploads or local mutation. safeImageUrl is defined but not called.",
+  "inventoryCompletedObserved": "2026-11-16T10:13:54.457120-05:00"
+}

@@ -1,0 +1,96 @@
+{
+  "page": "FTUndoOneTreeMerge",
+  "start": "2026-11-16T10:37:31.6695931-05:00",
+  "candidates": [
+    [
+      "U01",
+      "Credentialed current-tree/query navigation",
+      "httpdocs/FTUndoOneTreeMerge.html:33,50-52;httpdocs/js/FTUndoOneTreeMerge.js:6-10,24-39,138-146",
+      "C",
+      "Guard page and obtain current tree",
+      "WA restoration/context/navigation",
+      "WA.session related; current-tree GET fallback",
+      "Undo-selected tree",
+      "High"
+    ],
+    [
+      "U02",
+      "GET/review/undo HTTP and error handling",
+      "httpdocs/js/FTUndoOneTreeMerge.js:24-47,67-78,105,118-145",
+      "C",
+      "Load history/review and submit undo outcome",
+      "WA error/status/category contract",
+      "WA.api related, raw fetch",
+      "Merge history/undo fields",
+      "High"
+    ],
+    [
+      "U03",
+      "Undo authorization/admin/privacy boundaries",
+      "httpdocs/js/FTUndoOneTreeMerge.js:42-47,72-106,118-128",
+      "C",
+      "Read and reverse permitted merge snapshots",
+      "WA tree/owner/admin/action-capability contract",
+      "Server central admin and tree guards related",
+      "MergeID/dependency/creator permissions",
+      "High"
+    ],
+    [
+      "U04",
+      "Safe DOM and timestamp rendering",
+      "httpdocs/js/FTUndoOneTreeMerge.js:12-22,54-65,80-103",
+      "C",
+      "Escape merge names/codes/pair summaries/time",
+      "WA safe output/date presentation",
+      "Local escapeHtml/formatDate",
+      "Undo timeline and names",
+      "High"
+    ],
+    [
+      "U05",
+      "Mutation pending/uncertainty/external follow-up",
+      "httpdocs/js/FTUndoOneTreeMerge.js:108-135",
+      "C",
+      "Confirm undo, disable controls and report outcome",
+      "WA no replay/draft/external action safety",
+      "Local try/catch; no retry",
+      "Undo transaction and object cleanup",
+      "High"
+    ],
+    [
+      "U06",
+      "Account switch/delayed navigation state",
+      "httpdocs/js/FTUndoOneTreeMerge.js:24-47,72-106,118-131",
+      "C",
+      "Bind delayed undo/history responses to current user",
+      "WA session identity fencing",
+      "Shared session related; local callbacks",
+      "Tree history/context and timed redirect",
+      "High"
+    ],
+    [
+      "U07",
+      "Dynamic action/status accessibility",
+      "httpdocs/FTUndoOneTreeMerge.html:44-45;httpdocs/js/FTUndoOneTreeMerge.js:54-68,89-105,115-145",
+      "C",
+      "Expose review/undo actions and announce outcomes",
+      "WA focus/error/status behavior",
+      "Local inserted controls/status",
+      "Undo confirmation and status",
+      "High"
+    ],
+    [
+      "U08",
+      "Shared tracking/platform/assets",
+      "httpdocs/FTUndoOneTreeMerge.html:50-52",
+      "A",
+      "Load shared telemetry beside undo client",
+      "WA common tracker/cache/session contract",
+      "waPlatform; usageTracking",
+      "Family Tree attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: snapshot restore algorithms, merge dependency graph and biological rollback transformations. No free-text field/upload or email issuance. Server review bounded to auth, private response scope and commit/external-action consequences.",
+  "inventoryCompletedObserved": "2026-11-16T10:37:56.941414-05:00"
+}

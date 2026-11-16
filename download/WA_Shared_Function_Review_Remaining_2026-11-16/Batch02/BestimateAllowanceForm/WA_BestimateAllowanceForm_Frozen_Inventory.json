@@ -1,0 +1,140 @@
+{
+  "page": "BestimateAllowanceForm",
+  "start": "2026-11-16T09:08:05.402732-05:00",
+  "candidates": [
+    [
+      "EF01",
+      "BASE_URL / getToken / requireLogin",
+      "44-47;78",
+      "A",
+      "Gate page and send credentialed requests",
+      "Cross-WA session and origin contract",
+      "WA.session.restore; WA.api.request",
+      "Estimate endpoints and development port8080 behavior",
+      "High"
+    ],
+    [
+      "EF02",
+      "apiFetch and caller error feedback",
+      "47;55-58;61-63;75",
+      "A",
+      "Decode errors and communicate outcomes",
+      "Shared HTTP/status/envelope interoperability",
+      "WA.api.json / WA.ApiError",
+      "Budget business errors and suffix contract",
+      "High"
+    ],
+    [
+      "EF03",
+      "Shared sanitation and text payload",
+      "2-3;31;36;60-63",
+      "C",
+      "Sanitize reusable free text before submission",
+      "Project-wide input defense",
+      "DOMPurify; httpdocs/js/inputSanitizer.js",
+      "FromTo/Note/newDescription fields and Estimate schema",
+      "High"
+    ],
+    [
+      "EF04",
+      "escapeHtml / row and preview rendering",
+      "50;56-57;68;75",
+      "C",
+      "Render API-backed labels, records and preview safely",
+      "Context-aware output safety common",
+      "Native option.textContent/value and textContent; no shared renderer equivalent established",
+      "Estimate columns, dates, occurrence output and constant recurrence markup",
+      "High"
+    ],
+    [
+      "EF05",
+      "CRUD / payload / reset / draft state",
+      "55;57-62",
+      "C",
+      "Submit controlled mutations and manage drafts",
+      "No replay and asynchronous editing state common",
+      "WA.api.request after preserving contracts",
+      "Estimate direction/amount/recurrence schema and selectedId",
+      "High"
+    ],
+    [
+      "EF06",
+      "requestedId / startup / navigation",
+      "51;63;78",
+      "C",
+      "Validate linked record and navigate",
+      "Safe URL parameters and navigation reusable",
+      "URLSearchParams; native location",
+      "UserEstimateID and budget.html destination",
+      "High"
+    ],
+    [
+      "EF07",
+      "Description dropdown / Add Description integration",
+      "31;36;56;58-59;63;78",
+      "C",
+      "Load shared/user description data and add a choice",
+      "Reusable async dropdown/modal boundary; data-driven list contract",
+      "/budget/descriptions; shared sanitizer; no generic shared dropdown UI identified",
+      "In/Out filtering, custom choice creation and retained legacy description",
+      "High"
+    ],
+    [
+      "EF08",
+      "Frequency controls / preview integration",
+      "54;64-76",
+      "C",
+      "Edit recurrence and request preview",
+      "Generic modal/transport/state boundary reusable",
+      "No equivalent WA-wide recurrence UI established",
+      "All recurrence rules/flags/date expansion stay Budget-local",
+      "High"
+    ],
+    [
+      "EF09",
+      "Record and dialog keyboard/focus semantics",
+      "31-36;57;63;73;76",
+      "C",
+      "Select existing records and operate dialogs accessibly",
+      "Cross-WA keyboard/focus/accessibility contract",
+      "No shared accessible dialog/row helper identified",
+      "Estimate source rows, Description and Frequency dialogs",
+      "High"
+    ],
+    [
+      "EF10",
+      "Amount display / rounding boundary",
+      "48-49;57;60",
+      "C",
+      "Display amount while preserving save semantics",
+      "Display formatting reusable",
+      "Native Number/Intl; no shared formatter equivalent established",
+      "Integer display and Math.ceil saved amount business rule",
+      "High"
+    ],
+    [
+      "EF11",
+      "Service-worker registration",
+      "52",
+      "A",
+      "Register common PWA worker",
+      "Cross-WA cache/version behavior",
+      "httpdocs/sw.js",
+      "Root worker integration",
+      "High"
+    ],
+    [
+      "EF12",
+      "Shared platform and usage tracker",
+      "79-80",
+      "A",
+      "Record authenticated usage lifecycle",
+      "Cross-WA page/time tracking",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Estimate page path; business adapter remains independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: Estimate direction/amount and optional FromTo, recurrence arithmetic and all frequency business rules remain local. Description list semantics stay data-driven; no global list change requested. Broad HTML/CSS/formatting excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:08:37.588770-05:00"
+}

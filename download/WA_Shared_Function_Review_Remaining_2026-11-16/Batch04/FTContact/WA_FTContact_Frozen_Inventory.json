@@ -1,0 +1,118 @@
+{
+  "page": "FTContact",
+  "start": "2026-11-16T10:14:25.4591581-05:00",
+  "candidates": [
+    [
+      "CT01",
+      "Startup/query/context and return navigation",
+      "48;79-81",
+      "C",
+      "Guard page and derive person/tree/return",
+      "WA session restoration and safe navigation",
+      "FTContact.js:23-35,78-89,194-197; WA.session related",
+      "Contact focal person/tree",
+      "High"
+    ],
+    [
+      "CT02",
+      "HTTP/error adapters across reads and mutations",
+      "67-74;79-80",
+      "C",
+      "Transport contact/person/resend/save/delete and errors",
+      "WA status/error/no replay contract",
+      "FTContact.js:78-98,118-127,164-191,204-211; WA.api related",
+      "Contact messages and verification fields",
+      "High"
+    ],
+    [
+      "CT03",
+      "Private focal access and server authorization integration",
+      "53-55;79",
+      "C",
+      "Access protected person/contact records",
+      "WA page capability/tree/admin boundaries",
+      "FTContact.js:25-29,78-98,164-188; no FTPrivacy import",
+      "Person/contact binding",
+      "High"
+    ],
+    [
+      "CT04",
+      "Safe output/text/URL context",
+      "53-55;73;79",
+      "C",
+      "Display records and edit values safely",
+      "WA context-sensitive DOM safety",
+      "FTContact.js:7-21,64-89,104-127,182,197",
+      "Contact value/note/status",
+      "High"
+    ],
+    [
+      "CT05",
+      "Shared sanitizer and field normalization",
+      "9-10;61-64;79",
+      "C",
+      "Sanitize reusable text and normalize empty input",
+      "Common text defense-in-depth",
+      "inputSanitizer; DOMPurify; FTContact.js:37-40,142-147",
+      "Type/value/note syntax",
+      "High"
+    ],
+    [
+      "CT06",
+      "Mutation/draft/pending lifecycle",
+      "67-68;73;79",
+      "C",
+      "Save edit/delete/resend with safe retry and inputs",
+      "WA uncertain mutation/no replay and drafts",
+      "FTContact.js:50-76,118-138,140-191",
+      "EditContactID/contact list reconciliation",
+      "High"
+    ],
+    [
+      "CT07",
+      "Account-switch and late-response isolation",
+      "79",
+      "C",
+      "Prevent old-account contacts/context updating new session",
+      "WA session identity fencing",
+      "FTContact.js:31-35,78-138,140-191,194-213",
+      "Contact list/edit cache",
+      "High"
+    ],
+    [
+      "CT08",
+      "Email verification capability workflow",
+      "72-73;79",
+      "C",
+      "Resend verification without replacing verified identity",
+      "WA capability/email authority/privacy contract",
+      "FTContact.js:112,118-127; server contact routes",
+      "Registered Contact email verification",
+      "High"
+    ],
+    [
+      "CT09",
+      "Field validation/error announcement accessibility",
+      "61-68;74;79",
+      "C",
+      "Label controls, focus missing fields and announce errors",
+      "WA accessible fields/status semantics",
+      "FTContact.js:149-162,198-211",
+      "Required type/value and list statuses",
+      "High"
+    ],
+    [
+      "CT10",
+      "Shared platform/tracking/assets",
+      "79-81",
+      "A",
+      "Use shared telemetry/session integration",
+      "WA common tracking/cache contract",
+      "waPlatform; usageTracking",
+      "Family Tree page attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: contact sorting/types, primary-contact rules and email business verification rules, except mandatory capability/privacy authority integration. No upload or new backend audit beyond used route access/error/capability fragments.",
+  "inventoryCompletedObserved": "2026-11-16T10:14:55.968200-05:00"
+}

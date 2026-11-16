@@ -1,0 +1,96 @@
+{
+  "page": "BmonthBudget",
+  "start": "2026-11-16T09:37:59.741042-05:00",
+  "candidates": [
+    [
+      "MB01",
+      "Credential gate / request origin",
+      "409-434;541-544",
+      "A",
+      "Authenticate summary requests",
+      "Cross-WA session/origin responsibility",
+      "WA.session.restore; WA.api.request",
+      "Monthly summary endpoint/local8080 behavior",
+      "High"
+    ],
+    [
+      "MB02",
+      "apiFetch / error feedback",
+      "427-442;452-460;519-522",
+      "A",
+      "Decode/report request failures",
+      "Common status/envelope interoperability",
+      "WA.api.json / WA.ApiError",
+      "Budget messages/suffix",
+      "High"
+    ],
+    [
+      "MB03",
+      "Calendar range / monetary formatting",
+      "462-493;525-539",
+      "C",
+      "Validate/format month range and numbers",
+      "Date-only/display/input boundaries reusable",
+      "Native Date/Intl/Number",
+      "Current+11 and12-month range steps; integer totals vs cents current balance",
+      "High"
+    ],
+    [
+      "MB04",
+      "Summary rendering and producer types",
+      "494-518",
+      "C",
+      "Render monthly values safely",
+      "Context-safe output common",
+      "Native textContent and numeric formatters",
+      "MonthLabel/year attribute, deficit/shortage classes and Budget columns",
+      "High"
+    ],
+    [
+      "MB05",
+      "Month detail / Budget navigation and keyboard access",
+      "351;392;505-513;525",
+      "C",
+      "Open detail report or Budget",
+      "Safe URL and accessible navigation common",
+      "Native links/location; no shared helper equivalent identified",
+      "Encoded year/month query and fixed Budget destination",
+      "High"
+    ],
+    [
+      "MB06",
+      "Async load/feedback lifecycle",
+      "482-523;526-544",
+      "C",
+      "Refresh summary for chosen range",
+      "Request ordering/state handling common",
+      "WA.api transport; native controls/messages",
+      "Summary loading/empty/error state and range preservation",
+      "High"
+    ],
+    [
+      "MB07",
+      "Worker registration",
+      "444-450",
+      "A",
+      "Register shared PWA worker",
+      "Cross-WA cache/version boundary",
+      "httpdocs/sw.js",
+      "Root worker integration",
+      "High"
+    ],
+    [
+      "MB08",
+      "Platform/tracker integration",
+      "547-548",
+      "A",
+      "Record session-aware usage",
+      "Cross-WA usage lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "MonthlyBudget path; business adapter independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: budget totals/deficit/shortage and range business presentation. No writes or reusable free-text input; generic sanitizer unnecessary for month controls. Financial calculations and broad CSS/formatting excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:39:08.928866-05:00"
+}

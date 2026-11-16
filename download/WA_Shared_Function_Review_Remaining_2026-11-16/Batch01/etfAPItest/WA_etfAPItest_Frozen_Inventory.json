@@ -1,0 +1,107 @@
+{
+  "page": "etfAPItest",
+  "start": "2026-11-16T08:31:44.695088-05:00",
+  "candidates": [
+    [
+      "T01",
+      "lookupSymbol / fetchTiingoRange / fetchFinnhub credentials",
+      "601-650;1004-1005",
+      "A",
+      "Send authenticated same-origin reads",
+      "Credential restoration/current identity common across WA",
+      "WA.session; WA.api.request",
+      "High"
+    ],
+    [
+      "T02",
+      "HTTP response/error decoding",
+      "606-609;623-628;646-648;777-780;899-901",
+      "A",
+      "Translate transport and HTTP failures",
+      "Status categories and bounded error decoding are common",
+      "WA.api.json / WA.ApiError",
+      "High"
+    ],
+    [
+      "T03",
+      "Symbol input normalization/sanitization",
+      "429-431;869-871;921;540;1004-1005",
+      "C",
+      "Normalize entered symbol and protect free-text boundary",
+      "Mandatory shared plain-text input handling; symbol validation remains local",
+      "httpdocs/js/inputSanitizer.js with DOMPurify",
+      "High"
+    ],
+    [
+      "T04",
+      "today / toDateStr / parseDate / fmtDisplay and calendar integration",
+      "552-595",
+      "C",
+      "Represent dates without UTC conversion and use market calendar",
+      "Date-only contracts reusable; trading anchors/list-date logic local",
+      "httpdocs/js/holidays.js actual isMarketClosed calls 573/578",
+      "High"
+    ],
+    [
+      "T05",
+      "setCell / HTML formatters and metadata rendering",
+      "687-717;734-752;824-825;883-895;972",
+      "C",
+      "Render data/results and status metadata",
+      "Safe output context reusable; numeric financial display local",
+      "Native textContent; no universal shared HTML formatter identified",
+      "High"
+    ],
+    [
+      "T06",
+      "showStatus / progress helpers and calculate busy state",
+      "658-685;869-905",
+      "C",
+      "Communicate progress and operation failure",
+      "Busy/error lifecycle reusable; provider count and labels local",
+      "No shared status component identified",
+      "High"
+    ],
+    [
+      "T07",
+      "Prompt modal open/close controls",
+      "528-538;970-978",
+      "C",
+      "Present generated summary in dialog",
+      "Dialog keyboard/focus lifecycle project-wide",
+      "No shared dialog implementation identified",
+      "High"
+    ],
+    [
+      "T08",
+      "Summary export / clipboard / print",
+      "913-968;980-1001",
+      "C",
+      "Extract plain text and export it",
+      "Clipboard/print failure handling reusable; ETF summary schema local",
+      "Browser clipboard/window APIs; no equivalent shared exporter identified",
+      "High"
+    ],
+    [
+      "T09",
+      "Console diagnostics",
+      "789;899-901",
+      "A",
+      "Record provider/calculation failures",
+      "Secret-free diagnostics policy common across WA",
+      "usageTracking fixed diagnostic pattern (related, not drop-in logger)",
+      "High"
+    ],
+    [
+      "T10",
+      "Platform and usage-tracking integration",
+      "1004-1005",
+      "A",
+      "Track page and foreground duration",
+      "Shared usage lifecycle across WA",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: return/annualization arithmetic, list-date and market-open decisions, price source precedence, six-year range, table/summary schema remain ETF-specific. Presentation choices and broad CSS review excluded. Fixed Back anchor etf.html is simple navigation, recorded as no abstraction requirement."
+}

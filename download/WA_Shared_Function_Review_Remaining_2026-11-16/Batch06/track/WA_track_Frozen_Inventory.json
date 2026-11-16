@@ -1,0 +1,85 @@
+{
+  "page": "track",
+  "start": "2026-11-16T13:51:35.5632255-05:00",
+  "candidates": [
+    [
+      "T01",
+      "Current-token dashboard startup",
+      "httpdocs/track.html:346-348,650-655,710-726",
+      "A",
+      "Guard current session before dashboard reads",
+      "WA restoration/identity contract",
+      "Raw fetch/current local token; no platform import",
+      "Admin dashboard readiness",
+      "High"
+    ],
+    [
+      "T02",
+      "GET/status/error parser",
+      "httpdocs/track.html:350-363,579-614,627-647",
+      "A",
+      "Distinguish denial/transport/failure",
+      "WA type-safe HTTP/status contract",
+      "apiGet local adapter",
+      "Admin/domain response messages",
+      "High"
+    ],
+    [
+      "T03",
+      "Central administrator/privacy authorization",
+      "httpdocs/track.html:607-624,639-643,710-717",
+      "C",
+      "Read aggregated app/all-user usage only as admin",
+      "WA central admin/record data permissions",
+      "Server /track guards; loadUsers authorizes body",
+      "Usage data and provider plan summaries",
+      "High"
+    ],
+    [
+      "T04",
+      "Safe HTML/table/options output",
+      "httpdocs/track.html:323-327,378-396,445-510,616-624",
+      "A",
+      "Encode all server/display values",
+      "WA safe DOM/context rendering",
+      "escapeHtml/textContent; constant plan rows",
+      "Metric matrix/table schema",
+      "High"
+    ],
+    [
+      "T05",
+      "Account/selection/period async ordering",
+      "httpdocs/track.html:319-321,602-647,657-705",
+      "A",
+      "Prevent stale identity/selection results",
+      "WA response fencing/session continuity",
+      "Local period/user state; no generation fence",
+      "Independent dashboard filters",
+      "High"
+    ],
+    [
+      "T06",
+      "Status/filter accessibility",
+      "httpdocs/track.html:224,240-278,296,579-647,657-705",
+      "C",
+      "Announce loading/results/errors/filter state",
+      "WA programmatic status/focus semantics",
+      "Live initial gate, remaining local status/buttons",
+      "Dashboard feedback",
+      "High"
+    ],
+    [
+      "T07",
+      "Date/duration/capacity presentation adapters",
+      "httpdocs/track.html:329-344,400-442,589-595",
+      "C",
+      "Format numeric duration/date safely",
+      "WA data presentation/date vs instant contract",
+      "Local numeric conversion/Date locale",
+      "Usage duration/cost/business values not audited",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: provider prices/capacity planning, metric definitions and matrix economics; values are code observations, not current pricing recommendations. Read-only dashboard; no free-text controls, mutation or shared tracker import to require. No provider queries performed.",
+  "inventoryCompletedObserved": "2026-11-16T13:52:03.867577-05:00"
+}

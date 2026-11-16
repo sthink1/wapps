@@ -1,0 +1,17 @@
+# Batch 6 - interruption recovery and preservation record
+
+Owner explicitly authorized resume after usage-limit interruption. Recovery first observed 2026-11-16T13:42:45.8354530-05:00. Before further examinations, filesystem inspection found ONLY Activities/WA_Activities_Frozen_Inventory.json (3999 bytes); no completed page reviewMD/CSV/timingMD, no summary/mapping/final verification/ZIP. No fully completed page examination at stop. Activities current-source functional discovery and original ten-candidate freeze complete; assessment/reporting incomplete. All seven later pages outstanding. No partially written report to repair, no overwrite required.
+
+Preserved inventory start10:52:48.2421617-05:00; inventory complete10:53:40.262904-05:00; saved completion was observed10:53:40.263887 in pre-interruption tool receipt. Last pre-interruption observation 2026-11-16T10:53:41.5778830-05:00. Original batch first anchor 2026-11-16T10:52:22.0435420-05:00. Activities was resumed at missing assessment/report requirement, not independently rediscovered. Later pages sequential Weights,InterestEarned,propertyInfo,weighIn,SubControl,track,home.
+
+The in-memory original974-file SHA baseline and generator state were lost, not the frozen JSON. New resume baseline975 files at 2026-11-16T13:43:07.702580-05:00 includes original inventory and all prior batch reports. Full original-baseline preservation across interruption UNRESOLVED; cannot recreate missing hashes from current state and call them originals. All37 selected identities from prior Batch5 evidence manifest matched resumed bytes, a bounded corroboration only. Git branch/HEAD/status agree with retained baseline: reviseLogIn/1bc93d86a194cdcc57a7280de226f1bfee10f10c, pre-existing bday/logo deletions and untracked docs/download preserved. Resume baseline rechecked at completion.
+
+Unobserved gap 2026-11-16T10:53:41.5778830-05:00 to 2026-11-16T13:42:45.8354530-05:00 = 10144.257570s. This is the difference between observed anchors, NOT a measured interruption duration. Exact usage-limit onset/stop/restart and active work in gap UNRESOLVED. Do not estimate or subtract an invented pause duration. Activities gross elapsed includes gap and is not review effort.
+
+Assessment/reconciliation boundaries interleaved/unresolved throughout resumed work. Pure CPU/model effort and finer phase timings unresolved; wall/tool observations retained. No application tests/sleeps/external waits. Recovery setup is included in resumed segment, not secretly excluded.
+
+Procedural deviation - Weights: after functional source reading and before original inventory was saved, a narrow Compliance Register search exposed contextual deferred S6-039. No previous candidate inventory was used as discovery checklist; however strict freeze-before-any-selected-page-register-reading was not satisfied. Original inventory and explicit exclusions/reconciliation preserve this exception. General per-page boilerplate asserting freeze-before-register is qualified by this specific notice. No repeated examination can retroactively repair that sequence, so no false certification.
+
+Compact Core references CS03 etc in assessment text denote canonical CS-03 etc (CS01 through CS12 -> CS-01 through CS-12); no new standards IDs invented. Full WA requirement IDs retained.
+
+M03 prior Batch5 finding remains mandatory Stage6 security disposition; carried forward separately, not counted as a new Batch6 discovery or optional modernization. Existing source, reports, registers and test evidence not revised.

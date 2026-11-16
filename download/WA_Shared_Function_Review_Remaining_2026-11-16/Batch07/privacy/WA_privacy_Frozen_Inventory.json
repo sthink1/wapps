@@ -1,0 +1,41 @@
+{
+  "page": "privacy",
+  "start": "2026-11-16T14:18:18.8748089-05:00",
+  "candidates": [
+    [
+      "PR01",
+      "Static public policy/session scope",
+      "httpdocs/privacy.html:1-7,18-26,59-61",
+      "C",
+      "Present privacy information without login",
+      "Public document identity boundary",
+      "No JavaScript/API/auth state",
+      "Privacy narrative",
+      "High"
+    ],
+    [
+      "PR02",
+      "Semantic/static safe output",
+      "httpdocs/privacy.html:18-58",
+      "A",
+      "Make information navigable and safe",
+      "Common accessibility/DOM behavior",
+      "Native main/headings/plain text",
+      "Policy sections and effective date",
+      "High"
+    ],
+    [
+      "PR03",
+      "Policy/asset release alignment",
+      "httpdocs/privacy.html:4-15,20,28-58",
+      "C",
+      "Publish fixed policy/assets",
+      "Cache/release evidence vs policy claims",
+      "Local CSS; no tracking script",
+      "Published promises and version",
+      "High"
+    ]
+  ],
+  "excluded": "B-only privacy narrative/legal adequacy not assessed. Assertions about other applications are not runtime evidence and do not close M03; no prior application examinations repeated. No free-text/session/API/mutation/draft code exists.",
+  "inventoryCompletedObserved": "2026-11-16T14:18:38.648665-05:00"
+}

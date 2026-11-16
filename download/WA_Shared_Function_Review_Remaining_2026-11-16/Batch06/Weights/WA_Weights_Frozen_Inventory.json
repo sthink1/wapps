@@ -1,0 +1,118 @@
+{
+  "page": "Weights",
+  "start": "2026-11-16T13:44:58.9110373-05:00",
+  "candidates": [
+    [
+      "W01",
+      "Shared authenticated transport adapter",
+      "httpdocs/Weights.html:642,681-710",
+      "A",
+      "Delegate bearer/restoration/same-origin transport",
+      "WA shared auth contract",
+      "WA.api.request actually used; waLocalPath/waOptions",
+      "Weights URL/body/204 return shape",
+      "High"
+    ],
+    [
+      "W02",
+      "Caller error/status/JSON contracts",
+      "httpdocs/Weights.html:698-744,874-877,1031-1045,1470-1506,1550-1582",
+      "C",
+      "Preserve HTTP/error/domain meanings across callers",
+      "WA status/errors/client interoperability",
+      "Shared raw Response, local parsing",
+      "Weights/Activity messages",
+      "High"
+    ],
+    [
+      "W03",
+      "Ownership/mutation authorization",
+      "httpdocs/Weights.html:1072-1079,1296-1303,1550-1561,1677-1685",
+      "C",
+      "Access only owned Weight/activity associations",
+      "WA user ownership/data integrity",
+      "Server weights/weightActivities/activities routes",
+      "Record/association/range domain",
+      "High"
+    ],
+    [
+      "W04",
+      "Safe HTML/SVG/options/print",
+      "httpdocs/Weights.html:645-649,803-873,1105-1145,1337-1387,1855-1947",
+      "C",
+      "Render text/numeric/date results and print safely",
+      "WA safe output/new-window contract",
+      "escapeHtml/DOM text and numeric conversion",
+      "Chart/report layout stays local",
+      "High"
+    ],
+    [
+      "W05",
+      "Shared free text and dynamic validation",
+      "httpdocs/Weights.html:13-14,493-507,1337-1412,1455-1484",
+      "C",
+      "Sanitize Activity text/validate field controls",
+      "WA input defense/accessibility contracts",
+      "DOMPurify/inputSanitizer",
+      "Weights/activity limits/uniqueness local",
+      "High"
+    ],
+    [
+      "W06",
+      "Pending mutation/unsaved form lifecycle",
+      "httpdocs/Weights.html:1230-1311,1414-1435,1455-1583,1604-1690",
+      "C",
+      "Save/edit/delete with no replay and retained drafts",
+      "WA uncertain outcome/draft rules",
+      "Shared transport no replay; local form handlers",
+      "User-reviewed Weight changes",
+      "High"
+    ],
+    [
+      "W07",
+      "Identity and asynchronous aggregation",
+      "httpdocs/Weights.html:659-679,713-877,1020-1045,1062-1227,1414-1428",
+      "A",
+      "Keep multiple awaited datasets/drafts identity-consistent",
+      "WA account switch/late response protection",
+      "WA.session related; local caches",
+      "Joined weight/activity datasets",
+      "High"
+    ],
+    [
+      "W08",
+      "Modal/control/error accessibility",
+      "httpdocs/Weights.html:413-631,1023-1028,1108-1145,1426-1435",
+      "C",
+      "Keyboard/focus/labels/error feedback across dialogs",
+      "WA frontend accessibility",
+      "Local overlays/dynamic controls",
+      "Report/form/dialog workflow",
+      "High"
+    ],
+    [
+      "W09",
+      "Tracking/PWA/diagnostics integration",
+      "httpdocs/Weights.html:9-14,651-657,874-877,1949",
+      "A",
+      "Use shared tracking/cache/safe diagnostics",
+      "WA telemetry/cache/log contract",
+      "sw.js; platform; tracker; confetti",
+      "Weights attribution",
+      "High"
+    ],
+    [
+      "W10",
+      "Calendar/context preference adapters",
+      "httpdocs/Weights.html:659-676,769-776,910-958,1641-1648,1655-1673",
+      "C",
+      "Preserve date-only selection and preferences",
+      "WA date/data/UI correctness",
+      "Browser Date/localStorage; no generic codec",
+      "Range and color choices local",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: weight deltas/chart scaling/activity limits/date-range business selection. Functional markup/scripts read; CSS excluded. Procedural deviation: after source discovery completed, a narrow Compliance Register search revealed deferred S6-039 before inventory was saved. Inventory not derived from previous checklist; no concealment or claim strict freeze-before-register for this page.",
+  "inventoryCompletedObserved": "2026-11-16T13:45:48.932800-05:00"
+}

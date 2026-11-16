@@ -1,0 +1,129 @@
+{
+  "page": "BleaseRentForm",
+  "start": "2026-11-16T09:29:50.629867-05:00",
+  "candidates": [
+    [
+      "LF01",
+      "BASE_URL / getToken / requireLogin",
+      "44-47;78",
+      "A",
+      "Gate page and authenticate requests",
+      "Session and origin responsibilities common across WA",
+      "WA.session.restore; WA.api.request",
+      "Lease/Rent endpoints and localhost port8080 compatibility",
+      "High"
+    ],
+    [
+      "LF02",
+      "apiFetch / error feedback",
+      "47;55;57-58;61-62;75",
+      "A",
+      "Decode failures and report outcomes",
+      "Common HTTP and nested/flat error contract",
+      "WA.api.json / WA.ApiError",
+      "Budget messages and suffix handling",
+      "High"
+    ],
+    [
+      "LF03",
+      "Shared sanitizer / text payload",
+      "2-3;31;60-61",
+      "C",
+      "Clean reusable free text before save",
+      "Shared defense-in-depth input behavior",
+      "DOMPurify; httpdocs/js/inputSanitizer.js",
+      "To/Description/Note validation and schema",
+      "High"
+    ],
+    [
+      "LF04",
+      "escapeHtml / record and preview output",
+      "50;57;68;75",
+      "C",
+      "Render data and generated controls safely",
+      "Context-safe DOM rendering common",
+      "Native value/textContent; no shared output encoder equivalent identified",
+      "Agreement/payment dates, lease columns, recurrence output",
+      "High"
+    ],
+    [
+      "LF05",
+      "CRUD / selectedId / draft state",
+      "55;57-63",
+      "C",
+      "Edit/save/delete with controlled form state",
+      "No-replay and asynchronous draft handling common",
+      "WA.api.request after compatibility review",
+      "Lease payload, selected record and reset semantics",
+      "High"
+    ],
+    [
+      "LF06",
+      "requestedId / startup / navigation",
+      "51;63;78",
+      "C",
+      "Open linked record with validated ID",
+      "Query validation and safe navigation reusable",
+      "URLSearchParams; native location",
+      "UserLeaseRentID and fixed budget.html destination",
+      "High"
+    ],
+    [
+      "LF07",
+      "Recurrence UI / preview boundary",
+      "54;64-76",
+      "C",
+      "Edit frequency and request preview",
+      "Transport/modal/state boundary reusable",
+      "No WA-wide recurrence UI equivalent identified",
+      "PaymentStart/End, DISALLOW_NO_END=false, ONE_TIME_KEEP_END=false and all recurrence rules",
+      "High"
+    ],
+    [
+      "LF08",
+      "Record/dialog keyboard and focus",
+      "31-35;57;73;76",
+      "C",
+      "Select rows and operate dialog accessibly",
+      "Keyboard/focus semantics common",
+      "No shared accessible row/modal helper identified",
+      "Lease record selection and Frequency dialog",
+      "High"
+    ],
+    [
+      "LF09",
+      "moneyDisplay / roundUpAmount boundary",
+      "48-49;57;60",
+      "C",
+      "Format payment while preserving save arithmetic",
+      "Display formatting reusable",
+      "Native Number/Intl; no shared formatter equivalent established",
+      "Integer display and saved Math.ceil amount",
+      "High"
+    ],
+    [
+      "LF10",
+      "Service-worker registration",
+      "52",
+      "A",
+      "Register shared PWA worker",
+      "Cross-WA cache/version integration",
+      "httpdocs/sw.js",
+      "Root worker scope",
+      "High"
+    ],
+    [
+      "LF11",
+      "Platform and tracking integration",
+      "79-80",
+      "A",
+      "Record session-aware page/time usage",
+      "Shared usage lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Lease page path; business apiFetch remains independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: lease agreement/payment fields, recurrence expansion, estimated flag and amount ceiling. Generic integration/rendering/accessibility boundaries reviewed; no financial-calculation, layout or formatting audit.",
+  "inventoryCompletedObserved": "2026-11-16T09:30:38.272727-05:00"
+}

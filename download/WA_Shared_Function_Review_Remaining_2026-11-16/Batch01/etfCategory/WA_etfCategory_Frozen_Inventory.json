@@ -1,0 +1,77 @@
+{
+  "page": "etfCategory",
+  "start": "2026-11-16T08:33:40.994424-05:00",
+  "candidates": [
+    [
+      "C01",
+      "Token snapshot and direct business fetches",
+      "129;168-175;193-195;240-247;268-273;288-289",
+      "A",
+      "Attach auth credentials to category operations",
+      "Shared session/credential lifecycle",
+      "WA.session / WA.api.request",
+      "High"
+    ],
+    [
+      "C02",
+      "Response parsing and user-visible failures",
+      "159-185;191-225;231-258;264-284",
+      "A",
+      "Parse responses and classify operation failures",
+      "HTTP/network/JSON error semantics common across WA",
+      "WA.api.json / WA.ApiError",
+      "High"
+    ],
+    [
+      "C03",
+      "Shared input sanitization and category validation",
+      "10-11;86;159-166;213;231-238",
+      "C",
+      "Clean and validate editable free-text category",
+      "Free-text sanitizer reusable; category business rules local",
+      "DOMPurify; httpdocs/js/inputSanitizer.js",
+      "High"
+    ],
+    [
+      "C04",
+      "escapeHtml and category-row rendering",
+      "122-126;204-224",
+      "C",
+      "Render editable API-backed categories safely",
+      "Output context safety reusable; category row schema local",
+      "Native DOM text/value APIs; WASanitize plainText distinct from output encoding",
+      "High"
+    ],
+    [
+      "C05",
+      "Save/update/delete draft lifecycle",
+      "159-185;231-284",
+      "C",
+      "Submit mutations and retain editing state",
+      "No uncertain replay and failed-save state handling common",
+      "WA.api.request only after preserving category CRUD contract",
+      "High"
+    ],
+    [
+      "C06",
+      "showInput / showList / goBack / clearInput",
+      "135-153",
+      "C",
+      "Navigate editor/list and clear explicitly",
+      "Navigation/form lifecycle common; category section IDs local",
+      "Native location; no shared navigation helper required",
+      "High"
+    ],
+    [
+      "C07",
+      "Platform / usage tracking integration",
+      "288-289",
+      "A",
+      "Shared session-aware page/time tracking",
+      "Project-wide tracking lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: per-user category CRUD, nonempty category rule, category ID endpoint construction, revise/delete checkbox interaction remain local; broad CSS/format review excluded."
+}

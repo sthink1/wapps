@@ -1,0 +1,74 @@
+{
+  "page": "Breports",
+  "start": "2026-11-16T08:58:23.518966-05:00",
+  "candidates": [
+    [
+      "R01",
+      "getToken / requireLogin and startup gate",
+      "38-39;45",
+      "A",
+      "Gate menu navigation on stored credential presence",
+      "Cross-WA session restoration/identity",
+      "WA.session.restore (related; integration contract must be preserved)",
+      "Budget navigation destinations and user message",
+      "High"
+    ],
+    [
+      "R02",
+      "BASE_URL / apiFetch definitions (unused here)",
+      "37;40",
+      "A",
+      "Define generic authenticated request adapter",
+      "Transport/error contract reusable across WA",
+      "WA.api.request/json (no call here)",
+      "No Budget request is made by current menu",
+      "High"
+    ],
+    [
+      "R03",
+      "Dormant moneyDisplay / escapeHtml / requestedId helpers",
+      "41-43",
+      "C",
+      "Define formatting, escaping and ID parsing",
+      "Formatting/safe output/URL validation reusable",
+      "Native Intl/DOM; no equivalent shared formatter/ID utility established",
+      "Currency choices and Budget query contract; helpers have no callers here",
+      "High"
+    ],
+    [
+      "R04",
+      "Service-worker registration",
+      "44",
+      "A",
+      "Register shared offline/PWA worker",
+      "Cross-WA asset/cache lifecycle",
+      "httpdocs/sw.js; browser serviceWorker API",
+      "Registration scope is project root, not Budget-only",
+      "High"
+    ],
+    [
+      "R05",
+      "Budget and report-menu navigation",
+      "29;45",
+      "C",
+      "Route to selected Budget report",
+      "Navigation common; report choices application-specific",
+      "Native location and data-page handlers",
+      "Fixed Budget/report destinations",
+      "High"
+    ],
+    [
+      "R06",
+      "Platform and usage tracking integration",
+      "45-46",
+      "A",
+      "Record session-aware page/time usage",
+      "Cross-WA lifecycle tracking",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Current page path recorded by shared tracker",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: seven Budget report destinations and menu labels; no business calculations or CRUD calls on this page. General CSS, dormant modal styles and source formatting excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:00:00.686193-05:00"
+}

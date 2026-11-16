@@ -1,0 +1,96 @@
+{
+  "page": "FTAncestorChild",
+  "start": "2026-11-16T10:12:06.6847285-05:00",
+  "candidates": [
+    [
+      "FC01",
+      "Current bearer startup",
+      "131-133",
+      "C",
+      "Guard authenticated relationship view",
+      "Shared restoration/current token",
+      "FTAncestorChild.js:22-31,166-170; WA.session related",
+      "Focal relationship context",
+      "High"
+    ],
+    [
+      "FC02",
+      "Two-read HTTP/error adapter",
+      "123;131-132",
+      "C",
+      "Load relationships then person and report failures",
+      "Shared status/error contract",
+      "FTAncestorChild.js:98-135,177-180; WA.api related",
+      "Children/person response fields",
+      "High"
+    ],
+    [
+      "FC03",
+      "Private-person access and navigation",
+      "100-101;107;120;131",
+      "C",
+      "Display protected focal/related data and open Person",
+      "FT privacy/page-token/handoff contract",
+      "FTAncestorChild.js:92-135; no FTPrivacy import",
+      "Children list and focal name",
+      "High"
+    ],
+    [
+      "FC04",
+      "Safe output and encoded navigation",
+      "107;120;131",
+      "C",
+      "Render relationship rows and person name",
+      "WA safe DOM/URL handling",
+      "FTAncestorChild.js:7-21,92-95,137-163,172-174",
+      "Name/age/gender columns",
+      "High"
+    ],
+    [
+      "FC05",
+      "Identity-bound query/context and response lifecycle",
+      "131",
+      "C",
+      "Keep focal tree/person and responses tied to account",
+      "Cross-app account-switch protection",
+      "FTAncestorChild.js:25-31,98-164",
+      "Family tree context",
+      "High"
+    ],
+    [
+      "FC06",
+      "Date-only presentation adapter",
+      "131",
+      "C",
+      "Convert date-only values to age display",
+      "Calendar primitives may be shared",
+      "FTAncestorChild.js:57-90",
+      "Biological/deceased age rules",
+      "Medium"
+    ],
+    [
+      "FC07",
+      "Dynamic action/status accessibility",
+      "113-123;131",
+      "C",
+      "Expose person actions and load errors",
+      "WA keyboard/control/error semantics",
+      "FTAncestorChild.js:145-151,177-180",
+      "P action and children errors",
+      "High"
+    ],
+    [
+      "FC08",
+      "Shared platform/tracker integration",
+      "131-133",
+      "A",
+      "Use shared visit/time tracking",
+      "WA-wide session and telemetry",
+      "waPlatform; usageTracking",
+      "Family Tree attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: biological children selection, age/deceased business semantics and table layout. No editable text controls or multipart upload. Uncalled safeImageUrl helper is not an active image path.",
+  "inventoryCompletedObserved": "2026-11-16T10:12:33.903771-05:00"
+}

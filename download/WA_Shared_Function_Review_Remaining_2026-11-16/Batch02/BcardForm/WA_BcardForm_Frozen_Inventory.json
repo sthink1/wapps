@@ -1,0 +1,118 @@
+{
+  "page": "BcardForm",
+  "start": "2026-11-16T09:05:05.884393-05:00",
+  "candidates": [
+    [
+      "CF01",
+      "BASE_URL / getToken / requireLogin",
+      "39-42;48",
+      "A",
+      "Gate Credit Card page and authenticate CRUD",
+      "Cross-WA credential/session and origin responsibilities",
+      "WA.session.restore; WA.api.request",
+      "Card endpoints and localhost:8080 hosting contract",
+      "High"
+    ],
+    [
+      "CF02",
+      "apiFetch and caller error handling",
+      "42;48",
+      "A",
+      "Decode response failures and display safe text",
+      "Common status/error-shape contract",
+      "WA.api.json / WA.ApiError",
+      "Budget safe business strings and suffix behavior",
+      "High"
+    ],
+    [
+      "CF03",
+      "DOMPurify/shared sanitizer and payload text validation",
+      "2-3;31;48",
+      "C",
+      "Clean reusable text and validate typed last-four input",
+      "Shared plain-text defense and input validation integration",
+      "httpdocs/js/inputSanitizer.js; DOMPurify",
+      "AccountName/Note, exactly-four-digit rule and card schema",
+      "High"
+    ],
+    [
+      "CF04",
+      "escapeHtml and card-row rendering",
+      "45;48",
+      "C",
+      "Render card information safely",
+      "Context-safe output is project-wide",
+      "Native DOM/value/text APIs; no shared card-table equivalent",
+      "Card columns and date/amount contracts",
+      "High"
+    ],
+    [
+      "CF05",
+      "CRUD / selected record / draft lifecycle",
+      "48",
+      "C",
+      "Save/edit/delete with controlled form state",
+      "No replay, late responses and draft preservation common",
+      "WA.api.request after contract review",
+      "Alternative payment checks, payload, record identity and resets",
+      "High"
+    ],
+    [
+      "CF06",
+      "requestedId and navigation",
+      "46;48",
+      "C",
+      "Validate linked record ID and navigate",
+      "Safe query/nav contract reusable",
+      "URLSearchParams; native location",
+      "Positive UserCardID and budget.html destination",
+      "High"
+    ],
+    [
+      "CF07",
+      "Existing-card row keyboard interaction",
+      "31;48",
+      "C",
+      "Select a card to edit accessibly",
+      "Keyboard-accessible action controls common",
+      "No shared accessible row-selector identified",
+      "Map each card row to editRecord",
+      "High"
+    ],
+    [
+      "CF08",
+      "moneyDisplay / roundUpAmount boundary",
+      "43-44;48",
+      "C",
+      "Display numeric values while preserving save rule",
+      "Display formatting reusable; save arithmetic domain-specific",
+      "Native Intl/Number; no equivalent shared formatter established",
+      "Math.ceil saved balances/payment/line amounts and integer display",
+      "High"
+    ],
+    [
+      "CF09",
+      "Service-worker registration",
+      "47",
+      "A",
+      "Register shared PWA worker",
+      "Cross-WA cache/version boundary",
+      "httpdocs/sw.js",
+      "Root worker integration",
+      "High"
+    ],
+    [
+      "CF10",
+      "Shared platform and usage tracker",
+      "48-49",
+      "A",
+      "Track page/time through shared session",
+      "Cross-WA usage lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Card page path; business adapter remains independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: card statement/payment/credit-line business fields, last-four validation, alternative/minimum amount comparison and amount-ceiling save rules remain local. No account data examined. Broad formatting/CSS excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:05:36.718008-05:00"
+}

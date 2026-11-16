@@ -1,0 +1,85 @@
+{
+  "page": "FTPersonDuplicate",
+  "start": "2026-11-16T10:32:39.3712380-05:00",
+  "candidates": [
+    [
+      "D01",
+      "Credentialed startup/context/navigation",
+      "httpdocs/FTPersonDuplicate.html:6-7;httpdocs/js/FTPersonDuplicate.js:17-19",
+      "C",
+      "Guard duplicate view and derive request context",
+      "WA session/context/navigation contract",
+      "Local token guard; WA.session loaded later",
+      "Duplicate PersonID and close-window action",
+      "High"
+    ],
+    [
+      "D02",
+      "Duplicate-view HTTP/errors",
+      "httpdocs/js/FTPersonDuplicate.js:18-19",
+      "C",
+      "Load review and present failure",
+      "Shared status/error contract",
+      "WA.api related, direct fetch",
+      "Duplicate view response",
+      "High"
+    ],
+    [
+      "D03",
+      "Privacy/tree/Person access integration",
+      "httpdocs/js/FTPersonDuplicate.js:17-19",
+      "C",
+      "Authorize protected duplicate-view request",
+      "WA tree/privacy/capability/admin boundaries",
+      "No FTPrivacy or familyTreeCode supplied",
+      "Global duplicate view semantics",
+      "High"
+    ],
+    [
+      "D04",
+      "Safe person/relationships/images output",
+      "httpdocs/js/FTPersonDuplicate.js:2-18",
+      "C",
+      "Render person facts and standalone image list",
+      "WA safe DOM plus nested private redaction",
+      "Local escapeHtml/safeImageUrl",
+      "Profile/pictures/relationship summaries",
+      "High"
+    ],
+    [
+      "D05",
+      "Account switch/late response lifecycle",
+      "httpdocs/js/FTPersonDuplicate.js:17-19",
+      "A",
+      "Prevent stale account response display",
+      "WA session identity fencing",
+      "Shared session related; local async load",
+      "Duplicate review display",
+      "High"
+    ],
+    [
+      "D06",
+      "Status/actions accessibility",
+      "httpdocs/FTPersonDuplicate.html:6;httpdocs/js/FTPersonDuplicate.js:18-19",
+      "C",
+      "Announce protected-load failures and operate close",
+      "WA accessible status/keyboard controls",
+      "Local status text; browser window.close",
+      "Duplicate review status/images",
+      "High"
+    ],
+    [
+      "D07",
+      "Shared tracking/assets",
+      "httpdocs/FTPersonDuplicate.html:6-7",
+      "A",
+      "Use session telemetry alongside view fetch",
+      "WA shared tracking/cache contract",
+      "waPlatform; usageTracking",
+      "Family Tree attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: duplicate-person facts and relationship presentation; no form/mutation/upload or external email action. Image exposure assessed only in directly used view path, not full object-store audit.",
+  "inventoryCompletedObserved": "2026-11-16T10:32:58.552746-05:00"
+}

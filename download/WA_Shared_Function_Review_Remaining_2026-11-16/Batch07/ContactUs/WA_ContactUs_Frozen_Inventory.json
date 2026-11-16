@@ -1,0 +1,85 @@
+{
+  "page": "ContactUs",
+  "start": "2026-11-16T14:19:17.8403161-05:00",
+  "candidates": [
+    [
+      "CU01",
+      "Public contact submit/session scope",
+      "httpdocs/ContactUs.html:167-175,288-299",
+      "C",
+      "Submit public support message",
+      "Public boundary and server authority",
+      "FormData same-origin POST; no bearer",
+      "Support contact workflow",
+      "High"
+    ],
+    [
+      "CU02",
+      "Ordinary text sanitation/validation",
+      "httpdocs/ContactUs.html:10-11,180-237,293-299",
+      "A",
+      "Clean/validate contact fields",
+      "Mandatory text defense vs backend validation",
+      "Same inputSanitizer/DOMPurify",
+      "Name/email/phone/subject/message",
+      "High"
+    ],
+    [
+      "CU03",
+      "HTTP/error display/outcome",
+      "httpdocs/ContactUs.html:296-311",
+      "A",
+      "Report delivery result",
+      "Shared API/status/error contract",
+      "response.json without ok; result.status",
+      "Support result wording",
+      "High"
+    ],
+    [
+      "CU04",
+      "Draft/pending/explicit mutation",
+      "httpdocs/ContactUs.html:167-175,288-312",
+      "C",
+      "Preserve unsent message and avoid duplicate sends",
+      "Unsaved/pending/no replay",
+      "No pending/dirty guards; reset on success",
+      "User-composed support message",
+      "High"
+    ],
+    [
+      "CU05",
+      "Field/navigation accessibility",
+      "httpdocs/ContactUs.html:167-175,178-237,242-247,302-310",
+      "A",
+      "Label inputs and navigate/announce results",
+      "Common accessible form rules",
+      "Table cells;alert;anchor nested button",
+      "Public contact form",
+      "High"
+    ],
+    [
+      "CU06",
+      "Safe output/privacy diagnostics",
+      "httpdocs/ContactUs.html:293-311",
+      "A",
+      "Render server result and log failures safely",
+      "DOM/log/privacy boundary",
+      "alert result;console.error error",
+      "Contact PII and server error",
+      "High"
+    ],
+    [
+      "CU07",
+      "Assets/environment/cache integration",
+      "httpdocs/ContactUs.html:8-11,146-147,156,271-286",
+      "C",
+      "Load shared components/select endpoint",
+      "Shared cache/environment contract",
+      "SW registration;unused BASE_URL",
+      "Public utility assets",
+      "High"
+    ]
+  ],
+  "excluded": "B-only contact prose/phone-format/domain support policy. Server mail validation/abuse/disposition inspected only as endpoint integration; no email sent. Approved animation146-147 preserved.",
+  "inventoryCompletedObserved": "2026-11-16T14:19:40.539514-05:00"
+}

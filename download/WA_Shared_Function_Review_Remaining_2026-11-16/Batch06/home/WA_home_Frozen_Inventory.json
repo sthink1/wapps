@@ -1,0 +1,129 @@
+{
+  "page": "home",
+  "start": "2026-11-16T13:52:39.7903345-05:00",
+  "candidates": [
+    [
+      "H01",
+      "Shared restore/offline/session status startup",
+      "httpdocs/home.html:773,1207-1269",
+      "A",
+      "Restore verified browser session and fail closed on uncertainty",
+      "WA session/native boundary/offline policy",
+      "WA.session.restore and WA.api.json actually called",
+      "Home permission readiness/KMLI label",
+      "High"
+    ],
+    [
+      "H02",
+      "JWT user-display decoding",
+      "httpdocs/home.html:797-837,1417-1445",
+      "A",
+      "Render current verified account name",
+      "WA auth vs unverified claims/presentation",
+      "Local JWT decoder; shared restore precedes use",
+      "User/KMLI presentation only",
+      "High"
+    ],
+    [
+      "H03",
+      "Administrator/subscription access presentation",
+      "httpdocs/home.html:840-869,1056-1173,1373-1413",
+      "C",
+      "Show current entitlement/admin controls",
+      "WA central admin/server authorization",
+      "users/is-admin/subscriptions/status routes",
+      "Home app buttons and server authority distinct",
+      "High"
+    ],
+    [
+      "H04",
+      "Direct HTTP/error adapters",
+      "httpdocs/home.html:848-867,1073-1090,1160-1172,1176-1204",
+      "C",
+      "Retain failures and uncertainty vs denial",
+      "WA status/error/no replay contract",
+      "Mixed raw fetch and shared session API",
+      "Permissions/app usage response fields",
+      "High"
+    ],
+    [
+      "H05",
+      "Logout/revocation uncertainty lifecycle",
+      "httpdocs/home.html:1447-1471",
+      "A",
+      "Perform logout and report server revocation truthfully",
+      "WA logout/session contract",
+      "WA.session.logout actual delegate",
+      "Home navigation/logout button lifecycle",
+      "High"
+    ],
+    [
+      "H06",
+      "Custom page/time telemetry lifecycle",
+      "httpdocs/home.html:1474-1587",
+      "A",
+      "Record visit/time with current identity and delivery semantics",
+      "WA shared tracking/current-token/no replay",
+      "Legacy explicit POST/unload listener; no usageTracking import",
+      "Home page attribution",
+      "High"
+    ],
+    [
+      "H07",
+      "Account/async permission/response fencing",
+      "httpdocs/home.html:1056-1173,1225-1247,1373-1380,1417-1587",
+      "A",
+      "Prevent old results removing/reviving identity/UI",
+      "WA account switch/late response safety",
+      "Local flags/const token and raw callbacks",
+      "Home user/subscription/admin state",
+      "High"
+    ],
+    [
+      "H08",
+      "Navigation/app-open/FT entry handoff",
+      "httpdocs/home.html:449-670,1014-1024,1176-1204,1298-1370",
+      "C",
+      "Navigate authorized apps after usage event",
+      "WA safe navigation/specialized flow",
+      "Fixed data destinations/direct usage POST",
+      "FT instructions/menu choice; no privacy token here",
+      "High"
+    ],
+    [
+      "H09",
+      "Description cache/safe DOM output",
+      "httpdocs/home.html:794,872-903,931-1000,1090-1159",
+      "C",
+      "Load local static HTML descriptions/render text safely",
+      "WA source trust/output boundary",
+      "DOMParser/local same-origin app-description/static innerHTML; textContent",
+      "Rich descriptions from maintained pages",
+      "High"
+    ],
+    [
+      "H10",
+      "Dialog/nav/status accessibility",
+      "httpdocs/home.html:434-442,675-757,872-910,1002-1054",
+      "C",
+      "Provide keyboard focus/dialog/feedback semantics",
+      "WA frontend accessibility",
+      "Local modal classes/Escape/FT initial focus",
+      "Home three modals/status/nav",
+      "High"
+    ],
+    [
+      "H11",
+      "PWA/cache/diagnostics integration",
+      "httpdocs/home.html:9-10,775-786,828-830,991-998,1503-1582",
+      "A",
+      "Register assets and emit bounded diagnostics",
+      "WA cache/secret-free diagnostics",
+      "sw.js; shared platform; raw console callbacks",
+      "Home deployment/lifecycle",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: app catalog/marketing descriptions/entitlement labels/FT start choice. No editable free-text or financial forms here. No destination page examination repeated; app-description source trust checked only at integration boundary. No FamilyTree token/private-record path exposed by Home.",
+  "inventoryCompletedObserved": "2026-11-16T13:53:54.477679-05:00"
+}

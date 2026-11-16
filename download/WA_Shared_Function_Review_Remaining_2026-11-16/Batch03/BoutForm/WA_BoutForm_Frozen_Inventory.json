@@ -1,0 +1,140 @@
+{
+  "page": "BoutForm",
+  "start": "2026-11-16T09:41:19.672708-05:00",
+  "candidates": [
+    [
+      "OF01",
+      "Credential gate / request origin",
+      "480-513;1101-1106",
+      "A",
+      "Authenticate Out page requests",
+      "Cross-WA session/origin contract",
+      "WA.session.restore; WA.api.request",
+      "Out/Description/preview endpoints/local8080 behavior",
+      "High"
+    ],
+    [
+      "OF02",
+      "apiFetch / failure messages",
+      "498-513;525-535;588-589;633-634;683-697;738-740;1082-1083",
+      "A",
+      "Decode/report API failures",
+      "Common status/nested-envelope compatibility",
+      "WA.api.json / WA.ApiError",
+      "Budget messages/suffix",
+      "High"
+    ],
+    [
+      "OF03",
+      "Shared sanitizer / text payload",
+      "13-14;313;345;458;652-666;723-734",
+      "C",
+      "Clean ordinary text before saves",
+      "Cross-WA input defense",
+      "DOMPurify; httpdocs/js/inputSanitizer.js",
+      "To/Note/custom Description fields",
+      "High"
+    ],
+    [
+      "OF04",
+      "Safe records/controls/preview output",
+      "565-596;847-931;1070-1073",
+      "C",
+      "Render API and generated content safely",
+      "Context-aware output responsibility common",
+      "Native textContent/value; escapeHtml",
+      "Out columns, dates, recurrence controls and occurrences",
+      "High"
+    ],
+    [
+      "OF05",
+      "CRUD / reset / draft lifecycle",
+      "612-707",
+      "C",
+      "Edit/save/delete and retain state",
+      "No replay/draft/async state common",
+      "WA.api.request after contract review",
+      "Out payload, selectedId, amount ceiling/reset",
+      "High"
+    ],
+    [
+      "OF06",
+      "Query ID / navigation",
+      "598-610;701-702;1108-1117",
+      "C",
+      "Open linked record / navigate",
+      "Safe query/nav responsibility reusable",
+      "URLSearchParams; native location",
+      "UserOutID/fixed budget.html",
+      "High"
+    ],
+    [
+      "OF07",
+      "Description dropdown / creation flow",
+      "542-563;621;648;709-742",
+      "C",
+      "Load/create Out descriptions",
+      "Async selector/modal data integration reusable",
+      "/budget/descriptions; native option.textContent",
+      "Fixed Out filter, retained legacy choice/user-specific insertion",
+      "High"
+    ],
+    [
+      "OF08",
+      "Frequency controls / preview boundary",
+      "745-1098",
+      "C",
+      "Edit/preview recurrence",
+      "Generic modal/transport/state boundary reusable",
+      "No WA-wide recurrence replacement identified",
+      "Out recurrence schema/rules/date changes",
+      "High"
+    ],
+    [
+      "OF09",
+      "Record/dialog keyboard / ARIA state",
+      "359-407;451-465;585;709-722;814-833;1092-1098",
+      "C",
+      "Operate edit selection/dialogs accessibly",
+      "Keyboard/focus/visibility semantics common",
+      "No shared accessible row/modal helper identified",
+      "Out rows, Frequency and Description dialogs",
+      "High"
+    ],
+    [
+      "OF10",
+      "Amount display/save rounding boundary",
+      "537-540;593;658",
+      "C",
+      "Format amount while preserving saved values",
+      "Display formatting reusable",
+      "Native Number/Intl",
+      "Integer display and saved Math.ceil amount",
+      "High"
+    ],
+    [
+      "OF11",
+      "Worker registration",
+      "515-521",
+      "A",
+      "Register shared PWA worker",
+      "Cross-WA asset/cache/version boundary",
+      "httpdocs/sw.js",
+      "Root scope",
+      "High"
+    ],
+    [
+      "OF12",
+      "Platform/tracker integration",
+      "1121-1122",
+      "A",
+      "Record authenticated usage",
+      "Cross-WA lifecycle tracking",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Out page path; business adapter independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: Out schema/description semantics, amount ceiling, recurrence expansion and form dates. Mixed UI/transport/rendering boundary only; no financial/layout/formatting audit. BinForm previous examination not repeated or used as discovery checklist.",
+  "inventoryCompletedObserved": "2026-11-16T09:42:19.622665-05:00"
+}

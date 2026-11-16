@@ -1,0 +1,96 @@
+{
+  "page": "BloanReport",
+  "start": "2026-11-16T09:34:51.396170-05:00",
+  "candidates": [
+    [
+      "NR01",
+      "Credential gate / request origin",
+      "37-40;45",
+      "A",
+      "Authenticate Loan report read",
+      "Session/origin responsibility common",
+      "WA.session.restore; WA.api.request",
+      "Loan endpoint/local8080 behavior",
+      "High"
+    ],
+    [
+      "NR02",
+      "apiFetch and message catch",
+      "40;45",
+      "A",
+      "Decode/report failures",
+      "Common status/envelope contract",
+      "WA.api.json / WA.ApiError",
+      "Budget messages/suffix",
+      "High"
+    ],
+    [
+      "NR03",
+      "Safe cells / numeric formatting",
+      "41-42;45",
+      "C",
+      "Render Loan fields safely",
+      "Output/display formatting reusable",
+      "Native DOM/Intl; no shared report renderer equivalent identified",
+      "Loan dates/amounts/flags/columns",
+      "High"
+    ],
+    [
+      "NR04",
+      "Row navigation / keyboard access",
+      "29;45",
+      "C",
+      "Open Loan source form",
+      "Safe URLs and keyboard actions common",
+      "Native link/location; no shared row helper identified",
+      "BloanForm/UserLoanID",
+      "High"
+    ],
+    [
+      "NR05",
+      "Filter / async feedback",
+      "29;45",
+      "C",
+      "Refresh selected status",
+      "Async ordering/outcome lifecycle common",
+      "WA.api transport/native select",
+      "Loan active-status/empty semantics",
+      "High"
+    ],
+    [
+      "NR06",
+      "Unused requestedId",
+      "43",
+      "A",
+      "Parse query ID if called",
+      "Generic query validation responsibility",
+      "URLSearchParams; no shared equivalent identified",
+      "No caller on report",
+      "High"
+    ],
+    [
+      "NR07",
+      "Worker registration",
+      "44",
+      "A",
+      "Register common PWA worker",
+      "Shared asset/version boundary",
+      "httpdocs/sw.js",
+      "Root scope",
+      "High"
+    ],
+    [
+      "NR08",
+      "Platform and tracker integration",
+      "45-46",
+      "A",
+      "Record report usage",
+      "Cross-WA lifecycle tracking",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Loan report path/local GET adapter",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: Loan report schema/status semantics, integer amount display. No writes/free text; generic input sanitizer not needed. Financial arithmetic/layout/formatting audit excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:35:27.305857-05:00"
+}

@@ -1,0 +1,52 @@
+{
+  "page": "weighIn",
+  "start": "2026-11-16T13:49:03.1305108-05:00",
+  "candidates": [
+    [
+      "WI01",
+      "Same-origin app/navigation handoff",
+      "httpdocs/weighIn.html:172-183",
+      "C",
+      "Navigate Home/Weight/Activity without credential URLs",
+      "WA shared navigation/session continuity",
+      "Relative anchors; destination guards",
+      "Weigh-In landing destinations",
+      "High"
+    ],
+    [
+      "WI02",
+      "Interactive navigation accessibility",
+      "httpdocs/weighIn.html:173,181-182",
+      "A",
+      "Provide keyboard/semantic navigation controls",
+      "WA accessible interactive semantics",
+      "Anchor-wrapped buttons",
+      "Landing app menu",
+      "High"
+    ],
+    [
+      "WI03",
+      "Shared session/usage integration",
+      "httpdocs/weighIn.html:211-212",
+      "A",
+      "Track current session/page/time",
+      "WA auth/tracking lifecycle",
+      "waPlatform; usageTracking",
+      "weigh_in attribution",
+      "High"
+    ],
+    [
+      "WI04",
+      "PWA registration/assets/diagnostics",
+      "httpdocs/weighIn.html:9-10,198-208",
+      "A",
+      "Register SW and report asset setup",
+      "WA cache/browser/secret-free logs",
+      "sw.js; browser navigator",
+      "Landing assets",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: landing description and app choice. No business API/form/CRUD/private-record data; no independent auth/error/parser/sanitizer requirement invented. Destination examinations preserved, not repeated.",
+  "inventoryCompletedObserved": "2026-11-16T13:49:30.368385-05:00"
+}

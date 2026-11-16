@@ -1,0 +1,118 @@
+{
+  "page": "Activities",
+  "start": "2026-11-16T10:52:48.2421617-05:00",
+  "candidates": [
+    [
+      "A01",
+      "Current-token startup and session lifecycle",
+      "httpdocs/Activities.html:283-310,353,637-647",
+      "A",
+      "Authorize startup/API requests and handle lost credential",
+      "WA restoration/current identity contract",
+      "makeAuthenticatedRequest; WA.session loaded later",
+      "Activity initial list/load state",
+      "High"
+    ],
+    [
+      "A02",
+      "Authenticated HTTP/error/204 contract",
+      "httpdocs/Activities.html:284-310,318-350,431-445,493-507,619-634",
+      "C",
+      "Parse responses and report typed failures",
+      "WA status/error/unsafe replay contract",
+      "WA.api related but not business delegate",
+      "204 success and activity-domain messages",
+      "High"
+    ],
+    [
+      "A03",
+      "User-owned activity authorization",
+      "httpdocs/Activities.html:465-475,493-495,520-525,593-598,619-622",
+      "C",
+      "Read/change/delete only permitted records",
+      "WA endpoint/user ownership/subscription gates",
+      "Server middleware/activities routes related",
+      "Activity/Weights reference integrity",
+      "High"
+    ],
+    [
+      "A04",
+      "Safe rows/text/field output",
+      "httpdocs/Activities.html:269-273,333-349,475,568-579,595-598",
+      "C",
+      "Render server activity names/IDs/counts safely",
+      "WA context-sensitive DOM safety",
+      "Local escapeHtml/textContent/value",
+      "Activity rows and in-use counts",
+      "High"
+    ],
+    [
+      "A05",
+      "Shared free-text sanitization",
+      "httpdocs/Activities.html:13-14,162-165,248-253,420-452,605-622",
+      "C",
+      "Sanitize text inputs before submits",
+      "WA common free-text defense",
+      "DOMPurify/inputSanitizer",
+      "Activity name/50-character semantics",
+      "High"
+    ],
+    [
+      "A06",
+      "Draft/pending/destructive mutation lifecycle",
+      "httpdocs/Activities.html:415-445,454-545,583-634",
+      "C",
+      "Preserve input/confirm delete/no replay",
+      "WA uncertain mutation and unsaved state",
+      "Local form/catch/confirm flows",
+      "In-use activity deletion/Weight effects",
+      "High"
+    ],
+    [
+      "A07",
+      "Async identity and response ordering",
+      "httpdocs/Activities.html:285-309,312-350,465-545,593-634",
+      "A",
+      "Keep responses/token removal aligned with identity",
+      "WA logout/account-switch/late-response safety",
+      "Shared session related; local promises",
+      "Activity list/edit/delete context",
+      "High"
+    ],
+    [
+      "A08",
+      "Modal/field/status accessibility",
+      "httpdocs/Activities.html:158-255,374-405,420-445",
+      "C",
+      "Operate six modal dialogs and validation feedback",
+      "WA keyboard/focus/labels/error announcements",
+      "Local modal DOM/events",
+      "Activity actions and confirmation wording",
+      "High"
+    ],
+    [
+      "A09",
+      "Service worker/shared tracking/assets",
+      "httpdocs/Activities.html:9-14,275-281,646-647",
+      "A",
+      "Register PWA and record visit/time using shared code",
+      "WA session/tracking/cache compatibility",
+      "sw.js; waPlatform; usageTracking; confetti",
+      "Activities attribution and local success decoration",
+      "High"
+    ],
+    [
+      "A10",
+      "Diagnostics/success-notification boundary",
+      "httpdocs/Activities.html:278-279,347-349,435-445",
+      "C",
+      "Report errors and decorate successful save without secrets",
+      "WA bounded secret-free logs/external effects",
+      "confetti.js/triggerConfetti and console",
+      "Activity saved state and success alert",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: activity sorting/in-use choice, Activity-Weights relationship business policy, confetti appearance. CSS bodies skipped as outside functional audit; all functional markup/scripts read. No DB/service/test execution.",
+  "inventoryCompletedObserved": "2026-11-16T10:53:40.262904-05:00"
+}

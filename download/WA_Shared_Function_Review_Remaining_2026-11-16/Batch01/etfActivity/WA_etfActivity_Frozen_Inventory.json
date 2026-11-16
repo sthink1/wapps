@@ -1,0 +1,97 @@
+{
+  "page": "etfActivity",
+  "start": "2026-11-16T08:29:54.910724-05:00",
+  "candidates": [
+    [
+      "A01",
+      "Token snapshot and authenticated transport",
+      "386-402;1194-1195",
+      "A",
+      "Attach credentials to business requests",
+      "Session identity and credential lifetime common across WA",
+      "WA.session / WA.api.request in httpdocs/js/waPlatform.js",
+      "High"
+    ],
+    [
+      "A02",
+      "fetchWithAuth response parsing and caller errors",
+      "390-402;528-531;578-581;769-772;905-908;935-938;1067-1069;1162-1165",
+      "A",
+      "Decode response/errors and preserve failure meaning",
+      "HTTP/transport categories and error compatibility are project-wide",
+      "WA.api.json / WA.ApiError",
+      "High"
+    ],
+    [
+      "A03",
+      "fmt / fmtCurrency / fmtShares",
+      "406-426",
+      "C",
+      "Format numeric and currency display",
+      "Numeric presentation reusable; ETF share precision stays local",
+      "No equivalent shared formatter identified",
+      "High"
+    ],
+    [
+      "A04",
+      "escHtml and report / transaction rendering",
+      "639-773;783-909;1003-1058;1170-1177",
+      "C",
+      "Render API-backed report fields safely",
+      "Safe DOM output is global; report columns/grouping remain ETF",
+      "DOM textContent; WASanitize.plainText is input/plain-text helper, not universal context encoder",
+      "High"
+    ],
+    [
+      "A05",
+      "loadCategories / loadSymbolsForCategory / search dropdowns",
+      "441-475;941-965",
+      "C",
+      "Populate dependent selectors",
+      "Reusable async selector loading and safe labels; ETF endpoints stay local",
+      "WA.api for transport; native option.textContent",
+      "High"
+    ],
+    [
+      "A06",
+      "saveBuy / saveSell / saveEdit / deleteTx and form state",
+      "479-591;1061-1070;1116-1166",
+      "C",
+      "Validate and submit mutations while handling draft state",
+      "No-replay, error handling and preserving unsaved edits common; trade contracts local",
+      "WA.api.request compatible only after preserving existing contracts",
+      "High"
+    ],
+    [
+      "A07",
+      "openEditModal / closeEditModal and dialog controls",
+      "333-371;1074-1106",
+      "C",
+      "Open, populate and close edit UI",
+      "Accessible dialog/focus lifecycle reusable; transaction fields local",
+      "No shared dialog implementation identified",
+      "High"
+    ],
+    [
+      "A08",
+      "showSection / goBack / print / initial inventory selection",
+      "252;282;325;430-437;1181-1191",
+      "C",
+      "Navigate sections and invoke print",
+      "Back navigation and browser print common; ETF sections local",
+      "Native location / window.print; no shared navigation helper required",
+      "High"
+    ],
+    [
+      "A09",
+      "Platform and usage-tracking integration",
+      "1194-1195",
+      "A",
+      "Shared session-aware usage logging",
+      "Project-wide lifecycle recording",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: stock-split rules, buy/sell arithmetic, inventory cost/value and realized-gain grouping, transaction filters and ETF query contracts remain local. holidays.js imported at 382 but no isHoliday/isMarketClosed call in page; domain calendar data not a WA-wide session/helper adoption claim. Presentation CSS excluded."
+}

@@ -1,0 +1,96 @@
+{
+  "page": "BsubscriptionReport",
+  "start": "2026-11-16T09:03:41.741443-05:00",
+  "candidates": [
+    [
+      "SR01",
+      "BASE_URL / getToken / requireLogin",
+      "37-40;45",
+      "A",
+      "Gate report and send authenticated reads",
+      "Cross-WA session/credential and origin contract",
+      "WA.session.restore; WA.api.request",
+      "Budget subscription endpoint and localhost port-8080 behavior",
+      "High"
+    ],
+    [
+      "SR02",
+      "apiFetch error decoding and msg catch",
+      "40;45",
+      "A",
+      "Translate HTTP/transport failures into report feedback",
+      "Common status/error-shape compatibility",
+      "WA.api.json / WA.ApiError",
+      "Budget message/error suffix compatibility",
+      "High"
+    ],
+    [
+      "SR03",
+      "escapeHtml / moneyDisplay / report output",
+      "41-42;45",
+      "C",
+      "Render subscription data as safe table cells",
+      "Safe output and numeric display common",
+      "Native DOM/Intl; no equivalent shared table renderer established",
+      "Subscription columns, integer amounts and flags",
+      "High"
+    ],
+    [
+      "SR04",
+      "Report-row navigation and keyboard operation",
+      "29;45",
+      "C",
+      "Open selected source form and navigate menus",
+      "Safe URL construction and keyboard access reusable",
+      "Native links/location; no shared row-navigation helper identified",
+      "BsubscriptionForm destination and UserSubscriptionID",
+      "High"
+    ],
+    [
+      "SR05",
+      "Status filter / async load / message state",
+      "29;45",
+      "C",
+      "Refresh report with selected active status",
+      "Request ordering and feedback state common",
+      "WA.api transport; native select/status nodes",
+      "Budget active/inactive/all filter semantics",
+      "High"
+    ],
+    [
+      "SR06",
+      "requestedId definition (unused)",
+      "43",
+      "A",
+      "Parse positive query record ID",
+      "Generic URL validation responsibility",
+      "URLSearchParams; no shared ID helper identified",
+      "No query-ID consumer exists on this report",
+      "High"
+    ],
+    [
+      "SR07",
+      "Service-worker registration",
+      "44",
+      "A",
+      "Register PWA worker",
+      "Cross-WA cache/version handling",
+      "httpdocs/sw.js",
+      "Root-scope worker integration",
+      "High"
+    ],
+    [
+      "SR08",
+      "Platform and tracker integration",
+      "45-46",
+      "A",
+      "Track authenticated page/time events",
+      "Cross-WA usage lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Report path tracked; local business adapter remains independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: Subscription columns and status filtering semantics; no business writes or reusable text input. DOMPurify/shared input sanitizer not required for select-only report. Broad layout/formatting excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:04:40.353280-05:00"
+}

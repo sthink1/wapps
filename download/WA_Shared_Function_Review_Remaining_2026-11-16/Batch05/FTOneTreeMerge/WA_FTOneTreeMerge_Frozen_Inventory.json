@@ -1,0 +1,96 @@
+{
+  "page": "FTOneTreeMerge",
+  "start": "2026-11-16T10:30:39.7495574-05:00",
+  "candidates": [
+    [
+      "M01",
+      "Bearer startup and encoded navigation",
+      "httpdocs/FTOneTreeMerge.html:6-7;httpdocs/js/FTOneTreeMerge.js:18-20,31,33-34",
+      "C",
+      "Guard review and navigate contextual returns",
+      "Common auth/navigation/session contract",
+      "WA.session related; local guard/direct links",
+      "Merge source/target/bridge context",
+      "High"
+    ],
+    [
+      "M02",
+      "Review/merge HTTP error adapter",
+      "httpdocs/js/FTOneTreeMerge.js:31,33-34",
+      "C",
+      "Read review and submit merge outcome",
+      "WA HTTP/status/response categories",
+      "WA.api related but not called",
+      "Already-same-tree/merge response fields",
+      "High"
+    ],
+    [
+      "M03",
+      "Privacy and authorized review/merge boundaries",
+      "httpdocs/js/FTOneTreeMerge.js:19-20,27-33",
+      "C",
+      "Read private candidates/conflicts and mutate tree relations",
+      "WA privacy/redaction/tree/admin authorization",
+      "No FTPrivacy import; server protections related",
+      "Merge decisions and source/target access",
+      "High"
+    ],
+    [
+      "M04",
+      "Safe DOM/image/attribute rendering",
+      "httpdocs/js/FTOneTreeMerge.js:3-17,22-30",
+      "C",
+      "Render server candidate/contacts/conflicts/images safely",
+      "WA safe DOM/URL principles",
+      "Local escapeHtml/safeImageUrl",
+      "Review cards and conflict choices",
+      "High"
+    ],
+    [
+      "M05",
+      "Mutation pending/draft/no replay lifecycle",
+      "httpdocs/js/FTOneTreeMerge.js:21,30,32-34",
+      "C",
+      "Retain review decisions and report uncertain mutation",
+      "WA no replay/unsaved-state handling",
+      "Local disable; no shared pending helper",
+      "Merge decision object and navigation",
+      "High"
+    ],
+    [
+      "M06",
+      "Account-switch/late-response context",
+      "httpdocs/js/FTOneTreeMerge.js:20-21,31,33-34",
+      "C",
+      "Keep review and completion aligned with identity",
+      "WA session identity fencing",
+      "Shared session related; local async callbacks",
+      "Source/target tree and current code",
+      "High"
+    ],
+    [
+      "M07",
+      "Dynamic review controls/status accessibility",
+      "httpdocs/FTOneTreeMerge.html:6;httpdocs/js/FTOneTreeMerge.js:28-34",
+      "C",
+      "Choose matches/conflicts/images and report errors",
+      "WA labels/focus/error announcements",
+      "Local dynamic controls/status",
+      "Merge choices and max-image validation",
+      "High"
+    ],
+    [
+      "M08",
+      "Shared tracking/platform/assets",
+      "httpdocs/FTOneTreeMerge.html:6-7",
+      "A",
+      "Load shared session usage telemetry",
+      "WA common transport/cache lifecycle",
+      "waPlatform; usageTracking",
+      "Family Tree attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: oldest-tree authority, duplicate decisions, relationship bridge rules, field conflict resolution and picture-selection limits. No editable free-text field, generic sanitizer not required for select/checkbox values. Backend bounded to direct authorization/privacy/external-effect consequences, not comprehensive merge algorithm audit.",
+  "inventoryCompletedObserved": "2026-11-16T10:31:08.147466-05:00"
+}

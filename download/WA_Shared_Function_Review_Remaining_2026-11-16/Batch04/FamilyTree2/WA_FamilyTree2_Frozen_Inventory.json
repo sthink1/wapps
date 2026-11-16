@@ -1,0 +1,107 @@
+{
+  "page": "FamilyTree2",
+  "start": "2026-11-16T10:08:07.6683698-05:00",
+  "candidates": [
+    [
+      "FM01",
+      "Credentialed startup/current-tree restoration",
+      "241-244",
+      "C",
+      "Guard startup and obtain authoritative current tree",
+      "WA auth restoration contract",
+      "FamilyTreePage.js:18-43,53-56; WA.session loaded",
+      "Tree membership and menu readiness",
+      "High"
+    ],
+    [
+      "FM02",
+      "HTTP/error adapters",
+      "242-243",
+      "C",
+      "Read/current tree and mutation/search transport",
+      "Shared status/error/no replay contract",
+      "FamilyTreePage.js:30-38,49-52; WA.api related",
+      "Domain messages and tree association",
+      "High"
+    ],
+    [
+      "FM03",
+      "Identity-scoped context and late responses",
+      "129-130;242",
+      "C",
+      "Keep sessionStorage/currentCode aligned with current identity",
+      "Account-switch isolation and stale response protection",
+      "FamilyTreePage.js:20-33,40-55",
+      "Current tree code and search rows",
+      "High"
+    ],
+    [
+      "FM04",
+      "Safe text/HTML and URL encoding",
+      "217-239;242",
+      "C",
+      "Render info/status and server search rows",
+      "Shared safe DOM/URL rules",
+      "FTInstructions; FamilyTreePage.js:3-17,26,44-52",
+      "Person columns and menu labels",
+      "High"
+    ],
+    [
+      "FM05",
+      "Free-text sanitizer integration",
+      "10-11;175-195;242",
+      "C",
+      "Sanitize code/search input before handlers",
+      "Mandatory reusable text defense",
+      "DOMPurify; inputSanitizer; FamilyTreePage.js:46-52",
+      "Family code/query syntax",
+      "High"
+    ],
+    [
+      "FM06",
+      "Modal/field/error accessibility",
+      "170-213;217-239;242",
+      "C",
+      "Open code/search/information overlays and announce state",
+      "WA dialog focus/input label/error behavior",
+      "Local modal handlers FamilyTreePage.js:45-47,51-52",
+      "Modal copy and result table",
+      "High"
+    ],
+    [
+      "FM07",
+      "Association mutation/uncertain-delivery lifecycle",
+      "151-167;180;242",
+      "C",
+      "Submit enter/change-tree once per explicit action",
+      "No automatic unsafe replay and draft preservation",
+      "FamilyTreePage.js:35-38,49,51-52",
+      "Association/confirmation semantics",
+      "High"
+    ],
+    [
+      "FM08",
+      "Navigation/context handoffs",
+      "121-123;141-167;242",
+      "C",
+      "Link instructions/home/person list/undo/new person",
+      "Shared safe navigation/session context",
+      "FamilyTreePage.js:44,48,50",
+      "Family Tree destinations/code",
+      "High"
+    ],
+    [
+      "FM09",
+      "Shared usage/platform/PWA integration",
+      "8-11;241-244",
+      "A",
+      "Load shared tracking and versioned dependencies",
+      "WA session/telemetry/cache compatibility",
+      "waPlatform; usageTracking",
+      "Page attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: biological relationship notice, person-name layout, tree association business rules and search columns. Backend inspection limited to directly used current-tree/enter-code/change-tree/tree-search routes as needed; no destination-page audits.",
+  "inventoryCompletedObserved": "2026-11-16T10:08:36.637476-05:00"
+}

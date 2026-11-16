@@ -1,0 +1,74 @@
+{
+  "page": "unsubscribe",
+  "start": "2026-11-16T14:08:13.3934399-05:00",
+  "candidates": [
+    [
+      "UN01",
+      "Public capability GET/POST authority",
+      "httpdocs/unsubscribe.html:29-30,44-55,58-71",
+      "C",
+      "Preview destination/category then explicit opt-out",
+      "WA public capability method/scope",
+      "notifications/unsubscribe token endpoints",
+      "Email/category opt-out purpose",
+      "High"
+    ],
+    [
+      "UN02",
+      "HTTP/error/pending/no replay",
+      "httpdocs/unsubscribe.html:44-48,58-80",
+      "A",
+      "Preserve denial/failure/uncertain mutation state",
+      "WA error/outcome/no replay contract",
+      "Raw response JSON/ok checks/disabled button",
+      "Preference change outcome",
+      "High"
+    ],
+    [
+      "UN03",
+      "Category/registered destination/server mutation",
+      "httpdocs/unsubscribe.html:37-41,46-71",
+      "C",
+      "Apply only token-bound permitted preference",
+      "WA authorization/privacy/DB contract",
+      "Notification service capability functions",
+      "Nonessential notification categories",
+      "High"
+    ],
+    [
+      "UN04",
+      "Safe DOM/accessibility",
+      "httpdocs/unsubscribe.html:19-22,50-55,67-80",
+      "A",
+      "Display recipient and outcomes as text",
+      "WA safe output/labels/live feedback",
+      "textContent/named button/status role",
+      "Category labels",
+      "High"
+    ],
+    [
+      "UN05",
+      "Token URL/cache/referrer/log hygiene",
+      "httpdocs/unsubscribe.html:4-7,29-30,46,62",
+      "A",
+      "Contain email capability exposure",
+      "WA sensitive capability/cache/diagnostic contract",
+      "URLSearchParams/encoded path; no cleanup/meta policy",
+      "Unsubscribe email link",
+      "High"
+    ],
+    [
+      "UN06",
+      "Capability/account/delivery lifecycle",
+      "httpdocs/unsubscribe.html:35,49,58-80",
+      "A",
+      "Handle reused link/old preview/uncertain delivery safely",
+      "WA capability lifecycle vs current account",
+      "Local info/token independent of web auth",
+      "Destination/category preview lifetime",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: category wording and preference semantics except mandatory auth/category boundary. No free-text or password/browser login requirement for public capability. Do not impose one-time use without checking intended contract.",
+  "inventoryCompletedObserved": "2026-11-16T14:08:40.883016-05:00"
+}

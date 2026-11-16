@@ -1,0 +1,85 @@
+{
+  "page": "FTNetwork",
+  "start": "2026-11-16T10:28:41.7569740-05:00",
+  "candidates": [
+    [
+      "N01",
+      "Bearer startup and navigation/context",
+      "httpdocs/FTNetwork.html:171-175,289-291;httpdocs/js/FTNetwork.js:8-12,36-42,174-215",
+      "C",
+      "Restore identity and derive focal/tree context",
+      "WA auth/navigation continuity",
+      "WA.session loaded; local guard and encoded Person links",
+      "Focal networking search person/tree",
+      "High"
+    ],
+    [
+      "N02",
+      "HTTP/read-error adapter",
+      "httpdocs/js/FTNetwork.js:76-91,121-134,197-212",
+      "C",
+      "Load focal person/search and display failures",
+      "Shared status/error contract",
+      "WA.api related but business calls direct",
+      "Networking messages/results",
+      "High"
+    ],
+    [
+      "N03",
+      "Private focal access and authorization",
+      "httpdocs/FTNetwork.html:185-192,289-291;httpdocs/js/FTNetwork.js:10-12,76-102,113-126",
+      "C",
+      "Access protected focal/network data",
+      "WA privacy/tree/capability/admin boundaries",
+      "No FTPrivacy import; server protection related",
+      "Biological search starting point",
+      "High"
+    ],
+    [
+      "N04",
+      "Safe DOM/search-result/private-person handoff",
+      "httpdocs/js/FTNetwork.js:14-21,93-101,136-171",
+      "C",
+      "Render matches safely and open Person",
+      "WA output safety and privacy navigation",
+      "Local escaping; URLSearchParams; direct Person navigation",
+      "Name/match rendering and private result context",
+      "High"
+    ],
+    [
+      "N05",
+      "Account switch/response ordering",
+      "httpdocs/js/FTNetwork.js:36-42,76-102,104-171,197-214",
+      "C",
+      "Bind delayed responses and cleared results to identity",
+      "WA cross-tab/async session isolation",
+      "Shared session related; local callbacks",
+      "Networking criteria/results",
+      "High"
+    ],
+    [
+      "N06",
+      "Input controls/clear/status accessibility",
+      "httpdocs/FTNetwork.html:202-259;httpdocs/js/FTNetwork.js:54-74,104-120,170-171",
+      "C",
+      "Read labelled criteria and announce search errors/results",
+      "Common UI input/status contract",
+      "DOMPurify/inputSanitizer loaded; checkbox only",
+      "Networking criteria remain local",
+      "High"
+    ],
+    [
+      "N07",
+      "Shared session/tracker/asset integration",
+      "httpdocs/FTNetwork.html:9-10,289-291",
+      "A",
+      "Load shared tracking beside legacy business calls",
+      "WA telemetry/auth/cache composition",
+      "waPlatform; usageTracking; sanitizer",
+      "Family Tree attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: ten complementary networking criteria and biological blood-line semantics. Search is read-only GET; no page mutation/email issuance/upload. Sanitizer loaded but no free-text input exists; do not invent sanitizer gap.",
+  "inventoryCompletedObserved": "2026-11-16T10:29:27.725380-05:00"
+}

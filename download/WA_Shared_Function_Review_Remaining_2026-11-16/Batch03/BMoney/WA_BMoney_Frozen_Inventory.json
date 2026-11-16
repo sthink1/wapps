@@ -1,0 +1,129 @@
+{
+  "page": "BMoney",
+  "start": "2026-11-16T09:35:58.097327-05:00",
+  "candidates": [
+    [
+      "MY01",
+      "token / requireLogin / request origin",
+      "239-267;449-450",
+      "A",
+      "Gate and authenticate Money requests",
+      "Session/origin responsibilities common",
+      "WA.session.restore; WA.api.request",
+      "Money/investment endpoints/local8080 compatibility",
+      "High"
+    ],
+    [
+      "MY02",
+      "apiFetch / message/error contract",
+      "256-279;311;344;363;396;432-454",
+      "A",
+      "Decode/report HTTP and transport failures",
+      "Common status/error compatibility",
+      "WA.api.json / WA.ApiError",
+      "Money business messages/suffix",
+      "High"
+    ],
+    [
+      "MY03",
+      "Shared text sanitation",
+      "11-12;170;217;332-340;384-392",
+      "C",
+      "Clean account names before save",
+      "Cross-WA free-text defense",
+      "DOMPurify; httpdocs/js/inputSanitizer.js",
+      "AccountPocket/Account names, numeric balance validation",
+      "High"
+    ],
+    [
+      "MY04",
+      "Safe data/projection rendering",
+      "295-317;347-369;402-420",
+      "C",
+      "Render account/projection data safely",
+      "DOM context safety common",
+      "Native textContent/value; escapeHtml",
+      "Account names, numeric balances and projected month cells",
+      "High"
+    ],
+    [
+      "MY05",
+      "Money/investment CRUD / draft lifecycle",
+      "295-397;415-418",
+      "C",
+      "Save/delete/edit and refresh state",
+      "No uncertain replay and draft handling common",
+      "WA.api.request after compatibility review",
+      "Two independent editor IDs, balances, totals and mutation semantics",
+      "High"
+    ],
+    [
+      "MY06",
+      "Account edit keyboard interaction",
+      "176;223;302-304;354-356",
+      "C",
+      "Select existing account to edit accessibly",
+      "Keyboard record actions common",
+      "No shared accessible row helper identified",
+      "Non-delete account/balance cells invoke edit",
+      "High"
+    ],
+    [
+      "MY07",
+      "Currency/calendar display helpers",
+      "268-293",
+      "C",
+      "Format currency and calendar months",
+      "Formatting/date-only behavior reusable",
+      "Native Number/Intl/Date; no common equivalent identified",
+      "USD two-decimal display/local calendar month contract",
+      "High"
+    ],
+    [
+      "MY08",
+      "Projection range / async refresh pipeline",
+      "398-418;428-444;449-456",
+      "C",
+      "Load projected monthly balances",
+      "Async state/origin/response integration reusable",
+      "/budget/monthly/summary; WA.api for transport only",
+      "Current+11/default and12-month extension, shortage flag",
+      "High"
+    ],
+    [
+      "MY09",
+      "Budget navigation",
+      "149;423",
+      "C",
+      "Return to Budget page",
+      "Generic navigation boundary",
+      "Native location",
+      "Fixed budget.html destination",
+      "High"
+    ],
+    [
+      "MY10",
+      "Service-worker registration",
+      "446-448",
+      "A",
+      "Register shared PWA worker",
+      "Shared cache/version lifecycle",
+      "httpdocs/sw.js",
+      "Root worker scope",
+      "High"
+    ],
+    [
+      "MY11",
+      "Platform / usage tracking",
+      "458-459",
+      "A",
+      "Record authenticated page/time usage",
+      "Cross-WA lifecycle tracking",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Money page path; business adapter independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: account classifications, totals/projection arithmetic, current+11 range, shortage and investment workflow. Mixed integration/rendering/currency/date boundaries included; no financial recommendation or calculation audit. CSS/formatting excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:36:41.224434-05:00"
+}

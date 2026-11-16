@@ -1,0 +1,41 @@
+{
+  "page": "terms",
+  "start": "2026-11-16T14:15:00.6914882-05:00",
+  "candidates": [
+    [
+      "TE01",
+      "Static public navigation/document role",
+      "httpdocs/terms.html:1-7,18-26,53-59",
+      "C",
+      "Present public terms without account mutation",
+      "Public role and session boundary",
+      "No session/API/JS code",
+      "Terms content and effective date",
+      "High"
+    ],
+    [
+      "TE02",
+      "Semantic/safe static output",
+      "httpdocs/terms.html:18-56",
+      "A",
+      "Readable labelled public information",
+      "Common accessibility and safe DOM expectations",
+      "Native main/headings/plain text",
+      "Legal narrative retained",
+      "High"
+    ],
+    [
+      "TE03",
+      "Static asset/cache boundary",
+      "httpdocs/terms.html:4-15",
+      "C",
+      "Load stylesheet and viewport",
+      "Shared asset/cache policy applicability",
+      "wa-buttons.css; no JS/service worker",
+      "Public page assets",
+      "High"
+    ]
+  ],
+  "excluded": "B-only legal wording/legal adequacy/content truth not adjudicated; no login/API/mutations/password fields/drafts exist. First source retrieval completed14:15:00 while subscription report composition ongoing; actual discovery-start boundary UNRESOLVED, recorded start is first observed retrieval endpoint, not full elapsed examination.",
+  "inventoryCompletedObserved": "2026-11-16T14:15:56.699241-05:00"
+}

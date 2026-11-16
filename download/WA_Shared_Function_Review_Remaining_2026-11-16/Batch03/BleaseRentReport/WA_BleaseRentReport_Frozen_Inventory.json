@@ -1,0 +1,96 @@
+{
+  "page": "BleaseRentReport",
+  "start": "2026-11-16T09:32:15.013358-05:00",
+  "candidates": [
+    [
+      "LR01",
+      "Credential gate and request origin",
+      "37-40;45",
+      "A",
+      "Authenticate report read",
+      "Common session/origin contract",
+      "WA.session.restore; WA.api.request",
+      "Lease list endpoint and localhost8080 behavior",
+      "High"
+    ],
+    [
+      "LR02",
+      "apiFetch and report catch",
+      "40;45",
+      "A",
+      "Decode HTTP failures",
+      "Shared error/status interoperability",
+      "WA.api.json / WA.ApiError",
+      "Budget messages/suffix",
+      "High"
+    ],
+    [
+      "LR03",
+      "escapeHtml / amount and cell rendering",
+      "41-42;45",
+      "C",
+      "Render Lease/Rent rows safely",
+      "Safe output/display formatting reusable",
+      "Native DOM/Intl; no shared report renderer equivalent identified",
+      "All Lease columns and integer payment format",
+      "High"
+    ],
+    [
+      "LR04",
+      "Row navigation / keyboard operation",
+      "29;45",
+      "C",
+      "Open source Lease form",
+      "Safe URLs and keyboard actions common",
+      "Native link/location; no shared row helper identified",
+      "BleaseRentForm and UserLeaseRentID",
+      "High"
+    ],
+    [
+      "LR05",
+      "Filter and async feedback lifecycle",
+      "29;45",
+      "C",
+      "Load selected report status",
+      "Async ordering and outcome feedback common",
+      "WA.api transport; native select/message",
+      "Active/inactive/all status and empty result",
+      "High"
+    ],
+    [
+      "LR06",
+      "Unused requestedId",
+      "43",
+      "A",
+      "Parse query ID if called",
+      "Generic URL validation responsibility",
+      "URLSearchParams; no shared ID equivalent identified",
+      "No active caller on report",
+      "High"
+    ],
+    [
+      "LR07",
+      "Worker registration",
+      "44",
+      "A",
+      "Register shared PWA worker",
+      "Common cache/version boundary",
+      "httpdocs/sw.js",
+      "Root-scope integration",
+      "High"
+    ],
+    [
+      "LR08",
+      "Platform/tracker integration",
+      "45-46",
+      "A",
+      "Track report usage",
+      "Shared session-aware lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Report path; local business adapter",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: Lease fields/status semantics and integer payment display. No writes or reusable free-text; generic input sanitizer not needed for select-only report. Styling and arithmetic audit excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:32:56.638667-05:00"
+}

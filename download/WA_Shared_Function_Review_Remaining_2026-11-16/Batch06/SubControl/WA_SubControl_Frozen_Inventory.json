@@ -1,0 +1,118 @@
+{
+  "page": "SubControl",
+  "start": "2026-11-16T13:49:37.7474833-05:00",
+  "candidates": [
+    [
+      "SC01",
+      "Captured bearer/admin startup",
+      "httpdocs/SubControl.html:506-522,714-758,1206-1220",
+      "C",
+      "Authenticate admin view and requests",
+      "WA current credential/session contracts",
+      "Local const token; no platform import",
+      "Admin page verification and pending-transfer fallback",
+      "High"
+    ],
+    [
+      "SC02",
+      "HTTP/error/JSON adapter",
+      "httpdocs/SubControl.html:530-546,702-758,1086-1093",
+      "A",
+      "Preserve status/response/errors",
+      "WA type-safe transitional error contract",
+      "Local readJson/direct fetch",
+      "Admin domain fields",
+      "High"
+    ],
+    [
+      "SC03",
+      "Central admin/record authorization",
+      "httpdocs/SubControl.html:714-758,769-799,913-1063",
+      "C",
+      "Protect promo/grants/user lookup server-side",
+      "WA administrator dual-gate/API contracts",
+      "Server admin guards; users/is-admin",
+      "Subscription grant/promo business rules",
+      "High"
+    ],
+    [
+      "SC04",
+      "Administrator transfer capability/password flow",
+      "httpdocs/SubControl.html:279-313,1076-1204",
+      "C",
+      "Prepare/check/cancel/complete approved transfer",
+      "WA D02 bounded transfer/security/session rules",
+      "admin-management endpoints/sessionStorage capability",
+      "Manual configured-name transition and password",
+      "High"
+    ],
+    [
+      "SC05",
+      "Safe DOM/status/attribute rendering",
+      "httpdocs/SubControl.html:524-528,623-678,801-877,995-1008,1094-1120",
+      "A",
+      "Render user/admin/subscription fields safely",
+      "WA untrusted output/secret hygiene",
+      "textContent/DOM nodes/value",
+      "Admin rows/status",
+      "High"
+    ],
+    [
+      "SC06",
+      "Text inputs/password preservation",
+      "httpdocs/SubControl.html:296-300,345-346,422,468,769-780,1123-1130",
+      "C",
+      "Sanitize reusable text without altering password",
+      "WA frontend sanitizer/credential boundaries",
+      "No DOMPurify/inputSanitizer; local date formatting",
+      "Promo code/password/transfer secrets distinct",
+      "High"
+    ],
+    [
+      "SC07",
+      "Mutation pending/draft/committed outcomes",
+      "httpdocs/SubControl.html:769-799,913-970,1019-1063,1145-1204",
+      "C",
+      "Prevent replay/duplicate intent and reconcile completed actions",
+      "WA no unsafe replay/unsaved forms",
+      "Direct explicit fetch; no retries",
+      "Grant/promo/transfer response state",
+      "High"
+    ],
+    [
+      "SC08",
+      "Identity/selection/response fencing",
+      "httpdocs/SubControl.html:506-510,975-1063,1076-1078,1132-1204",
+      "A",
+      "Keep selection/capability/result bound to account",
+      "WA account-switch/late response safety",
+      "Local caches/sessionStorage; no listeners",
+      "Target user/proposed admin/current transfer",
+      "High"
+    ],
+    [
+      "SC09",
+      "Calendar-date display/input codec",
+      "httpdocs/SubControl.html:548-609,1066-1072",
+      "C",
+      "Parse/display date-only grants without timezone drift",
+      "WA calendar data contract",
+      "UTC component roundtrip; local MMDDYYYY adapter",
+      "Subscription end-date semantics",
+      "High"
+    ],
+    [
+      "SC10",
+      "Status/control accessibility",
+      "httpdocs/SubControl.html:267,277-313,391,430,452,476,485,524-528",
+      "C",
+      "Announce admin/forms/errors/status changes",
+      "WA accessible focus/status contract",
+      "Live initial verification; local statuses",
+      "Admin control feedback",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: promo rules/better-plan economics, grant expiration policy and transfer business decisions. No platform/tracker or PWA business integration present; lack of telemetry is not automatically a source defect without admin-page mapping policy. No source changes/admin actions performed.",
+  "inventoryCompletedObserved": "2026-11-16T13:50:27.443008-05:00"
+}

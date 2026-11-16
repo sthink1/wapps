@@ -1,0 +1,107 @@
+{
+  "page": "register",
+  "start": "2026-11-16T14:09:37.1891673-05:00",
+  "candidates": [
+    [
+      "RG01",
+      "Password bytes/visibility/sanitizer composition",
+      "httpdocs/register.html:11-12,151-185,266-278,308-309,387-395",
+      "A",
+      "Preserve exact entered passwords through submit",
+      "WA password-byte/credential boundaries",
+      "Loaded generic sanitizer plus shown password controls",
+      "Password confirmation/length local",
+      "High"
+    ],
+    [
+      "RG02",
+      "Reusable text/typed data validation",
+      "httpdocs/register.html:11-12,147-198,285-302,307-368",
+      "C",
+      "Sanitize ordinary registration fields and validate typed data",
+      "WA shared free-text/backend-validation contract",
+      "DOMPurify/inputSanitizer; local email/phone validators",
+      "Username/contact/consent fields",
+      "High"
+    ],
+    [
+      "RG03",
+      "HTTP/error response adapter",
+      "httpdocs/register.html:382-423",
+      "A",
+      "Preserve status/error categories/interoperability",
+      "WA API/no replay/error contract",
+      "Direct fetch/JSON/Error",
+      "Exact registration success message",
+      "High"
+    ],
+    [
+      "RG04",
+      "Server registration/consent/side effects",
+      "httpdocs/register.html:200-244,382-408",
+      "C",
+      "Create account/consents safely without assuming current login",
+      "WA auth/data/privacy/external-action rules",
+      "users/register server route",
+      "Consent version/trial/account allocation",
+      "High"
+    ],
+    [
+      "RG05",
+      "Mutation pending/draft/commit-outcome lifecycle",
+      "httpdocs/register.html:304-424",
+      "A",
+      "Prevent replay/duplicate intent and report committed outcome",
+      "WA no automatic replay/unsaved form safety",
+      "Explicit POST promise; no pending guard",
+      "Registration/login redirect/confetti",
+      "High"
+    ],
+    [
+      "RG06",
+      "Account/late-response/session continuity",
+      "httpdocs/register.html:382-423",
+      "A",
+      "Keep existing remembered session intact on failed action",
+      "WA D09 supersession/async identity",
+      "No browser token mutation in page",
+      "New registration vs existing browser account",
+      "High"
+    ],
+    [
+      "RG07",
+      "Input/error accessibility",
+      "httpdocs/register.html:147-198,250,266-302,371-423",
+      "A",
+      "Label fields and announce all errors/success",
+      "WA accessible labels/status/focus",
+      "Labels/email live warning/password aria states",
+      "Registration feedback",
+      "High"
+    ],
+    [
+      "RG08",
+      "Safe DOM/links output",
+      "httpdocs/register.html:235-237,319,371-423",
+      "A",
+      "Display errors/consent links without executing input",
+      "WA context-safe rendering/navigation",
+      "DOM nodes/textContent; static legal links",
+      "Terms/privacy presentation",
+      "High"
+    ],
+    [
+      "RG09",
+      "PWA/assets/diagnostics",
+      "httpdocs/register.html:8-12,254-260,408",
+      "A",
+      "Register SW and handle dependencies safely",
+      "WA cache/browser/secret-free logs",
+      "sw.js; confetti; sanitizer; no session tracker",
+      "Registration assets",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: username/phone format, password length, consent copy and trial business policy. Typed email/secret fields distinct from reusable text. No login or registration action executed, no completed login examination repeated.",
+  "inventoryCompletedObserved": "2026-11-16T14:10:10.773949-05:00"
+}

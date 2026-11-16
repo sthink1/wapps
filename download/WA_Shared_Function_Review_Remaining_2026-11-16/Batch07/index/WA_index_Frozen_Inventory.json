@@ -1,0 +1,52 @@
+{
+  "page": "index",
+  "start": "2026-11-16T14:18:45.0258748-05:00",
+  "candidates": [
+    [
+      "IX01",
+      "Timed home navigation handoff",
+      "httpdocs/index.html:27-32",
+      "C",
+      "Move splash to home",
+      "Navigation and session boundary",
+      "Fixed window.location href",
+      "Three-second approved splash behavior",
+      "High"
+    ],
+    [
+      "IX02",
+      "Service worker registration/error",
+      "httpdocs/index.html:37-45",
+      "A",
+      "Register shared worker after load",
+      "PWA/cache/error policy",
+      "/sw.js;console result",
+      "Splash startup lifecycle",
+      "High"
+    ],
+    [
+      "IX03",
+      "Public document/accessible splash",
+      "httpdocs/index.html:1-7,28-36",
+      "C",
+      "Present public branded loading screen",
+      "Public role/accessible output",
+      "Image alt and document language/title",
+      "Splash presentation",
+      "High"
+    ],
+    [
+      "IX04",
+      "Asset/cache/diagnostic scope",
+      "httpdocs/index.html:8-9,33,36,40-42",
+      "A",
+      "Load shared assets and diagnostic",
+      "Shared cache/log contract",
+      "Manifest/favicon/CSS/SW",
+      "Fixed local logo",
+      "High"
+    ]
+  ],
+  "excluded": "B-only logo/style/timer design preserved. No API/password/input/mutation/draft/session storage exists; do not repeat already-completed home.html examination.",
+  "inventoryCompletedObserved": "2026-11-16T14:19:11.275918-05:00"
+}

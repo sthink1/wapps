@@ -1,0 +1,38 @@
+{
+  "page": "etf",
+  "start": "2026-11-16T08:27:32.530671-05:00",
+  "initialReadExcluded": true,
+  "candidates": [
+    [
+      "E01",
+      "goHome and ETF navigation handlers",
+      "178-184",
+      "C",
+      "Navigate to home and ETF pages",
+      "Home navigation is common; ETF destinations and inventory query remain local",
+      "None required; direct location assignment",
+      "High"
+    ],
+    [
+      "E02",
+      "Shared platform integration",
+      "187-188",
+      "A",
+      "Provide session/request facade for tracker",
+      "Shared session credential boundary",
+      "httpdocs/js/waPlatform.js",
+      "High"
+    ],
+    [
+      "E03",
+      "Usage tracking integration",
+      "188",
+      "A",
+      "Record page views and foreground duration",
+      "Project-wide tracking lifecycle",
+      "httpdocs/js/usageTracking.js",
+      "High"
+    ]
+  ],
+  "excluded": "ETF menu destinations and investment explanation are application-specific B; presentation-only CSS/notices/footer excluded from functional audit."
+}

@@ -1,0 +1,96 @@
+{
+  "page": "BcardReport",
+  "start": "2026-11-16T09:06:41.692174-05:00",
+  "candidates": [
+    [
+      "CR01",
+      "Credential gate and BASE_URL transport",
+      "37-40;45",
+      "A",
+      "Authenticate card report reads",
+      "Shared session and request-origin contract",
+      "WA.session.restore; WA.api.request",
+      "Card list endpoint and development port8080 routing",
+      "High"
+    ],
+    [
+      "CR02",
+      "apiFetch error parsing / report failure feedback",
+      "40;45",
+      "A",
+      "Decode failures and report errors",
+      "Common status and safe error-envelope interoperability",
+      "WA.api.json / WA.ApiError",
+      "Budget error/message compatibility and suffix",
+      "High"
+    ],
+    [
+      "CR03",
+      "Card report rendering / formatters",
+      "41-42;45",
+      "C",
+      "Render card fields safely",
+      "DOM context safety and number display reusable",
+      "Native DOM/Intl; no shared card renderer identified",
+      "Card columns, nullable amounts, dates and flags",
+      "High"
+    ],
+    [
+      "CR04",
+      "Row-to-card navigation / keyboard operation",
+      "29;45",
+      "C",
+      "Open source card form from report",
+      "Safe URL and accessible navigation responsibilities common",
+      "Native links/location; no shared row helper identified",
+      "BcardForm and UserCardID mapping",
+      "High"
+    ],
+    [
+      "CR05",
+      "Status-filter request and error-state lifecycle",
+      "29;45",
+      "C",
+      "Load selected report status and show outcomes",
+      "Async ordering and feedback state reusable",
+      "WA.api transport; native select and status node",
+      "Active/inactive/all card filter",
+      "High"
+    ],
+    [
+      "CR06",
+      "Unused requestedId helper",
+      "43",
+      "A",
+      "Validate positive query ID if called",
+      "Generic query parameter validation",
+      "URLSearchParams; no existing shared ID helper identified",
+      "No current report caller",
+      "High"
+    ],
+    [
+      "CR07",
+      "Service-worker registration",
+      "44",
+      "A",
+      "Register common PWA worker",
+      "Shared cache/version integration",
+      "httpdocs/sw.js",
+      "Root-scope worker",
+      "High"
+    ],
+    [
+      "CR08",
+      "Platform and usage tracking",
+      "45-46",
+      "A",
+      "Track session-aware report usage",
+      "Cross-WA page/time lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Card report path; independent GET adapter",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: card report fields/status filter and integer amount presentation. No financial calculation audit or writes; no reusable user text inputs, so generic input sanitizer not required. Broad CSS/formatting excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:07:29.830510-05:00"
+}

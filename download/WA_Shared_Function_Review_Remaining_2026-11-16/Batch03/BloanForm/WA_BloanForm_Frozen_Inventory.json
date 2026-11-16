@@ -1,0 +1,129 @@
+{
+  "page": "BloanForm",
+  "start": "2026-11-16T09:33:28.331424-05:00",
+  "candidates": [
+    [
+      "LN01",
+      "Credential gate / origin",
+      "44-47;78",
+      "A",
+      "Authenticate page requests",
+      "Cross-WA session/origin boundary",
+      "WA.session.restore; WA.api.request",
+      "Loan endpoints/local development origin",
+      "High"
+    ],
+    [
+      "LN02",
+      "apiFetch and failure feedback",
+      "47;55;57-58;61-62;75",
+      "A",
+      "Decode and display failures",
+      "Shared status/error contract",
+      "WA.api.json / WA.ApiError",
+      "Budget messages/suffix",
+      "High"
+    ],
+    [
+      "LN03",
+      "Shared sanitation and text fields",
+      "2-3;31;60-61",
+      "C",
+      "Clean normal text before save",
+      "Project-wide input defense",
+      "DOMPurify; httpdocs/js/inputSanitizer.js",
+      "From/Description/Note and Loan payload",
+      "High"
+    ],
+    [
+      "LN04",
+      "Safe output / record and preview markup",
+      "50;57;68;75",
+      "C",
+      "Render API-backed data safely",
+      "Context-safe output reusable",
+      "Native value/textContent; no shared output encoder established",
+      "Loan/payment dates and recurrence output",
+      "High"
+    ],
+    [
+      "LN05",
+      "CRUD / reset / draft lifecycle",
+      "55;57-63",
+      "C",
+      "Save/edit/delete with controlled state",
+      "No replay and unsaved-form behavior common",
+      "WA.api.request after contract review",
+      "Loan/payout fields, selectedId/reset",
+      "High"
+    ],
+    [
+      "LN06",
+      "Query ID and navigation",
+      "51;63;78",
+      "C",
+      "Open linked Loan and navigate",
+      "Safe query validation and navigation common",
+      "URLSearchParams; native location",
+      "UserLoanID/budget.html",
+      "High"
+    ],
+    [
+      "LN07",
+      "Loan recurrence/preview boundary",
+      "54;64-76",
+      "C",
+      "Preview frequency with Loan-specific limits",
+      "Generic modal/transport/state responsibility reusable",
+      "No equivalent WA-wide recurrence UI identified",
+      "DISALLOW_NO_END=true, ONE_TIME_KEEP_END=true and payment end-date rules",
+      "High"
+    ],
+    [
+      "LN08",
+      "Record/dialog keyboard/focus",
+      "31-35;57;73;76",
+      "C",
+      "Operate edit rows/dialog accessibly",
+      "Keyboard/focus semantics common",
+      "No shared accessible row/modal helper identified",
+      "Loan record selection/Frequency dialog",
+      "High"
+    ],
+    [
+      "LN09",
+      "Numeric display/save rounding boundary",
+      "48-49;57;60",
+      "C",
+      "Display numbers while preserving saved values",
+      "Display formatting reusable",
+      "Native Number/Intl",
+      "Loan and payment ceilings remain local arithmetic",
+      "High"
+    ],
+    [
+      "LN10",
+      "Worker registration",
+      "52",
+      "A",
+      "Register PWA worker",
+      "Shared cache/version lifecycle",
+      "httpdocs/sw.js",
+      "Root scope",
+      "High"
+    ],
+    [
+      "LN11",
+      "Platform/tracker integration",
+      "79-80",
+      "A",
+      "Track authenticated usage",
+      "Cross-WA usage lifecycle",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Loan path; business adapter independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: Loan/payment amounts and estimated flags, required end date, Loan recurrence constraints and save ceilings. No financial/recurrence arithmetic audit or generic replacement proposal; CSS/format excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:34:19.328521-05:00"
+}

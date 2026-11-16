@@ -1,0 +1,74 @@
+{
+  "page": "FTPrivacyVerification",
+  "start": "2026-11-16T10:38:52.2673178-05:00",
+  "candidates": [
+    [
+      "V01",
+      "Public capability GET-preview/POST-decision contract",
+      "httpdocs/FTPrivacyVerification.html:2-5",
+      "C",
+      "Preview request and approve/decline without browser account",
+      "WA public-link purpose/scope/authority",
+      "Native fetch; privacy publicRouter; no WA bearer required",
+      "Privacy approval decision",
+      "High"
+    ],
+    [
+      "V02",
+      "HTTP/error/pending/no replay lifecycle",
+      "httpdocs/FTPrivacyVerification.html:3-5",
+      "C",
+      "Report preview/decision failures and uncertain outcome",
+      "WA compatible error/outcome/no replay",
+      "Direct fetch JSON and disabled controls",
+      "Valid flag/decision completion",
+      "High"
+    ],
+    [
+      "V03",
+      "Approval authorization and commit/external notification",
+      "httpdocs/FTPrivacyVerification.html:3-5",
+      "C",
+      "Apply only verified-authority privacy change",
+      "WA capability/privacy/DB side effects/admin distinctions",
+      "Server private-request/public-approval routes",
+      "Verified primary contact and exact privacy setting",
+      "High"
+    ],
+    [
+      "V04",
+      "Capability URL/referrer/cache/identity boundaries",
+      "httpdocs/FTPrivacyVerification.html:1-4",
+      "A",
+      "Limit token exposure/audience and account confusion",
+      "WA secret-free diagnostics/capability privacy",
+      "URLSearchParams and relative capability endpoint",
+      "Email-link token separate from web identity",
+      "High"
+    ],
+    [
+      "V05",
+      "Safe response DOM/input scope",
+      "httpdocs/FTPrivacyVerification.html:1-5",
+      "A",
+      "Display server messages without HTML execution",
+      "WA safe text and secret input distinctions",
+      "textContent; no generic free-text form",
+      "Approval text and buttons",
+      "High"
+    ],
+    [
+      "V06",
+      "Async status/keyboard accessibility",
+      "httpdocs/FTPrivacyVerification.html:1,3-5",
+      "C",
+      "Announce validity/action/outcome and focus control",
+      "WA focus/status/error accessibility",
+      "Local p#status and buttons",
+      "Privacy decision UX",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: privacy-request action wording and setting semantics. No login/tracker/WA.api import is expected for this public email-capability page; no editable free text, sanitizer inapplicable. Do not treat D06 human code as random capability policy.",
+  "inventoryCompletedObserved": "2026-11-16T10:39:38.382148-05:00"
+}

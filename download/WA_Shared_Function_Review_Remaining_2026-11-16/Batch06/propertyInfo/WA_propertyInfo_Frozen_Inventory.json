@@ -1,0 +1,85 @@
+{
+  "page": "propertyInfo",
+  "start": "2026-11-16T13:48:03.8913175-05:00",
+  "candidates": [
+    [
+      "PR01",
+      "Shared text sanitation/local DOM persistence",
+      "httpdocs/propertyInfo.html:13-14,216-239,329-334,347-425",
+      "C",
+      "Sanitize address fields and save/load local rows",
+      "WA input/output defense",
+      "DOMPurify/inputSanitizer; local sanitizeInput/textContent",
+      "Address assembly/parsing and ephemeral saved table",
+      "High"
+    ],
+    [
+      "PR02",
+      "Clipboard asynchronous outcomes",
+      "httpdocs/propertyInfo.html:226,232,335-346,447-480",
+      "A",
+      "Copy data only with truthful outcome",
+      "WA async external-action feedback",
+      "navigator.clipboard; unawaited writes",
+      "ZIP/full address instructions",
+      "High"
+    ],
+    [
+      "PR03",
+      "Safe external URL/navigation",
+      "httpdocs/propertyInfo.html:427-531",
+      "C",
+      "Open intended providers without untrusted URL execution",
+      "WA URL/credential/privacy boundary",
+      "Fixed https providers/URI encoding/noopener noreferrer",
+      "Provider queries/workflows local",
+      "High"
+    ],
+    [
+      "PR04",
+      "Text-only print/window lifecycle",
+      "httpdocs/propertyInfo.html:532-546",
+      "A",
+      "Print current saved addresses safely",
+      "WA safe output/window lifecycle",
+      "DOM pre.textContent; window.open/print",
+      "Selected address rows",
+      "High"
+    ],
+    [
+      "PR05",
+      "Dialog/keyboard/status accessibility",
+      "httpdocs/propertyInfo.html:204-215,226-233,245-295,547-552",
+      "C",
+      "Operate instructional overlays and copy controls",
+      "WA focus/keyboard/announcements",
+      "Local show/hide handlers",
+      "Property help text",
+      "High"
+    ],
+    [
+      "PR06",
+      "Repeated-event/unsaved local-state lifecycle",
+      "httpdocs/propertyInfo.html:368-394,440-490,547-552",
+      "C",
+      "Avoid repeated handler side effects/preserve local draft",
+      "WA async lifecycle/correctness",
+      "Nested addEventListener installs",
+      "User-initiated external lookup/address state",
+      "High"
+    ],
+    [
+      "PR07",
+      "Shared platform/tracking/PWA/session scope",
+      "httpdocs/propertyInfo.html:321-327,555-556",
+      "A",
+      "Record current-session usage while local page remains local",
+      "WA session/telemetry/cache compatibility",
+      "waPlatform; usageTracking; sw.js",
+      "No business backend data/authorization boundary",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: address splitting/provider instructions and field layout. Saved rows are DOM-only, no DB or storage persistence promised by source. No business API, app mutation, private server-record authorization or HTTP adapter to audit.",
+  "inventoryCompletedObserved": "2026-11-16T13:48:55.112384-05:00"
+}

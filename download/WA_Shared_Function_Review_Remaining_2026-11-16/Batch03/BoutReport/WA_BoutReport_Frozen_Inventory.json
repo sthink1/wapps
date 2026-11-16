@@ -1,0 +1,96 @@
+{
+  "page": "BoutReport",
+  "start": "2026-11-16T09:43:30.572853-05:00",
+  "candidates": [
+    [
+      "OR01",
+      "Credential gate / request origin",
+      "37-40;55-56",
+      "A",
+      "Authenticate Out report read",
+      "Session/origin responsibility common",
+      "WA.session.restore; WA.api.request",
+      "Out list/local8080 behavior",
+      "High"
+    ],
+    [
+      "OR02",
+      "apiFetch / report error contract",
+      "40;46;53",
+      "A",
+      "Decode/report failures",
+      "HTTP/status/envelope compatibility common",
+      "WA.api.json / WA.ApiError",
+      "Budget messages/suffix",
+      "High"
+    ],
+    [
+      "OR03",
+      "Safe cells / numeric display",
+      "41-42;50-52",
+      "C",
+      "Render Out fields safely",
+      "Output/display formatting reusable",
+      "Native DOM/Intl; no shared renderer equivalent identified",
+      "To/Description/dates/amount/flags",
+      "High"
+    ],
+    [
+      "OR04",
+      "Record/menu navigation / keyboard access",
+      "29;52;57-58",
+      "C",
+      "Open source Out form and menus",
+      "Safe URL and keyboard actions common",
+      "Native link/location; no shared row helper identified",
+      "BoutForm/UserOutID/Budget/Reports targets",
+      "High"
+    ],
+    [
+      "OR05",
+      "Status filter / async feedback",
+      "29;46-60",
+      "C",
+      "Load selected active status",
+      "Async ordering/outcome lifecycle common",
+      "WA.api transport/native controls",
+      "Out filter/empty result semantics",
+      "High"
+    ],
+    [
+      "OR06",
+      "Unused requestedId",
+      "43",
+      "A",
+      "Parse query ID if called",
+      "Generic URL validation responsibility",
+      "URLSearchParams; no shared equivalent identified",
+      "No current report caller",
+      "High"
+    ],
+    [
+      "OR07",
+      "Worker registration",
+      "44",
+      "A",
+      "Register common PWA worker",
+      "Shared cache/version boundary",
+      "httpdocs/sw.js",
+      "Root scope",
+      "High"
+    ],
+    [
+      "OR08",
+      "Platform/tracker integration",
+      "62-63",
+      "A",
+      "Record report usage",
+      "Cross-WA lifecycle tracking",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Out report path/local adapter",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: Out report fields/status selection. No writes/reusable free text; generic sanitizer unnecessary. Financial calculations/CSS/formatting audit excluded. Prior BinReport examination not repeated.",
+  "inventoryCompletedObserved": "2026-11-16T09:44:01.933009-05:00"
+}

@@ -1,0 +1,129 @@
+{
+  "page": "FTPersonNew",
+  "start": "2026-11-16T10:35:17.5394192-05:00",
+  "candidates": [
+    [
+      "P01",
+      "Current token/tree startup and navigation",
+      "httpdocs/FTPersonNew.html:46-47,119-121;httpdocs/js/FTPersonNew.js:18-24,36,46",
+      "C",
+      "Guard creation and derive tree/return context",
+      "WA session restoration/current account",
+      "WA.session related; sessionStorage code",
+      "New person allocation/source tree",
+      "High"
+    ],
+    [
+      "P02",
+      "HTTP/error/domain409 adapters",
+      "httpdocs/js/FTPersonNew.js:26-28,31-37,39,45",
+      "C",
+      "Submit/read multiple actions preserving duplicate review",
+      "WA status/error/response semantics",
+      "WA.api related; direct fetch/JSON",
+      "DUPLICATE_REVIEW_REQUIRED/ONE_TREE_REVIEW_REQUIRED",
+      "High"
+    ],
+    [
+      "P03",
+      "Privacy/authorization and duplicate handoffs",
+      "httpdocs/js/FTPersonNew.js:24-28,33,35,39,46",
+      "C",
+      "Access global duplicates and related/private records",
+      "WA tree/Person/capability/admin contract",
+      "No FTPrivacy import; direct Duplicate/Person navigation",
+      "New public person vs selected existing private person",
+      "High"
+    ],
+    [
+      "P04",
+      "Safe DOM/URL/image output",
+      "httpdocs/js/FTPersonNew.js:3-17,20,24-28,32,34,39",
+      "C",
+      "Render duplicates/contacts/events/images safely",
+      "WA output and URL boundary",
+      "Local escaping/safeImageUrl/URLSearchParams",
+      "Duplicate cards/profile preview",
+      "High"
+    ],
+    [
+      "P05",
+      "Shared text sanitation/normalization",
+      "httpdocs/FTPersonNew.html:8-9,53-68,99-116;httpdocs/js/FTPersonNew.js:20-23,29-30,33,45",
+      "C",
+      "Sanitize static/modal free text preserving typed fields",
+      "WA common input defense",
+      "DOMPurify/inputSanitizer; local nv",
+      "Person/contact/event field semantics",
+      "High"
+    ],
+    [
+      "P06",
+      "Mutation/draft/pending and partial follow-up outcomes",
+      "httpdocs/js/FTPersonNew.js:27,31,33,35-39,45",
+      "C",
+      "Save once, preserve unsaved fields and reconcile follow-ups",
+      "WA uncertain mutation/no replay/external outcomes",
+      "Local saved/disable flags and catches",
+      "Part1/Part2 independent actions",
+      "High"
+    ],
+    [
+      "P07",
+      "Contact email commit-then-delivery outcome",
+      "httpdocs/FTPersonNew.html:90,109-112;httpdocs/js/FTPersonNew.js:32-33,40-42",
+      "C",
+      "Save contact and request verification delivery",
+      "WA DB/external action outcome contract",
+      "Existing server contact create/verification service",
+      "Contact modal and readback",
+      "High"
+    ],
+    [
+      "P08",
+      "Multipart profile upload/media lifecycle",
+      "httpdocs/FTPersonNew.html:89;httpdocs/js/FTPersonNew.js:39",
+      "C",
+      "Upload multipart and handle explicit replace conflict",
+      "WA specialized multipart/side-effect/privacy contract",
+      "FormData/raw fetch; object URL preview",
+      "Profile field/409 replacement decision",
+      "High"
+    ],
+    [
+      "P09",
+      "Identity/late-response/draft isolation",
+      "httpdocs/js/FTPersonNew.js:18-19,25-28,33-39,45-46",
+      "C",
+      "Prevent stale account/results mutating current draft",
+      "WA session/cross-tab async identity",
+      "Shared session related; local saved/cache state",
+      "New PersonID/tree/relative choices",
+      "High"
+    ],
+    [
+      "P10",
+      "Labels/dialog/error accessibility",
+      "httpdocs/FTPersonNew.html:53-75,99-116;httpdocs/js/FTPersonNew.js:25-29,36-45",
+      "C",
+      "Operate forms/modals and announce failures",
+      "WA programmatic labels/focus/announcements",
+      "Local modal controls/status",
+      "Person/relative/contact/event workflows",
+      "High"
+    ],
+    [
+      "P11",
+      "Shared tracking/platform/assets",
+      "httpdocs/FTPersonNew.html:8-9,119-121",
+      "A",
+      "Use shared session telemetry beside creation code",
+      "WA tracking/cache/auth composition",
+      "waPlatform; usageTracking; sanitizer",
+      "Family Tree attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: biological relationship rules/partner-parent question, duplicate-scoring decisions, Part1/Part2 business allocation and field content. No full relationship/merge/schema audit; inspect directly used server auth/transaction/external effects only.",
+  "inventoryCompletedObserved": "2026-11-16T10:36:01.686513-05:00"
+}

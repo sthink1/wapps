@@ -1,0 +1,107 @@
+{
+  "page": "FTAncestor",
+  "start": "2026-11-16T10:09:59.8549972-05:00",
+  "candidates": [
+    [
+      "FA01",
+      "Bearer startup and prerequisites",
+      "153-156",
+      "C",
+      "Guard person/tree display startup",
+      "Shared session restoration",
+      "FTAncestor.js:21-32,254-263; WA.session related",
+      "Focal person/tree/cousin generation",
+      "High"
+    ],
+    [
+      "FA02",
+      "Ancestor GET/status/error adapter",
+      "149;154-155",
+      "C",
+      "Load graph and present failures",
+      "WA typed HTTP/error categories",
+      "FTAncestor.js:226-252,272-289; WA.api related",
+      "Ancestor data and cousin generation",
+      "High"
+    ],
+    [
+      "FA03",
+      "Privacy page-token wrapper integration",
+      "153-155",
+      "C",
+      "Provide scoped per-visit capabilities",
+      "Shared specialized transport must constrain credentials",
+      "FTPrivacy.js; FTAncestor.js:95-97",
+      "Private-person open action",
+      "High"
+    ],
+    [
+      "FA04",
+      "Private redaction and person/tree navigation",
+      "82-83;91-145;153-154",
+      "C",
+      "Render privacy-key entries and navigate person/focus",
+      "Reusable privacy/handoff/admin contract",
+      "FTAncestor.js:95-158,267-269; FTPrivacy.openPerson",
+      "Redacted ancestor/relative cards",
+      "High"
+    ],
+    [
+      "FA05",
+      "DOM text/attribute/image safety",
+      "91-145;154",
+      "C",
+      "Encode server cards/rows and validate image protocols",
+      "Shared context-sensitive output hygiene",
+      "FTAncestor.js:5-19,103-149,219-243",
+      "Ancestor labels/layout/images",
+      "High"
+    ],
+    [
+      "FA06",
+      "Identity-scoped context and asynchronous result ordering",
+      "135-149;154",
+      "C",
+      "Persist tree/generation and prevent stale results",
+      "Account-switch and delayed-response safety",
+      "FTAncestor.js:25-32,226-289",
+      "Cousin-generation choice and family tree code",
+      "High"
+    ],
+    [
+      "FA07",
+      "Calendar-date presentation primitives",
+      "154",
+      "C",
+      "Handle date-only strings for years/age",
+      "Reusable calendar date consistency",
+      "FTAncestor.js:43-89; no shared date codec",
+      "Age/deceased biological semantics",
+      "Medium"
+    ],
+    [
+      "FA08",
+      "Dynamic control/status and scroll accessibility",
+      "86-88;135-149;154",
+      "C",
+      "Operate relative controls and synchronized scrolling",
+      "WA keyboard/name/error announcements",
+      "FTAncestor.js:103-195,271-289",
+      "Tree scroll and relative buttons",
+      "High"
+    ],
+    [
+      "FA09",
+      "Shared tracking/platform/assets",
+      "153-156",
+      "A",
+      "Use shared session telemetry alongside FT wrapper",
+      "WA session/tracker/cache composition",
+      "waPlatform; usageTracking; FTPrivacy",
+      "Family Tree attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: ancestor generation placement, biological relationship traversal and cousin ordering/age rules; no changes to graph/layout. No editable free-text form on static page; any FTPrivacy prompt is assessed as a shared dynamic integration.",
+  "inventoryCompletedObserved": "2026-11-16T10:10:27.829596-05:00"
+}

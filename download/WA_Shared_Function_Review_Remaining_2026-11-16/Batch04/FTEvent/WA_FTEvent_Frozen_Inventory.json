@@ -1,0 +1,118 @@
+{
+  "page": "FTEvent",
+  "start": "2026-11-16T10:16:22.0978651-05:00",
+  "candidates": [
+    [
+      "EV01",
+      "Credentialed startup/context/navigation",
+      "45;71-73",
+      "C",
+      "Guard Event view and return to Person",
+      "WA auth restoration and safe navigation",
+      "FTEvent.js:23-36,234-237; WA.session related",
+      "Person/tree Event context",
+      "High"
+    ],
+    [
+      "EV02",
+      "Person/Event HTTP/error adapters",
+      "58-60;71-72",
+      "C",
+      "Transport reads/save/delete and display failures",
+      "WA typed error/status/no replay contract",
+      "FTEvent.js:115-137,191-231,238-249; WA.api related",
+      "Domain event fields/auto events",
+      "High"
+    ],
+    [
+      "EV03",
+      "Privacy capability and server authorization integration",
+      "48;71",
+      "C",
+      "Access private person/events under tree/admin rules",
+      "WA private page capability and authorization",
+      "FTEvent.js:24-28,115-137,203-228; no FTPrivacy import",
+      "Person/Event binding",
+      "High"
+    ],
+    [
+      "EV04",
+      "Safe DOM output boundaries",
+      "48;60;67;71",
+      "C",
+      "Render event/person/history text and attributes",
+      "WA safe untrusted rendering",
+      "FTEvent.js:7-21,97-128,149-186",
+      "Event/history rows and descriptions",
+      "High"
+    ],
+    [
+      "EV05",
+      "Free-text sanitization and normalization",
+      "9-10;52-55;71",
+      "C",
+      "Sanitize editable place/description and normalize inputs",
+      "Mandatory common text defense",
+      "DOMPurify/inputSanitizer; FTEvent.js:38-40,194-201",
+      "Event form semantics",
+      "High"
+    ],
+    [
+      "EV06",
+      "Calendar date display/input codec",
+      "48;53;71",
+      "C",
+      "Convert dates for display/input/age",
+      "WA reusable calendar semantics",
+      "FTEvent.js:43-69,102,128,145-154,173-181",
+      "Age-at-event and chronological business rules",
+      "Medium"
+    ],
+    [
+      "EV07",
+      "Mutation/draft/selection lifecycle",
+      "57-60;67;71",
+      "C",
+      "Save/edit/delete with draft/no replay safety",
+      "WA uncertain mutation/pending lifecycle",
+      "FTEvent.js:82-113,191-231",
+      "AutoPerson event restrictions and editEventID",
+      "High"
+    ],
+    [
+      "EV08",
+      "Account-switch and response fencing",
+      "71",
+      "C",
+      "Keep event/person cache and responses tied to identity",
+      "WA session/account isolation",
+      "FTEvent.js:30-36,115-168,191-249",
+      "Events/currentPerson/history state",
+      "High"
+    ],
+    [
+      "EV09",
+      "History dialog/form/status accessibility",
+      "52-68;71",
+      "C",
+      "Operate modal and report validation/save errors",
+      "WA focus/keyboard/error announcements",
+      "FTEvent.js:185-189,202,234-249",
+      "History actions and Event status",
+      "High"
+    ],
+    [
+      "EV10",
+      "Shared platform/tracker/assets",
+      "71-73",
+      "A",
+      "Use shared session telemetry with local business calls",
+      "WA common telemetry/cache integration",
+      "waPlatform; usageTracking",
+      "Family Tree page attribution",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: event sorting/history chronology, age-at-event calculations, automatic Birth/Death business rules. Backend inspection bounded to used event access/mutation/auto-event guards; no schema/data execution or multipart flows.",
+  "inventoryCompletedObserved": "2026-11-16T10:16:52.331045-05:00"
+}

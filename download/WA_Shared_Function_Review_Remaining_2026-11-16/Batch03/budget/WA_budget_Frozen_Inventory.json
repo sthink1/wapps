@@ -1,0 +1,107 @@
+{
+  "page": "budget",
+  "start": "2026-11-16T09:44:34.191295-05:00",
+  "candidates": [
+    [
+      "BH01",
+      "Menu gate / credentials and origin",
+      "526-540;555",
+      "A",
+      "Gate Budget home and supply print request identity",
+      "Cross-WA session/origin responsibility",
+      "WA.session.restore; WA.api.request; BudgetPrintDetails getToken",
+      "Presence-only menu check, local8080 compatibility",
+      "High"
+    ],
+    [
+      "BH02",
+      "Home / Budget application navigation",
+      "450;458-478;543-551",
+      "C",
+      "Navigate application menu",
+      "Safe navigation common",
+      "Native buttons/location",
+      "Fixed Budget page destinations",
+      "High"
+    ],
+    [
+      "BH03",
+      "Print module API/error integration",
+      "555",
+      "A",
+      "Fetch authenticated print data and handle failures",
+      "HTTP/status/error compatibility common",
+      "js/BudgetPrintDetails.js15-37; WA.api.json related",
+      "Read-only print endpoints/messages",
+      "High"
+    ],
+    [
+      "BH04",
+      "Print report safe DOM rendering",
+      "486-505;555",
+      "C",
+      "Render aggregated financial report safely",
+      "Safe DOM table/output responsibility reusable",
+      "BudgetPrintDetails makeElement/createTable93-169",
+      "Budget field definitions/sections remain domain-local",
+      "High"
+    ],
+    [
+      "BH05",
+      "Print aggregate async snapshot lifecycle",
+      "461;503-504;555",
+      "C",
+      "Load current report snapshot",
+      "Request identity/concurrency/outcome state common",
+      "BudgetPrintDetails loadReport432-473",
+      "10 read requests, current+11 range, all report sections",
+      "High"
+    ],
+    [
+      "BH06",
+      "Print dialog / keyboard / print lifecycle",
+      "486-505;555",
+      "C",
+      "Open/close/print accessible report",
+      "Dialog/focus/print lifecycle reusable",
+      "BudgetPrintDetails475-511; native window.print",
+      "Named Budget dialog, print CSS/classes",
+      "High"
+    ],
+    [
+      "BH07",
+      "Report currency/date helpers",
+      "555",
+      "C",
+      "Format export time/month/currency",
+      "Display/date-only behavior reusable",
+      "BudgetPrintDetails39-87; native Date/Intl",
+      "Cents vs integer fields and local report timestamp",
+      "High"
+    ],
+    [
+      "BH08",
+      "Worker registration",
+      "518-524",
+      "A",
+      "Register shared PWA worker",
+      "Shared asset/cache/version boundary",
+      "httpdocs/sw.js",
+      "Root scope",
+      "High"
+    ],
+    [
+      "BH09",
+      "Platform/tracker integration",
+      "556-557",
+      "A",
+      "Track authenticated usage",
+      "Cross-WA lifecycle tracking",
+      "httpdocs/js/waPlatform.js; httpdocs/js/usageTracking.js",
+      "Budget home path; print adapter independent",
+      "High"
+    ]
+  ],
+  "excluded": "B-only: menu destinations and reportDefinitions/financial grouping/rounding/projection content in Print Details. Print integration, safe rendering/identity/dialog boundaries reviewed. No reusable text inputs; generic sanitizer unnecessary. CSS/formatting/financial calculation audit excluded.",
+  "inventoryCompletedObserved": "2026-11-16T09:46:29.315315-05:00"
+}
