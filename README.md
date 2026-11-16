@@ -4,7 +4,8 @@
 **Repository:** `sthink1/wapps`  
 **Documentation entry point:** root `README.md`  
 **Standards decision date:** November 12, 2026  
-**Status:** Existing application under development; Stage 6 security acceptance and implementation remain incomplete.
+**Status:** Existing application under development; Stage 6 production-readiness acceptance and independent review remain incomplete.  
+**Current owner-approved priority:** Risk-based production readiness, November 16, 2026 (40-hour planning ceiling).
 
 ## 0. MANDATORY — Read before any Wonderful Apps development or review
 
@@ -19,6 +20,17 @@
 5. **Current authoritative project files and applicable `docs/` testing records** — Inspect the exact files, dependencies and baseline relevant to the requested task.
 
 > **Primary rule — preserve existing functionality and appearance.** Do not change existing behavior, calculations, permissions, navigation, appearance, layout, or data handling except as specifically authorized by the project owner. Necessary changes outside the approved scope require separate approval.
+
+### Current release objective and time-budget gate — owner approved November 16, 2026
+
+**Production readiness takes priority over comprehensive standards remediation.** Continue the remaining Stage 6 R16–R20 acceptance work; evaluate and address only demonstrated or credibly material security, privacy, authorization, credential, data-integrity, or essential-function blockers needed for a safe production decision; obtain the mandatory independent design-engineering/security review; investigate and stabilize the existing production Render `wapps` service; and make an explicit, controlled merge/release decision.
+
+- **Planning ceiling: 40 hours total** for the remaining prioritized production-readiness effort. Track effort against this ceiling; **stop and seek owner reassessment** if a critical blocker cannot be resolved within it. The ceiling is not evidence of completion, a guarantee of readiness, or permission to waive a necessary safeguard.
+- **Do not start a wholesale 124-finding correction program.** The 63-page Codex examination is a source-level risk inventory, not 124 proven runtime defects or a blanket instruction to rewrite functional files. Classify findings by user impact and release risk; retain nonblocking gaps in the approved register for separately authorized later work, without declaring them compliant or closed.
+- **Release blockers must be dispositioned, not ignored.** Material privacy exposure, unsafe authorization or credentials, possible destructive/duplicate writes, essential-workflow failures, or an unsafe production deployment must be verified and resolved, safely restricted, or otherwise dispositioned with evidence and explicit owner approval before release. Do not override independent-review objections just to meet the time budget.
+- **Maintain approved standards and change controls.** Any file actually revised must meet all applicable approved requirements, use the full-file/diff/verification process below, and pass relevant targeted regression tests. Phased exceptions and deferred modernization remain subject to recorded owner decisions. No scope change or production action is authorized by this README update.
+- **First outstanding testing step:** R16-75 real-browser T09 on a page actually using shared `WA.api`, followed by T10 preservation of unsaved edits and no unsafe automatic mutation replay. Preserve R16-75 T12's 90/90 bounded offline PASS, hosted T06's 3/3 bounded probes, selected T11 evidence, and previously accepted R10/R14/R15 results. Do not repeat accepted tests without a specific regression reason.
+
 
 ### Mandatory change package and approval gate
 
@@ -123,7 +135,7 @@ Other project folders and historical artifacts may be present. The proposed `arc
 - Isolated Render staging service: `wapps-stage6-test`.
 - Staging URL: `https://wapps-stage6-test.onrender.com`.
 - Verified staging database identity as documented on November 3, 2026: HelioHost Morty2, database/user `wapps_test`.
-- Last verified hosted commit in the November 3 acceptance records: `f023cc3`. This is a historical observation, **not** a claim that the service still runs that commit today. Later hosted commits and test observations must be reconciled from the latest evidence.
+- Last verified hosted commit in the November 3 acceptance records: `f023cc3` (historical checkpoint). On November 16 the owner reported a clean local `reviseLogIn` working tree, with `HEAD` and `origin/reviseLogIn` both `67626270f8c22e363ded83feea49d3855fd447b1` (`6762627`, `codex review html files`); a Render screenshot showed this commit **Live** on `wapps-stage6-test`. This is a dated Git/deployment checkpoint, **not** proof of exact Google Drive file equality, application acceptance, or production deployment. Recheck live revision if necessary before further hosted assertions.
 
 The Stage 6 environment guard deliberately restricts permitted test configurations. Do not copy staging environment guards or database identities to production, disable safety checks to make a test pass, or assume that `NODE_ENV=production` implies a production database.
 
@@ -133,13 +145,15 @@ The Stage 6 environment guard deliberately restricts permitted test configuratio
 
 ## 5. Current Stage 6 status — not released
 
-Stage 6 introduces and tests browser session persistence, password change/reset, refresh-token rotation and revocation, and related security protections. The November 3 consolidated plan records successful **bounded** tests but not complete acceptance. The earlier approximately 70% completion estimate is an engineering planning estimate, not a percentage of formally passed R01–R20 tests.
+Stage 6 introduces and tests browser session persistence, password change/reset, refresh-token rotation and revocation, and related security protections. Later November 2026 evidence records formal **bounded PASS** for R10, R14, and R15; R16-75 T12 **90/90 bounded offline PASS** on November 15; hosted R16 T06 **3/3** bounded malformed-parser probes; and selected T11 logging observations. **R16 real-browser T09 and T10 remain open**; R17–R20 and the final independent review are not complete. Do not promote narrower results into whole-project, native-device, or release certification. The earlier approximately 70% completion estimate is not a measured formal R01–R20 completion fraction.
 
 Outstanding acceptance areas include cookie/Origin/CSRF and error caching, authorization failure responses, proxy trust and rate-limit fairness, additional browser coverage, native Android verification, operational recovery and rollback, and independent design/security review. These are tracked in the authoritative documents below.
 
 **Additional current design decisions (November 12, 2026):** Owner-approved D01–D14 standards policies govern proposed future architecture; D05 authorizes preparing an R16-75 correction package **only**, not installation. D08 authorizes a browser token-storage modernization objective, not a selected replacement mechanism. D11 defers additional public geocode and email hardening. Existing bounded R10/R14/R15/R16 results remain historical evidence; implementation conformance and deployment approval are separate.
 
-**Release rule:** Finish acceptance, reconcile remaining findings, obtain an independent design-engineer/security review of the completed implementation, then make a separate, explicit production go/no-go decision. No README update constitutes permission to merge into `main`, migrate the production database, change DNS, or deploy.
+**Codex examination checkpoint (November 15–16, 2026):** 63 HTML pages examined (five initial pages plus seven batches covering 58 pages), 516 source-level functional candidates, 124 confirmed source-level candidate findings, and separately recorded formatting/procedure exceptions. The owner approved a Master Findings Register and R16–R20 Testing Reconciliation Addendum for risk-based release triage. These artifacts are not executed acceptance tests, do not prove 124 independent defects, and do not require remediation of all findings before release. Verify their manual installation in `docs/` before citing them as installed project documents.
+
+**Release rule:** Complete risk-based acceptance, resolve or explicitly disposition material release blockers, verify production Render health and a safe rollback plan, obtain the mandatory independent design-engineer/security review of the completed implementation, and then make a separate explicit production go/no-go decision. The `reviseLogIn` → `main` merge and any production action require distinct owner authorization. No README update constitutes permission to merge, migrate the production database, change DNS, or deploy.
 
 ## 6. Authoritative Stage 6 documents
 
@@ -147,6 +161,9 @@ Outstanding acceptance areas include cookie/Origin/CSRF and error caching, autho
 | --- | --- |
 | [`docs/Stage6_OpenItems.md`](docs/Stage6_OpenItems.md) | Current S6 issue register, evidence and unresolved safeguards |
 | [`docs/Stage6_Render_TestPlan.md`](docs/Stage6_Render_TestPlan.md) | Formal R01–R20 acceptance matrix and hosted test observations |
+| [`docs/WA_Master_Findings_Register_2026-11-16.xlsx`](docs/WA_Master_Findings_Register_2026-11-16.xlsx) | Owner-approved Codex findings and priority reconciliation; verify installed presence and version |
+| [`docs/WA_R16-R20_Testing_Reconciliation_Addendum_2026-11-16.md`](docs/WA_R16-R20_Testing_Reconciliation_Addendum_2026-11-16.md) | Owner-approved risk-based R16–R20 testing addendum; verify installed presence and version |
+| [`docs/WA_Master_Findings_Register_Review_Notes_2026-11-16.md`](docs/WA_Master_Findings_Register_Review_Notes_2026-11-16.md) | Interpretation limits and proposed priorities for the Master Register; verify installed presence |
 | [`docs/Stage6_Production_Implementation_Plan.md`](docs/Stage6_Production_Implementation_Plan.md) | Release gates, migration considerations and rollback planning; plan only |
 | [`docs/Stage6_Document_Cleanup_Review_2026-11-03.md`](docs/Stage6_Document_Cleanup_Review_2026-11-03.md) | Documentation consolidation and cleanup history |
 | [`TechSummary.md`](TechSummary.md) | Technical architecture and module details; review dated facts against current source |
@@ -195,8 +212,8 @@ For the November 2026 cleanup, old installation-package READMEs should be archiv
 
 ## 10. Verification before using this README for an actual release
 
-This README preserves the original project's orientation and November 3 Stage 6 context, augmented with the November 12 standards decisions. It **does not independently certify** the current local Git working tree, the live Render deployment revision, runtime credentials, the latest database schema, or the outcome of tests performed after November 3. Confirm those facts from appropriate current sources before development, staging operations or production decisions.
+This README preserves the original project's orientation, November 12 standards decisions, and November 16 owner-approved 40-hour production-readiness priority. It **does not independently certify** today's local/remote Git state, Google Drive file equality, a currently Live Render deployment, production service health, runtime credentials, the current database schema, or post-November 16 test outcomes. Confirm those facts from authoritative current evidence before development, staging operations or production decisions. **At the 40-hour limit or on discovery of an unresolved critical blocker, stop and obtain an owner decision rather than silently relaxing acceptance or safety requirements.**
 
 ---
 
-**Change status:** This file is a separately prepared proposed replacement for owner review/manual installation. Its creation does not alter the authoritative Drive README or prove that referenced draft standards filenames have been installed under those exact names.
+**Change status (November 16, 2026):** Complete replacement README prepared for owner review and manual installation under the previously approved documentation-update scope. The existing authoritative Drive/local/Git files remain unchanged by this package. Referenced standards and reconciliation-file names require verification of actual installed versions.
