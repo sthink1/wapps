@@ -1,0 +1,8 @@
+WA Stage 2E — SHA-256 of each delivered file (except this self-referential manifest)
+4a1ff3d429fbd8d184aaa07ab5a3e36279a74016ce9c713e002d64453b9d4176  change/SHA256.txt
+d15d8db57c6798f532a39aa4a681022eca8136b76397e361800b35aa7d728d60  change/SubControl.html.diff
+f5a4db626759e6ee4cfd35dc5e345eebcaa9617b09010ba1cdb4ea29b24097ff  change/SubControl.html.verification.md
+6bb2dcf05aa119a55c11146e9125c994f01fe1f959d2f14eb6becb0147377b93  change/offline-test-results.txt
+b16044984669e30c60d30883fa3b28a3bf604c1d8ece725dbdbf29ebdb3c25e6  docs/INSTALL_Stage2E.md
+d4a67ecfe0d6ea3c622cb338007d285517e78efda6f1770605a739e051225151  httpdocs/SubControl.html
+b1f304cde06c0d2b0f7dd1703b14549a28718544a5572096f2fe4ee613b7f048  tests/stage2e.subcontrol.offline.test.js

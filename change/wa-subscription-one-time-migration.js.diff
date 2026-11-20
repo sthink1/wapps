@@ -1,0 +1,11 @@
+--- FINAL_2026-11-18/tools/wa-subscription-one-time-migration.js
++++ CORRECTED/tools/wa-subscription-one-time-migration.js
+@@ -19,7 +19,7 @@
+   [54,'b0ulderagalvin',11,3,'DEVELOPMENT_TRIAL','2026-10-29',1,null,3,'ADMIN_GRANT','2200-01-01'],
+   [55,'dswim',12,3,'DEVELOPMENT_TRIAL','2026-10-29',1,null,3,'DEVELOPMENT_TRIAL','2026-10-29'],
+   [56,'mpgiii',13,3,'DEVELOPMENT_TRIAL','2026-11-01',1,null,3,'ADMIN_GRANT','2200-01-01'],
+-  [57,'mglavinnj',14,3,'DEVELOPMENT_TRIAL','2026-11-03',1,null,3,'ADMIN_GRANT','2200-01-01'],
++  [57,'mgalvinnj',14,3,'DEVELOPMENT_TRIAL','2026-11-03',1,null,3,'ADMIN_GRANT','2200-01-01'],
+   [58,'kelsey',15,3,'DEVELOPMENT_TRIAL','2026-11-09',1,null,3,'ADMIN_GRANT','2200-01-01'],
+   [63,'glaw',20,3,'DEVELOPMENT_TRIAL','2026-11-17',1,null,3,'DEVELOPMENT_TRIAL','2026-11-17'],
+   [64,'charter',21,3,'DEVELOPMENT_TRIAL','2026-12-02',1,null,3,'DEVELOPMENT_TRIAL','2026-12-02']

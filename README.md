@@ -217,3 +217,17 @@ This README preserves the original project's orientation, November 12 standards 
 ---
 
 **Change status (November 16, 2026):** Complete replacement README prepared for owner review and manual installation under the previously approved documentation-update scope. The existing authoritative Drive/local/Git files remain unchanged by this package. Referenced standards and reconciliation-file names require verification of actual installed versions.
+
+**Future production database transition — planning decision November 19, 2026**
+
+The owner approved constructing a new production database using the final tested `wapps_test` schema, then populating it with appropriately analyzed and transformed data from the existing production database.
+
+See `docs/WA_Production_Database_Transition_Plan.md` for the agreed approach, safeguards, and future decision points.
+
+This is a planning approval only. No database migration, production cutover, deployment, or branch operation is authorized by this decision.
+
+## Future standards refactoring — planning decision November 19, 2026
+
+After completion of Stage 6 release requirements and the separately authorized `reviseLogIn` → `main` merge, the owner plans to create a new development branch named `refactor`. Its long-term objective is implementation of the approved Wonderful Apps programming standards, beginning with **Phase 1: JavaScript shared-function standardization** based on the findings in `download/WA_Shared_Function_Review_Remaining_2026-11-16/`. Existing functionality, design, privacy, security and business behavior remain protected under CS-01; unrelated HTML/CSS and later standards work require separately approved scope.
+
+See `docs/WA_Refractor.md` for the phased approach, controls and acceptance evidence. All development follows `standard/WA_File_Development_and_Delivery_Process.md` (A → B → C → D). Codex in VS Code may inspect local WA source **read-only** and generate proposed replacements and verification packages in a separate directory outside the project; the owner manually installs, tests, and authorizes commits. **This planning decision does not authorize branch creation, source edits, database changes, hosted testing, merges or deployments.** The current production-readiness 40-hour planning ceiling is separate from any future refactoring budget.

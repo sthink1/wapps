@@ -1,0 +1,34 @@
+--- a/standard/WA_File_Development_and_Delivery_Process.md
++++ b/standard/WA_File_Development_and_Delivery_Process.md
+@@ -1,9 +1,9 @@
+ # Wonderful Apps — File Development and Delivery Process
+ 
+ **Document ID:** WA-FILE-DELIVERY  
+-**Version:** 1.0  
++**Version:** 1.1 — Step A database dump reference clarification, November 19, 2026  
+ **Process approval:** November 19, 2026, by project owner  
+-**Document status:** New file prepared for owner installation; not independently verified as installed in authoritative WA  
++**Document status:** Replacement proposal prepared for owner installation; confirm current installed baseline before replacing  
+ **Intended WA-relative path:** `standard/WA_File_Development_and_Delivery_Process.md`
+ 
+ ## 1. Purpose and applicability
+@@ -31,8 +31,9 @@
+ 1. Identify the existing problem, desired behavior/appearance, affected scope, constraints, expected inputs/outputs, and acceptance criteria.
+ 2. Inspect the authoritative current source, standards, dependent callers, APIs, data effects, security/privacy obligations, browser/native constraints and previous acceptance evidence as applicable.
+ 3. Distinguish requested changes from unrelated improvements. Preserve unrelated behavior, layout, calculations, records, ownership, sessions and permissions.
+-4. Ask only questions needed for a safe/correct result. Agree on the target outcome and obtain the owner's authorization to implement. Avoid repeated intermediate approvals for ordinary programming decisions within that authorization.
+-5. Obtain new approval if a material requirement, scope, security boundary, database operation, or deployment dependency changes. Do not treat discussion or document preparation as permission for mutation of protected locations.
++4. **Database-dump-first rule:** For questions about a WA database, first consult its latest available authoritative `*dump.sql` snapshot, including its schema and recorded data, before asking the owner to execute a query for information already present in that dump. Ask the owner only to confirm whether that specific dump is current for the database and question at hand. Do not request redundant live queries. Request a targeted query only when the dump is unavailable, incomplete, confirmed outdated, or the question requires live/post-dump state. Never treat a test dump as evidence of production state, or vice versa. Review dumps strictly read-only and do not expose database secrets or sensitive records.
++5. Ask only questions needed for a safe/correct result. Agree on the target outcome and obtain the owner's authorization to implement. Avoid repeated intermediate approvals for ordinary programming decisions within that authorization.
++6. Obtain new approval if a material requirement, scope, security boundary, database operation, or deployment dependency changes. Do not treat discussion or document preparation as permission for mutation of protected locations.
+ 
+ **A exit:** An agreed, traceable scope and acceptance criteria, with implementation authorized by the owner.
+ 
+@@ -130,6 +131,6 @@
+ 
+ ## 7. Adoption and maintenance
+ 
+-The **A → B → C → D process**, including the mandatory `install/` directory, was explicitly approved by the owner on **November 19, 2026**. This document records that decision but remains a **separately prepared new file** until the owner manually installs it at the intended path.
++The **A → B → C → D process**, including the mandatory `install/` directory, was explicitly approved by the owner on **November 19, 2026**. Version 1.1 adds the subsequently approved Step A database-dump-first clarification. This replacement is **prepared separately** and does not claim that the earlier version was installed; the owner must verify the current authoritative baseline before replacing the file.
+ 
+ Any future change to this procedure requires owner agreement and, if this file already exists in the authoritative project, a full replacement-file diff, per-file verification report, checksum and appropriate tests. A future cross-reference from the root `README.md` can be proposed separately; this package does **not** modify `README.md`.

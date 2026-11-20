@@ -262,7 +262,7 @@
         <button id="homeBtn" class="home-button top-home-button" type="button">Home</button>
 
         <div class="development-note">
-            During development, new users receive 30 days of free Platinum access.
+            During development, eligible new users receive free Platinum access until development ends. Access remains subject to the subscription's Active status.
         </div>
 
         <section class="status-card" aria-labelledby="statusHeading">
@@ -471,7 +471,10 @@
 
                 document.getElementById('currentPlan').textContent = subscription.planName || 'None';
                 document.getElementById('accessType').textContent = friendlyAccessType(subscription.accessType);
-                document.getElementById('accessExpires').textContent = subscription.effectiveEndDate || 'None';
+                document.getElementById('accessExpires').textContent =
+                    subscription.accessType === 'DEVELOPMENT_TRIAL'
+                        ? 'When Development Ends'
+                        : (subscription.effectiveEndDate || 'None');
                 document.getElementById('accessStatus').textContent = subscription.active ? 'Active' : 'Expired';
             } catch (error) {
                 document.getElementById('promoMessage').textContent = error.message;

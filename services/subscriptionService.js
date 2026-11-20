@@ -38,66 +38,16 @@ async function getCurrentSubscription(userId, connection = pool) {
 }
 
 
-async function getActiveAdminGrant(userId, connection = pool) {
-    const [rows] = await connection.query(
-        `SELECT g.AdminSubscriptionGrantID AS UserSubscriptionID,
-                g.UserID, g.PlanID, p.PlanName, p.PlanLevel,
-                'ADMIN_GRANT' AS AccessType,
-                g.GrantStartDate AS StartDate,
-                g.GrantEndDate AS EndDate,
-                g.Active,
-                NULL AS PromoCodeID,
-                g.CreatedDate,
-                g.ModifiedDate,
-                g.AdminSubscriptionGrantID
-           FROM AdminSubscriptionGrantT g
-           JOIN SubscriptionPlanT p ON p.PlanID = g.PlanID
-          WHERE g.UserID = ?
-            AND g.Active = 1
-            AND g.GrantStartDate <= CURDATE()
-            AND g.GrantEndDate >= CURDATE()
-          ORDER BY p.PlanLevel DESC, g.GrantEndDate DESC, g.AdminSubscriptionGrantID DESC
-          LIMIT 1`,
-        [userId]
-    );
-    return rows[0] || null;
-}
-
+// The authoritative subscription is the single UserSubscriptionT row.
+// Legacy administrator-grant records are retained for history and rollback,
+// but cannot affect current access after the guarded migration.
 async function getEffectiveSubscription(userId, connection = pool) {
-    const base = await getCurrentSubscription(userId, connection);
-    const grant = await getActiveAdminGrant(userId, connection);
-
-    if (!grant) return base;
-    if (!base) return grant;
-
-    const baseStatus = await buildSubscriptionStatus(base, connection);
-    const grantStatus = await buildSubscriptionStatus(grant, connection);
-
-    if (!baseStatus.active) return grant;
-    if (!grantStatus.active) return base;
-
-    if (Number(grant.PlanLevel) > Number(base.PlanLevel)) return grant;
-    if (Number(grant.PlanLevel) < Number(base.PlanLevel)) return base;
-
-    const baseEnd = await getEffectiveEndDate(base, connection);
-    const grantEnd = await getEffectiveEndDate(grant, connection);
-
-    if (!baseEnd) return base;
-    if (!grantEnd) return grant;
-    return grantEnd > baseEnd ? grant : base;
+    return getCurrentSubscription(userId, connection);
 }
 
-async function getEffectiveEndDate(subscription, connection = pool) {
-    if (!subscription || !subscription.EndDate) return null;
-
-    const normalEnd = toDateOnly(subscription.EndDate);
-    if (subscription.AccessType !== 'DEVELOPMENT_TRIAL') return normalEnd;
-
-    const cutoff = await getSetting('DevelopmentEntitlementEndDate', connection);
-    if (!cutoff) return normalEnd;
-
-    const cutoffDate = toDateOnly(cutoff);
-    return cutoffDate < normalEnd ? cutoffDate : normalEnd;
+async function getEffectiveEndDate(subscription) {
+    if (!subscription || subscription.AccessType === 'DEVELOPMENT_TRIAL') return null;
+    return toDateOnly(subscription.EndDate);
 }
 
 async function buildSubscriptionStatus(subscription, connection = pool) {
@@ -117,7 +67,10 @@ async function buildSubscriptionStatus(subscription, connection = pool) {
 
     const today = new Date().toISOString().slice(0, 10);
     const effectiveEndDate = await getEffectiveEndDate(subscription, connection);
-    const active = Boolean(subscription.Active) && (!effectiveEndDate || effectiveEndDate >= today);
+    const developmentTrial = subscription.AccessType === 'DEVELOPMENT_TRIAL';
+    const developmentAllowed = !developmentTrial || String(await getSetting('DevelopmentMode', connection)) === '1';
+    const active = Boolean(subscription.Active) && developmentAllowed &&
+        (!effectiveEndDate || effectiveEndDate >= today);
 
     return {
         exists: true,
@@ -142,6 +95,11 @@ async function getOrCreateDevelopmentTrial(userId) {
             subscription: effective,
             status: await buildSubscriptionStatus(effective)
         };
+    }
+
+    if (String(await getSetting('DevelopmentMode')) !== '1') {
+        const effective = await getEffectiveSubscription(userId);
+        return { created: false, subscription: effective, status: await buildSubscriptionStatus(effective) };
     }
 
     const allow = await getSetting('AllowNewDevelopmentTrials');
@@ -595,6 +553,146 @@ async function getAdminUserSubscription(userId) {
     };
 }
 
+
+// Stage 2D: direct subscription administration, separate from overlay grants.
+// Read the underlying row explicitly: getAdminUserSubscription() returns the effective entitlement.
+async function getAdminBaseSubscription(userId) {
+    const id = requirePositiveInteger(userId, 'User ID');
+    const [users] = await pool.query(
+        'SELECT UserID, UserName FROM UsersT WHERE UserID = ? LIMIT 1', [id]
+    );
+    if (!users.length) {
+        throw markExpectedClientError(Object.assign(new Error('User ID was not found.'), { status: 404 }));
+    }
+
+    const subscription = await getCurrentSubscription(id);
+    const [plans] = await pool.query(
+        'SELECT PlanID, PlanName, PlanLevel FROM SubscriptionPlanT WHERE Active = 1 ORDER BY PlanLevel'
+    );
+    return {
+        user: { userId: users[0].UserID, username: users[0].UserName },
+        base: subscription ? subscriptionSnapshot(subscription) : null,
+        effective: await buildSubscriptionStatus(await getEffectiveSubscription(id)),
+        plans: plans.map(plan => ({
+            planId: plan.PlanID,
+            planName: plan.PlanName,
+            planLevel: Number(plan.PlanLevel)
+        })),
+        note: 'The underlying subscription is the effective entitlement after migration.'
+    };
+}
+
+function subscriptionSnapshot(subscription) {
+    if (!subscription) return null;
+    return {
+        userSubscriptionId: Number(subscription.UserSubscriptionID),
+        planId: Number(subscription.PlanID),
+        planName: subscription.PlanName,
+        accessType: subscription.AccessType,
+        startDate: toDateOnly(subscription.StartDate),
+        endDate: toDateOnly(subscription.EndDate),
+        active: Boolean(subscription.Active),
+        promoCodeId: subscription.PromoCodeID || null
+    };
+}
+
+function subscriptionMatchesExpected(current, expected) {
+    if (current === null || expected === null) return current === null && expected === null;
+    if (!expected || typeof expected !== 'object' || Array.isArray(expected)) return false;
+    const actual = subscriptionSnapshot(current);
+    return Number(expected.userSubscriptionId) === actual.userSubscriptionId &&
+        Number(expected.planId) === actual.planId &&
+        expected.accessType === actual.accessType &&
+        expected.endDate === actual.endDate &&
+        expected.active === actual.active &&
+        expected.promoCodeId === actual.promoCodeId;
+}
+
+async function updateAdminBaseSubscription(userId, input) {
+    const id = requirePositiveInteger(userId, 'User ID');
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+        throw markExpectedClientError(Object.assign(new Error('Subscription details are required.'), { status: 400 }));
+    }
+    const planId = requirePositiveInteger(input.planId, 'Plan');
+    const accessType = input.accessType;
+    if (!['ADMIN_GRANT', 'DEVELOPMENT_TRIAL'].includes(accessType)) {
+        throw markExpectedClientError(Object.assign(new Error('Select an administrative or development-trial access type.'), { status: 400 }));
+    }
+    // Explicitly require a date, rather than permitting an accidental indefinite subscription.
+    const endDate = requireDateOnly(input.endDate, 'Access Through');
+    if (typeof input.active !== 'boolean') {
+        throw markExpectedClientError(Object.assign(new Error('Active must be true or false.'), { status: 400 }));
+    }
+    if (!Object.prototype.hasOwnProperty.call(input, 'expected')) {
+        throw markExpectedClientError(Object.assign(new Error('Reload the subscription before saving.'), { status: 400 }));
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [users] = await connection.query(
+            'SELECT UserID FROM UsersT WHERE UserID = ? LIMIT 1 FOR UPDATE', [id]
+        );
+        if (!users.length) {
+            throw markExpectedClientError(Object.assign(new Error('User ID was not found.'), { status: 404 }));
+        }
+        const [plans] = await connection.query(
+            'SELECT PlanID FROM SubscriptionPlanT WHERE PlanID = ? AND Active = 1 LIMIT 1', [planId]
+        );
+        if (!plans.length) {
+            throw markExpectedClientError(Object.assign(new Error('The selected subscription plan is not available.'), { status: 400 }));
+        }
+        const [currentRows] = await connection.query(
+            `SELECT us.UserSubscriptionID, us.PlanID, p.PlanName,
+                    us.AccessType, us.StartDate, us.EndDate, us.Active, us.PromoCodeID
+               FROM UserSubscriptionT us
+               JOIN SubscriptionPlanT p ON p.PlanID = us.PlanID
+              WHERE us.UserID = ? LIMIT 1 FOR UPDATE`, [id]
+        );
+        const current = currentRows[0] || null;
+        if (!subscriptionMatchesExpected(current, input.expected)) {
+            throw markExpectedClientError(Object.assign(
+                new Error('Subscription changed. Reload before saving.'), { status: 409 }
+            ));
+        }
+        // Existing paid subscriptions require a separate payment-aware workflow.
+        if (current && ['PAID', 'PAYMENT', 'STRIPE'].includes(String(current.AccessType).toUpperCase())) {
+            throw markExpectedClientError(Object.assign(
+                new Error('Paid subscriptions require a separate billing review.'), { status: 409 }
+            ));
+        }
+        if (current) {
+            const [result] = await connection.query(
+                `UPDATE UserSubscriptionT
+                    SET PlanID = ?, AccessType = ?, EndDate = ?, Active = ?,
+                        PromoCodeID = NULL, ModifiedDate = NOW()
+                  WHERE UserSubscriptionID = ? AND UserID = ?`,
+                [planId, accessType, endDate, input.active ? 1 : 0, current.UserSubscriptionID, id]
+            );
+            if (result.affectedRows !== 1) throw new Error('Subscription update did not affect one row.');
+        } else {
+            const [result] = await connection.query(
+                `INSERT INTO UserSubscriptionT
+                    (UserID, PlanID, AccessType, StartDate, EndDate, Active, PromoCodeID, ModifiedDate)
+                 VALUES (?, ?, ?, CURDATE(), ?, ?, NULL, NOW())`,
+                [id, planId, accessType, endDate, input.active ? 1 : 0]
+            );
+            if (result.affectedRows !== 1) throw new Error('Subscription insertion did not affect one row.');
+        }
+        await connection.commit();
+        // No automatic mutation replay. After an uncertain response, client must reload the user.
+        return {
+            message: 'Subscription saved. Reload to verify current access.',
+            userId: id
+        };
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+}
+
 // Read-only history of redeemed promotion codes for administrators.
 async function listAdminPromoRedemptions() {
     const [rows] = await pool.query(
@@ -624,224 +722,6 @@ async function listAdminPromoRedemptions() {
     })) };
 }
 
-async function listAdminFreeGrants() {
-    const [rows] = await pool.query(
-        `SELECT g.AdminSubscriptionGrantID, g.UserID, u.UserName, u.Email,
-                g.PlanID, p.PlanName, p.PlanLevel,
-                g.GrantStartDate, g.GrantEndDate, g.Active,
-                g.GrantedByUserID, g.CreatedDate, g.ModifiedDate
-           FROM AdminSubscriptionGrantT g
-           JOIN UsersT u ON u.UserID = g.UserID
-           JOIN SubscriptionPlanT p ON p.PlanID = g.PlanID
-          WHERE g.Active = 1
-            AND g.GrantEndDate >= CURDATE()
-          ORDER BY u.UserName, g.UserID, g.GrantEndDate DESC`
-    );
-
-    return {
-        grants: rows.map(row => ({
-            grantId: row.AdminSubscriptionGrantID,
-            userId: row.UserID,
-            username: row.UserName,
-            email: row.Email,
-            planId: row.PlanID,
-            planName: row.PlanName,
-            planLevel: Number(row.PlanLevel),
-            startDate: toDateOnly(row.GrantStartDate),
-            endDate: toDateOnly(row.GrantEndDate),
-            active: Boolean(row.Active),
-            grantedByUserId: row.GrantedByUserID,
-            createdDate: row.CreatedDate,
-            modifiedDate: row.ModifiedDate
-        }))
-    };
-}
-
-async function grantAdminFreeUsage(userId, planId, rawEndDate, grantedByUserId) {
-    const targetUserId = requirePositiveInteger(userId, 'User ID');
-    const requestedPlanId = requirePositiveInteger(planId, 'Plan');
-    const grantedBy = requirePositiveInteger(grantedByUserId, 'Administrator User ID');
-    const endDate = requireDateOnly(rawEndDate, 'Access Through');
-    const today = new Date().toISOString().slice(0, 10);
-    if (endDate < today) {
-        throw markExpectedClientError(Object.assign(new Error('Access Through cannot be before today.'), { status: 400 }));
-    }
-
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
-
-        const [users] = await connection.query(
-            'SELECT UserID, UserName, Email FROM UsersT WHERE UserID = ? LIMIT 1 FOR UPDATE',
-            [targetUserId]
-        );
-        if (!users.length) {
-            throw markExpectedClientError(Object.assign(new Error('User ID was not found.'), { status: 404 }));
-        }
-
-        const [plans] = await connection.query(
-            `SELECT PlanID, PlanName, PlanLevel
-               FROM SubscriptionPlanT
-              WHERE PlanID = ? AND Active = 1
-              LIMIT 1`,
-            [requestedPlanId]
-        );
-        if (!plans.length) {
-            throw markExpectedClientError(Object.assign(new Error('The selected subscription plan is not available.'), { status: 400 }));
-        }
-
-        const [existingGrants] = await connection.query(
-            `SELECT AdminSubscriptionGrantID
-               FROM AdminSubscriptionGrantT
-              WHERE UserID = ?
-                AND Active = 1
-                AND GrantEndDate >= CURDATE()
-              LIMIT 1
-              FOR UPDATE`,
-            [targetUserId]
-        );
-        if (existingGrants.length) {
-            throw Object.assign(
-                new Error('This user already has an active free-access grant. Use Edit on the existing grant.'),
-                { status: 400 }
-            );
-        }
-
-        const [result] = await connection.query(
-            `INSERT INTO AdminSubscriptionGrantT
-                (UserID, PlanID, GrantStartDate, GrantEndDate, Active,
-                 GrantedByUserID, ModifiedDate, ModifiedByUserID)
-             VALUES (?, ?, CURDATE(), ?, 1, ?, NOW(), ?)`,
-            [targetUserId, requestedPlanId, endDate, grantedBy, grantedBy]
-        );
-
-        await connection.commit();
-        const effective = await getEffectiveSubscription(targetUserId);
-
-        return {
-            message: 'Free subscription access granted.',
-            grantId: result.insertId,
-            user: {
-                userId: users[0].UserID,
-                username: users[0].UserName,
-                email: users[0].Email
-            },
-            subscription: await buildSubscriptionStatus(effective)
-        };
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
-}
-
-async function updateAdminFreeGrant(grantId, planId, rawEndDate, modifiedByUserId) {
-    const id = requirePositiveInteger(grantId, 'Grant ID');
-    const requestedPlanId = requirePositiveInteger(planId, 'Plan');
-    const modifiedBy = requirePositiveInteger(modifiedByUserId, 'Administrator User ID');
-    const endDate = requireDateOnly(rawEndDate, 'Access Through');
-    const today = new Date().toISOString().slice(0, 10);
-    if (endDate < today) {
-        throw markExpectedClientError(Object.assign(new Error('Access Through cannot be before today. Use Delete to revoke access immediately.'), { status: 400 }));
-    }
-
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
-
-        const [grantRows] = await connection.query(
-            `SELECT AdminSubscriptionGrantID, UserID, Active
-               FROM AdminSubscriptionGrantT
-              WHERE AdminSubscriptionGrantID = ?
-              LIMIT 1
-              FOR UPDATE`,
-            [id]
-        );
-        if (!grantRows.length) {
-            throw markExpectedClientError(Object.assign(new Error('Free-access grant was not found.'), { status: 404 }));
-        }
-        if (!grantRows[0].Active) {
-            throw markExpectedClientError(Object.assign(new Error('This free-access grant has already been revoked.'), { status: 400 }));
-        }
-
-        const [plans] = await connection.query(
-            'SELECT PlanID FROM SubscriptionPlanT WHERE PlanID = ? AND Active = 1 LIMIT 1',
-            [requestedPlanId]
-        );
-        if (!plans.length) {
-            throw markExpectedClientError(Object.assign(new Error('The selected subscription plan is not available.'), { status: 400 }));
-        }
-
-        await connection.query(
-            `UPDATE AdminSubscriptionGrantT
-                SET PlanID = ?, GrantEndDate = ?, ModifiedDate = NOW(), ModifiedByUserID = ?
-              WHERE AdminSubscriptionGrantID = ?`,
-            [requestedPlanId, endDate, modifiedBy, id]
-        );
-
-        await connection.commit();
-        const effective = await getEffectiveSubscription(grantRows[0].UserID);
-        return {
-            message: 'Free-access grant updated.',
-            subscription: await buildSubscriptionStatus(effective)
-        };
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
-}
-
-async function revokeAdminFreeGrant(grantId, revokedByUserId) {
-    const id = requirePositiveInteger(grantId, 'Grant ID');
-    const revokedBy = requirePositiveInteger(revokedByUserId, 'Administrator User ID');
-
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
-
-        const [grantRows] = await connection.query(
-            `SELECT AdminSubscriptionGrantID, UserID, Active
-               FROM AdminSubscriptionGrantT
-              WHERE AdminSubscriptionGrantID = ?
-              LIMIT 1
-              FOR UPDATE`,
-            [id]
-        );
-        if (!grantRows.length) {
-            throw markExpectedClientError(Object.assign(new Error('Free-access grant was not found.'), { status: 404 }));
-        }
-        if (!grantRows[0].Active) {
-            throw markExpectedClientError(Object.assign(new Error('This free-access grant has already been revoked.'), { status: 400 }));
-        }
-
-        await connection.query(
-            `UPDATE AdminSubscriptionGrantT
-                SET Active = 0,
-                    RevokedDate = NOW(),
-                    RevokedByUserID = ?,
-                    ModifiedDate = NOW(),
-                    ModifiedByUserID = ?
-              WHERE AdminSubscriptionGrantID = ?`,
-            [revokedBy, revokedBy, id]
-        );
-
-        await connection.commit();
-        const effective = await getEffectiveSubscription(grantRows[0].UserID);
-        return {
-            message: 'Free-access grant deleted.',
-            subscription: await buildSubscriptionStatus(effective)
-        };
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
-}
-
 module.exports = {
     getOrCreateDevelopmentTrial,
     getCurrentSubscription,
@@ -855,9 +735,7 @@ module.exports = {
     createAdminPromoCode,
     updateAdminPromoCode,
     getAdminUserSubscription,
-    listAdminFreeGrants,
-    listAdminPromoRedemptions,
-    grantAdminFreeUsage,
-    updateAdminFreeGrant,
-    revokeAdminFreeGrant
+    getAdminBaseSubscription,
+    updateAdminBaseSubscription,
+    listAdminPromoRedemptions
 };

@@ -1,0 +1,568 @@
+--- a/httpdocs/SubControl.html
++++ b/httpdocs/SubControl.html
+@@ -391,91 +391,53 @@
+             <div id="promoStatus" class="status"></div>
+         </section>
+ 
+-        <section class="section">
+-            <h2>Grant Free Usage</h2>
+-
++        <section class="section" id="subscriptionAdministration">
++            <h2>Subscription Administration</h2>
+             <p class="note">
+-                Enter the user's numeric ID and confirm the user before granting access.
+-                The grant will never reduce an existing user's better plan or later expiration date.
++                Modify the underlying subscription for an existing user. Active legacy administrator
++                grants may continue to determine effective access until the approved migration is complete.
++                Paid subscriptions require a separate billing review.
+             </p>
+-
+             <div class="form-grid">
+                 <div class="form-field full">
+-                    <label for="userId">User ID</label>
++                    <label for="subscriptionUserId">User ID</label>
+                     <div style="display: flex; gap: 10px;">
+-                        <input id="userId" type="number" min="1" step="1">
+-                        <button id="findUserBtn" type="button">Find User</button>
++                        <input id="subscriptionUserId" type="number" min="1" step="1" autocomplete="off">
++                        <button id="subscriptionFindBtn" type="button">Find User</button>
+                     </div>
+                 </div>
+             </div>
+-
+-            <div id="userSummary" class="user-summary"></div>
+-
+-            <form id="grantForm" class="form-grid" style="display: none;">
+-                <div class="form-field">
+-                    <label for="grantPlan">Grant Plan</label>
+-                    <select id="grantPlan" required></select>
+-                </div>
+-
+-                <div class="form-field">
+-                    <label for="grantEndDate">Access Through</label>
+-                    <input id="grantEndDate" type="text" inputmode="numeric" maxlength="10" placeholder="MMDDYYYY" autocomplete="off" required>
+-                </div>
+-
++            <div id="subscriptionUserSummary" class="user-summary" aria-live="polite"></div>
++            <form id="subscriptionAdminForm" class="form-grid" style="display: none;" autocomplete="off">
++                <div class="form-field">
++                    <label for="subscriptionAccessType">AccessType</label>
++                    <select id="subscriptionAccessType" required>
++                        <option value="ADMIN_GRANT">ADMIN_GRANT</option>
++                        <option value="DEVELOPMENT_TRIAL">DEVELOPMENT_TRIAL</option>
++                    </select>
++                </div>
++                <div class="form-field">
++                    <label for="subscriptionPlan">Plan</label>
++                    <select id="subscriptionPlan" required></select>
++                </div>
++                <div class="form-field">
++                    <label for="subscriptionEndDate">Expires (MM/DD/YYYY)</label>
++                    <input id="subscriptionEndDate" type="text" inputmode="numeric" maxlength="10" placeholder="MMDDYYYY" required>
++                </div>
++                <div class="form-field checkbox-field">
++                    <input id="subscriptionActive" type="checkbox">
++                    <label for="subscriptionActive">Active</label>
++                </div>
+                 <div class="form-actions">
+-                    <button type="submit">Grant Free Usage</button>
++                    <button id="subscriptionSaveBtn" type="submit">Save Subscription Changes</button>
+                 </div>
+             </form>
+-
+-            <div id="grantStatus" class="status"></div>
+-
+-            <h3 style="margin-top: 28px;">Current Free Access Grants</h3>
+-            <p class="note">
+-                Active administrator grants are listed below. Edit may change the plan or Access Through date.
+-                Delete revokes only the administrator grant; any valid underlying development, promo or future paid access remains available.
+-            </p>
+-            <div class="table-wrap">
+-                <table>
+-                    <thead>
+-                        <tr>
+-                            <th>User ID</th>
+-                            <th>User Name</th>
+-                            <th>Grant Plan</th>
+-                            <th>Access Through</th>
+-                            <th>Edit</th>
+-                            <th>Delete</th>
+-                        </tr>
+-                    </thead>
+-                    <tbody id="grantTableBody"></tbody>
+-                </table>
+-            </div>
+-            <div id="grantListStatus" class="status"></div>
+-
+-            <form id="grantEditForm" class="form-grid" style="display: none; margin-top: 18px;">
+-                <input id="editGrantId" type="hidden">
+-
+-                <div class="field full-width">
+-                    <strong id="editGrantUser"></strong>
+-                </div>
+-
+-                <div class="field">
+-                    <label for="editGrantPlan">Grant Plan</label>
+-                    <select id="editGrantPlan" required></select>
+-                </div>
+-
+-                <div class="field">
+-                    <label for="editGrantEndDate">Access Through</label>
+-                    <input id="editGrantEndDate" type="text" inputmode="numeric" maxlength="10" placeholder="MMDDYYYY" autocomplete="off" required>
+-                </div>
+-
+-                <div class="form-actions full-width">
+-                    <button type="submit">Save Grant Changes</button>
+-                    <button id="cancelGrantEditBtn" class="secondary-btn" type="button">Cancel</button>
+-                </div>
+-            </form>
+-            <div id="grantEditStatus" class="status"></div>
+-            <h3 style="margin-top: 30px;">Current Promo Redemptions</h3>
+-            <p class="note">Read-only history of redeemed promo codes. The promo plan is the plan specified by the code, which can differ from a user's current subscription. Administrator grants remain listed separately above.</p>
++            <div id="subscriptionAdminStatus" class="status" role="status" aria-live="polite"></div>
++        </section>
++
++        <section class="section">
++            <h2>Current Promo Redemptions</h2>
++            <p class="note">Read-only history of redeemed promo codes. The promo plan is the plan specified by the code, which can differ from a user's current subscription.</p>
+             <div class="table-wrap">
+                 <table>
+                     <thead><tr><th>User ID</th><th>User Name</th><th>Promo Code</th><th>Promo Plan</th><th>Redeemed</th><th>Promo Expires</th><th>Current Subscription</th></tr></thead>
+@@ -506,8 +468,8 @@
+         const token = localStorage.getItem('token');
+         let plans = [];
+         let promos = [];
+-        let grants = [];
+-        let selectedUser = null;
++        let selectedSubscription = null;
++        let subscriptionSavePending = false;
+ 
+         function authHeaders(includeJson = false) {
+             const headers = {
+@@ -536,7 +498,11 @@
+             }
+ 
+             if (!response.ok) {
+-                const message = data.error || 'The request could not be completed.';
++                const errorValue = data && data.error;
++                const message = (data && typeof data.message === 'string' && data.message) ||
++                    (typeof errorValue === 'string' && errorValue) ||
++                    (errorValue && typeof errorValue.message === 'string' && errorValue.message) ||
++                    `HTTP ${response.status}`;
+                 const requestError = new Error(message);
+                 requestError.status = response.status;
+                 throw requestError;
+@@ -708,7 +674,6 @@
+             plans = data.plans || [];
+             promos = data.promos || [];
+             renderPromoTable();
+-            populatePlanSelect('grantPlan');
+         }
+ 
+         async function verifyAdmin() {
+@@ -797,49 +762,6 @@
+                 setStatus('promoStatus', error.message, 'error');
+             }
+         });
+-
+-        function renderGrantTable() {
+-            const tbody = document.getElementById('grantTableBody');
+-            tbody.replaceChildren();
+-
+-            if (!grants.length) {
+-                const row = document.createElement('tr');
+-                const cell = document.createElement('td');
+-                cell.colSpan = 6;
+-                cell.textContent = 'No current administrator free-access grants.';
+-                row.appendChild(cell);
+-                tbody.appendChild(row);
+-                return;
+-            }
+-
+-            grants.forEach(grant => {
+-                const row = document.createElement('tr');
+-                [grant.userId, grant.username, grant.planName, grant.endDate].forEach(value => {
+-                    const cell = document.createElement('td');
+-                    cell.textContent = value ?? '';
+-                    row.appendChild(cell);
+-                });
+-
+-                const editCell = document.createElement('td');
+-                const editButton = document.createElement('button');
+-                editButton.type = 'button';
+-                editButton.textContent = 'Edit';
+-                editButton.addEventListener('click', () => openGrantEditor(grant));
+-                editCell.appendChild(editButton);
+-                row.appendChild(editCell);
+-
+-                const deleteCell = document.createElement('td');
+-                const deleteButton = document.createElement('button');
+-                deleteButton.type = 'button';
+-                deleteButton.textContent = 'Delete';
+-                deleteButton.classList.add('danger-btn');
+-                deleteButton.addEventListener('click', () => deleteGrant(grant));
+-                deleteCell.appendChild(deleteButton);
+-                row.appendChild(deleteCell);
+-
+-                tbody.appendChild(row);
+-            });
+-        }
+ 
+         async function loadPromoRedemptions() {
+             setStatus('promoRedemptionsStatus', 'Loading...');
+@@ -876,199 +798,163 @@
+             }
+         }
+ 
+-        async function loadGrants() {
+-            setStatus('grantListStatus', 'Loading...');
++        function subscriptionSnapshotText(base) {
++            if (!base) return 'No underlying subscription';
++            return `${base.planName} | ${base.accessType} | ${base.active ? 'Active' : 'Inactive'} | ` +
++                `Expires: ${base.endDate || 'None'}`;
++        }
++
++        function showSubscriptionSummary(data) {
++            const summary = document.getElementById('subscriptionUserSummary');
++            summary.replaceChildren();
++            [
++                `User ID: ${data.user.userId}`,
++                `Username: ${data.user.username}`,
++                `Underlying Subscription: ${subscriptionSnapshotText(data.base)}`,
++                `Effective Access: ${formatSubscription(data.effective)}`,
++                data.note || ''
++            ].forEach(line => {
++                if (!line) return;
++                const item = document.createElement('div');
++                item.textContent = line;
++                summary.appendChild(item);
++            });
++            summary.style.display = 'block';
++        }
++
++        function resetSubscriptionEditor() {
++            selectedSubscription = null;
++            document.getElementById('subscriptionAdminForm').style.display = 'none';
++            document.getElementById('subscriptionUserSummary').style.display = 'none';
++        }
++
++        async function loadSubscriptionUser(userId) {
++            const response = await fetch(
++                `${BASE_URL}/subscriptions/admin/user/${encodeURIComponent(userId)}/subscription`,
++                { headers: authHeaders() }
++            );
++            const data = await readJson(response);
++            if (!data.user || !Array.isArray(data.plans)) {
++                throw new Error('Unexpected subscription response. No changes were saved.');
++            }
++            const select = document.getElementById('subscriptionPlan');
++            select.replaceChildren();
++            data.plans.forEach(plan => {
++                const option = document.createElement('option');
++                option.value = String(plan.planId);
++                option.textContent = plan.planName;
++                select.appendChild(option);
++            });
++            if (!data.plans.length) {
++                throw new Error('No active plans are available. No changes were saved.');
++            }
++            selectedSubscription = data;
++            showSubscriptionSummary(data);
++            const base = data.base;
++            const permittedType = base && ['ADMIN_GRANT', 'DEVELOPMENT_TRIAL'].includes(base.accessType);
++            document.getElementById('subscriptionAccessType').value = permittedType ? base.accessType : 'ADMIN_GRANT';
++            if (base && data.plans.some(plan => Number(plan.planId) === Number(base.planId))) {
++                select.value = String(base.planId);
++            }
++            document.getElementById('subscriptionEndDate').value = base && base.endDate ? formatAccessDate(base.endDate) : '';
++            document.getElementById('subscriptionActive').checked = base ? base.active : true;
++            document.getElementById('subscriptionAdminForm').style.display = 'grid';
++            if (base && !permittedType) {
++                setStatus('subscriptionAdminStatus',
++                    'This underlying subscription uses a specialized access type. Converting it to ADMIN_GRANT requires review of the existing subscription and confirmation before saving.');
++            }
++        }
++
++        document.getElementById('subscriptionFindBtn').addEventListener('click', async () => {
++            if (subscriptionSavePending) return;
++            resetSubscriptionEditor();
++            setStatus('subscriptionAdminStatus', '');
++            const userId = document.getElementById('subscriptionUserId').value.trim();
++            if (!/^[1-9]\d*$/.test(userId)) {
++                setStatus('subscriptionAdminStatus', 'Enter a valid numeric User ID.', 'error');
++                return;
++            }
++            try {
++                await loadSubscriptionUser(userId);
++            } catch (error) {
++                resetSubscriptionEditor();
++                setStatus('subscriptionAdminStatus', error.message, 'error');
++            }
++        });
++
++        document.getElementById('subscriptionEndDate').addEventListener('input', event => {
++            event.target.value = formatAccessDateInput(event.target.value);
++        });
++
++        document.getElementById('subscriptionAdminForm').addEventListener('submit', async event => {
++            event.preventDefault();
++            if (subscriptionSavePending || !selectedSubscription) return;
++            const data = selectedSubscription;
++            const userId = data.user.userId;
++            const accessType = document.getElementById('subscriptionAccessType').value;
++            const planSelect = document.getElementById('subscriptionPlan');
++            const planId = Number(planSelect.value);
++            const plan = data.plans.find(item => Number(item.planId) === planId);
++            let endDate;
++            try {
++                endDate = accessDateToIso(document.getElementById('subscriptionEndDate').value);
++            } catch (error) {
++                setStatus('subscriptionAdminStatus', error.message, 'error');
++                return;
++            }
++            if (!plan || !['ADMIN_GRANT', 'DEVELOPMENT_TRIAL'].includes(accessType)) {
++                setStatus('subscriptionAdminStatus', 'Select a valid plan and access type.', 'error');
++                return;
++            }
++            const active = document.getElementById('subscriptionActive').checked;
++            const oldState = subscriptionSnapshotText(data.base);
++            const newState = `${plan.planName} | ${accessType} | ${active ? 'Active' : 'Inactive'} | Expires: ${endDate}`;
++            if (oldState === newState) {
++                setStatus('subscriptionAdminStatus', 'No subscription changes to save.');
++                return;
++            }
++            const confirmed = window.confirm(
++                `Change the underlying subscription for User ID ${userId} (${data.user.username})?\n\n` +
++                `Before: ${oldState}\nAfter: ${newState}\n\n` +
++                'This changes the stored subscription. Existing legacy grants may still override effective access.'
++            );
++            if (!confirmed) return;
++            subscriptionSavePending = true;
++            document.getElementById('subscriptionSaveBtn').disabled = true;
++            document.getElementById('subscriptionFindBtn').disabled = true;
++            setStatus('subscriptionAdminStatus', 'Saving subscription...');
+             try {
+                 const response = await fetch(
+-                    `${BASE_URL}/subscriptions/admin/grants`,
+-                    { headers: authHeaders() }
+-                );
+-                const data = await readJson(response);
+-                grants = data.grants || [];
+-                renderGrantTable();
+-                setStatus('grantListStatus', '');
+-            } catch (error) {
+-                setStatus('grantListStatus', error.message, 'error');
+-            }
+-        }
+-
+-        function openGrantEditor(grant) {
+-            document.getElementById('editGrantId').value = grant.grantId;
+-            document.getElementById('editGrantUser').textContent =
+-                `User ID ${grant.userId} — ${grant.username}`;
+-            populatePlanSelect('editGrantPlan', grant.planId);
+-            document.getElementById('editGrantEndDate').value = formatAccessDate(grant.endDate);
+-            document.getElementById('grantEditForm').style.display = 'grid';
+-            setStatus('grantEditStatus', '');
+-            document.getElementById('editGrantPlan').focus();
+-        }
+-
+-        function closeGrantEditor() {
+-            document.getElementById('grantEditForm').style.display = 'none';
+-            document.getElementById('grantEditForm').reset();
+-            document.getElementById('editGrantId').value = '';
+-            setStatus('grantEditStatus', '');
+-        }
+-
+-        async function deleteGrant(grant) {
+-            const confirmed = window.confirm(
+-                `Delete free access for User ID ${grant.userId} (${grant.username})?\n\n` +
+-                'This revokes the administrator grant. Other valid subscription access is not deleted.'
+-            );
+-            if (!confirmed) return;
+-
+-            setStatus('grantListStatus', 'Deleting grant...');
+-            try {
+-                const response = await fetch(
+-                    `${BASE_URL}/subscriptions/admin/grants/${grant.grantId}`,
+-                    { method: 'DELETE', headers: authHeaders() }
+-                );
+-                const data = await readJson(response);
+-                setStatus('grantListStatus', data.message, 'success');
+-                await loadGrants();
+-            } catch (error) {
+-                setStatus('grantListStatus', error.message, 'error');
+-            }
+-        }
+-
+-        document.getElementById('grantEditForm').addEventListener('submit', async event => {
+-            event.preventDefault();
+-            setStatus('grantEditStatus', '');
+-
+-            const grantId = document.getElementById('editGrantId').value;
+-            let endDate;
+-            try {
+-                endDate = accessDateToIso(document.getElementById('editGrantEndDate').value);
+-            } catch (error) {
+-                setStatus('grantEditStatus', error.message, 'error');
+-                return;
+-            }
+-
+-            const payload = {
+-                planId: Number(document.getElementById('editGrantPlan').value),
+-                endDate
+-            };
+-
+-            try {
+-                const response = await fetch(
+-                    `${BASE_URL}/subscriptions/admin/grants/${grantId}`,
++                    `${BASE_URL}/subscriptions/admin/user/${encodeURIComponent(userId)}/subscription`,
+                     {
+                         method: 'PUT',
+                         headers: authHeaders(true),
+-                        body: JSON.stringify(payload)
++                        body: JSON.stringify({ planId, accessType, endDate, active, expected: data.base })
+                     }
+                 );
+-                const data = await readJson(response);
+-                setStatus('grantEditStatus', data.message, 'success');
+-                closeGrantEditor();
+-                await loadGrants();
+-                if (selectedUser) {
+-                    document.getElementById('findUserBtn').click();
++                const result = await readJson(response);
++                // Never retry an uncertain mutation automatically. Reload is read-only.
++                selectedSubscription = null;
++                document.getElementById('subscriptionAdminForm').style.display = 'none';
++                setStatus('subscriptionAdminStatus', result.message || 'Subscription saved.', 'success');
++                try {
++                    await loadSubscriptionUser(String(userId));
++                } catch (reloadError) {
++                    resetSubscriptionEditor();
++                    setStatus('subscriptionAdminStatus',
++                        'Save response received, but the updated subscription could not be reloaded. ' +
++                        'Use Find User to verify before making another change.', 'error');
+                 }
+             } catch (error) {
+-                setStatus('grantEditStatus', error.message, 'error');
+-            }
+-        });
+-
+-        document.getElementById('cancelGrantEditBtn').addEventListener('click', closeGrantEditor);
+-
+-        document.getElementById('findUserBtn').addEventListener('click', async () => {
+-            setStatus('grantStatus', '');
+-            selectedUser = null;
+-            document.getElementById('grantForm').style.display = 'none';
+-            document.getElementById('userSummary').style.display = 'none';
+-
+-            const userId = document.getElementById('userId').value.trim();
+-            if (!userId) {
+-                setStatus('grantStatus', 'Please enter a User ID.', 'error');
+-                return;
+-            }
+-
+-            try {
+-                const response = await fetch(
+-                    `${BASE_URL}/subscriptions/admin/user/${encodeURIComponent(userId)}`,
+-                    { headers: authHeaders() }
+-                );
+-                const data = await readJson(response);
+-                selectedUser = data.user;
+-
+-                const summary = document.getElementById('userSummary');
+-                summary.replaceChildren();
+-
+-                const lines = [
+-                    `User ID: ${data.user.userId}`,
+-                    `Username: ${data.user.username}`,
+-                    `Email: ${data.user.email}`,
+-                    `Current Subscription: ${formatSubscription(data.subscription)}`
+-                ];
+-
+-                lines.forEach(line => {
+-                    const div = document.createElement('div');
+-                    div.textContent = line;
+-                    summary.appendChild(div);
+-                });
+-
+-                summary.style.display = 'block';
+-                populatePlanSelect('grantPlan');
+-                document.getElementById('grantForm').style.display = 'grid';
+-            } catch (error) {
+-                setStatus('grantStatus', error.message, 'error');
+-            }
+-        });
+-
+-        document.getElementById('grantForm').addEventListener('submit', async event => {
+-            event.preventDefault();
+-            setStatus('grantStatus', '');
+-
+-            if (!selectedUser) {
+-                setStatus('grantStatus', 'Find and confirm a user first.', 'error');
+-                return;
+-            }
+-
+-            let endDate;
+-            try {
+-                endDate = accessDateToIso(document.getElementById('grantEndDate').value);
+-            } catch (error) {
+-                setStatus('grantStatus', error.message, 'error');
+-                return;
+-            }
+-
+-            const payload = {
+-                userId: selectedUser.userId,
+-                planId: Number(document.getElementById('grantPlan').value),
+-                endDate
+-            };
+-
+-            try {
+-                const response = await fetch(
+-                    `${BASE_URL}/subscriptions/admin/grant`,
+-                    {
+-                        method: 'POST',
+-                        headers: authHeaders(true),
+-                        body: JSON.stringify(payload)
+-                    }
+-                );
+-                const data = await readJson(response);
+-                setStatus('grantStatus', data.message, 'success');
+-                await loadGrants();
+-
+-                const summary = document.getElementById('userSummary');
+-                const subscriptionLine = summary.lastElementChild;
+-                if (subscriptionLine) {
+-                    subscriptionLine.textContent =
+-                        `Current Subscription: ${formatSubscription(data.subscription)}`;
+-                }
+-            } catch (error) {
+-                setStatus('grantStatus', error.message, 'error');
+-            }
+-        });
+-
+-        ['grantEndDate', 'editGrantEndDate'].forEach(id => {
+-            const input = document.getElementById(id);
+-
+-            input.addEventListener('input', () => {
+-                input.value = formatAccessDateInput(input.value);
+-            });
++                // The server might have committed despite a network failure. Do not replay PUT.
++                resetSubscriptionEditor();
++                setStatus('subscriptionAdminStatus',
++                    `${error.message} Verify with Find User before attempting another change.`, 'error');
++            } finally {
++                subscriptionSavePending = false;
++                document.getElementById('subscriptionSaveBtn').disabled = false;
++                document.getElementById('subscriptionFindBtn').disabled = false;
++            }
+         });
+ 
+         // Stage 6 administrator transfer: token is held only in this tab's session storage.
+@@ -1209,7 +1095,6 @@
+                 await loadAdministratorStatus();
+                 if (storedAdminTransfer()) await refreshAdminTransfer();
+                 await loadPromoData();
+-                await loadGrants();
+                 await loadPromoRedemptions();
+             } catch (error) {
+                 setStatus('pageStatus', error.message, 'error');

@@ -1,0 +1,7 @@
+# SHA-256 of files in November 19 identity-fix package; no .original files.
+36761e3be096eb532abab97edfa5f495d7ef1332b6f351d3a765053d1c16dd09  change/wa-subscription-one-time-migration.js.diff
+3706994f7e60382b9cab3e402fb4990a239ca5ff97b3f4e338fc241bc37d36b2  change/wa-subscription-one-time-migration.js.verification.md
+3702c11c65109fa1f82a77e5541198911956d5d7df15ed2899fbbbfd91659232  docs/INSTALL_Identity_Correction_2026-11-19.md
+296208ca8db91923065e538920eaa3a9d0b573d29ee69b90799f303eb467ae2a  tests/wa-subscription-identity.offline.test.js
+8883bd920009211ee81fdc06c1f8aaf5c936481fd460744206ee2aa57a6964c6  tests/wa-subscription-migration.offline.test.js
+6a0dbefa16b86826644127648a9e3c50b201bb3adbab50a29be0f0e465790129  tools/wa-subscription-one-time-migration.js

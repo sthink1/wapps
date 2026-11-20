@@ -11,11 +11,9 @@ const {
     createAdminPromoCode,
     updateAdminPromoCode,
     getAdminUserSubscription,
-    listAdminFreeGrants,
+    getAdminBaseSubscription,
+    updateAdminBaseSubscription,
     listAdminPromoRedemptions,
-    grantAdminFreeUsage,
-    updateAdminFreeGrant,
-    revokeAdminFreeGrant
 } = require('../services/subscriptionService');
 
 router.use(authenticateToken);
@@ -125,68 +123,36 @@ router.get('/admin/user/:userId', requireAdmin, async (req, res, next) => {
 });
 
 
+
+// Stage 2D: direct administration of the underlying subscription row.
+router.get('/admin/user/:userId/subscription', requireAdmin, async (req, res, next) => {
+    try {
+        res.json(await getAdminBaseSubscription(req.params.userId));
+    } catch (error) {
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
+        next(error);
+    }
+});
+
+router.put('/admin/user/:userId/subscription', requireAdmin, async (req, res, next) => {
+    try {
+        res.json(await updateAdminBaseSubscription(req.params.userId, req.body));
+    } catch (error) {
+        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
+            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
+            return next(Object.assign(new Error('Request failed'), { status: error.status }));
+        }
+        next(error);
+    }
+});
+
 router.get('/admin/promo-redemptions', requireAdmin, async (req, res, next) => {
     try {
         res.json(await listAdminPromoRedemptions());
     } catch (error) {
-        next(error);
-    }
-});
-
-router.get('/admin/grants', requireAdmin, async (req, res, next) => {
-    try {
-        res.json(await listAdminFreeGrants());
-    } catch (error) {
-        next(error);
-    }
-});
-
-router.post('/admin/grant', requireAdmin, async (req, res, next) => {
-    try {
-        const { userId, planId, endDate } = req.body || {};
-        const result = await grantAdminFreeUsage(userId, planId, endDate, req.user.userId);
-        res.json(result);
-    } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
-            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
-            // Central handler preserves 4xx messages; replace an untrusted one first.
-            return next(Object.assign(new Error('Request failed'), { status: error.status }));
-        }
-        next(error);
-    }
-});
-
-
-router.put('/admin/grants/:grantId', requireAdmin, async (req, res, next) => {
-    try {
-        const { planId, endDate } = req.body || {};
-        const result = await updateAdminFreeGrant(
-            req.params.grantId,
-            planId,
-            endDate,
-            req.user.userId
-        );
-        res.json(result);
-    } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
-            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
-            // Central handler preserves 4xx messages; replace an untrusted one first.
-            return next(Object.assign(new Error('Request failed'), { status: error.status }));
-        }
-        next(error);
-    }
-});
-
-router.delete('/admin/grants/:grantId', requireAdmin, async (req, res, next) => {
-    try {
-        const result = await revokeAdminFreeGrant(req.params.grantId, req.user.userId);
-        res.json(result);
-    } catch (error) {
-        if (Number.isInteger(error && error.status) && error.status >= 400 && error.status < 500) {
-            if (isExpectedClientError(error)) return res.status(error.status).json({ error: error.message });
-            // Central handler preserves 4xx messages; replace an untrusted one first.
-            return next(Object.assign(new Error('Request failed'), { status: error.status }));
-        }
         next(error);
     }
 });

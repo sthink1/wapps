@@ -1,0 +1,71 @@
+TAP version 13
+# Subtest: 2C-01: active expired trial remains eligible during development; stored expiration unchanged
+ok 1 - 2C-01: active expired trial remains eligible during development; stored expiration unchanged
+  ---
+  duration_ms: 6.792956
+  type: 'test'
+  ...
+# Subtest: 2C-02: inactive trial stays denied during development despite unexpired date
+ok 2 - 2C-02: inactive trial stays denied during development despite unexpired date
+  ---
+  duration_ms: 2.717169
+  type: 'test'
+  ...
+# Subtest: 2C-03: active future-dated trial is denied after development ends
+ok 3 - 2C-03: active future-dated trial is denied after development ends
+  ---
+  duration_ms: 1.557439
+  type: 'test'
+  ...
+# Subtest: 2C-04: expired development trial is also denied after production cutover
+ok 4 - 2C-04: expired development trial is also denied after production cutover
+  ---
+  duration_ms: 1.2796
+  type: 'test'
+  ...
+# Subtest: 2C-05: switching DevelopmentMode changes result without database mutation
+ok 5 - 2C-05: switching DevelopmentMode changes result without database mutation
+  ---
+  duration_ms: 2.076432
+  type: 'test'
+  ...
+# Subtest: 2C-06: non-trial subscriptions retain normal expiration behavior
+ok 6 - 2C-06: non-trial subscriptions retain normal expiration behavior
+  ---
+  duration_ms: 4.689092
+  type: 'test'
+  ...
+# Subtest: 2C-07: active grant remains effective after trial ends at production cutover
+ok 7 - 2C-07: active grant remains effective after trial ends at production cutover
+  ---
+  duration_ms: 1.196004
+  type: 'test'
+  ...
+# Subtest: 2C-08: status and app entitlement agree for trial in development and production
+ok 8 - 2C-08: status and app entitlement agree for trial in development and production
+  ---
+  duration_ms: 1.467884
+  type: 'test'
+  ...
+# Subtest: 2C-09: disabled trial remains disabled after production-to-development transition
+ok 9 - 2C-09: disabled trial remains disabled after production-to-development transition
+  ---
+  duration_ms: 1.609027
+  type: 'test'
+  ...
+# Subtest: 2C-10: no subscription still denied without grants
+ok 10 - 2C-10: no subscription still denied without grants
+  ---
+  duration_ms: 1.256355
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 108.842102
+

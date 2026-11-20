@@ -1100,9 +1100,9 @@
                         statusDisplay.textContent =
                             'Administrator | All applications available';
                     } else {
-                        const expires =
-                            subscription.effectiveEndDate ||
-                            'No expiration';
+                        const expires = subscription.accessType === 'DEVELOPMENT_TRIAL'
+                            ? 'When Development Ends'
+                            : (subscription.effectiveEndDate || 'No Expiration');
 
                         statusDisplay.textContent =
                             `Plan: ${subscription.planName} | ` +
