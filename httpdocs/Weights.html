@@ -701,9 +701,15 @@
             if (!response.ok) {
                 let details = {};
                 try { details = await response.clone().json(); } catch (_) {}
+                const detail = details && typeof details === 'object' ? details.error : null;
+                const message = (typeof detail === 'string' && detail.trim())
+                    ? detail
+                    : (detail && typeof detail === 'object' && typeof detail.message === 'string' && detail.message.trim())
+                        ? detail.message
+                        : `Request failed (HTTP ${response.status})`;
                 const error = new Error(response.status === 401 ? 'Please log in to use Weights.'
                     : response.status === 403 ? 'Your subscription does not include Weights.'
-                    : details.error || `Request failed (HTTP ${response.status})`);
+                    : message);
                 error.status = response.status;
                 throw error;
             }

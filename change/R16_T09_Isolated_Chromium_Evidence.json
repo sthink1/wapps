@@ -1,0 +1,118 @@
+{
+  "browser": "144.0.7559.96",
+  "results": [
+    {
+      "case": "nested_400",
+      "status": 400,
+      "passed": true,
+      "message": "Safe synthetic validation error",
+      "response_success": null
+    },
+    {
+      "case": "flat_400",
+      "status": 400,
+      "passed": true,
+      "message": "Safe synthetic validation error",
+      "response_success": null
+    },
+    {
+      "case": "unauthorized_401",
+      "status": 401,
+      "passed": true,
+      "message": "Please log in to use Weights.",
+      "response_success": null
+    },
+    {
+      "case": "forbidden_403",
+      "status": 403,
+      "passed": true,
+      "message": "Your subscription does not include Weights.",
+      "response_success": null
+    },
+    {
+      "case": "server_500",
+      "status": 500,
+      "passed": true,
+      "message": "Internal Server Error",
+      "response_success": null
+    },
+    {
+      "case": "malformed_400",
+      "status": 400,
+      "passed": true,
+      "message": "Request failed (HTTP 400)",
+      "response_success": null
+    },
+    {
+      "case": "null_400",
+      "status": 400,
+      "passed": true,
+      "message": "Request failed (HTTP 400)",
+      "response_success": null
+    },
+    {
+      "case": "whitespace_400",
+      "status": 400,
+      "passed": true,
+      "message": "Request failed (HTTP 400)",
+      "response_success": null
+    },
+    {
+      "case": "success_200",
+      "status": 200,
+      "passed": true,
+      "message": null,
+      "response_success": true
+    },
+    {
+      "case": "success_204",
+      "status": 204,
+      "passed": true,
+      "message": null,
+      "response_success": true
+    }
+  ],
+  "calls": [
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    },
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    },
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    },
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    },
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    },
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    },
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    },
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    },
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    },
+    {
+      "path": "/weights/search?weight=123.4",
+      "method": "GET"
+    }
+  ],
+  "isolation": "Mock WA.api transport, no WA network/database requests; helper extracted directly from final Weights.html"
+}

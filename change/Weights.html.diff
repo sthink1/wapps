@@ -1,37 +1,19 @@
 --- a/httpdocs/Weights.html
 +++ b/httpdocs/Weights.html
-@@ -388,6 +388,7 @@
-             <button id="btnDelete">DELETE</button>
-         </div>
-         <div class="date-range-label" id="dateRangeLabel"></div>
-+        <div id="weightsLoadError" class="error" role="alert" hidden></div>
-         <div class="chart">
-             <svg id="weightChart">
-                 <!-- Chart will dynamically render here -->
-@@ -711,6 +712,7 @@
- 
-         // Function to fetch and render data
-         async function fetchAndRenderData() {
-+    const loadError = document.getElementById('weightsLoadError');
-     let url = `${BASE_URL}/weights`;
-     if (dateRangeSelection !== 'all') {
-         const params = new URLSearchParams();
-@@ -871,7 +873,18 @@
-             <line x1="0" y1="0" x2="0" y2="${chartHeight}" class="axis"></line>
-             <path d="${pathData}" class="line"></path>
-         `;
-+        loadError.textContent = '';
-+        loadError.hidden = true;
-     } catch (error) {
-+        let message = 'Unable to load weight data. Please try again.';
-+        if (error.status === 401) message = 'Please log in to use Weights.';
-+        else if (error.status === 403) message = 'Your subscription does not include Weights.';
-+        else if (error.status === 423) message = 'Weights access is temporarily restricted. Please try again later.';
-+        else if (navigator.onLine === false || error instanceof TypeError) {
-+            message = 'Unable to load weight data. Check your connection and try again.';
-+        }
-+        loadError.textContent = message;
-+        loadError.hidden = false;
-         if (error.status === 401 || error.status === 403) console.info('Weights access:', error.message);
-         else console.error('Error fetching data:', error);
-     }
+@@ -701,9 +701,15 @@
+             if (!response.ok) {
+                 let details = {};
+                 try { details = await response.clone().json(); } catch (_) {}
++                const detail = details && typeof details === 'object' ? details.error : null;
++                const message = (typeof detail === 'string' && detail.trim())
++                    ? detail
++                    : (detail && typeof detail === 'object' && typeof detail.message === 'string' && detail.message.trim())
++                        ? detail.message
++                        : `Request failed (HTTP ${response.status})`;
+                 const error = new Error(response.status === 401 ? 'Please log in to use Weights.'
+                     : response.status === 403 ? 'Your subscription does not include Weights.'
+-                    : details.error || `Request failed (HTTP ${response.status})`);
++                    : message);
+                 error.status = response.status;
+                 throw error;
+             }
