@@ -6,6 +6,7 @@ const router = express.Router();
 const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
 const { isVerifiedAdministrator } = require('../services/administratorAccess');
+const { missingOneTreePrivacy, oneTreeLockedError } = require('./ftPrivacy');
 const { markExpectedClientError, isExpectedClientError } = require('../services/stage6ExpectedClientError');
 const { sendNotification } = require('../services/notificationService');
 const {
@@ -1047,6 +1048,22 @@ async function addConfirmedParentLink(
 }
 
 async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
+    // Every relationship endpoint must already belong to the authorized Tree.
+    // Do not use this relationship operation to attach a Person from a third Tree.
+    const kinds = new Set(['mother', 'father', 'child', 'sibling', 'partner']);
+    if (!kinds.has(kind) || !Number.isSafeInteger(focal) || focal <= 0 ||
+        !Number.isSafeInteger(related) || related <= 0 || focal === related) {
+        const err = new Error('Invalid Family Tree relationship request.');
+        err.status = 400; markExpectedClientError(err);
+        throw err;
+    }
+    if (!(await treeHasPerson(c, treeID, focal)) ||
+        !(await treeHasPerson(c, treeID, related))) {
+        const err = new Error('Both Persons must belong to this Family Tree.');
+        err.status = 403; markExpectedClientError(err);
+        throw err;
+    }
+
     await c.query(
         `INSERT IGNORE INTO FTFamilyTreePersonT
          (
@@ -7216,6 +7233,15 @@ router.post('/one-tree/merge', auth, async (req, res) => {
                 };
             }
 
+            // M03: Before any One Tree merge write, require a valid capability
+            // for every private Person in both Trees. Same-Tree relationship
+            // operations retain their preexisting (non-merge) behavior.
+            const missingPrivateIDs = await missingOneTreePrivacy(
+                c, req.user.userId, req.headers,
+                [sourceTree.FamilyTreeID, targetTree.FamilyTreeID]
+            );
+            if (missingPrivateIDs.length) throw oneTreeLockedError(missingPrivateIDs);
+
             const review = await buildOneTreeReview(c, sourceTree, targetTree);
             const groupsByNewer = new Map(
                 review.groups.map(group => [Number(group.newerPerson.PersonID), group])
@@ -7258,6 +7284,22 @@ router.post('/one-tree/merge', auth, async (req, res) => {
                 relatedPersonID: Number(bridge.relatedPersonID || targetPersonID) || null,
                 relationshipKind: String(bridge.relationshipKind || '').toLowerCase() || null
             };
+
+            // Reject third-Tree endpoints before inserting a merge record or
+            // moving Persons. A legitimate cross-Tree merge does not require
+            // membership in both Trees; it must only involve their Persons.
+            if (normalizedBridge.focalPersonID && normalizedBridge.relatedPersonID &&
+                normalizedBridge.relationshipKind) {
+                for (const id of [normalizedBridge.focalPersonID, normalizedBridge.relatedPersonID]) {
+                    if (!Number.isSafeInteger(id) || id <= 0 ||
+                        !(await treeHasPerson(c, sourceTree.FamilyTreeID, id)) &&
+                        !(await treeHasPerson(c, targetTree.FamilyTreeID, id))) {
+                        const err = new Error('Relationship Person is outside the two Family Trees being merged.');
+                        err.status = 403; markExpectedClientError(err);
+                        throw err;
+                    }
+                }
+            }
 
             const mergeRecord = await createOneTreeMergeRecord(
                 c,
@@ -7306,6 +7348,7 @@ router.post('/one-tree/merge', auth, async (req, res) => {
         }
         res.status(e.status || 500).json({
             code: safeFamilyTreeErrorDetail(e, 'responseCode'),
+            requiredPrivatePersonIDs: safeFamilyTreeErrorDetail(e, 'requiredPrivatePersonIDs'),
             message: safeFamilyTreeErrorMessage(e)
         });
     }

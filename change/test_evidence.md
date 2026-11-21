@@ -1,6 +1,5 @@
-# Verification evidence
+# Independent M03 bridge scope test evidence
 
-- New Markdown planning document only; no source file revisions. A revised-file unified diff and verification report are therefore not applicable.
-- Confirmed document is UTF-8 decodable and contains the approved planning objective, safeguards, and deferred decisions.
-- Validated the packaged file checksum against SHA256SUMS.txt.
-- No database queries, imports, application tests, or production actions were executed. No runtime test PASS is claimed.
+- JavaScript syntax and isolated source-backed authorization tests are executed against the exact packaged source; see command output reported in delivery response.
+- No live MySQL, browser, integration, merge, undo, or production tests executed for this correction.
+- Earlier accepted M03 tests remain recorded separately and are not re-described as tests of this change.

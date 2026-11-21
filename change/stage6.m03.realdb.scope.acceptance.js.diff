@@ -1,0 +1,18 @@
+--- a/tests/stage6.m03.realdb.scope.acceptance.js
++++ b/tests/stage6.m03.realdb.scope.acceptance.js
+@@ -178,11 +178,11 @@
+         try {
+             await ensureTestDatabase(c);
+             if (fixture) {
+-                const [trees] = await c.query('SELECT COUNT(*) AS n FROM FamilyTreeT WHERE FamilyTreeCode IN (?,?,?)', fixture.codes);
+-                assert.equal(Number(trees.n), 0, 'Synthetic Trees remained after rollback');
++                const [[treeCount]] = await c.query('SELECT COUNT(*) AS n FROM FamilyTreeT WHERE FamilyTreeCode IN (?,?,?)', fixture.codes);
++                assert.equal(Number(treeCount.n), 0, 'Synthetic Trees remained after rollback');
+                 if (fixture.persons.length === 4) {
+-                    const [persons] = await c.query('SELECT COUNT(*) AS n FROM FTPersonT WHERE PersonID IN (?,?,?,?)', fixture.persons);
+-                    assert.equal(Number(persons.n), 0, 'Synthetic Persons remained after rollback');
++                    const [[personCount]] = await c.query('SELECT COUNT(*) AS n FROM FTPersonT WHERE PersonID IN (?,?,?,?)', fixture.persons);
++                    assert.equal(Number(personCount.n), 0, 'Synthetic Persons remained after rollback');
+                 }
+             }
+             console.log('PASS: Post-rollback check found no synthetic Trees or Persons.');

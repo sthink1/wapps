@@ -1,0 +1,24 @@
+{
+  "routes/ftPrivacy.js": {
+    "baseline_sha256": "149a76627c9bd2bd43f62db2cf72e49f75f5325896e09c3c80f1097bb7cbde5b",
+    "final_sha256": "bd5026fb7af2181bb5f0418c74fb83541272b5e52dc000057ecea6e059bc2576",
+    "baseline_drive": "2026-11-20 source read",
+    "final_bytes": 24401
+  },
+  "routes/familyTree.js": {
+    "baseline_sha256": "0af2b52700afdcc49e9d3068bd000e4f7c350895237c55a3a81c07d6617d6bb0",
+    "final_sha256": "349020198849ecc82152f5c8d28610c16ac40611d4cb126f044192cce9fec3b6",
+    "baseline_drive": "2026-11-20 source read",
+    "final_bytes": 303400
+  },
+  "httpdocs/js/FTOneTreeMerge.js": {
+    "baseline_sha256": "a831e5006291db4b41ed51332bed630f6180ef25db016cbf5bd5231b23262ac3",
+    "final_sha256": "561e4602b8a7ee87c0ab817e700626848a9572d6a512472b04a980dcd875fd59",
+    "baseline_drive": "2026-11-20 source read",
+    "final_bytes": 14078
+  },
+  "tests/stage6.m03.consolidated.test.js": {
+    "classification": "NEW",
+    "final_sha256": "bd970aa6b700a367c4a876fd26b0603a511a0674a4a4841912fd0e4a2e519309"
+  }
+}

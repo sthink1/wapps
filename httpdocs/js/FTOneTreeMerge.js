@@ -16,9 +16,113 @@ function safeImageUrl(value) {
     }
 }
 const $=id=>document.getElementById(id),token=()=>localStorage.getItem('token');
-const ah=()=>({'Authorization':`Bearer ${token()}`,'Content-Type':'application/json'});
+const ah=()=>({'Authorization':`Bearer ${token()}`,'Content-Type':'application/json',...oneTreeCapabilityHeaders()});
 const params=new URLSearchParams(location.search),sourceFamilyTreeCode=params.get('sourceFamilyTreeCode')||'',targetPersonID=Number(params.get('targetPersonID')||0),returnTo=params.get('returnTo')||'person',focalPersonID=Number(params.get('focalPersonID')||0),relationshipKind=params.get('relationshipKind')||'';
 let review=null;
+// M03: Per-Person capabilities live only in this page's JavaScript memory.
+// Never store privacy codes or unlock tokens in URLs, localStorage or sessionStorage.
+const oneTreeCapabilities = Object.create(null);
+function oneTreeCapabilityHeaders() {
+    return Object.keys(oneTreeCapabilities).length
+        ? { 'X-FT-Page-Token': JSON.stringify(oneTreeCapabilities) }
+        : {};
+}
+
+function requestOneTreePrivacyCode(personID) {
+    return new Promise(resolve => {
+        const backdrop = document.createElement('div');
+        backdrop.style.cssText = 'position:fixed;inset:0;background:#0009;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+        const panel = document.createElement('div');
+        panel.style.cssText = 'background:#fff;max-width:440px;width:100%;padding:20px;border:1px solid #555;font:16px Arial,sans-serif';
+        const heading = document.createElement('h2');
+        heading.textContent = 'PRIVACY LOCK';
+        const description = document.createElement('p');
+        description.textContent = `Enter the privacy code for PersonID ${personID} to continue the One Tree review.`;
+        const field = document.createElement('input');
+        field.type = 'password';
+        field.autocomplete = 'off';
+        field.maxLength = 128;
+        field.setAttribute('aria-label', `Privacy code for PersonID ${personID}`);
+        field.style.cssText = 'width:100%;box-sizing:border-box;padding:9px;margin:6px 0 14px';
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;gap:10px';
+        const verify = document.createElement('button');
+        verify.type = 'button';
+        verify.textContent = 'VERIFY CODE';
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.textContent = 'CANCEL';
+        const finish = value => {
+            field.value = '';
+            backdrop.remove();
+            resolve(value);
+        };
+        verify.onclick = () => finish(field.value);
+        cancel.onclick = () => finish(null);
+        field.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                finish(field.value);
+            }
+            if (event.key === 'Escape') finish(null);
+        });
+        actions.append(verify, cancel);
+        panel.append(heading, description, field, actions);
+        backdrop.appendChild(panel);
+        document.body.appendChild(backdrop);
+        field.focus();
+    });
+}
+
+async function unlockOneTreePerson(personID) {
+    while (true) {
+        const code = await requestOneTreePrivacyCode(personID);
+        if (code === null) throw new Error('Privacy verification cancelled. No One Tree merge was submitted.');
+        if (code.length < 4 || code.length > 128) {
+            alert('Enter a privacy code of 4–128 characters.');
+            continue;
+        }
+        // The entered code is transmitted only in an authenticated POST body.
+        const response = await fetch(`${BASE_URL}/familytree/privacy/one-tree/unlock/${personID}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sourceFamilyTreeCode,
+                targetPersonID,
+                keyCode: code
+            })
+        });
+        const data = await response.json();
+        if (response.ok && typeof data.pageToken === 'string') {
+            oneTreeCapabilities[String(personID)] = data.pageToken;
+            return;
+        }
+        if (response.status === 403 && data.message === 'Incorrect key code.') {
+            alert('Incorrect privacy code.');
+            continue;
+        }
+        throw new Error(data.message || 'Unable to verify privacy code.');
+    }
+}
+
+async function fetchAuthorizedOneTreeReview() {
+    const url = `${BASE_URL}/familytree/one-tree/review?sourceFamilyTreeCode=${encodeURIComponent(sourceFamilyTreeCode)}&targetPersonID=${encodeURIComponent(targetPersonID)}`;
+    // GET requests alone can be retried; never automatically repeat a merge POST.
+    for (let attempt = 0; attempt < 10; attempt++) {
+        const response = await fetch(url, { headers: ah() });
+        const data = await response.json();
+        if (response.ok) return data;
+        const needed = Array.isArray(data.requiredPrivatePersonIDs)
+            ? data.requiredPrivatePersonIDs.filter(id => Number.isSafeInteger(id) && id > 0)
+            : [];
+        if (response.status !== 423 || data.code !== 'PRIVATE_LOCKED' || !needed.length) {
+            throw new Error(data.message || 'Unable to load One Tree review.');
+        }
+        for (const id of needed) await unlockOneTreePerson(id);
+    }
+    throw new Error('Privacy authorization could not be completed. No merge was submitted.');
+}
+
 const nameOf=p=>[p.LastName?p.LastName+',':'',p.FirstName,p.MiddleName,p.SuffixName].filter(Boolean).join(' ');const names=a=>(a||[]).map(nameOf).join('; ')||'None';
 const eventText=e=>[e.EventType,e.EventDate,e.EventPlace].filter(Boolean).join(' — ')+(e.EventDescription?` — ${e.EventDescription}`:'');
 const eventsOf=p=>(p.events||[]).length?(p.events||[]).map(e=>`${escapeHtml(e.EventType||'Other')}${e.EventDate?' '+escapeHtml(String(e.EventDate).slice(0,10)):''}${e.EventPlace?' — '+escapeHtml(e.EventPlace):''}`).join('<br>'):'None';
@@ -28,7 +132,7 @@ function personCard(p,label){const profileUrl=safeImageUrl(p.ProfileImageUrl);re
 function renderPictures(group,index,candidate){const all=[...(candidate.images||[]).map(x=>({...x,owner:'older'})),...(group.newerPerson.images||[]).map(x=>({...x,owner:'newer'}))];if(!all.length)return'';return `<div class="pictures">${all.map(img=>{const imageUrl=safeImageUrl(img.url);return `<label class="picture-choice"><input type="checkbox" class="keep-image" data-group="${index}" value="${escapeHtml(img.ImageID)}" checked>${imageUrl?`<img src="${escapeHtml(imageUrl)}" alt="">`:''}<div>${img.owner==='older'?'Older Tree':'Newer Tree'}<br>${escapeHtml(img.ImageType||'')}</div></label>`}).join('')}</div><div class="small">A merged Person may retain no more than five pictures. Uncheck pictures you do not want to keep.</div>`}
 function renderConflicts(group,index,candidate){const rows=(candidate.conflicts||[]).map(c=>`<div class="conflict-row"><b>${escapeHtml(c.field)}</b><div>Older: ${escapeHtml(c.olderValue??'')}</div><div>Newer: ${escapeHtml(c.newerValue??'')}</div><select class="conflict-choice" data-group="${index}" data-field="${escapeHtml(c.field)}"><option value="older">Keep Older Tree value</option><option value="newer">Use Newer Tree value</option></select></div>`).join('');return `<div class="conflicts">${rows||'<div class="small">No conflicting populated facts.</div>'}</div>${renderPictures(group,index,candidate)}`}
 function render(){const o=review.olderTree,n=review.newerTree;$('olderTreeBox').innerHTML=`<h2>OLDER / AUTHORITATIVE TREE</h2><b>${escapeHtml(o.FamilyTreeCode)}</b><br>Created: ${escapeHtml(String(o.CreatedAt||'').slice(0,10))}`;$('newerTreeBox').innerHTML=`<h2>NEWER TREE TO COMBINE</h2><b>${escapeHtml(n.FamilyTreeCode)}</b><br>Created: ${escapeHtml(String(n.CreatedAt||'').slice(0,10))}`;const groups=review.groups||[];$('noCandidates').classList.toggle('hidden',groups.length>0);$('candidateHost').innerHTML=groups.map((g,i)=>`<div class="person-pair" data-group="${i}"><div class="person-grid">${personCard(g.newerPerson,'Newer Tree Person')}<div class="person-card"><h3>Possible Older Tree Match</h3><select class="match-select" data-group="${i}"><option value="">-- Make a decision --</option><option value="different">DIFFERENT PERSON</option>${g.candidates.map(c=>`<option value="same:${c.PersonID}">SAME PERSON as PersonID ${c.PersonID} — ${escapeHtml(nameOf(c))}</option>`).join('')}</select><div id="candidateDetail${i}" style="margin-top:8px"></div></div></div><div class="decision"><div id="decisionDetail${i}" class="small">Select SAME PERSON or DIFFERENT PERSON.</div></div></div>`).join('');document.querySelectorAll('.match-select').forEach(sel=>sel.onchange=()=>{const i=Number(sel.dataset.group),g=groups[i],host=$(`candidateDetail${i}`);if(sel.value.startsWith('same:')){const id=Number(sel.value.split(':')[1]),c=g.candidates.find(x=>Number(x.PersonID)===id);host.innerHTML=personCard(c,'Selected Older Tree Person')+renderConflicts(g,i,c);$(`decisionDetail${i}`).textContent='These Person records will be combined.'}else if(sel.value==='different'){host.innerHTML='';$(`decisionDetail${i}`).textContent='These records will remain separate people.'}else{host.innerHTML='';$(`decisionDetail${i}`).textContent='Select SAME PERSON or DIFFERENT PERSON.'}})}
-async function load(){const r=await fetch(`${BASE_URL}/familytree/one-tree/review?sourceFamilyTreeCode=${encodeURIComponent(sourceFamilyTreeCode)}&targetPersonID=${encodeURIComponent(targetPersonID)}`,{headers:{Authorization:`Bearer ${token()}`}}),d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to load One Tree review.');if(d.alreadySameTree){sessionStorage.setItem('familyTreeCode',d.FamilyTreeCode);location.href=focalPersonID?`FTPerson.html?PersonID=${focalPersonID}&familyTreeCode=${encodeURIComponent(d.FamilyTreeCode)}`:'FamilyTree2.html';return}review=d;render()}
+async function load(){const d=await fetchAuthorizedOneTreeReview();if(d.alreadySameTree){sessionStorage.setItem('familyTreeCode',d.FamilyTreeCode);location.href=focalPersonID?`FTPerson.html?PersonID=${focalPersonID}&familyTreeCode=${encodeURIComponent(d.FamilyTreeCode)}`:'FamilyTree2.html';return}review=d;render()}
 function decisions(){const result=[];for(let i=0;i<(review.groups||[]).length;i++){const sel=document.querySelector(`.match-select[data-group="${i}"]`),g=review.groups[i];if(!sel||!sel.value)throw new Error(`Make a Same Person / Different Person decision for newer PersonID ${g.newerPerson.PersonID}.`);if(sel.value==='different'){result.push({newerPersonID:g.newerPerson.PersonID,decision:'different'});continue}const olderPersonID=Number(sel.value.split(':')[1]);const resolutions={};document.querySelectorAll(`.conflict-choice[data-group="${i}"]`).forEach(x=>resolutions[x.dataset.field]=x.value);const keepImageIDs=Array.from(document.querySelectorAll(`.keep-image[data-group="${i}"]:checked`)).map(x=>Number(x.value));if(keepImageIDs.length>5)throw new Error(`PersonID ${g.newerPerson.PersonID}: select no more than five pictures to keep.`);result.push({newerPersonID:g.newerPerson.PersonID,decision:'same',olderPersonID,resolutions,keepImageIDs})}return result}
-async function merge(){const ds=decisions();$('mergeBtn').disabled=true;$('status').textContent='Combining FamilyTrees...';const r=await fetch(`${BASE_URL}/familytree/one-tree/merge`,{method:'POST',headers:ah(),body:JSON.stringify({sourceFamilyTreeCode,targetPersonID,decisions:ds,bridge:{focalPersonID:focalPersonID||null,relatedPersonID:targetPersonID,relationshipKind:relationshipKind||null}})}),d=await r.json();if(!r.ok){$('mergeBtn').disabled=false;throw new Error(d.message||'Unable to combine FamilyTrees.')}sessionStorage.setItem('familyTreeCode',d.FamilyTreeCode);$('status').textContent=d.message||'FamilyTrees combined.';const focal=d.focalPersonID||focalPersonID,related=d.relatedPersonID||targetPersonID;if(returnTo==='related'&&focal){const q=new URLSearchParams({PersonID:String(focal),familyTreeCode:d.FamilyTreeCode});if(relationshipKind==='child'&&related)q.set('askPartnerParentChildID',String(related));if(relationshipKind==='partner'&&related)q.set('askPartnerChildrenPersonID',String(related));if(relationshipKind==='sibling'&&related)q.set('askSiblingParentsPersonID',String(related));if((relationshipKind==='mother'||relationshipKind==='father')&&related)q.set('askParentSiblingsPersonID',String(related));location.href=`FTPerson.html?${q.toString()}`}else{location.href=`FTPerson.html?PersonID=${encodeURIComponent(related)}&familyTreeCode=${encodeURIComponent(d.FamilyTreeCode)}`}}
+async function merge(){const ds=decisions();$('mergeBtn').disabled=true;$('status').textContent='Combining FamilyTrees...';const r=await fetch(`${BASE_URL}/familytree/one-tree/merge`,{method:'POST',headers:ah(),body:JSON.stringify({sourceFamilyTreeCode,targetPersonID,decisions:ds,bridge:{focalPersonID:focalPersonID||null,relatedPersonID:targetPersonID,relationshipKind:relationshipKind||null}})}),d=await r.json();if(!r.ok){$('mergeBtn').disabled=false;if(r.status===423&&d.code==='PRIVATE_LOCKED')throw new Error('Privacy authorization expired or is missing. Reload the review and verify codes before submitting again. No automatic merge retry was made.');throw new Error(d.message||'Unable to combine FamilyTrees.')}sessionStorage.setItem('familyTreeCode',d.FamilyTreeCode);$('status').textContent=d.message||'FamilyTrees combined.';const focal=d.focalPersonID||focalPersonID,related=d.relatedPersonID||targetPersonID;if(returnTo==='related'&&focal){const q=new URLSearchParams({PersonID:String(focal),familyTreeCode:d.FamilyTreeCode});if(relationshipKind==='child'&&related)q.set('askPartnerParentChildID',String(related));if(relationshipKind==='partner'&&related)q.set('askPartnerChildrenPersonID',String(related));if(relationshipKind==='sibling'&&related)q.set('askSiblingParentsPersonID',String(related));if((relationshipKind==='mother'||relationshipKind==='father')&&related)q.set('askParentSiblingsPersonID',String(related));location.href=`FTPerson.html?${q.toString()}`}else{location.href=`FTPerson.html?PersonID=${encodeURIComponent(related)}&familyTreeCode=${encodeURIComponent(d.FamilyTreeCode)}`}}
 document.addEventListener('DOMContentLoaded',()=>{if(!token()){location.href='login.html';return}const goBack=()=>{if(history.length>1)history.back();else location.href='FamilyTree2.html'};$('backBtn').onclick=goBack;$('cancelBtn').onclick=goBack;$('mergeBtn').onclick=()=>merge().catch(e=>$('status').textContent=e.message);load().catch(e=>$('status').textContent=e.message)});

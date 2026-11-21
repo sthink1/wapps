@@ -1,0 +1,124 @@
+TAP version 13
+# Subtest: missing codes: review denies all private values and names the two required IDs only
+ok 1 - missing codes: review denies all private values and names the two required IDs only
+  ---
+  duration_ms: 9.091092
+  type: 'test'
+  ...
+# Subtest: one valid token is insufficient for two private Persons
+ok 2 - one valid token is insufficient for two private Persons
+  ---
+  duration_ms: 1.779524
+  type: 'test'
+  ...
+# Subtest: independent verified tokens unlock both private comparison subjects
+ok 3 - independent verified tokens unlock both private comparison subjects
+  ---
+  duration_ms: 1.572623
+  type: 'test'
+  ...
+# Subtest: wrong user cannot reuse two valid privacy capabilities
+ok 4 - wrong user cannot reuse two valid privacy capabilities
+  ---
+  duration_ms: 1.31767
+  type: 'test'
+  ...
+# Subtest: invalid capability encoding fails closed without disclosure
+ok 5 - invalid capability encoding fails closed without disclosure
+  ---
+  duration_ms: 2.03587
+  type: 'test'
+  ...
+# Subtest: administrator exception includes private review without codes
+ok 6 - administrator exception includes private review without codes
+  ---
+  duration_ms: 1.042647
+  type: 'test'
+  ...
+# Subtest: public review preserves candidate/conflict data
+ok 7 - public review preserves candidate/conflict data
+  ---
+  duration_ms: 1.127033
+  type: 'test'
+  ...
+# Subtest: review with no candidate groups still locks private tree members
+ok 8 - review with no candidate groups still locks private tree members
+  ---
+  duration_ms: 1.376329
+  type: 'test'
+  ...
+# Subtest: legacy ONE_TREE_REVIEW_REQUIRED candidateGroups are protected
+ok 9 - legacy ONE_TREE_REVIEW_REQUIRED candidateGroups are protected
+  ---
+  duration_ms: 1.592633
+  type: 'test'
+  ...
+# Subtest: correct One Tree code produces a page token scoped to user and Person
+ok 10 - correct One Tree code produces a page token scoped to user and Person
+  ---
+  duration_ms: 2.310162
+  type: 'test'
+  ...
+# Subtest: incorrect code is denied and tracked, with no token issued
+ok 11 - incorrect code is denied and tracked, with no token issued
+  ---
+  duration_ms: 1.000243
+  type: 'test'
+  ...
+# Subtest: too many wrong codes are rejected before further guesses
+ok 12 - too many wrong codes are rejected before further guesses
+  ---
+  duration_ms: 1.0177
+  type: 'test'
+  ...
+# Subtest: incorrect review-context Person cannot obtain a code token
+ok 13 - incorrect review-context Person cannot obtain a code token
+  ---
+  duration_ms: 0.734504
+  type: 'test'
+  ...
+# Subtest: expired/wrong token is not accepted by server privacy check
+ok 14 - expired/wrong token is not accepted by server privacy check
+  ---
+  duration_ms: 3.239097
+  type: 'test'
+  ...
+# Subtest: same-tree privacy check supports duplicate tree IDs (fail-closed)
+ok 15 - same-tree privacy check supports duplicate tree IDs (fail-closed)
+  ---
+  duration_ms: 1.229578
+  type: 'test'
+  ...
+# Subtest: merge-guard error remains a 423 expected error with safe metadata
+ok 16 - merge-guard error remains a 423 expected error with safe metadata
+  ---
+  duration_ms: 1.506003
+  type: 'test'
+  ...
+# Subtest: familyTree merge route denies cross-tree merge before writes and preserves same-tree branch
+ok 17 - familyTree merge route denies cross-tree merge before writes and preserves same-tree branch
+  ---
+  duration_ms: 8.023338
+  type: 'test'
+  ...
+# Subtest: browser uses page-memory tokens, retries GET only, never stores privacy credentials
+ok 18 - browser uses page-memory tokens, retries GET only, never stores privacy credentials
+  ---
+  duration_ms: 23.308697
+  type: 'test'
+  ...
+# Subtest: browser merge privacy rejection does not cause automatic second POST
+ok 19 - browser merge privacy rejection does not cause automatic second POST
+  ---
+  duration_ms: 2.464093
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 130.075926

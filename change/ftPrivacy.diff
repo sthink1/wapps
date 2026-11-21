@@ -1,0 +1,36 @@
+--- a/routes/ftPrivacy.js (Google Drive original)
++++ b/routes/ftPrivacy.js (M03 proposed)
+@@ -126,7 +126,32 @@
+      // A centrally verified administrator may see all nested private Person data.
+      if(await isAdmin(pool,userID))return original(data);
+      const [rows]=await pool.query(`SELECT PersonID FROM FTPersonPrivacyT WHERE IsPrivate=1 AND PersonID IN (${[...ids].map(()=>'?').join(',')})`,[...ids]);const locked=new Set(rows.map(x=>Number(x.PersonID)));
+-     const sanitize=(v,depth=0)=>{if(!v||typeof v!=='object'||depth>18)return v;if(Array.isArray(v))return v.map(x=>sanitize(x,depth+1));if(locked.has(Number(v.PersonID))&&!(req._privacyFullPersonID&&Number(v.PersonID)===req._privacyFullPersonID))return redactPerson(v);const out={};for(const [k,x] of Object.entries(v))out[k]=sanitize(x,depth+1);return out;};
++     // M03: One Tree review compares two Person records and embeds derived values
++     // (including conflicts) without PersonID tags. Redacting only Person objects
++     // does not remove those values. Fail closed before returning any review when
++     // one of its private Person subjects has not been unlocked for this request.
++     const reviews=[];
++     if(req.path==='/one-tree/review'&&Array.isArray(data.groups))reviews.push(data.groups);
++     if(data.code==='ONE_TREE_REVIEW_REQUIRED'&&Array.isArray(data.candidateGroups))reviews.push(data.candidateGroups);
++     if(data.review&&data.review.code==='ONE_TREE_REVIEW_REQUIRED'&&Array.isArray(data.review.candidateGroups))reviews.push(data.review.candidateGroups);
++     const reviewPersonIDs=new Set();
++     for(const groups of reviews){
++       for(const group of groups){
++         if(group&&group.newerPerson&&Number(group.newerPerson.PersonID)>0)reviewPersonIDs.add(Number(group.newerPerson.PersonID));
++         for(const candidate of (group&&Array.isArray(group.candidates)?group.candidates:[])){
++           if(candidate&&Number(candidate.PersonID)>0)reviewPersonIDs.add(Number(candidate.PersonID));
++         }
++       }
++     }
++     const reviewAuthorized=new Set();
++     for(const personID of reviewPersonIDs){
++       if(!locked.has(personID))continue;
++       if(!(await isUnlocked(pool,personID,userID,req.headers['x-ft-page-token']))){
++         return original.call(res.status(423),{code:'PRIVATE_LOCKED',message:'One Tree review includes a private Person. Verify the privacy code before continuing.'});
++       }
++       reviewAuthorized.add(personID);
++     }
++     const sanitize=(v,depth=0)=>{if(!v||typeof v!=='object'||depth>18)return v;if(Array.isArray(v))return v.map(x=>sanitize(x,depth+1));if(locked.has(Number(v.PersonID))&&!(req._privacyFullPersonID&&Number(v.PersonID)===req._privacyFullPersonID)&&!reviewAuthorized.has(Number(v.PersonID)))return redactPerson(v);const out={};for(const [k,x] of Object.entries(v))out[k]=sanitize(x,depth+1);return out;};
+      return original(sanitize(data));
+    }catch(e){console.error('Family Tree privacy response filter failed (details omitted)');return res.status(500).send('Unable to safely return Family Tree data.');}})();return res;
+  };

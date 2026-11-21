@@ -1,0 +1,48 @@
+--- a/routes/familyTree.js
++++ b/routes/familyTree.js
+@@ -1048,6 +1048,22 @@
+ }
+ 
+ async function addRelationshipInTree(c, treeID, userID, focal, related, kind) {
++    // Every relationship endpoint must already belong to the authorized Tree.
++    // Do not use this relationship operation to attach a Person from a third Tree.
++    const kinds = new Set(['mother', 'father', 'child', 'sibling', 'partner']);
++    if (!kinds.has(kind) || !Number.isSafeInteger(focal) || focal <= 0 ||
++        !Number.isSafeInteger(related) || related <= 0 || focal === related) {
++        const err = new Error('Invalid Family Tree relationship request.');
++        err.status = 400; markExpectedClientError(err);
++        throw err;
++    }
++    if (!(await treeHasPerson(c, treeID, focal)) ||
++        !(await treeHasPerson(c, treeID, related))) {
++        const err = new Error('Both Persons must belong to this Family Tree.');
++        err.status = 403; markExpectedClientError(err);
++        throw err;
++    }
++
+     await c.query(
+         `INSERT IGNORE INTO FTFamilyTreePersonT
+          (
+@@ -7268,6 +7284,22 @@
+                 relatedPersonID: Number(bridge.relatedPersonID || targetPersonID) || null,
+                 relationshipKind: String(bridge.relationshipKind || '').toLowerCase() || null
+             };
++
++            // Reject third-Tree endpoints before inserting a merge record or
++            // moving Persons. A legitimate cross-Tree merge does not require
++            // membership in both Trees; it must only involve their Persons.
++            if (normalizedBridge.focalPersonID && normalizedBridge.relatedPersonID &&
++                normalizedBridge.relationshipKind) {
++                for (const id of [normalizedBridge.focalPersonID, normalizedBridge.relatedPersonID]) {
++                    if (!Number.isSafeInteger(id) || id <= 0 ||
++                        !(await treeHasPerson(c, sourceTree.FamilyTreeID, id)) &&
++                        !(await treeHasPerson(c, targetTree.FamilyTreeID, id))) {
++                        const err = new Error('Relationship Person is outside the two Family Trees being merged.');
++                        err.status = 403; markExpectedClientError(err);
++                        throw err;
++                    }
++                }
++            }
+ 
+             const mergeRecord = await createOneTreeMergeRecord(
+                 c,

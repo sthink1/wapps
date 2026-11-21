@@ -231,3 +231,34 @@ This is a planning approval only. No database migration, production cutover, dep
 After completion of Stage 6 release requirements and the separately authorized `reviseLogIn` → `main` merge, the owner plans to create a new development branch named `refactor`. Its long-term objective is implementation of the approved Wonderful Apps programming standards, beginning with **Phase 1: JavaScript shared-function standardization** based on the findings in `download/WA_Shared_Function_Review_Remaining_2026-11-16/`. Existing functionality, design, privacy, security and business behavior remain protected under CS-01; unrelated HTML/CSS and later standards work require separately approved scope.
 
 See `docs/WA_Refractor.md` for the phased approach, controls and acceptance evidence. All development follows `standard/WA_File_Development_and_Delivery_Process.md` (A → B → C → D). Codex in VS Code may inspect local WA source **read-only** and generate proposed replacements and verification packages in a separate directory outside the project; the owner manually installs, tests, and authorizes commits. **This planning decision does not authorize branch creation, source edits, database changes, hosted testing, merges or deployments.** The current production-readiness 40-hour planning ceiling is separate from any future refactoring budget.
+
+## Deferred One Tree merge redesign — planning decision November 21, 2026
+
+**Status: deferred; not implemented or security-cleared.** The owner considers One Tree essential to Family Tree functionality but has directed that further One Tree adjustments **not interrupt unrelated Stage 6 R16–R20 testing**. Resume comprehensive One Tree design and remediation in a new branch, **`oneTreeM`**, intended to be created **after** a separately approved `reviseLogIn` → `main` merge and **before** broader standards refactoring. Neither that merge nor branch creation is authorized by this note; verify the actual branch state when work resumes.
+
+**Latest owner-directed functional policy (future design, not current behavior):**
+
+- An authorized ordinary user may change relationships among Persons in their own Family Tree without individual privacy codes; the server must still enforce exact Tree/Person authorization.
+- A legitimate cross-tree One Tree merge should be simple and **should not require** membership in both Trees, separate approval by the other Tree's owner, or individual private-Person codes during the merge.
+- Within a **legitimate** One Tree review, the owner selected **full Person information** even for private Persons. This does **not** authorize arbitrary access to other Trees, general editing rights, or disclosures outside the review. The eligibility and disclosure boundaries are **unresolved security-design questions**.
+- Private status and applicable access protections must survive merging. Exact rules for combined records, permissions, and conflicting privacy settings remain to be defined.
+- Future One Tree review must reconcile differences in Person fields **and** parents, partners, children, siblings, and other relationships. Multiple valid partners or additional relatives must not be treated as automatic errors. Preview consequences, protect against incorrect identity consolidation and invalid relationship structures, and support controlled rollback/undo.
+- Consider whether **multiple credible Person matches** should be required before a Tree merge, while accommodating legitimate one-match cases and relationships between distinct Persons. **No threshold has been approved.**
+- Explicitly review whether, how, and for how long someone may **enter, view, or modify another Tree** before, during, and after a merge; separate limited review access from ordinary membership and mutation permissions.
+
+**Unresolved security findings — not waived:** Codex's independent M03 review on November 20, 2026 was **FAIL**: **M03-C01 Critical** (arbitrary target Tree review/merge without independent eligibility proof), **M03-H02 High** (actual `/relationships` and `/related-person` HTTP paths can bypass exact Person membership validation), **M03-H03 High** (unreviewed extra `same` decisions), and **M03-M04 Medium** (privacy-state concurrency window). The H02 issue affects ordinary relationship routes as well as One Tree. These findings remain open, subject to fresh verification and explicit, evidence-backed **release-blocker disposition** (correction, effective server-side restriction, or approved risk decision) before any affected functionality is promoted. **Deferring implementation is not a security PASS and does not itself authorize a commit, merge, or deployment.** A UI-only restriction is not adequate to address server-side authorization defects.
+
+**Current source versus future policy:** On November 21, read-only inspection of the authoritative Google Drive `routes/familyTree.js` confirmed that the existing cross-tree merge path **still enforces privacy authorization for private Persons**. The owner's later decision to remove merge privacy-code prompts is **not installed**. Do not describe planned rules as current implementation.
+
+**Superseded package:** `WA_M03_Codex_Four_Finding_Consolidated_Candidate_2026-11-20.zip` is **HOLD — DO NOT INSTALL**; it retains the former privacy-code design and does not fully resolve C01. Preserve previous bounded test evidence, but do not equate passing helper-level tests with complete HTTP or committed merge/undo acceptance.
+
+**Authoritative design and evidence references:**
+
+- [`docs/WA_OneTree_Merge_Deferred_Design_and_Security_Handoff_2026-11-21.md`](docs/WA_OneTree_Merge_Deferred_Design_and_Security_Handoff_2026-11-21.md) — full decisions, open questions, examples, sequencing, and future acceptance outline.
+- [`review/WA_M03_Codex_Independent_Security_Review_2026-11-20.md`](review/WA_M03_Codex_Independent_Security_Review_2026-11-20.md) — independent FAIL findings; verify installed location and version before relying on it.
+- Root `README.md` §0 and §5 — risk-based readiness, 40-hour planning ceiling, and mandatory disposition of material release blockers.
+- `standard/WA_File_Development_and_Delivery_Process.md` — A → B → C → D change process and independent verification requirements.
+
+**Next action now:** Continue the first genuinely outstanding R16–R20 acceptance item, preserving prior passes. Any safety disposition needed for `reviseLogIn` → `main` must be addressed **separately from** the deferred One Tree feature redesign. The future `oneTreeM` work begins with Step A: review the authoritative source, data model, permissions, matching criteria, conflict-resolution and undo requirements, and the Codex findings; decide requirements before authorizing any build.
+
+**No source change, test execution, database modification, branch creation, merge, or deployment is authorized by this README addendum.**

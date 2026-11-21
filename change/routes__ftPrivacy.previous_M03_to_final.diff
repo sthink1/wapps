@@ -1,0 +1,192 @@
+--- a/routes/ftPrivacy.js (previous M03 install)
++++ b/routes/ftPrivacy.js (consolidated)
+@@ -59,6 +59,49 @@
+  if(!ver.length||ver[0].Response!=='VERIFIED'||String(ver[0].EmailAddress).trim().toLowerCase()!==String(contact.ContactValue).trim().toLowerCase())throw error('The primary Contact email must be verified before changing privacy.');
+  return contact;
+ }
++// M03: Per-Person, page-memory capabilities. The list of missing PersonIDs is
++// metadata only; no private values, code or token is returned in a denial.
++function oneTreeTokens(headers = {}) {
++  let tokens = {};
++  const encoded = headers['x-ft-page-token'];
++  if (typeof encoded === 'string' && encoded.length <= 12000) {
++    try {
++      const parsed = JSON.parse(encoded);
++      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) tokens = parsed;
++    } catch (_) { /* invalid capability data grants nothing */ }
++  }
++  return tokens;
++}
++
++async function missingOneTreePrivacy(c, userID, headers, treeIDs) {
++  const ids = [...new Set(treeIDs.map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
++  if (treeIDs.length !== 2 || !ids.length || ids.length > 2) {
++    throw new Error('Invalid One Tree privacy scope.');
++  }
++  if (await isAdmin(c, userID)) return [];
++  const [rows] = await c.query(
++    `SELECT DISTINCT p.PersonID FROM FTPersonPrivacyT p
++     JOIN FTFamilyTreePersonT ftp ON ftp.PersonID=p.PersonID
++     WHERE p.IsPrivate=1 AND ftp.FamilyTreeID IN (${ids.map(() => '?').join(',')})`,
++    ids
++  );
++  const tokens = oneTreeTokens(headers);
++  const missing = [];
++  for (const row of rows) {
++    const id = Number(row.PersonID);
++    const token = tokens[String(id)] || headers['x-ft-page-token'];
++    if (!(await isUnlocked(c, id, userID, token))) missing.push(id);
++  }
++  return missing;
++}
++
++function oneTreeLockedError(missing) {
++  const e = error('One Tree review requires privacy-code verification.',423);
++  e.responseCode = 'PRIVATE_LOCKED';
++  e.requiredPrivatePersonIDs = missing;
++  return e;
++}
++
+ privateRouter.get('/status/:personID',async(req,res)=>{try{
+  const personID=Number(req.params.personID);const c=await pool.getConnection();try{const tree=await getTree(c,req.query.familyTreeCode,req.user.userId);await inTree(c,personID,tree.FamilyTreeID);const p=await privacyRow(c,personID);const [[pending]]=await c.query(`SELECT RequestedAction,ExpiresAt FROM FTPrivacyRequestT WHERE PersonID=? AND Response IS NULL AND ExpiresAt>NOW() ORDER BY RequestID DESC LIMIT 1`,[personID]);res.json({PersonID:personID,IsPrivate:!!p.IsPrivate,Authorized:!p.IsPrivate||await hasAccess(c,personID,req.user.userId,req.headers['x-ft-page-token']),PendingAction:pending?.RequestedAction||null,PendingUntil:pending?.ExpiresAt||null,IsAdmin:await isAdmin(c,req.user.userId)});}finally{c.release();}
+  }catch(e){sendError(res,e);}});
+@@ -87,6 +130,78 @@
+  await c.query('INSERT INTO FTPrivacyAttemptT (PersonID,UserID,IsCorrect,AttemptedAt) VALUES (?,?,?,NOW())',[personID,userID,ok?1:0]);if(!ok)return {badKey:true};
+  const pageToken=crypto.randomBytes(32).toString('hex');await c.query('DELETE FROM FTPrivacyUnlockT WHERE PersonID=? AND UserID=?',[personID,userID]);await c.query('INSERT INTO FTPrivacyUnlockT(PersonID,UserID,SessionHash,ExpiresAt) VALUES (?,?,?,DATE_ADD(NOW(),INTERVAL 20 MINUTE))',[personID,userID,hashToken(pageToken)]);return {message:'Key accepted for this page visit.',pageToken};});if(result.badKey)return res.status(403).json({message:'Incorrect key code.'});res.json(result);
+  }catch(e){sendError(res,e);}});
++// One Tree unlock uses the same rate limit and verification semantics as the
++// normal Person unlock, but scopes a Person to the two Trees in this review.
++privateRouter.post('/one-tree/unlock/:personID', async (req,res) => {
++  try {
++    const personID=Number(req.params.personID);
++    const userID=req.user.userId;
++    const key=exactPrivacyKey(req.body?.keyCode);
++    const sourceCode=req.body?.sourceFamilyTreeCode;
++    const targetPersonID=Number(req.body?.targetPersonID);
++    if (!Number.isSafeInteger(personID) || personID<=0 ||
++        !Number.isSafeInteger(targetPersonID) || targetPersonID<=0 || !codePattern.test(key)) {
++      throw error('A valid Person and privacy code are required.',400);
++    }
++    const result=await withTx(async c => {
++      const sourceTree=await getTree(c,sourceCode,userID);
++      // Match Family Tree's active-person selection by preferring active Trees.
++      const [targetRows]=await c.query(
++        `SELECT ft.FamilyTreeID,ft.MergedIntoFamilyTreeID FROM FTFamilyTreePersonT ftp
++         JOIN FamilyTreeT ft ON ft.FamilyTreeID=ftp.FamilyTreeID
++         WHERE ftp.PersonID=?
++         ORDER BY CASE WHEN ft.Status='Active' THEN 0 ELSE 1 END,
++                  ftp.AddedAt ASC,ft.CreatedAt ASC,ft.FamilyTreeID ASC LIMIT 1`,
++        [targetPersonID]
++      );
++      if(!targetRows.length) throw error('One Tree target was not found.',404);
++      let targetTreeID=Number(targetRows[0].FamilyTreeID);
++      let mergedInto=targetRows[0].MergedIntoFamilyTreeID;
++      const seen=new Set();
++      for(let i=0;mergedInto && i<25;i++){
++        if(seen.has(targetTreeID))throw error('One Tree history is invalid.',409);
++        seen.add(targetTreeID);
++        const [rows]=await c.query(
++          'SELECT FamilyTreeID,MergedIntoFamilyTreeID FROM FamilyTreeT WHERE FamilyTreeID=? LIMIT 1',
++          [mergedInto]
++        );
++        if(!rows.length)throw error('One Tree target is unavailable.',409);
++        targetTreeID=Number(rows[0].FamilyTreeID);
++        mergedInto=rows[0].MergedIntoFamilyTreeID;
++      }
++      if(mergedInto)throw error('One Tree history is too deep.',409);
++      const treeIDs=[Number(sourceTree.FamilyTreeID),targetTreeID];
++      const [membership]=await c.query(
++        `SELECT 1 AS n FROM FTFamilyTreePersonT
++         WHERE PersonID=? AND FamilyTreeID IN (?,?) LIMIT 1`,
++        [personID,...treeIDs]
++      );
++      if(!membership.length) throw error('Person is not part of this One Tree review.',403);
++      const state=await privacyRow(c,personID);
++      if(!state.IsPrivate) return {message:'Person is public.'};
++      const [[attempts]]=await c.query(
++        `SELECT COUNT(*) AS n FROM FTPrivacyAttemptT
++         WHERE PersonID=? AND UserID=? AND IsCorrect=0
++           AND AttemptedAt>DATE_SUB(NOW(),INTERVAL 15 MINUTE)`,
++        [personID,userID]
++      );
++      if(attempts.n>=5) throw error('Too many incorrect attempts. Try again after 15 minutes.',429);
++      const [[record]]=await c.query('SELECT KeyCode FROM FTPersonPrivacyT WHERE PersonID=?',[personID]);
++      const correct=Boolean(record && record.KeyCode===key);
++      await c.query('INSERT INTO FTPrivacyAttemptT (PersonID,UserID,IsCorrect,AttemptedAt) VALUES (?,?,?,NOW())',
++        [personID,userID,correct?1:0]);
++      if(!correct) return {badKey:true};
++      const pageToken=crypto.randomBytes(32).toString('hex');
++      await c.query('DELETE FROM FTPrivacyUnlockT WHERE PersonID=? AND UserID=?',[personID,userID]);
++      await c.query(`INSERT INTO FTPrivacyUnlockT(PersonID,UserID,SessionHash,ExpiresAt)
++        VALUES (?,?,?,DATE_ADD(NOW(),INTERVAL 20 MINUTE))`,[personID,userID,hashToken(pageToken)]);
++      return {message:'Key accepted for this One Tree review.',pageToken};
++    });
++    if(result.badKey) return res.status(403).json({message:'Incorrect key code.'});
++    res.json(result);
++  } catch(e) {sendError(res,e);}
++});
++
+ async function fetchRequest(c,token,lock){if(!/^[0-9a-f]{64}$/.test(token))throw error('Invalid approval link.',400);
+  const [rows]=await c.query(`SELECT r.*,c.ContactValue,c.IsPrimary,c.ContactType FROM FTPrivacyRequestT r LEFT JOIN FTContactT c ON c.ContactID=r.ContactID WHERE r.TokenHash=? LIMIT 1 ${lock?'FOR UPDATE':''}`,[hashToken(token)]);if(!rows.length)throw error('Approval request not found.',404);return rows[0];}
+ function activeRequest(r){return !r.RespondedAt && new Date(r.ExpiresAt)>new Date()&&r.ContactType==='Email'&&Number(r.IsPrimary)===1&&String(r.ContactValue||'').trim().toLowerCase()===String(r.EmailAddress).trim().toLowerCase();}
+@@ -122,34 +237,29 @@
+  res.json=function(data){
+    (async()=>{try{if(!data||typeof data!=='object')return original(data);
+      const ids=new Set();const crawl=(v,depth=0)=>{if(!v||typeof v!=='object'||depth>18)return;if(Array.isArray(v)){v.forEach(x=>crawl(x,depth+1));return;}if(Number.isInteger(Number(v.PersonID))&&Number(v.PersonID)>0)ids.add(Number(v.PersonID));Object.values(v).forEach(x=>crawl(x,depth+1));};crawl(data);
+-     if(!ids.size)return original(data);
++     if(!ids.size && req.path !== '/one-tree/review' && data.code !== 'ONE_TREE_REVIEW_REQUIRED' && !(data.review && data.review.code === 'ONE_TREE_REVIEW_REQUIRED'))return original(data);
+      // A centrally verified administrator may see all nested private Person data.
+      if(await isAdmin(pool,userID))return original(data);
+-     const [rows]=await pool.query(`SELECT PersonID FROM FTPersonPrivacyT WHERE IsPrivate=1 AND PersonID IN (${[...ids].map(()=>'?').join(',')})`,[...ids]);const locked=new Set(rows.map(x=>Number(x.PersonID)));
+-     // M03: One Tree review compares two Person records and embeds derived values
+-     // (including conflicts) without PersonID tags. Redacting only Person objects
+-     // does not remove those values. Fail closed before returning any review when
+-     // one of its private Person subjects has not been unlocked for this request.
+-     const reviews=[];
+-     if(req.path==='/one-tree/review'&&Array.isArray(data.groups))reviews.push(data.groups);
+-     if(data.code==='ONE_TREE_REVIEW_REQUIRED'&&Array.isArray(data.candidateGroups))reviews.push(data.candidateGroups);
+-     if(data.review&&data.review.code==='ONE_TREE_REVIEW_REQUIRED'&&Array.isArray(data.review.candidateGroups))reviews.push(data.review.candidateGroups);
+-     const reviewPersonIDs=new Set();
+-     for(const groups of reviews){
+-       for(const group of groups){
+-         if(group&&group.newerPerson&&Number(group.newerPerson.PersonID)>0)reviewPersonIDs.add(Number(group.newerPerson.PersonID));
+-         for(const candidate of (group&&Array.isArray(group.candidates)?group.candidates:[])){
+-           if(candidate&&Number(candidate.PersonID)>0)reviewPersonIDs.add(Number(candidate.PersonID));
+-         }
++     const [rows]=ids.size ? await pool.query(`SELECT PersonID FROM FTPersonPrivacyT WHERE IsPrivate=1 AND PersonID IN (${[...ids].map(()=>'?').join(',')})`,[...ids]) : [[]];const locked=new Set(rows.map(x=>Number(x.PersonID)));
++     // A comparison can contain untagged derived values. Authorize every private
++     // Person belonging to either Tree before sending any review response.
++     const oneTreeReview = (req.path === '/one-tree/review' && Array.isArray(data.groups))
++       || (data.code === 'ONE_TREE_REVIEW_REQUIRED' && Array.isArray(data.candidateGroups))
++       || (data.review && data.review.code === 'ONE_TREE_REVIEW_REQUIRED');
++     const treeReview = data.review && data.review.code === 'ONE_TREE_REVIEW_REQUIRED'
++       ? data.review : data;
++     const reviewAuthorized = new Set();
++     if(oneTreeReview){
++       const treeIDs = [treeReview.olderTree?.FamilyTreeID,treeReview.newerTree?.FamilyTreeID];
++       const missing = await missingOneTreePrivacy(pool,userID,req.headers,treeIDs);
++       if(missing.length){
++         return original.call(res.status(423),{
++           code:'PRIVATE_LOCKED',
++           message:'One Tree review includes private Persons. Verify each privacy code before continuing.',
++           requiredPrivatePersonIDs:missing
++         });
+        }
+-     }
+-     const reviewAuthorized=new Set();
+-     for(const personID of reviewPersonIDs){
+-       if(!locked.has(personID))continue;
+-       if(!(await isUnlocked(pool,personID,userID,req.headers['x-ft-page-token']))){
+-         return original.call(res.status(423),{code:'PRIVATE_LOCKED',message:'One Tree review includes a private Person. Verify the privacy code before continuing.'});
+-       }
+-       reviewAuthorized.add(personID);
++       for(const row of rows) reviewAuthorized.add(Number(row.PersonID));
+      }
+      const sanitize=(v,depth=0)=>{if(!v||typeof v!=='object'||depth>18)return v;if(Array.isArray(v))return v.map(x=>sanitize(x,depth+1));if(locked.has(Number(v.PersonID))&&!(req._privacyFullPersonID&&Number(v.PersonID)===req._privacyFullPersonID)&&!reviewAuthorized.has(Number(v.PersonID)))return redactPerson(v);const out={};for(const [k,x] of Object.entries(v))out[k]=sanitize(x,depth+1);return out;};
+      return original(sanitize(data));
+@@ -157,4 +267,4 @@
+  };
+  next();
+  }catch(e){sendError(res,e);}}
+-module.exports={publicRouter,privateRouter,protection};
++module.exports={publicRouter,privateRouter,protection,missingOneTreePrivacy,oneTreeLockedError};

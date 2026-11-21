@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: unauthorized newer private Person: fail closed, no derivative disclosure
+ok 1 - unauthorized newer private Person: fail closed, no derivative disclosure
+  ---
+  duration_ms: 8.892795
+  type: 'test'
+  ...
+# Subtest: invalid privacy token does not grant access
+ok 2 - invalid privacy token does not grant access
+  ---
+  duration_ms: 2.177545
+  type: 'test'
+  ...
+# Subtest: valid Person-specific unlock permits authorized review data
+ok 3 - valid Person-specific unlock permits authorized review data
+  ---
+  duration_ms: 1.889141
+  type: 'test'
+  ...
+# Subtest: verified administrator remains exempt from privacy code
+ok 4 - verified administrator remains exempt from privacy code
+  ---
+  duration_ms: 1.276339
+  type: 'test'
+  ...
+# Subtest: public review remains unchanged
+ok 5 - public review remains unchanged
+  ---
+  duration_ms: 1.716942
+  type: 'test'
+  ...
+# Subtest: private candidate with public newer: fail closed
+ok 6 - private candidate with public newer: fail closed
+  ---
+  duration_ms: 1.414217
+  type: 'test'
+  ...
+# Subtest: two private Persons require authorization for both
+ok 7 - two private Persons require authorization for both
+  ---
+  duration_ms: 3.669879
+  type: 'test'
+  ...
+# Subtest: nested 409 review payload: fail closed before sending embedded candidateGroups
+ok 8 - nested 409 review payload: fail closed before sending embedded candidateGroups
+  ---
+  duration_ms: 1.36996
+  type: 'test'
+  ...
+# Subtest: top-level candidateGroups review: fail closed
+ok 9 - top-level candidateGroups review: fail closed
+  ---
+  duration_ms: 1.92188
+  type: 'test'
+  ...
+# Subtest: unrelated Person response retains existing privacy redaction
+ok 10 - unrelated Person response retains existing privacy redaction
+  ---
+  duration_ms: 2.207379
+  type: 'test'
+  ...
+# Subtest: no Person identifiers bypass privacy query and preserve normal response
+ok 11 - no Person identifiers bypass privacy query and preserve normal response
+  ---
+  duration_ms: 1.344642
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 94.769348
