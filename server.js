@@ -1,6 +1,6 @@
 // Load environment variables
 require('dotenv').config();
-// Test-only Group 0d guard: execute before importing any routes or opening MySQL.
+// Validate explicit environment identity before importing routes or opening MySQL.
 const stage6Env = require('./services/stage6Environment');
 
 // Import required modules
@@ -240,8 +240,8 @@ async function start() {
   await stage6Env.verifyDatabaseIdentity(rateCleanupPool);
   app.listen(port, () => {
     resetRateCleanup.start(rateCleanupPool, logger);
-    logger.info(`Server running at http://localhost:${port} (WA_ENV=${stage6Env.current.mode}; test DB verified)`);
-    console.log(`Stage 6 environment: ${stage6Env.current.mode}; test DB verified`);
+    logger.info(`Server running at http://localhost:${port} (WA_ENV=${stage6Env.current.mode}; database identity verified)`);
+    console.log(`Stage 6 environment: ${stage6Env.current.mode}; database identity verified`);
   });
 }
 start().catch(err => {
