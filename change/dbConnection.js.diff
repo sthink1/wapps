@@ -1,0 +1,47 @@
+--- a/dbConnection.js
++++ b/dbConnection.js
+@@ -12,13 +12,27 @@
+     }
+ });
+ 
+-// HelioHost test connections (local or Render staging) require verified TLS.
+-// Keep the existing freeSQLdatabase pool configuration unchanged otherwise.
++// Environment identity is verified by stage6Environment before this module is loaded.
++// Require TLS and bounded connection pools in hosted production as well as staging.
+ const helioTest = ['local', 'staging'].includes(process.env.WA_ENV) &&
+     process.env.DB_HOST === 'morty2.heliohost.org' &&
+     process.env.DB_NAME === 'wapps_test' &&
+     process.env.DB_USER === 'wapps_test';
+-if (helioTest && process.env.DB_SSL !== 'required') {
++const hosted = process.env.WA_ENV === 'staging' || process.env.WA_ENV === 'production';
++const sslPolicy = String(process.env.DB_SSL || '').trim().toLowerCase();
++if (!['', 'required'].includes(sslPolicy) || (hosted && sslPolicy !== 'required')) {
++    throw new Error('WA_DB_TLS_POLICY_INVALID');
++}
++const databasePort = Number(process.env.DB_PORT);
++if (!Number.isSafeInteger(databasePort) || databasePort < 1 || databasePort > 65535) {
++    throw new Error('WA_DB_PORT_INVALID');
++}
++const connectionLimit = Number(process.env.DB_CONNECTION_LIMIT || 50);
++if (!Number.isSafeInteger(connectionLimit) || connectionLimit < 1 ||
++    (hosted && connectionLimit > 5)) {
++    throw new Error('WA_DB_CONNECTION_LIMIT_INVALID');
++}
++if (helioTest && sslPolicy !== 'required') {
+     throw new Error('HELIO_TEST_TLS_REQUIRED');
+ }
+ 
+@@ -28,10 +42,10 @@
+     user: process.env.DB_USER,
+     password: process.env.DB_PASSWORD,
+     database: process.env.DB_NAME,
+-    port: process.env.DB_PORT,
+-    ...(helioTest ? { ssl: { rejectUnauthorized: true } } : {}),
++    port: databasePort,
++    ...(sslPolicy === 'required' ? { ssl: { rejectUnauthorized: true } } : {}),
+     waitForConnections: true,
+-    connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 50),
++    connectionLimit,
+     queueLimit: 0,
+     charset: 'utf8mb4',
+     // Standardize JavaScript Date <-> MySQL conversion on UTC.

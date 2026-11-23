@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-23",
+  "purpose": "read-only change-to-test evidence reconciliation",
+  "main": "d92ef54428f3d6cea6e4b28eaa5237a53c3b913e",
+  "reviseLogIn": "72b8ee04dfae191250bdb09b0b53bf7b963a8a85",
+  "operational_paths": 91,
+  "new": 13,
+  "modified": 77,
+  "deleted": 1,
+  "scope": "review-only; no install, merge, schema DDL, rollout or staging operation"
+}

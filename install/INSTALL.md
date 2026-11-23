@@ -1,42 +1,31 @@
-# INSTALL — WA Stage 6 R16 T09 Weights Nested Error Correction
+# R20 Production Environment Compatibility — proposed installation
 
-**Owner-authorized Step B candidate — November 21, 2026.**
+Date: 2026-11-22. Scope approved for Step B preparation only; **NOT APPROVED FOR INSTALLATION, COMMIT, DEPLOYMENT OR DB CHANGE**.
 
-## Purpose and scope
+## Baseline and destinations
 
-Fix the nested JSON error-message presentation in the existing Weights Search browser consumer. This replaces only `httpdocs/Weights.html`. No backend, database, GitHub, Render, authentication, shared-client, or other application files are changed by this ZIP.
+Branch `reviseLogIn` at `b751e17`. Exact Google Drive originals matched GitHub blob IDs for three files. All paths in `install/manifest.json` are WA-relative. `REPLACE` files are complete; `NEW` offline test is complete. Compare baseline to current local branch before installation; if source changed, stop and rebase.
 
-## Before installation (Step C: owner only)
+## Recommended owner-controlled Step C (separate approval)
 
-1. Use your established manual local-install workflow. Do **not** apply to production, main, Render, or another environment without separately approved steps.
-2. Confirm the target is the intended authorized local WA project and that `httpdocs/Weights.html` is the file being replaced.
-3. Verify the current target file's SHA-256. Expected authoritative source hash: `e605dd4e661ae726eb401473e1399fbb7111e5ab11493549d5a9ea51b9f9d54c`. **If it differs, stop and reconcile; do not overwrite an unverified newer version.**
-4. Preserve your existing known-good `_COPY` backup/rollback copy outside this package, using your normal local procedure.
-5. Extract **only** the ZIP file `httpdocs/Weights.html` to the exact local relative path `httpdocs/Weights.html`, replacing the verified prior version. Do not copy `install/` or `change/` into operational folders.
-6. Verify the installed file's SHA-256 matches `925982a144bba7f54821ba32f37ba2f0cccc27784562c3333ef392e27b0e5c87`. The same hash is in `change/SHA256SUMS.txt`.
-7. Under your established workflow, manually synchronize the installed file into authoritative Google Drive. ChatGPT has not written to the authoritative Drive or local project.
+1. Review complete diffs and file verification reports under `change/`.
+2. Back up the three original source files using the owner's `_COPY` convention OUTSIDE public assets.
+3. Install only the five operational files from the ZIP into the exact manifest paths on the development branch; then synchronize manually to the authoritative Drive folder.
+4. Keep `WA_PRODUCTION_RELEASE_GATE` **unset** in staging; do not configure real production values, connect to a real production database, or deploy to production.
+5. No changes to `main` or production are approved. Staging Auto-Deploy is On Commit: a later authorized development push triggers staging deploy, and must be separately coordinated.
 
-## Step D — controlled, consolidated acceptance
+## Verification (after separately authorized installation)
 
-After verifying intended **isolated Stage 6 test environment and test database identity**, perform one browser-session acceptance covering:
+Read-only checksum comparison to `change/SHA256SUMS.txt`; `node --check` for each revised JS file; `node tests/r20.environment-compatibility.offline.test.js`; `node tests/r20.db-connection.offline.test.js`. Before any staging deployment, run targeted staging environment guard, login/refresh/logout and TNNA smoke tests. Record all results; do not infer pass.
 
-- A known-safe nested error response through a genuine Weights business-page request (not just synthetic unit/harness evidence); capture status, sanitized envelope and displayed message, without exposing tokens or private records.
-- Flat error compatibility and safe fallback for malformed error content, only as needed given existing accepted evidence.
-- 401/403 messages and session/entitlement continuity when safe to test; do not intentionally invalidate credentials or induce lockouts.
-- A successful Weights search after the error to confirm normal recovery.
-- No `[object Object]`, unexpected automatic mutation request or sensitive disclosure.
+## Production release prerequisites
 
-**Do not cause deliberate database outages/server exceptions, modify real records, or intercept production traffic.** If no safe genuine nested condition exists, record the coverage gap as OPEN instead of fabricating one. Preserve accepted T10/T12 evidence; no unnecessary retests.
+Before proposing the final production settings, owner must approve candidate DB name, user, origin, TLS, connection cap and cutover sequence. This prepared implementation currently uses explicit `WA_PRODUCTION_RELEASE_GATE=owner-authorized`, `WA_PRODUCTION_DB_NAME`, `WA_PRODUCTION_DB_USER`, `WA_PRODUCTION_ORIGIN` gates. They are *configuration confirmations*, not substitute for external release approval. Current code refuses existing `wapps_production`, staging `wapps_test` and R20/H109 disposable DBs in production mode. Future production must use an approved new DB and credentials. Production operations, schema/data conversion, rollback rehearsal, independent security review, and One Tree findings remain separate mandatory gates.
 
 ## Rollback
 
-If acceptance fails, close the affected browser page and manually restore the owner-preserved known-good `httpdocs/Weights.html` backup in the authorized local WA project. Confirm the restored file hash equals `e605dd4e661ae726eb401473e1399fbb7111e5ab11493549d5a9ea51b9f9d54c` if reverting to this exact baseline. Recheck the single-page behavior; follow your usual owner-controlled Google Drive resynchronization. No database migration or cleanup is associated with this package. GitHub commits, merges and deployments require separate explicit authorization.
+If local acceptance fails, owner restores exact pre-install `_COPY` versions of three revised files and removes the two newly added offline tests, then validates hashes. No SQL changes exist in this package. Do not describe a code rollback as an adequate rollback of future database migration or writes.
 
-## Evidence
+## Limitation
 
-- Source difference: `change/Weights.html.diff`.
-- Per-file final-deliverable report: `change/Weights.html.verification.md`.
-- Isolated Chromium test results: `change/R16_T09_Isolated_Chromium_Evidence.json`.
-- Checksums: `change/SHA256SUMS.txt`.
-
-**This ZIP does not itself constitute Step D or full R16 T09 completion.**
+Tests are offline, synthetic and mock-based. Real Render runtime, real production connection, source/DB migration, production PWA version switch, external review and production operation remain untested/unapproved.

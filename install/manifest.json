@@ -1,0 +1,30 @@
+[
+  {
+    "destination": "server.js",
+    "action": "REPLACE",
+    "sha256": "69d05f74d6e82bb4aa6e99f0f0d89417493b6750d5945956ad86fb6b2f09fa70",
+    "original_sha256": "00b8fe5e521ab65cd41dca62d48968d8739d7282f8b0458f79660d06dd60cc81"
+  },
+  {
+    "destination": "dbConnection.js",
+    "action": "REPLACE",
+    "sha256": "887112e9180d0bd33aca26428cf7e867a6ef06cc325c033067986e03c7b7109a",
+    "original_sha256": "a16086c538cf93e87f60768e8912d4416f97ea3b15b1654953dbd95c5720beb6"
+  },
+  {
+    "destination": "services/stage6Environment.js",
+    "action": "REPLACE",
+    "sha256": "c85e89823706441bc0bb399ec73b9f04d5e44c3db3cd71915d547fc6a8e98f9f",
+    "original_sha256": "0cc0fac9b30cbd217c3be5b568e1f64736db408b378164db1a48bbf9ba8b0a76"
+  },
+  {
+    "destination": "tests/r20.environment-compatibility.offline.test.js",
+    "action": "NEW",
+    "sha256": "4d29a4b7f8e88e505786b43fc3574275f4e275a0eb6094ae297ec7ccece08abb"
+  },
+  {
+    "destination": "tests/r20.db-connection.offline.test.js",
+    "action": "NEW",
+    "sha256": "11706adaf3417fb59ca80bb895916cd4c85545889fb92d0a717bbbba8ef098f6"
+  }
+]
