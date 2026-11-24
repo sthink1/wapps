@@ -1,0 +1,68 @@
+--- a/httpdocs/js/FTPrivacy.js
++++ b/httpdocs/js/FTPrivacy.js
+@@ -4,8 +4,44 @@
+ const bearer=()=>({'Authorization':`Bearer ${localStorage.getItem('token')}`,'Content-Type':'application/json',...(currentPageToken?{'X-FT-Page-Token':currentPageToken}:{})});
+ let currentPageToken=null;
+ const handoff=id=>`FTPrivacyEntry:${id}`;
+-function installPageToken(t){currentPageToken=t;/* This token exists only in this page's JavaScript memory. */
+- const nativeFetch=window.fetch.bind(window);window.fetch=(url,opts={})=>{const u=String(url);if(u.includes('/familytree/')){const h=new Headers(opts.headers||{});h.set('X-FT-Page-Token',t);return nativeFetch(url,{...opts,headers:h});}return nativeFetch(url,opts);};
++let pageTokenFetchInstalled = false;
++function installPageToken(t) {
++    // Keep the current capability in page memory; install only one wrapper.
++    currentPageToken = t;
++    if (pageTokenFetchInstalled) return;
++    pageTokenFetchInstalled = true;
++    const nativeFetch = window.fetch.bind(window);
++    const apiOrigin = new URL(base).origin;
++    window.fetch = (input, opts = {}) => {
++        const isRequest = input instanceof Request;
++        const rawUrl = isRequest ? input.url : String(input);
++        let destination;
++        try {
++            destination = new URL(rawUrl, document.baseURI);
++        } catch (_) {
++            // Invalid URLs must not receive a capability.
++        }
++        const approved = destination &&
++            (destination.protocol === 'http:' || destination.protocol === 'https:') &&
++            !destination.username && !destination.password &&
++            (destination.origin === window.location.origin || destination.origin === apiOrigin) &&
++            destination.pathname.startsWith('/familytree/');
++        const headers = new Headers(opts.headers !== undefined
++            ? opts.headers
++            : isRequest ? input.headers : undefined);
++        if (approved) {
++            // Explicit headers (e.g. the one-time handoff) retain their precedence.
++            if (!headers.has('X-FT-Page-Token')) headers.set('X-FT-Page-Token', currentPageToken);
++            // Do not allow redirects to forward a custom capability header.
++            return nativeFetch(isRequest ? input : destination.href,
++                { ...opts, headers, redirect: 'error' });
++        }
++        if (headers.has('X-FT-Page-Token')) {
++            headers.delete('X-FT-Page-Token');
++            return nativeFetch(isRequest ? input : rawUrl, { ...opts, headers });
++        }
++        return nativeFetch(isRequest ? input : rawUrl, opts);
++    };
+ }
+ function popup(title,detail,needKey=false){return new Promise(resolve=>{
+   const backdrop=document.createElement('div');backdrop.style.cssText='position:fixed;inset:0;background:#0009;z-index:99999;display:flex;align-items:center;justify-content:center;padding:15px';
+@@ -20,7 +56,17 @@
+   submit.onclick=()=>{if(needKey){const value=input.value;if(!/^(?=.{4,128}$)(?!.*[\x00-\x1F\x7F])[\s\S]+$/u.test(value)){info.textContent='Choose any combination of letters, numbers, or symbols. At least four characters (maximum 128).';return;}close(value);}else close(true);};
+   cancel.onclick=()=>close(null);panel.append(submit,cancel);backdrop.appendChild(panel);document.body.appendChild(backdrop);input?.focus();
+ });}
+-async function api(path,opt={}){const r=await fetch(`${base}/familytree/privacy/${path}`,{...opt,headers:bearer()});let data={};try{data=await r.json();}catch{}if(!r.ok)throw Error(data.message||'Privacy action failed.');return data;}
++async function api(path, opt = {}) {
++    const headers = new Headers(opt.headers === undefined ? bearer() : opt.headers);
++    const requestOptions = { ...opt, headers };
++    // The entry handoff can carry a token before the fetch wrapper is installed.
++    if (headers.has('X-FT-Page-Token')) requestOptions.redirect = 'error';
++    const r = await fetch(`${base}/familytree/privacy/${path}`, requestOptions);
++    let data = {};
++    try { data = await r.json(); } catch {}
++    if (!r.ok) throw Error(data.message || 'Privacy action failed.');
++    return data;
++}
+ async function status(personID,familyTreeCode){return api(`status/${personID}?familyTreeCode=${encodeURIComponent(familyTreeCode)}`);}
+ async function unlock(personID,familyTreeCode){const code=await popup('PRIVACY LOCK','Enter the key code for this Person (at least four characters).',true);if(!code)return false;try{const result=await api(`unlock/${personID}`,{method:'POST',body:JSON.stringify({familyTreeCode,keyCode:code})});return result.pageToken||true;}catch(e){await popup('PRIVACY LOCK',e.message);return false;}}
+ async function ensurePageAccess(personID,code){try{

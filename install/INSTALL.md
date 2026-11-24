@@ -1,26 +1,30 @@
-# M03-C01 / M03-M04 — Read-only acceptance test
+# FP03 — installation and rollback (November 24, 2026)
 
-Install manually from the extracted ZIP. All four files listed below are new; no operational replacement. This INSTALL.md is reference only; do not overwrite the project install/INSTALL.md.
+Baseline: reviseLogIn at a85aa107778b4a871e04fa193e432f0c756d9177. Owner performs installation manually. No deployment or commit authorization implied.
 
-- `tests/M03-C01_M04_readonly_db_test.cjs` — new executable; SHA-256 `6c3e3363ec3a3dc1992432848d5497036e1c0634537dca5a6c6edd80e38f4073`
-- `change/M03-C01_M04_readonly_db_test_verification.md` — new verification report
-- `change/M03-C01_M04_readonly_db_test_preparation.log` — new offline preparation evidence
-- `change/M03-C01_M04_readonly_db_test_SHA256SUMS.txt` — new checksum manifest (excludes itself)
+| Destination (WA-relative) | Action |
+|---|---|
+| httpdocs/js/FTPrivacy.js | Replace |
+| change/FP03_FTPrivacy.js.diff | New |
+| change/FP03_FTPrivacy.js_verification.md | New |
+| change/FP03_offline_test.cjs | New |
+| change/FP03_offline_test.log | New |
+| change/FP03_SHA256SUMS.txt | New |
+| install/INSTALL.md | Package reference only; do not overwrite existing project instructions |
 
-In the WA root on reviseLogIn at 8db2689 with both installed containment routes, run:
+Before replacement verify branch and HEAD and original SHA-256 `5355f41f25534c8dd8e6d42f37b9a67c932bcc2300ba65148451b179d1eafced`. If different, stop and reconcile (including line endings). Keep owner _COPY backup outside httpdocs to avoid publicly served backup. Check manifest hashes from extracted ZIP root before installing. Manually install replacement and new change files and synchronize authoritative Drive following established procedure.
+
+After installation, from WA root:
 
 ```powershell
-if ((Get-FileHash .\tests\M03-C01_M04_readonly_db_test.cjs -Algorithm SHA256).Hash -ne '6c3e3363ec3a3dc1992432848d5497036e1c0634537dca5a6c6edd80e38f4073') { throw 'Test runner hash mismatch' }
-node --env-file=.env.test .\tests\M03-C01_M04_readonly_db_test.cjs
-if ($LASTEXITCODE -ne 0) { throw 'Acceptance incomplete; stop and report the output' }
+if ((git branch --show-current) -ne 'reviseLogIn') { throw 'Wrong branch' }
+if ((git rev-parse HEAD) -ne 'a85aa107778b4a871e04fa193e432f0c756d9177') { throw 'Baseline changed' }
+if ((Get-FileHash .\httpdocs\js\FTPrivacy.js -Algorithm SHA256).Hash -ne '6dd2db2a4a5fd8fa7cf5adee433901c0b129aaae8ea5fe5511802f31141f8824') { throw 'Replacement mismatch' }
+node --check .\httpdocs\js\FTPrivacy.js
+if ($LASTEXITCODE -ne 0) { throw 'Syntax failed' }
+node .\change\FP03_offline_test.cjs
+if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
 ```
+Expected: RESULT: 40 passed, 0 failed, 40 cases. No DB connection. Then conduct targeted private Person browser acceptance on localhost:8080 using test DB; disable cache in DevTools and verify corrected script content before testing. Do not share privacy keys or tokens. Owner approval required before commit/sync. No production actions.
 
-Expected final lines (only if all checks pass):
-
-```
-READ-ONLY TRANSACTION ROLLBACK: PASS
-DATABASE CASES: 8 passed, 0 failed or not run
-READ-ONLY DATABASE ACCEPTANCE: PASS
-```
-
-No application restart. No SQL mutation, synthetic records, actual merge/undo, external storage or notification. The runner stops on baseline, database identity, TLS, fixture or assertion failure; do not bypass safeguards. Remove these new files manually to roll back the package; no existing source changed. Do not commit or deploy until separately authorized.
+Rollback: restore owner's original backup and verify original SHA-256 above; remove new FP03 change files only if abandoning package; reload with cache disabled. This restores vulnerable behavior, so do not treat rollback as release-ready.
