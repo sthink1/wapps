@@ -1,0 +1,87 @@
+--- a/routes/familyTree.js
++++ b/routes/familyTree.js
+@@ -7214,7 +7214,7 @@
+     const b = req.body || {};
+     const sourceCode = String(b.sourceFamilyTreeCode || '').trim();
+     const targetPersonID = Number(b.targetPersonID || 0);
+-    const decisions = Array.isArray(b.decisions) ? b.decisions : [];
++    const decisions = b.decisions === undefined ? [] : b.decisions;
+     const bridge = b.bridge || {};
+ 
+     if (!sourceCode || !targetPersonID) {
+@@ -7262,11 +7262,27 @@
+             const groupsByNewer = new Map(
+                 review.groups.map(group => [Number(group.newerPerson.PersonID), group])
+             );
+-            const decisionsByNewer = new Map(
+-                decisions
+-                    .filter(Boolean)
+-                    .map(decision => [Number(decision.newerPersonID), decision])
+-            );
++            // Only decisions in the freshly generated review may reach merge writes.
++            const invalidDecision = () => {
++                const err = new Error('Invalid or outdated Person merge decisions. Reload the review.');
++                err.status = 409; markExpectedClientError(err);
++                err.responseCode = 'ONE_TREE_REVIEW_INCOMPLETE';
++                return err;
++            };
++            const decisionsByNewer = new Map();
++            if (!Array.isArray(decisions)) throw invalidDecision();
++            for (const decision of decisions) {
++                if (!decision || typeof decision !== 'object' || Array.isArray(decision)) {
++                    throw invalidDecision();
++                }
++                const newerPersonID = parseOrdinaryRelationshipPersonID(decision.newerPersonID);
++                if (!groupsByNewer.has(newerPersonID) || decisionsByNewer.has(newerPersonID) ||
++                    !['same', 'different'].includes(decision.decision)) {
++                    throw invalidDecision();
++                }
++                decisionsByNewer.set(newerPersonID, decision);
++            }
++            const normalizedDecisions = [];
+ 
+             const selectedOlder = new Set();
+             for (const [newerPersonID, group] of groupsByNewer.entries()) {
+@@ -7279,7 +7295,7 @@
+                 }
+ 
+                 if (decision.decision === 'same') {
+-                    const olderPersonID = Number(decision.olderPersonID || 0);
++                    const olderPersonID = parseOrdinaryRelationshipPersonID(decision.olderPersonID);
+                     const allowed = group.candidates.some(candidate => Number(candidate.PersonID) === olderPersonID);
+                     if (!allowed) {
+                         const err = new Error(`The selected match for PersonID ${newerPersonID} is no longer a current duplicate candidate. Reload the review.`);
+@@ -7292,6 +7308,15 @@
+                         throw err;
+                     }
+                     selectedOlder.add(olderPersonID);
++                    normalizedDecisions.push({
++                        newerPersonID,
++                        decision: 'same',
++                        olderPersonID,
++                        resolutions: decision.resolutions || {},
++                        keepImageIDs: Array.isArray(decision.keepImageIDs) ? decision.keepImageIDs : []
++                    });
++                } else {
++                    normalizedDecisions.push({ newerPersonID, decision: 'different' });
+                 }
+             }
+ 
+@@ -7322,7 +7347,7 @@
+                 review.olderTree,
+                 review.newerTree,
+                 req.user.userId,
+-                decisions,
++                normalizedDecisions,
+                 normalizedBridge
+             );
+ 
+@@ -7330,7 +7355,7 @@
+                 c,
+                 review.olderTree,
+                 review.newerTree,
+-                decisions,
++                normalizedDecisions,
+                 req.user.userId,
+                 normalizedBridge,
+                 r2Plan,
