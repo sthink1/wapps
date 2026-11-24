@@ -1,0 +1,52 @@
+--- a/routes/ftPrivacy.js
++++ b/routes/ftPrivacy.js
+@@ -94,8 +94,21 @@
+   }
+   return missing;
+ }
+ 
++// M03-C01 / M03-M04: This is a source-level release restriction, not an
++// environment switch. Do not enable until oneTreeM eligibility, privacy,
++// and transaction safeguards are implemented and separately accepted.
++const ONE_TREE_CROSS_TREE_ENABLED = false;
++
++function requireCrossTreeOneTreeEnabled() {
++  if (!ONE_TREE_CROSS_TREE_ENABLED) {
++    const e = error('Cross-tree One Tree operations are temporarily unavailable.', 403);
++    e.responseCode = 'ONE_TREE_UNAVAILABLE';
++    throw e;
++  }
++}
++
+ function oneTreeLockedError(missing) {
+   const e = error('One Tree review requires privacy-code verification.',423);
+   e.responseCode = 'PRIVATE_LOCKED';
+   e.requiredPrivatePersonIDs = missing;
+@@ -133,8 +146,9 @@
+ // One Tree unlock uses the same rate limit and verification semantics as the
+ // normal Person unlock, but scopes a Person to the two Trees in this review.
+ privateRouter.post('/one-tree/unlock/:personID', async (req,res) => {
+   try {
++    requireCrossTreeOneTreeEnabled();
+     const personID=Number(req.params.personID);
+     const userID=req.user.userId;
+     const key=exactPrivacyKey(req.body?.keyCode);
+     const sourceCode=req.body?.sourceFamilyTreeCode;
+@@ -237,8 +251,10 @@
+  res.json=function(data){
+    (async()=>{try{if(!data||typeof data!=='object')return original(data);
+      const ids=new Set();const crawl=(v,depth=0)=>{if(!v||typeof v!=='object'||depth>18)return;if(Array.isArray(v)){v.forEach(x=>crawl(x,depth+1));return;}if(Number.isInteger(Number(v.PersonID))&&Number(v.PersonID)>0)ids.add(Number(v.PersonID));Object.values(v).forEach(x=>crawl(x,depth+1));};crawl(data);
+      if(!ids.size && req.path !== '/one-tree/review' && data.code !== 'ONE_TREE_REVIEW_REQUIRED' && !(data.review && data.review.code === 'ONE_TREE_REVIEW_REQUIRED'))return original(data);
++     // The server-generated suspension response contains no Person data.
++     if(!ids.size && res.statusCode===403 && data.code==='ONE_TREE_UNAVAILABLE')return original(data);
+      // A centrally verified administrator may see all nested private Person data.
+      if(await isAdmin(pool,userID))return original(data);
+      const [rows]=ids.size ? await pool.query(`SELECT PersonID FROM FTPersonPrivacyT WHERE IsPrivate=1 AND PersonID IN (${[...ids].map(()=>'?').join(',')})`,[...ids]) : [[]];const locked=new Set(rows.map(x=>Number(x.PersonID)));
+      // A comparison can contain untagged derived values. Authorize every private
+@@ -266,5 +282,5 @@
+    }catch(e){console.error('Family Tree privacy response filter failed (details omitted)');return res.status(500).send('Unable to safely return Family Tree data.');}})();return res;
+  };
+  next();
+  }catch(e){sendError(res,e);}}
+-module.exports={publicRouter,privateRouter,protection,missingOneTreePrivacy,oneTreeLockedError};
++module.exports={publicRouter,privateRouter,protection,missingOneTreePrivacy,oneTreeLockedError,requireCrossTreeOneTreeEnabled};

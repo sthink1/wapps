@@ -6,7 +6,7 @@ const router = express.Router();
 const { pool } = require('../dbConnection');
 const auth = require('../middleware/auth');
 const { isVerifiedAdministrator } = require('../services/administratorAccess');
-const { missingOneTreePrivacy, oneTreeLockedError } = require('./ftPrivacy');
+const { missingOneTreePrivacy, oneTreeLockedError, requireCrossTreeOneTreeEnabled } = require('./ftPrivacy');
 const { markExpectedClientError, isExpectedClientError } = require('../services/stage6ExpectedClientError');
 const { sendNotification } = require('../services/notificationService');
 const {
@@ -866,6 +866,22 @@ async function getPersonTree(c, personID) {
     return resolved
         ? resolved.activeTree
         : null;
+}
+
+// M03-C01 / M03-M04: Do not resolve an unrelated Person's Tree while
+// cross-tree One Tree operations are suspended. Keep active aliases and
+// same-tree selection behavior, with exact source-Tree membership.
+async function resolveOneTreeTarget(c, sourceTree, targetPersonID) {
+    if (!(await treeHasPerson(c, sourceTree.FamilyTreeID, targetPersonID))) {
+        requireCrossTreeOneTreeEnabled();
+    }
+
+    const targetTree = await getPersonTree(c, targetPersonID);
+    if (!targetTree || Number(targetTree.FamilyTreeID) !== Number(sourceTree.FamilyTreeID)) {
+        requireCrossTreeOneTreeEnabled();
+    }
+
+    return targetTree;
 }
 
 async function adoptTreeForUser(c, userID, targetTree) {
@@ -2271,6 +2287,7 @@ async function buildOneTreeReview(c, sourceTree, targetTree) {
 }
 
 async function oneTreeReviewNeededResponse(c, sourceTree, targetTree, extras = {}) {
+    requireCrossTreeOneTreeEnabled();
     const review = await buildOneTreeReview(c, sourceTree, targetTree);
     return {
         code: 'ONE_TREE_REVIEW_REQUIRED',
@@ -3543,13 +3560,6 @@ router.post('/use-existing-person', auth, async (req, res) => {
 
     try {
         const result = await withTx(async c => {
-            const targetTree = await getPersonTree(c, existingPersonID);
-            if (!targetTree) {
-                const err = new Error('The selected person is not associated with a Family Tree.');
-                err.status = 404; markExpectedClientError(err);
-                throw err;
-            }
-
             const focal = Number(b.focalPersonID || 0);
             const kind = String(b.relationshipKind || '').toLowerCase();
             let sourceTree = null;
@@ -3575,6 +3585,15 @@ router.post('/use-existing-person', auth, async (req, res) => {
                     [req.user.userId]
                 );
                 sourceTree = existingTrees[0] || null;
+            }
+
+            const targetTree = sourceTree
+                ? await resolveOneTreeTarget(c, sourceTree, existingPersonID)
+                : await getPersonTree(c, existingPersonID);
+            if (!targetTree) {
+                const err = new Error('The selected person is not associated with a Family Tree.');
+                err.status = 404; markExpectedClientError(err);
+                throw err;
             }
 
             if (!sourceTree) {
@@ -7182,7 +7201,7 @@ router.get('/one-tree/review', auth, async (req, res) => {
         const c = await pool.getConnection();
         try {
             const sourceTree = await requireTree(c, sourceCode, req.user.userId);
-            const targetTree = await getPersonTree(c, targetPersonID);
+            const targetTree = await resolveOneTreeTarget(c, sourceTree, targetPersonID);
             if (!targetTree) {
                 return res.status(404).json({ message: 'The selected existing Person is not associated with an active Family Tree.' });
             }
@@ -7195,6 +7214,7 @@ router.get('/one-tree/review', auth, async (req, res) => {
                 });
             }
 
+            requireCrossTreeOneTreeEnabled();
             const review = await buildOneTreeReview(c, sourceTree, targetTree);
             res.json({
                 ...review,
@@ -7206,7 +7226,10 @@ router.get('/one-tree/review', auth, async (req, res) => {
             c.release();
         }
     } catch (e) {
-        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
+        res.status(e.status || 500).json({
+            code: safeFamilyTreeErrorDetail(e, 'responseCode'),
+            message: safeFamilyTreeErrorMessage(e)
+        });
     }
 });
 
@@ -7226,7 +7249,7 @@ router.post('/one-tree/merge', auth, async (req, res) => {
     try {
         const result = await withTx(async c => {
             const sourceTree = await requireTree(c, sourceCode, req.user.userId);
-            const targetTree = await getPersonTree(c, targetPersonID);
+            const targetTree = await resolveOneTreeTarget(c, sourceTree, targetPersonID);
             if (!targetTree) {
                 const err = new Error('The selected existing Person is not associated with an active Family Tree.');
                 err.status = 404; markExpectedClientError(err);
@@ -7248,6 +7271,8 @@ router.post('/one-tree/merge', auth, async (req, res) => {
                     mergedPersonCount: 0
                 };
             }
+
+            requireCrossTreeOneTreeEnabled();
 
             // M03: Before any One Tree merge write, require a valid capability
             // for every private Person in both Trees. Same-Tree relationship

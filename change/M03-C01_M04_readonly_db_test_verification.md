@@ -1,0 +1,21 @@
+# M03-C01 / M03-M04 — Read-only database acceptance runner verification
+
+Date: 2026-11-24. New file: `tests/M03-C01_M04_readonly_db_test.cjs` (no original or diff). SHA-256: `6c3e3363ec3a3dc1992432848d5497036e1c0634537dca5a6c6edd80e38f4073`.
+
+## Scope and authority
+Owner approved interim cross-tree containment and read-only test against `wapps_test`; no database mutation, live merge/undo, production access, commit or deployment. WA A→B→C→D process; CS-02, CS-04, CS-05, CS-06, CS-09, CS-11, CS-12; WA-CORE-001, WA-API-001, WA-ERROR-001, WA-DATA-001, WA-ENV-001, WA-REVIEW-001; D01, D13, D14. Source references: installed containment ZIP, pinned `reviseLogIn` commit `8db2689f06a6ca79c6466793e2f3dab6a22eff76`, authoritative November 22 `wappsHelioTestDump.sql`, previously accepted M03-H03 database runner, root README and standards. Both installed route hashes are checked before connecting; neither route is modified. No schema change.
+
+## Design and safety
+Node and existing project Express/mysql2 dependencies; exact installed familyTree and ftPrivacy source loaded with guarded dependency injection, actual privacy protection and administrator/expected-error helpers. Identity injected from an ordinary existing test-database member; authentication/subscription/usage logging not exercised in this integration run (previous local Express tests retained). No JWT impersonation against the real server. A random test-only header and ephemeral loopback listener isolate the harness. No full WA server is started. SQL adapter only forwards single SELECT statements, rejects attempted writes/locking reads and counts blocked attempts; actual connection uses `START TRANSACTION READ ONLY`, verified test database/account/TLS and an active outer transaction. Route-level begin/commit/rollback are logical only. No real commit. Finally rolls back and closes the actual connection. Storage and notification calls throw and fail the test. Fixture query selects only required IDs and authorized source code, no target Person attributes or target Tree code. The runner prints only test labels, counts and safety status; never actual response data, SQL details or credentials. It aborts if no suitable live fixture is found. A suitable fixture existed in the historical dump projection; no promise of continued live availability.
+
+## Executed independent preparation checks
+- `node --check`: PASS (container Node v22.16.0; owner runtime separately verified previously as v24.22.1).
+- `node ... --self-test`: PASS; verifies environment guard, SELECT guard, exact denial-response checks, and fake connection write refusal before forwarding. No real connection.
+- Historical fixture SQL executed using a SQLite projection of four relevant tables from the dump: PASS; suitable combination found. This is not a MySQL compatibility or live-data test.
+- Reviewed both exact installed route candidates, relevant SQL, schema columns, and dependencies. Actual Express package unavailable in preparation environment; no local integration or real database run claimed.
+
+## Pending local cases (8)
+1. Cross-tree review 403 and exact safe response; 2. cross-tree merge 403; 3. indirect selection 403; 4. specialized privacy unlock 403; 5. same-tree review 200 and expected Tree; 6. current-tree access 200; 7. undo-options 200 and array; 8. no blocked write attempts, external attempts or SQL errors, outer transaction active. Rollback/close checked separately. Empty undo options valid; does not prove actual undo execution. Same-tree relationship mutation and ordinary privacy unlock mutation deliberately excluded; previous offline evidence preserved. No comprehensive browser test, concurrency race test or full production certification. First-Tree enrollment remains a separate unresolved finding. M03-M04 containment only, not permanent race correction. No first-Tree enrollment requests or actual merges/undos.
+
+## Rollback
+Remove the new test/evidence files manually if needed; no operational replacement, no synthetic records, no expected database writes. If run fails, stop and share only the printed test label and summary. Do not relax guards or use production. No commit or deployment authorized by this package.

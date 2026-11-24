@@ -1,0 +1,139 @@
+--- a/routes/familyTree.js
++++ b/routes/familyTree.js
+@@ -5,9 +5,9 @@
+ 
+ const { pool } = require('../dbConnection');
+ const auth = require('../middleware/auth');
+ const { isVerifiedAdministrator } = require('../services/administratorAccess');
+-const { missingOneTreePrivacy, oneTreeLockedError } = require('./ftPrivacy');
++const { missingOneTreePrivacy, oneTreeLockedError, requireCrossTreeOneTreeEnabled } = require('./ftPrivacy');
+ const { markExpectedClientError, isExpectedClientError } = require('../services/stage6ExpectedClientError');
+ const { sendNotification } = require('../services/notificationService');
+ const {
+     optimizeFamilyTreeImage,
+@@ -867,8 +867,24 @@
+         ? resolved.activeTree
+         : null;
+ }
+ 
++// M03-C01 / M03-M04: Do not resolve an unrelated Person's Tree while
++// cross-tree One Tree operations are suspended. Keep active aliases and
++// same-tree selection behavior, with exact source-Tree membership.
++async function resolveOneTreeTarget(c, sourceTree, targetPersonID) {
++    if (!(await treeHasPerson(c, sourceTree.FamilyTreeID, targetPersonID))) {
++        requireCrossTreeOneTreeEnabled();
++    }
++
++    const targetTree = await getPersonTree(c, targetPersonID);
++    if (!targetTree || Number(targetTree.FamilyTreeID) !== Number(sourceTree.FamilyTreeID)) {
++        requireCrossTreeOneTreeEnabled();
++    }
++
++    return targetTree;
++}
++
+ async function adoptTreeForUser(c, userID, targetTree) {
+     /*
+      * ENTER FAMILY CODE / USE THIS TREE changes the user's current Tree only.
+      * It must never merge two Trees. Tree merging is handled exclusively by
+@@ -2270,8 +2286,9 @@
+     return { olderTree, newerTree, groups };
+ }
+ 
+ async function oneTreeReviewNeededResponse(c, sourceTree, targetTree, extras = {}) {
++    requireCrossTreeOneTreeEnabled();
+     const review = await buildOneTreeReview(c, sourceTree, targetTree);
+     return {
+         code: 'ONE_TREE_REVIEW_REQUIRED',
+         message: `Family Tree ${review.newerTree.FamilyTreeCode} must be reviewed before it is combined with older Family Tree ${review.olderTree.FamilyTreeCode}.`,
+@@ -3542,15 +3559,8 @@
+     }
+ 
+     try {
+         const result = await withTx(async c => {
+-            const targetTree = await getPersonTree(c, existingPersonID);
+-            if (!targetTree) {
+-                const err = new Error('The selected person is not associated with a Family Tree.');
+-                err.status = 404; markExpectedClientError(err);
+-                throw err;
+-            }
+-
+             const focal = Number(b.focalPersonID || 0);
+             const kind = String(b.relationshipKind || '').toLowerCase();
+             let sourceTree = null;
+ 
+@@ -3574,8 +3584,17 @@
+                      LIMIT 1`,
+                     [req.user.userId]
+                 );
+                 sourceTree = existingTrees[0] || null;
++            }
++
++            const targetTree = sourceTree
++                ? await resolveOneTreeTarget(c, sourceTree, existingPersonID)
++                : await getPersonTree(c, existingPersonID);
++            if (!targetTree) {
++                const err = new Error('The selected person is not associated with a Family Tree.');
++                err.status = 404; markExpectedClientError(err);
++                throw err;
+             }
+ 
+             if (!sourceTree) {
+                 await c.query(
+@@ -7181,9 +7200,9 @@
+     try {
+         const c = await pool.getConnection();
+         try {
+             const sourceTree = await requireTree(c, sourceCode, req.user.userId);
+-            const targetTree = await getPersonTree(c, targetPersonID);
++            const targetTree = await resolveOneTreeTarget(c, sourceTree, targetPersonID);
+             if (!targetTree) {
+                 return res.status(404).json({ message: 'The selected existing Person is not associated with an active Family Tree.' });
+             }
+             if (Number(sourceTree.FamilyTreeID) === Number(targetTree.FamilyTreeID)) {
+@@ -7194,8 +7213,9 @@
+                     candidateGroups: []
+                 });
+             }
+ 
++            requireCrossTreeOneTreeEnabled();
+             const review = await buildOneTreeReview(c, sourceTree, targetTree);
+             res.json({
+                 ...review,
+                 sourceTree,
+@@ -7205,9 +7225,12 @@
+         } finally {
+             c.release();
+         }
+     } catch (e) {
+-        res.status(e.status || 500).json({ message: safeFamilyTreeErrorMessage(e) });
++        res.status(e.status || 500).json({
++            code: safeFamilyTreeErrorDetail(e, 'responseCode'),
++            message: safeFamilyTreeErrorMessage(e)
++        });
+     }
+ });
+ 
+ router.post('/one-tree/merge', auth, async (req, res) => {
+@@ -7225,9 +7248,9 @@
+ 
+     try {
+         const result = await withTx(async c => {
+             const sourceTree = await requireTree(c, sourceCode, req.user.userId);
+-            const targetTree = await getPersonTree(c, targetPersonID);
++            const targetTree = await resolveOneTreeTarget(c, sourceTree, targetPersonID);
+             if (!targetTree) {
+                 const err = new Error('The selected existing Person is not associated with an active Family Tree.');
+                 err.status = 404; markExpectedClientError(err);
+                 throw err;
+@@ -7247,8 +7270,10 @@
+                     relatedPersonID: relatedPersonID || null,
+                     mergedPersonCount: 0
+                 };
+             }
++
++            requireCrossTreeOneTreeEnabled();
+ 
+             // M03: Before any One Tree merge write, require a valid capability
+             // for every private Person in both Trees. Same-Tree relationship
+             // operations retain their preexisting (non-merge) behavior.

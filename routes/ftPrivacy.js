@@ -95,6 +95,19 @@ async function missingOneTreePrivacy(c, userID, headers, treeIDs) {
   return missing;
 }
 
+// M03-C01 / M03-M04: This is a source-level release restriction, not an
+// environment switch. Do not enable until oneTreeM eligibility, privacy,
+// and transaction safeguards are implemented and separately accepted.
+const ONE_TREE_CROSS_TREE_ENABLED = false;
+
+function requireCrossTreeOneTreeEnabled() {
+  if (!ONE_TREE_CROSS_TREE_ENABLED) {
+    const e = error('Cross-tree One Tree operations are temporarily unavailable.', 403);
+    e.responseCode = 'ONE_TREE_UNAVAILABLE';
+    throw e;
+  }
+}
+
 function oneTreeLockedError(missing) {
   const e = error('One Tree review requires privacy-code verification.',423);
   e.responseCode = 'PRIVATE_LOCKED';
@@ -134,6 +147,7 @@ privateRouter.post('/unlock/:personID',async(req,res)=>{try{
 // normal Person unlock, but scopes a Person to the two Trees in this review.
 privateRouter.post('/one-tree/unlock/:personID', async (req,res) => {
   try {
+    requireCrossTreeOneTreeEnabled();
     const personID=Number(req.params.personID);
     const userID=req.user.userId;
     const key=exactPrivacyKey(req.body?.keyCode);
@@ -238,6 +252,8 @@ async function protection(req,res,next){try{
    (async()=>{try{if(!data||typeof data!=='object')return original(data);
      const ids=new Set();const crawl=(v,depth=0)=>{if(!v||typeof v!=='object'||depth>18)return;if(Array.isArray(v)){v.forEach(x=>crawl(x,depth+1));return;}if(Number.isInteger(Number(v.PersonID))&&Number(v.PersonID)>0)ids.add(Number(v.PersonID));Object.values(v).forEach(x=>crawl(x,depth+1));};crawl(data);
      if(!ids.size && req.path !== '/one-tree/review' && data.code !== 'ONE_TREE_REVIEW_REQUIRED' && !(data.review && data.review.code === 'ONE_TREE_REVIEW_REQUIRED'))return original(data);
+     // The server-generated suspension response contains no Person data.
+     if(!ids.size && res.statusCode===403 && data.code==='ONE_TREE_UNAVAILABLE')return original(data);
      // A centrally verified administrator may see all nested private Person data.
      if(await isAdmin(pool,userID))return original(data);
      const [rows]=ids.size ? await pool.query(`SELECT PersonID FROM FTPersonPrivacyT WHERE IsPrivate=1 AND PersonID IN (${[...ids].map(()=>'?').join(',')})`,[...ids]) : [[]];const locked=new Set(rows.map(x=>Number(x.PersonID)));
@@ -267,4 +283,4 @@ async function protection(req,res,next){try{
  };
  next();
  }catch(e){sendError(res,e);}}
-module.exports={publicRouter,privateRouter,protection,missingOneTreePrivacy,oneTreeLockedError};
+module.exports={publicRouter,privateRouter,protection,missingOneTreePrivacy,oneTreeLockedError,requireCrossTreeOneTreeEnabled};
