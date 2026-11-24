@@ -4775,17 +4775,50 @@ router.get('/persons/:id/relationships', auth, async (req, res) => {
     }
 });
 
+// Ordinary relationship writes require existing Persons in the exact active Tree.
+// Lock the membership and Person rows until the relationship transaction finishes.
+async function requireRelationshipPersonInTree(c, treeID, personID) {
+    const [rows] = await c.query(
+        `SELECT ftp.PersonID
+         FROM FTFamilyTreePersonT ftp
+         JOIN FTPersonT p ON p.PersonID=ftp.PersonID
+         WHERE ftp.FamilyTreeID=? AND ftp.PersonID=?
+         LIMIT 1 FOR UPDATE`,
+        [treeID, personID]
+    );
+    if (!rows.length) {
+        const err = new Error('Person does not belong to this Family Tree.');
+        err.status = 403; markExpectedClientError(err);
+        throw err;
+    }
+}
+
+const ordinaryRelationshipKinds = new Set(['mother', 'father', 'child', 'sibling', 'partner']);
+
+function parseOrdinaryRelationshipPersonID(value) {
+    if (typeof value !== 'number' &&
+        !(typeof value === 'string' && /^\d+$/.test(value.trim()))) {
+        return NaN;
+    }
+    const id = Number(value);
+    return Number.isSafeInteger(id) && id > 0 ? id : NaN;
+}
+
 router.post('/relationships', auth, async (req, res) => {
     const userID = req.user.userId;
     const b = req.body || {};
-    const focal = Number(b.focalPersonID);
-    const related = Number(b.relatedPersonID);
-    const kind = String(b.relationshipKind || '').toLowerCase();
+    const focal = parseOrdinaryRelationshipPersonID(b.focalPersonID);
+    const related = parseOrdinaryRelationshipPersonID(b.relatedPersonID);
+    const kind = typeof b.relationshipKind === 'string' ? b.relationshipKind.toLowerCase() : '';
 
-    if (!focal || !related || focal === related) {
+    if (!Number.isSafeInteger(focal) || !Number.isSafeInteger(related) || focal === related) {
         return res.status(400).json({
             message: 'Two different people are required.'
         });
+    }
+
+    if (!ordinaryRelationshipKinds.has(kind)) {
+        return res.status(400).json({ message: 'Unsupported relationship type.' });
     }
 
     try {
@@ -4793,30 +4826,10 @@ router.post('/relationships', auth, async (req, res) => {
             const tree = await requireTree(c, b.familyTreeCode, userID);
             const tid = tree.FamilyTreeID;
 
-            const [persons] = await c.query(
-                'SELECT PersonID FROM FTPersonT WHERE PersonID IN (?,?)',
-                [focal, related]
-            );
-
-            if (persons.length !== 2) {
-                const e = new Error('Person not found.');
-                e.status = 404; markExpectedClientError(e);
-                throw e;
+            // Acquire locks in a consistent Person ID order.
+            for (const personID of [focal, related].sort((a, b) => a - b)) {
+                await requireRelationshipPersonInTree(c, tid, personID);
             }
-
-            await c.query(
-                `INSERT IGNORE INTO FTFamilyTreePersonT
-                 (
-                    FamilyTreeID,
-                    PersonID,
-                    OriginFamilyTreeID,
-                    AddedByUserID,
-                    AddedAt,
-                    Notes
-                 )
-                 VALUES (?,?,?,?,NOW(),NULL)`,
-                [tid, related, tid, userID]
-            );
 
             if (kind === 'mother' || kind === 'father') {
                 const side = kind === 'mother' ? 'Mother' : 'Father';
@@ -4920,11 +4933,14 @@ router.post('/relationships', auth, async (req, res) => {
 router.post('/related-person', auth, async (req, res) => {
     const userID = req.user.userId;
     const b = req.body || {};
-    const focal = Number(b.focalPersonID);
-    const kind = String(b.relationshipKind || '').toLowerCase();
+    const focal = parseOrdinaryRelationshipPersonID(b.focalPersonID);
+    const kind = typeof b.relationshipKind === 'string' ? b.relationshipKind.toLowerCase() : '';
 
-    if (!focal || !kind) {
+    if (!Number.isSafeInteger(focal) || !kind) {
         return res.status(400).json({ message: 'Focal person and relationship type are required.' });
+    }
+    if (!ordinaryRelationshipKinds.has(kind)) {
+        return res.status(400).json({ message: 'Unsupported relationship type.' });
     }
     if (!b.FirstName && !b.LastName) {
         return res.status(400).json({ message: 'First Name or Last Name is required.' });
@@ -4932,10 +4948,10 @@ router.post('/related-person', auth, async (req, res) => {
 
     try {
         const result = await withTx(async c => {
-            await requireDuplicateReviewOrContinue(c, b);
-
             const tree = await requireTree(c, b.familyTreeCode, userID);
             const tid = tree.FamilyTreeID;
+            await requireRelationshipPersonInTree(c, tid, focal);
+            await requireDuplicateReviewOrContinue(c, b);
 
             const [personResult] = await c.query(
                 `INSERT INTO FTPersonT
