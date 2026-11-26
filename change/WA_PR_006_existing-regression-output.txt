@@ -1,0 +1,70 @@
+--- group5e.proxy.source.offline.test.js ---
+TAP version 13
+# Subtest: password-reset endpoint uses dedicated client IP resolver
+ok 1 - password-reset endpoint uses dedicated client IP resolver
+  ---
+  duration_ms: 1.213203
+  type: 'test'
+  ...
+# Subtest: rate limiter has separate IP/email/global buckets
+ok 2 - rate limiter has separate IP/email/global buckets
+  ---
+  duration_ms: 0.196827
+  type: 'test'
+  ...
+# Subtest: limits are 5 email, 20 IP and 100 global
+ok 3 - limits are 5 email, 20 IP and 100 global
+  ---
+  duration_ms: 0.368547
+  type: 'test'
+  ...
+# Subtest: source contains no explicit trust proxy override
+ok 4 - source contains no explicit trust proxy override
+  ---
+  duration_ms: 0.23227
+  type: 'test'
+  ...
+# Subtest: source does not expose a diagnostic IP endpoint
+ok 5 - source does not expose a diagnostic IP endpoint
+  ---
+  duration_ms: 0.23191
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14.11318
+Exit: 0
+--- stage6a.rate-limit.unit.test.js ---
+PASS email limit: 5 allowed, sixth blocked.
+PASS IP limit: 20 requests allowed, 21st blocked (including blocked email attempts).
+PASS shared counters: separate mock connections observe same database state.
+PASS data minimization: HMAC keys only, no raw IP or email.
+LIMITATION: in-memory test double; run live DB validation separately.
+Exit: 0
+--- stage6a.global-limit.unit.test.js ---
+PASS per-email: sixth attempt blocked across different IP values.
+PASS per-IP: 21st attempt blocked across different emails.
+PASS global: 100 total attempts, 101st blocked despite new email and IP.
+PASS data minimization: global/email/IP keys are HMAC digests only.
+NOTE: unit test uses mock SQL; live test tests transactional MySQL.
+Exit: 0
+--- stage6a.rate-cleanup.unit.test.js ---
+PASS SQL: only counters older than 48 hours, bounded to 250 indexed rows per run.
+PASS cleanup: one bounded DELETE, affected rows reported.
+PASS failure handling: DB outage reported, no crash and no rate-limit bypass.
+PASS timing configuration: first run delayed one minute, recurring daily.
+LIMITATION: unit tests use mock pool; no actual database deletion in this test.
+Exit: 0
+--- stage6a.rate-cleanup.capacity.test.js ---
+PASS backlog of 283: two bounded batches and stop.
+PASS large backlog: capped at 12 queries / 3,000 deletions per run.
+PASS empty backlog: one query.
+PASS mid-run database error: returns failure and preserves accurate partial count.
+LIMITATION: unit tests use a simulated DB; live SQL deletion not yet verified.
+Exit: 0

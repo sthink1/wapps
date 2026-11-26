@@ -1,0 +1,31 @@
+WA-PR-006 authoritative Google Drive reference captures, November 26 2026.
+SHA-256 hashes of exact retrieved bytes. References not included in ZIP.
+Staging commit 730c91d reported by owner; Drive captured independently; not Git checkout verification.
+Five replacement baselines retrieved twice; cmp byte-for-byte identical.
+
+d7b3b598c7b9462e55fdf56e16ec0217f3eb9329b107b5d085c5f6a280486a17  routes/users.js  [Drive file 1viwBYD1ZIhx1YgcTbfzeHSBUsbuCJuyP; second retrieval MATCH]
+e972b57e8c22b001e9adbf38529fb903a59bf2150ea9106b772b622b794c205c  services/passwordResetClientIp.js  [Drive file 1rYq3x2pbYQZI48_6L-OBbeJ5CHS_du-e; second retrieval MATCH]
+e05451d9752ba144a7b6b8f7ff6ac8efa41bbbaccffa8d3f23b1430b73186c26  services/passwordResetLimiter.js  [Drive file 1QYrJ2iPsJBTxCqq54bCvfaE7SIY3TSKm; second retrieval MATCH]
+98c8407dcb53c4491e57331a361eac025df8ed941620e28e6d462492de32874f  services/passwordResetRateCleanup.js  [Drive file 11dllTNWQFDgU6P9cKd6M3CK37mY6UQFJ; second retrieval MATCH]
+837990d7d3dcedd56821e88d82161632eb1e45d2712064abcd36c3858d3d8f38  tests/group5e.client-ip.unit.test.js  [Drive file 1LmUqW5moA3lREgRptR1Anh-shqvn1EPv; second retrieval MATCH]
+75ebb42bfaa491945b67caf20e07e68291ba6e899c384619dd15b1202d6fc178  README.md  [reference only]
+93daf8b639b9dec49a242ec9bee0666562c6a7a72133a908b0ee40ed6b76976c  standard/WA_File_Development_and_Delivery_Process.md  [reference only]
+02ccc4b35e9cc0de4218e23082cf17f0fba444e6f1b9b088a778266fae125361  standard/WA_Core_Programming_Standards_DRAFT_v1.0_2026-11-12.md  [reference only]
+f6bb22bac44707bc2ec74e7111d0b3c1e73256958011974cf19929f6d0a50fd0  standard/WA_Detailed_Technical_Standards_DRAFT_v0.4.1_3A-3C_2026-11-12.md  [reference only]
+48d944deca7c4d03b465cf66c9082117e187aa8db0221107fffb8812e00e8fb2  standard/WA_Standards_Decision_Register_v1.0_2026-11-12.md  [reference only]
+1c585afd6cc6ac63941188a451e965b1300adaea97615393d8333e27f332c18e  CLAUDE.md  [reference only]
+62283cfaa0959ab05a9de1f13e4a6108354b42457c573bcf5b4a14f58c9e57c6  TechSummary.md  [reference only]
+69d05f74d6e82bb4aa6e99f0f0d89417493b6750d5945956ad86fb6b2f09fa70  server.js  [reference only]
+887112e9180d0bd33aca26428cf7e867a6ef06cc325c033067986e03c7b7109a  dbConnection.js  [reference only]
+67d80f9b52774a9f4513fde0673efc2d7a0918c577c273aef910f91f9ad169a8  utils.js  [reference only]
+817968fde167a8f45d061e0201ccaa832d6b27f1c35da347eb630ea406712a6b  routes/tnna.js  [reference only]
+a597b565ec36c14aa75b3745a7d128b7cb21a9392fdc16f45e1e5c9dab774c8c  services/loginLimiter.js  [reference only]
+25953d3f3a8fc0dca37dddba7f084bf1204bed9a624712c3151fe9fe761ecb0c  services/loginVerification.js  [reference only]
+c85e89823706441bc0bb399ec73b9f04d5e44c3db3cd71915d547fc6a8e98f9f  services/stage6Environment.js  [reference only]
+f107b62cb25b4555c6244a9a1d09fafc317f66574f3a1a532bfd09277889308c  wappsHelioTestDump.sql  [reference only]
+fe7f0f37041f31c4d16ec34f3af55b823ce581cb2a01eeefbe2cea24769ace0c  sql/WA_AUTH_ABUSE_2026-11-25_apply.sql  [reference only]
+565d35e6ef077fb6bdb43f24c313e10ef51c9ba97d7c2fd6fdfd81041ee7da2c  docs/WA_AUTH_ABUSE_acceptance_plan.md  [reference only]
+67545a4732d3714d8948f081dc495dd61e6ea7137c1bb1ccf5c4eede3b771923  docs/Stage6_Render_TestPlan.md  [reference only]
+511f61176fe5421b255d632339e25795658f24f4581e65eb57df41e364186a42  docs/WA_reviseLogIn_Change_to_Test_Coverage_Review_2026-11-23.md  [reference only]
+5a7ff1d6eeb2631176de982c4820b5ee23981e15bd9235af3db12650398e51e7  package.json  [reference only]
+37bf09ca2e4bb8aac3b354c7e3a18a175398df7e5c93ae3a285f642b9c3c077c  .node-version  [reference only]

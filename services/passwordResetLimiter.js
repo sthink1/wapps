@@ -19,9 +19,14 @@ async function allow(c,email,ip) {
   if(!/^\d{10}$/.test(bucket))throw Error('INVALID_RESET_RATE_BUCKET');
   const keys=[
     {type:'global',key:digest('global','all-password-resets',bucket),limit:GLOBAL_LIMIT},
-    {type:'email',key:digest('email',email,bucket),limit:EMAIL_LIMIT},
-    {type:'ip',key:digest('ip',String(ip).trim().toLowerCase(),bucket),limit:IP_LIMIT}
-  ].sort((a,b)=>a.key.localeCompare(b.key)); // deterministic locks across requests
+    {type:'email',key:digest('email',email,bucket),limit:EMAIL_LIMIT}
+  ];
+  // Skip only the IP bucket when provenance is unavailable. Preserve the
+  // existing independent email and global ceilings and their lock ordering.
+  if (ip !== null) {
+    keys.push({type:'ip',key:digest('ip',ip,bucket),limit:IP_LIMIT});
+  }
+  keys.sort((a,b)=>a.key.localeCompare(b.key)); // deterministic locks across requests
   let permitted=true;
   for(const item of keys){
     // Each INSERT/UPDATE atomically increments across processes, with InnoDB row locks.

@@ -1,0 +1,2 @@
+REFUSED: requires separately authorized local HelioHost wapps_test TLS configuration and --run-live-test-db.
+Exit: 1

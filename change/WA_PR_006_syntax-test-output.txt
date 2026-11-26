@@ -1,0 +1,10 @@
+v22.16.0
+PASS node --check routes/users.js
+PASS node --check services/clientIp.js
+PASS node --check services/loginIpLimiter.js
+PASS node --check services/passwordResetClientIp.js
+PASS node --check services/passwordResetLimiter.js
+PASS node --check services/passwordResetRateCleanup.js
+PASS node --check tests/group5e.client-ip.unit.test.js
+PASS node --check tests/wa-pr-006.offline.test.cjs
+PASS node --check tests/wa-pr-006.real-db.acceptance.cjs

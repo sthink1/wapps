@@ -1,0 +1,9 @@
+WA-PR-006 verification, 2026-11-26
+Five authoritative originals independently re-read and byte-matched.
+PASS diff reconstructs exact final bytes: routes/users.js
+PASS diff reconstructs exact final bytes: services/passwordResetClientIp.js
+PASS diff reconstructs exact final bytes: services/passwordResetLimiter.js
+PASS diff reconstructs exact final bytes: services/passwordResetRateCleanup.js
+PASS diff reconstructs exact final bytes: tests/group5e.client-ip.unit.test.js
+All operational entries classified NEW/REPLACE; install/ and change/ are package evidence.
+ZIP final CRC, membership and SHA-256 readback verified in packaging process.

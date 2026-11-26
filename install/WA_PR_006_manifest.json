@@ -1,0 +1,224 @@
+{
+  "package": "WA-PR-006 / IR-09",
+  "date": "2026-11-26",
+  "branch": "reviseLogIn",
+  "owner_reported_staging_commit": "730c91d",
+  "authoritative_folder": "My Drive/wonderfulApp",
+  "drive_folder_id": "1SBkEcRIb-ekv83-EoZXHkH0cderSHWec",
+  "installation_counts": {
+    "replace": 5,
+    "new": 8
+  },
+  "files": [
+    {
+      "path": "docs/WA_PR_006_IR_09_acceptance_plan_2026-11-26.md",
+      "classification": "NEW",
+      "sha256": "b8ab6d66213876675edad2b4a0998077bb640827406ea16e8461578a84569729",
+      "size_bytes": 15742
+    },
+    {
+      "path": "routes/users.js",
+      "classification": "REPLACE",
+      "sha256": "39299e4c24d14baf394f78a2029363e0c1b236eda569a346eabbd69d40b49cfd",
+      "size_bytes": 24694,
+      "baseline_sha256": "d7b3b598c7b9462e55fdf56e16ec0217f3eb9329b107b5d085c5f6a280486a17",
+      "baseline_drive_file_id": "1viwBYD1ZIhx1YgcTbfzeHSBUsbuCJuyP"
+    },
+    {
+      "path": "services/clientIp.js",
+      "classification": "NEW",
+      "sha256": "ccb5d4123c50da15ab1678b9347755360da28b36696642e3f3a8796f0db29809",
+      "size_bytes": 2265
+    },
+    {
+      "path": "services/loginIpLimiter.js",
+      "classification": "NEW",
+      "sha256": "b4a2e5e114c61a61114b1dea0835988e48326e15b811b039d36cb92875441bb9",
+      "size_bytes": 3041
+    },
+    {
+      "path": "services/passwordResetClientIp.js",
+      "classification": "REPLACE",
+      "sha256": "fd4e132f5fe145e5eb1c5ba9790fbdd5cfdf614df4e62ee1e1e514227eab0ae2",
+      "size_bytes": 338,
+      "baseline_sha256": "e972b57e8c22b001e9adbf38529fb903a59bf2150ea9106b772b622b794c205c",
+      "baseline_drive_file_id": "1rYq3x2pbYQZI48_6L-OBbeJ5CHS_du-e"
+    },
+    {
+      "path": "services/passwordResetLimiter.js",
+      "classification": "REPLACE",
+      "sha256": "8e41e27047aa9dfce70f9146cbefa173dc097036837bb113db60a46ca4f3b873",
+      "size_bytes": 2155,
+      "baseline_sha256": "e05451d9752ba144a7b6b8f7ff6ac8efa41bbbaccffa8d3f23b1430b73186c26",
+      "baseline_drive_file_id": "1QYrJ2iPsJBTxCqq54bCvfaE7SIY3TSKm"
+    },
+    {
+      "path": "services/passwordResetRateCleanup.js",
+      "classification": "REPLACE",
+      "sha256": "1d66b5f363ae6eabc205ac9f882c8ac6d5b7f83f3417a3d52ac47aea72fae3c1",
+      "size_bytes": 3154,
+      "baseline_sha256": "98c8407dcb53c4491e57331a361eac025df8ed941620e28e6d462492de32874f",
+      "baseline_drive_file_id": "11dllTNWQFDgU6P9cKd6M3CK37mY6UQFJ"
+    },
+    {
+      "path": "sql/WA_PR_006_IR_09_TEST_ONLY_apply.sql",
+      "classification": "NEW",
+      "sha256": "b93af8d2f2d323f314a56843671c402226f8c2c4d1d512fc304b573e14da96cc",
+      "size_bytes": 530,
+      "execution": "NOT AUTHORIZED by source installation; separate test database approval required for DDL. Preflight is read-only."
+    },
+    {
+      "path": "sql/WA_PR_006_IR_09_TEST_ONLY_preflight.sql",
+      "classification": "NEW",
+      "sha256": "04b16b88e5cbf32c70958b60327730bc9e065e4b67d7570ec603c942f216adb4",
+      "size_bytes": 612,
+      "execution": "NOT AUTHORIZED by source installation; separate test database approval required for DDL. Preflight is read-only."
+    },
+    {
+      "path": "sql/WA_PR_006_IR_09_TEST_ONLY_rollback.sql",
+      "classification": "NEW",
+      "sha256": "a31700d44e5b3891432d0bbe1c5cdb0ae8d64b85fd565b6289334e4bac65a322",
+      "size_bytes": 280,
+      "execution": "NOT AUTHORIZED by source installation; separate test database approval required for DDL. Preflight is read-only."
+    },
+    {
+      "path": "tests/group5e.client-ip.unit.test.js",
+      "classification": "REPLACE",
+      "sha256": "dc75271740e89e4f8ed41c3276b8a128939393906cfa55d60df741adb5da0c15",
+      "size_bytes": 2520,
+      "baseline_sha256": "837990d7d3dcedd56821e88d82161632eb1e45d2712064abcd36c3858d3d8f38",
+      "baseline_drive_file_id": "1LmUqW5moA3lREgRptR1Anh-shqvn1EPv"
+    },
+    {
+      "path": "tests/wa-pr-006.offline.test.cjs",
+      "classification": "NEW",
+      "sha256": "5970f0baa965607ce6ee992cd28d49009c4ecca38b705d87b26d58f16f18616a",
+      "size_bytes": 26006
+    },
+    {
+      "path": "tests/wa-pr-006.real-db.acceptance.cjs",
+      "classification": "NEW",
+      "sha256": "253c87207a9c0cd463dce7f90cece0fd8616594449ec00eef4fb8595ca392b8a",
+      "size_bytes": 8172,
+      "execution": "NOT RUN; explicit separate live test DB authorization required."
+    },
+    {
+      "path": "change/WA_PR_006_authoritative-baseline.txt",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "826fb39fdded6ecc30f84a1867452c3fcc903ba4ec0b5766c0439af49fbec28b",
+      "size_bytes": 3579
+    },
+    {
+      "path": "change/WA_PR_006_existing-regression-output.txt",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "eeb458787b3b7b9097f718f4f241127c40630b1fa14c5232ca0197946ffb475d",
+      "size_bytes": 2561
+    },
+    {
+      "path": "change/WA_PR_006_group5e.client-ip.unit.test.js.diff",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "bb64d8f9825be7d5c8a3ae59442ca46502787cac0e66ca70d71cf1b932b7bfe6",
+      "size_bytes": 4624
+    },
+    {
+      "path": "change/WA_PR_006_group5e.client-ip.unit.test.js_verification.md",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "5b95d95cae04a318c4e32c7a403c13fb125b067c6cad51122648f9e94f4acba2",
+      "size_bytes": 3008
+    },
+    {
+      "path": "change/WA_PR_006_live-test-safety-guard.txt",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "5b46665fc3d1dfaa0f658360b0105e36128b8972b5e694d2b071c65f6c1223e5",
+      "size_bytes": 117
+    },
+    {
+      "path": "change/WA_PR_006_offline-test-output.txt",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "17cb0d07a0150daf9a4f79ab6b4cfa96453100cd9e748c0c25ada1b7dff79bd5",
+      "size_bytes": 6047
+    },
+    {
+      "path": "change/WA_PR_006_package-verification.txt",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "5273389a71dac3cbe9e5e3c6824df7211d04c47c6573224a91dc988ce3fc96a1",
+      "size_bytes": 640
+    },
+    {
+      "path": "change/WA_PR_006_passwordResetClientIp.js.diff",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "8cb0875637c37d41a9bd2da62b578f8817438d220914a2df57748e3e84d0e1f6",
+      "size_bytes": 1437
+    },
+    {
+      "path": "change/WA_PR_006_passwordResetClientIp.js_verification.md",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "a193b03ae37d439a6e1d026dc02ef3f8a7ba42f4d4060d325bb4f98df8867c6a",
+      "size_bytes": 2875
+    },
+    {
+      "path": "change/WA_PR_006_passwordResetLimiter.js.diff",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "0e99ed20cb992433e578e225888260e03fa87d93e6d2202beb6dbbc4b6ba077e",
+      "size_bytes": 1079
+    },
+    {
+      "path": "change/WA_PR_006_passwordResetLimiter.js_verification.md",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "fbe4b4ec8c3937e4d391d9b50c12be71c3c157f118b931c8a1043ba6cde2950e",
+      "size_bytes": 3003
+    },
+    {
+      "path": "change/WA_PR_006_passwordResetRateCleanup.js.diff",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "626f7c47ca6cc3d6f16209d34741a19050e3b1c297a3cda748ea4818b8995c06",
+      "size_bytes": 2273
+    },
+    {
+      "path": "change/WA_PR_006_passwordResetRateCleanup.js_verification.md",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "bd107e4c7839929277451e49d4341e681274a90095a10f7b8b9b11db7b0b5482",
+      "size_bytes": 2908
+    },
+    {
+      "path": "change/WA_PR_006_syntax-test-output.txt",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "cd305e41d2cd5cc549c21c6fecaf4c86a4bba9cf68275df74d7c1bad59ee2124",
+      "size_bytes": 448
+    },
+    {
+      "path": "change/WA_PR_006_test_evidence.md",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "911db53009141c6e2d28c7d401a613861351948e8247857a5e5f2253d773477b",
+      "size_bytes": 4214
+    },
+    {
+      "path": "change/WA_PR_006_users.js.diff",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "03d52ee8bc3214462d3065dde1204c1f149dbe17b0d8d07502db154e3549d93c",
+      "size_bytes": 1801
+    },
+    {
+      "path": "change/WA_PR_006_users.js_verification.md",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "f36889067eb27aef7fe1b4d63e980911cd94d3b01d5dfc7b3dc941232c1453f0",
+      "size_bytes": 3209
+    },
+    {
+      "path": "install/INSTALL.md",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "2ec0c9661052adaee5327555c2c15cee78b136c501cf817f1d664be1943113f6",
+      "size_bytes": 9466
+    },
+    {
+      "path": "install/WA_PR_006_manifest.json",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "See change/WA_PR_006_SHA256SUMS.txt; no self-hash."
+    },
+    {
+      "path": "change/WA_PR_006_SHA256SUMS.txt",
+      "classification": "PACKAGE-ONLY",
+      "sha256": "Self-hash excluded; final ZIP hash supplied separately."
+    }
+  ]
+}

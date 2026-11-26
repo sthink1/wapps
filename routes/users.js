@@ -12,6 +12,7 @@ const sessions = require('../services/browserSession');
 const { isExpectedClientError } = require('../services/stage6ExpectedClientError');
 const fence = require('../services/credentialFence');
 const loginLimiter = require('../services/loginLimiter');
+const loginIpLimiter = require('../services/loginIpLimiter');
 const loginVerification = require('../services/loginVerification');
 const auth = require('../middleware/auth');
 const { getOrCreateDevelopmentTrial } = require('../services/subscriptionService');
@@ -204,17 +205,21 @@ router.post('/login', async (req, res) => {
     const invalidCredentials = () => res.status(401).json({
         error: 'Invalid credentials or login temporarily restricted. Please try again later.'
     });
-    if (typeof username !== 'string' || username.length === 0 || username.length > 50 ||
-        typeof password !== 'string' || password.length === 0) {
-        return invalidCredentials();
-    }
-
     try {
+        // Count every request with verified IP provenance before account lookup.
+        // Reuse the existing generic 401 contract for both WA and TNNA.
+        if (!await loginIpLimiter.allow(pool, req)) {
+            return invalidCredentials();
+        }
+        if (typeof username !== 'string' || username.length === 0 || username.length > 50 ||
+            typeof password !== 'string' || password.length === 0) {
+            return invalidCredentials();
+        }
         const [results] = await pool.query(
             'SELECT UserID FROM UsersT WHERE UserName = ? LIMIT 1', [username]
         );
         if (results.length !== 1) {
-            // No counter row is created for arbitrary nonexistent usernames.
+            // No account counter row is created for arbitrary nonexistent usernames.
             return invalidCredentials();
         }
 
