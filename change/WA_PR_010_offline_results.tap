@@ -1,0 +1,172 @@
+TAP version 13
+# Subtest: HTTP revalidation: home.html
+ok 1 - HTTP revalidation: home.html
+  ---
+  duration_ms: 7.02195
+  type: 'test'
+  ...
+# Subtest: HTTP revalidation: login.html
+ok 2 - HTTP revalidation: login.html
+  ---
+  duration_ms: 1.796951
+  type: 'test'
+  ...
+# Subtest: HTTP revalidation: js/waPlatform.js
+ok 3 - HTTP revalidation: js/waPlatform.js
+  ---
+  duration_ms: 1.351206
+  type: 'test'
+  ...
+# Subtest: HTTP revalidation: js/example.mjs
+ok 4 - HTTP revalidation: js/example.mjs
+  ---
+  duration_ms: 1.597998
+  type: 'test'
+  ...
+# Subtest: HTTP revalidation: style.css
+ok 5 - HTTP revalidation: style.css
+  ---
+  duration_ms: 1.497131
+  type: 'test'
+  ...
+# Subtest: HTTP revalidation: manifest.json
+ok 6 - HTTP revalidation: manifest.json
+  ---
+  duration_ms: 1.902086
+  type: 'test'
+  ...
+# Subtest: HTTP revalidation: sw.js
+ok 7 - HTTP revalidation: sw.js
+  ---
+  duration_ms: 1.472484
+  type: 'test'
+  ...
+# Subtest: Ordinary images retain one-day static cache default
+ok 8 - Ordinary images retain one-day static cache default
+  ---
+  duration_ms: 1.498393
+  type: 'test'
+  ...
+# Subtest: Root fallback explicitly revalidates HTML
+ok 9 - Root fallback explicitly revalidates HTML
+  ---
+  duration_ms: 3.181786
+  type: 'test'
+  ...
+# Subtest: Security headers before all existing middleware, canonical HTTPS HSTS
+ok 10 - Security headers before all existing middleware, canonical HTTPS HSTS
+  ---
+  duration_ms: 3.50441
+  type: 'test'
+  ...
+# Subtest: HSTS only approved hosted canonical origin, not local or alternate Host
+ok 11 - HSTS only approved hosted canonical origin, not local or alternate Host
+  ---
+  duration_ms: 8.169066
+  type: 'test'
+  ...
+# Subtest: All existing protected prefix cache guards remain before routers
+ok 12 - All existing protected prefix cache guards remain before routers
+  ---
+  duration_ms: 1.859783
+  type: 'test'
+  ...
+# Subtest: Early parser errors retain no-store and generic error text
+ok 13 - Early parser errors retain no-store and generic error text
+  ---
+  duration_ms: 1.99322
+  type: 'test'
+  ...
+# Subtest: Install reloads all exact 41 precache paths before skipWaiting
+ok 14 - Install reloads all exact 41 precache paths before skipWaiting
+  ---
+  duration_ms: 3.058956
+  type: 'test'
+  ...
+# Subtest: Install failure prevents skipWaiting and preserves older cache
+ok 15 - Install failure prevents skipWaiting and preserves older cache
+  ---
+  duration_ms: 1.93932
+  type: 'test'
+  ...
+# Subtest: Activation removes only numeric obsolete WA generations, then claims
+ok 16 - Activation removes only numeric obsolete WA generations, then claims
+  ---
+  duration_ms: 2.505302
+  type: 'test'
+  ...
+# Subtest: Network-first revalidation and offline fallback: /home.html
+ok 17 - Network-first revalidation and offline fallback: /home.html
+  ---
+  duration_ms: 2.076762
+  type: 'test'
+  ...
+# Subtest: Network-first revalidation and offline fallback: /login.html
+ok 18 - Network-first revalidation and offline fallback: /login.html
+  ---
+  duration_ms: 3.171552
+  type: 'test'
+  ...
+# Subtest: Network-first revalidation and offline fallback: /js/waPlatform.js
+ok 19 - Network-first revalidation and offline fallback: /js/waPlatform.js
+  ---
+  duration_ms: 1.131072
+  type: 'test'
+  ...
+# Subtest: Network-first revalidation and offline fallback: /manifest.json
+ok 20 - Network-first revalidation and offline fallback: /manifest.json
+  ---
+  duration_ms: 1.133846
+  type: 'test'
+  ...
+# Subtest: Network-first revalidation and offline fallback: /
+ok 21 - Network-first revalidation and offline fallback: /
+  ---
+  duration_ms: 1.791343
+  type: 'test'
+  ...
+# Subtest: Offline HTML fallback is active WA home only
+ok 22 - Offline HTML fallback is active WA home only
+  ---
+  duration_ms: 1.64616
+  type: 'test'
+  ...
+# Subtest: HTTP failures are not hidden by cached success or cached as new
+ok 23 - HTTP failures are not hidden by cached success or cached as new
+  ---
+  duration_ms: 1.244419
+  type: 'test'
+  ...
+# Subtest: Cache write failure does not hide network response
+ok 24 - Cache write failure does not hide network response
+  ---
+  duration_ms: 1.133796
+  type: 'test'
+  ...
+# Subtest: Icons cache-first in active WA cache, never unrelated cache
+ok 25 - Icons cache-first in active WA cache, never unrelated cache
+  ---
+  duration_ms: 1.59181
+  type: 'test'
+  ...
+# Subtest: API, non-GET, authorized and cross-origin requests bypass worker entirely
+ok 26 - API, non-GET, authorized and cross-origin requests bypass worker entirely
+  ---
+  duration_ms: 1.100518
+  type: 'test'
+  ...
+# Subtest: Failed icon network request is not automatically retried
+ok 27 - Failed icon network request is not automatically retried
+  ---
+  duration_ms: 1.089631
+  type: 'test'
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 146.255997

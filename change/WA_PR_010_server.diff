@@ -1,0 +1,55 @@
+--- a/server.js
++++ b/server.js
+@@ -43,6 +43,24 @@
+ }
+ 
+ // Middleware Configuration
++// Apply conservative response protections before CORS, parsers, static files,
++// and routes so early responses receive the same protections.
++app.use((req, res, next) => {
++  res.set('X-Content-Type-Options', 'nosniff');
++  res.set('X-Frame-Options', 'SAMEORIGIN');
++  res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++
++  // The validated hosted environment contract supplies the canonical HTTPS
++  // origin. Render terminates TLS; do not trust forwarded request headers or
++  // enable Express proxy trust for this policy. Never set HSTS for local use.
++  const { mode, publicOrigin } = stage6Env.current;
++  if ((mode === 'staging' || mode === 'production') && publicOrigin &&
++      publicOrigin.startsWith('https://') &&
++      String(req.get('Host') || '').toLowerCase() === new URL(publicOrigin).host) {
++    res.set('Strict-Transport-Security', 'max-age=31536000');
++  }
++  next();
++});
+ // Existing public/native CORS origins remain readable, but credentialed browser
+ // requests are authorized only from the ONE explicitly configured WA origin.
+ app.use(cors((req, callback) => {
+@@ -69,14 +87,14 @@
+ app.use(express.static(path.join(__dirname, 'httpdocs'), {
+   maxAge: '1d', // Keep caching for ordinary static assets
+   setHeaders: (res, filePath) => {
+-    if (filePath.endsWith('.html')) {
+-      // Always revalidate HTML so development changes appear on normal refresh.
++    // Revalidate version-sensitive assets, while keeping ordinary assets cacheable.
++    if (/\.(?:html|js|mjs|css)$/i.test(filePath) || path.basename(filePath) === 'manifest.json') {
+       res.set('Cache-Control', 'no-cache');
+-    } else if (filePath.endsWith('manifest.json')) {
++    }
++    if (path.basename(filePath) === 'manifest.json') {
+       res.set('Content-Type', 'application/manifest+json');
+-    } else if (filePath.endsWith('sw.js')) {
++    } else if (path.basename(filePath) === 'sw.js') {
+       res.set('Content-Type', 'application/javascript');
+-      res.set('Cache-Control', 'no-cache'); // Prevent caching service worker
+     }
+   }
+ }));
+@@ -115,6 +133,7 @@
+ // Root route to serve home.html for PWA
+ app.get('/', (req, res) => {
+   logger.info('Root endpoint hit, serving home.html');
++  res.set('Cache-Control', 'no-cache');
+   res.sendFile(path.join(__dirname, 'httpdocs', 'home.html'));
+ });
+ 

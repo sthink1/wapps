@@ -1,0 +1,53 @@
+TAP version 13
+# Subtest: R16 broader API cache middleware exists before routers
+ok 1 - R16 broader API cache middleware exists before routers
+  ---
+  duration_ms: 1.987822
+  type: 'test'
+  ...
+# Subtest: R16 route coverage and isolation
+ok 2 - R16 route coverage and isolation
+  ---
+  duration_ms: 1.403303
+  type: 'test'
+  ...
+# Subtest: R16 middleware preserves result and applies no-store
+    # Subtest: HTTP 200
+    ok 1 - HTTP 200
+      ---
+      duration_ms: 0.211571
+      type: 'test'
+      ...
+    # Subtest: HTTP 401
+    ok 2 - HTTP 401
+      ---
+      duration_ms: 0.131683
+      type: 'test'
+      ...
+    # Subtest: HTTP 403
+    ok 3 - HTTP 403
+      ---
+      duration_ms: 0.150401
+      type: 'test'
+      ...
+    # Subtest: HTTP 500
+    ok 4 - HTTP 500
+      ---
+      duration_ms: 0.136311
+      type: 'test'
+      ...
+    1..4
+ok 3 - R16 middleware preserves result and applies no-store
+  ---
+  duration_ms: 2.645788
+  type: 'test'
+  ...
+1..3
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 68.76602

@@ -1,0 +1,113 @@
+--- a/httpdocs/sw.js
++++ b/httpdocs/sw.js
+@@ -1,4 +1,5 @@
+-const CACHE_NAME = 'wonderful-apps-cache-v11';
++const CACHE_NAME = 'wonderful-apps-cache-v12';
++const WA_CACHE_PREFIX = 'wonderful-apps-cache-v';
+ 
+ const HTML_PAGES = [
+   "/index.html",
+@@ -91,6 +92,7 @@
+ const HTML_PAGE_SET = new Set(HTML_PAGES);
+ const STATIC_ASSET_SET = new Set(STATIC_ASSETS);
+ const AUTH_MODULE_PATH = "/js/waPlatform.js";
++const MANIFEST_PATH = "/manifest.json";
+ 
+ /*
+   SECURITY RULES
+@@ -98,13 +100,16 @@
+   1. Requests containing an Authorization header are NEVER intercepted or cached.
+   2. API/application-data requests are NEVER intercepted or cached.
+   3. Only the explicitly listed HTML pages and static PWA assets are cacheable.
+-  4. HTML is network-first so current page changes appear on a normal refresh.
+-  5. Static PWA assets are cache-first.
++  4. HTML, the auth module, and manifest are network-first with HTTP revalidation.
++  5. Other listed static PWA assets remain cache-first.
++  6. Cache reads and cleanup are scoped to WA-owned caches.
+ */
+ self.addEventListener('install', event => {
+   event.waitUntil(
+     caches.open(CACHE_NAME)
+-      .then(cache => cache.addAll(urlsToCache))
++      .then(cache => cache.addAll(
++        urlsToCache.map(path => new Request(path, { cache: 'reload' }))
++      ))
+       .then(() => self.skipWaiting())
+   );
+ });
+@@ -130,37 +135,44 @@
+   const isKnownHtml = HTML_PAGE_SET.has(pathname) || (pathname === '/' && request.mode === 'navigate');
+   const isKnownStaticAsset = STATIC_ASSET_SET.has(pathname);
+   const isAuthModule = pathname === AUTH_MODULE_PATH;
++  const isManifest = pathname === MANIFEST_PATH;
+ 
+   // Anything not explicitly approved is network-only. This includes every API route.
+   if (!isKnownHtml && !isKnownStaticAsset && !isAuthModule) {
+     return;
+   }
+ 
+-  if (isKnownHtml || isAuthModule) {
+-    event.respondWith(
+-      fetch(request)
+-        .then(response => {
+-          if (response && response.ok) {
+-            const cacheKey = pathname === '/' ? '/' : pathname;
+-            const responseCopy = response.clone();
+-            caches.open(CACHE_NAME)
+-              .then(cache => cache.put(cacheKey, responseCopy))
+-              .catch(() => {});
+-          }
+-          return response;
+-        })
+-        .catch(() => {
+-          const cacheKey = pathname === '/' ? '/' : pathname;
+-          return caches.match(cacheKey)
+-            .then(cachedResponse => cachedResponse ||
+-                (isKnownHtml ? caches.match('/home.html') : Response.error()));
+-        })
+-    );
++  if (isKnownHtml || isAuthModule || isManifest) {
++    event.respondWith((async () => {
++      const cacheKey = pathname;
++      let response;
++      try {
++        response = await fetch(request, { cache: 'no-cache' });
++      } catch (_) {
++        // A network failure permits offline fallback, but never to a different
++        // cache generation or an unrelated cache on the same origin.
++        const cache = await caches.open(CACHE_NAME);
++        const cachedResponse = await cache.match(cacheKey);
++        return cachedResponse ||
++          (isKnownHtml ? await cache.match('/home.html') || Response.error() : Response.error());
++      }
++      if (response && response.ok) {
++        try {
++          const cache = await caches.open(CACHE_NAME);
++          await cache.put(cacheKey, response.clone());
++        } catch (_) {
++          // Cache storage failure must not hide a valid network response.
++        }
++      }
++      return response;
++    })());
+     return;
+   }
+ 
+   event.respondWith(
+-    caches.match(pathname)
++    caches.open(CACHE_NAME)
++      .then(cache => cache.match(pathname))
++      .catch(() => undefined)
+       .then(cachedResponse => cachedResponse || fetch(request))
+   );
+ });
+@@ -170,7 +182,8 @@
+     caches.keys()
+       .then(cacheNames => Promise.all(
+         cacheNames.map(cacheName => {
+-          if (cacheName !== CACHE_NAME) {
++          if (cacheName !== CACHE_NAME && cacheName.startsWith(WA_CACHE_PREFIX) &&
++              /^\d+$/.test(cacheName.slice(WA_CACHE_PREFIX.length))) {
+             return caches.delete(cacheName);
+           }
+         })

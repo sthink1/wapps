@@ -1,0 +1,42 @@
+# WA-PR-010 / IR-06 + IR-10 — acceptance and release gates
+
+Date: November 26, 2026. Scope approved by owner after T01/T02. Candidate baseline `reviseLogIn` `9d69e1a`; production/main unchanged. This is a test plan, not approval to deploy or contact production.
+
+## Preserved evidence
+
+T01 on Render staging: `/home.html`, `/login.html`, `/sw.js` HTTP 200 `no-cache`; `/js/waPlatform.js`, `/manifest.json` HTTP 200 `public, max-age=86400`; no sampled security headers; Cloudflare DYNAMIC. T02: all 41 exact precache paths HTTP 200, 0 failures. Retain both results as baseline, not proof of installation. R08/R10/R14/R16, TNNA, WA-PR-005/006/008 remain accepted within prior bounds; do not rerun unrelated cases. WA-PR-006 production ingress gates and WA-PR-008 operational prohibition remain in force. R20/S6-024 mixed-version remains PARTIAL.
+
+## D1 — exact local installation and independent test replication
+
+From WA root, `git branch --show-current`, `git log -1 --oneline`, `node -v`. Expected `reviseLogIn`, baseline `9d69e1a` unless independently reconciled, approved Node 24 environment. Verify SHA256 against install manifest. Run:
+
+```powershell
+node --check server.js
+node --check httpdocs/sw.js
+node --test tests/wa-pr-010.offline.test.cjs tests/stage6.r16.broader-api-cache.offline.test.js
+```
+
+Expected 34 tests, 34 pass, no fails/skips. No server or environment changes, database or network needed. If failing stop; retain output and investigate. This is the first owner test only.
+
+## D2 — representative actual local HTTP and browser acceptance (separate agreement on isolated fixtures)
+
+Use existing approved local startup/environment only; verify database identity before testing; do not substitute production credentials. Use a disposable Chrome profile, not daily PWA/site data. DevTools Application > Service Workers/Cache Storage and Network; keep normal browser caching enabled for upgrade observation (do not leave Disable cache checked). Record actual code version, browser, service worker URL/version, time, status/header, cache names, expected/actual, and any error without credentials. No private response bodies/authorization headers in screenshots.
+
+- AC01/02: HTTP GET `/`, `/home.html`, `/login.html`, `/js/waPlatform.js`, `/manifest.json`, `/sw.js`, one actual local CSS URL (identify from page/source), `/favicon.ico`, `/icons/android-chrome-192x192.png`. Require 200 and `no-cache` for version-sensitive resources, normal 1-day for ordinary image/icon. Check a real conditional GET with its ETag gives 304 if unchanged and correct revalidation policy. Verify content types and no changed CORS contract.
+- AC03: `nosniff`, `SAMEORIGIN`, `strict-origin-when-cross-origin` on ordinary/early-error/API responses. No HSTS on local HTTP; staging canonical HTTPS must send `max-age=31536000`. No new CSP or Permissions Policy. Check representative WA login/logout, page navigation, embedded same-origin content and cross-origin frame behavior with disposable fixture; check JS/CSS MIME, image rendering, PDF/links/download where applicable. Native TNNA smoke after separately approved staging deployment. Existing CORS origins untouched; verify representative browser and native access.
+- AC04/10: verify actual service worker installation succeeds, v12 active and controls page on supported browsers. Inspect 41 named precache resources (compare keys with `urlsToCache`, not just count; duplicates/redirects or later updates must be understood). Before upgrade create a synthetic unrelated cache in disposable profile with `await caches.open('wa-pr010-test-unrelated')` and optionally a synthetic obsolete WA cache; inspect v12 cleanup preserves unrelated and deletes old numeric WA generations. Do not create synthetic data in ordinary browser profile. Remove only synthetic cache at end. All 41 baseline URLs are unchanged; rerun bulk probe only if an actual install/resource problem warrants it.
+- AC05/06/09: protected responses `no-store`; verify service worker does not cache API/authorized requests and does not dispatch mutation requests. For representative login, fresh navigation, logout, online/offline home, verify signed-out cannot revive session, offline fallback does not grant unauthorized access; no credential or private API response in cache. Existing policy intentionally preserves Web Locks behavior and not broadening access. On a representative unsaved form use synthetic draft, disconnect/reconnect, inspect network for no automatic mutation replay and note draft behavior; do not submit genuine or test mutations without separate approval. No repetition of full KMLI matrix.
+
+## D3 — real version upgrade AND rollback rehearsal (AC07/08)
+
+Do not run against production or main working tree. Before execution, separately agree exact two-version fixture, disposable database(s), local origin, approved branch snapshots and cutover commands. Use copies/worktrees outside authoritative tree, no assistant writes to project; owner controls startup, switching and data operations. Main snapshot must be read-only inspected first to establish actual worker version and compatible database/config. Never start old code with production credentials or assume old/new schemas interchangeable. Local candidate guard expects `http://localhost:8080`, compatible test DB; if that cannot safely be reproduced without contacting shared databases, stop and use approved isolated rehearsal design. Separate approval for DB restore/creation and any hosted deploy/rollback. No deploy implied by ZIP.
+
+Two scenarios: (1) exact `9d69e1a` v11 -> v12 -> v11 (targeted change); (2) actual production-code snapshot -> final candidate -> actual production-code snapshot with compatible disposable schema/config. Maintain same origin for each sequence; separate disposable profiles for each. Keep one existing logged-in tab and one unsaved synthetic form; then open new tab following switch. Observe automatic update/check, activation, control and cache generations, stale JS behavior (normal caching), login/logout, session revalidation, online/offline transition, no unintended mutations. Old JWT may intentionally be rejected and require clean login. Do not claim simultaneous old/new compatibility merely from v12 fresh install. If mismatch, record failure and stop to assess safe recovery. Test old worker's precache availability independently when switching; old main may reference removed assets.
+
+Rollback limitations: older workers can delete *all* other caches on activation; v12 cannot protect unrelated caches during downgrade. Only disposable profile for old-worker rehearsal; document this residual risk for release. Old HTTP freshness and old cache-first behavior may require cache recovery. First observe natural rollback without clearing data; then, only in disposable/test profile, close old WA tabs, unregister WA service worker in DevTools, delete only WA-owned cache generations, hard reload with browser HTTP cache bypass (or use a fresh disposable profile) and re-open. This is recovery, not proof that unassisted rollback passed. HSTS can persist one year even after restoring old code; absent header does not revoke policy. Keep HTTPS operational; intentional HSTS withdrawal would need a separately reviewed `max-age=0` over HTTPS. Never clear real users' site data or unrelated caches as routine. No database rollback by these files; actual production code+database rollback and data continuity remain Workstream B.
+
+## D4 — staging deployment and final targeted evidence (separate approval)
+
+After owner local acceptance and explicit commit/sync approval, separately approve deployment to staging only. Verify deployed commit and live environment, repeat small T01-style header probe with CSS/image and canonical HSTS, actual browser v12 activation, representative fresh WA login/logout and TNNA login, and protected API cache headers on representative endpoints. Check no unintended mutation replay or session revival; preserve old tests. T02 resource list unchanged; actual install evidence preferred over repeating 41 GETs. Record exact results and any remaining security-header compatibility issues. No merge, production DB migration, or production activation implied.
+
+Final closure needs owner acceptance, actual browser evidence, independent re-review of exact final candidate, disposition of any rollback limitations and remaining production gates. No claims of T05/T06 PASS in Step B.
