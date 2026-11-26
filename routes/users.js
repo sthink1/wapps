@@ -11,6 +11,8 @@ const crypto = require('crypto');
 const sessions = require('../services/browserSession');
 const { isExpectedClientError } = require('../services/stage6ExpectedClientError');
 const fence = require('../services/credentialFence');
+const loginLimiter = require('../services/loginLimiter');
+const loginVerification = require('../services/loginVerification');
 const auth = require('../middleware/auth');
 const { getOrCreateDevelopmentTrial } = require('../services/subscriptionService');
 const { getActiveConsentVersion, logConsent } = require('../services/notificationService');
@@ -195,45 +197,84 @@ router.post('/register', [
     }
 });
 
+// Shared password authentication for WA and TNNA. Rate decisions, password
+// validation and email reservation are serialized by the account fence.
 router.post('/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password } = req.body || {};
+    const invalidCredentials = () => res.status(401).json({
+        error: 'Invalid credentials or login temporarily restricted. Please try again later.'
+    });
+    if (typeof username !== 'string' || username.length === 0 || username.length > 50 ||
+        typeof password !== 'string' || password.length === 0) {
+        return invalidCredentials();
+    }
 
     try {
-        const [results] = await pool.query('SELECT * FROM UsersT WHERE UserName = ?', [username]);
-        if (results.length === 0) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+        const [results] = await pool.query(
+            'SELECT UserID FROM UsersT WHERE UserName = ? LIMIT 1', [username]
+        );
+        if (results.length !== 1) {
+            // No counter row is created for arbitrary nonexistent usernames.
+            return invalidCredentials();
         }
 
-        const user = results[0];
-        const match = await bcrypt.compare(password, user.PasswordHash);
-        if (!match) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        // Password validation above is optimistic. Revalidate under the account lock
-        // so a concurrent password change cannot leave a valid old challenge.
-        const verificationCode = crypto.randomInt(100000,1000000).toString();
-        const tempToken = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 10*60*1000);
         const c = await pool.getConnection();
+        let user;
+        let verificationCode;
+        let tempToken;
         try {
             await c.beginTransaction();
-            const version = await fence.lock(c,user.UserID);
-            const [fresh] = await c.query('SELECT PasswordHash FROM UsersT WHERE UserID=? LIMIT 1 FOR UPDATE',[user.UserID]);
-            if (!fresh.length || fresh[0].PasswordHash!==user.PasswordHash) {
-                await c.rollback(); return res.status(401).json({error:'Invalid credentials'});
+            const version = await fence.lock(c, results[0].UserID);
+            const [fresh] = await c.query(
+                `SELECT UserID, UserName, Email, PasswordHash FROM UsersT
+                 WHERE UserID = ? AND UserName = ? LIMIT 1 FOR UPDATE`,
+                [results[0].UserID, username]
+            );
+            if (fresh.length !== 1) {
+                await c.rollback();
+                return invalidCredentials();
             }
-            await c.query('INSERT INTO LoginVerificationT (UserID,VerificationCode,TempToken,ExpiresAt,IsVerified,SecurityVersion) VALUES (?,?,?,?,0,?)',
-                [user.UserID,verificationCode,tempToken,expiresAt,version]);
-            await c.commit();
-        } catch(e) { try{await c.rollback();}catch(_){} throw e; }
-        finally {c.release();}
+            user = fresh[0];
+            const rate = await loginLimiter.load(c, user.UserID);
+            if (!loginLimiter.passwordAllowed(rate)) {
+                await c.commit();
+                return invalidCredentials();
+            }
+            if (!await bcrypt.compare(password, user.PasswordHash)) {
+                await loginLimiter.recordPasswordFailure(c, rate);
+                await c.commit();
+                return invalidCredentials();
+            }
+            if (!loginLimiter.emailAllowed(rate)) {
+                await c.commit();
+                return res.status(429).json({
+                    error: 'Too many verification-code requests. Please wait up to 15 minutes and try again.'
+                });
+            }
 
-        // Send verification code via email
+            verificationCode = crypto.randomInt(100000, 1000000).toString();
+            tempToken = crypto.randomBytes(32).toString('hex');
+            // Reserve an issuance before sending mail. Failed or uncertain
+            // delivery does not refund the quota; challenge insert is atomic.
+            await loginLimiter.reserveEmail(c, rate);
+            await c.query(
+                `INSERT INTO LoginVerificationT
+                 (UserID, VerificationCode, TempToken, ExpiresAt, IsVerified, SecurityVersion, FailedAttempts)
+                 VALUES (?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 10 MINUTE), 0, ?, 0)`,
+                [user.UserID, verificationCode, tempToken, version]
+            );
+            await c.commit();
+        } catch (error) {
+            try { await c.rollback(); } catch (_) {}
+            throw error;
+        } finally {
+            c.release();
+        }
+
         try {
             await sendVerificationCode({
                 email: user.Email,
-                verificationCode: verificationCode,
+                verificationCode,
                 username: user.UserName
             });
         } catch (emailError) {
@@ -241,15 +282,14 @@ router.post('/login', async (req, res) => {
             return res.status(500).json({ error: 'Failed to send verification code. Email service error.(be)' });
         }
 
-        // Return temporary token instead of final JWT
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Verification code sent to your email.',
-            tempToken: tempToken,
+            tempToken,
             userId: user.UserID
         });
     } catch (error) {
         console.error('Login operation failed (details omitted)');
-        handleDbError(error, res, 'Error during login');
+        return handleDbError(error, res, 'Error during login');
     }
 });
 
@@ -317,36 +357,60 @@ router.post('/change-password',auth,async(req,res)=>{
 });
 
 
-router.post('/verify-code',async(req,res)=>{
-  const {tempToken,verificationCode,keepMeLoggedIn=false}=req.body||{};
-  if(typeof tempToken!=='string'||typeof verificationCode!=='string')return res.status(400).json({error:'Verification required'});
-  const [candidates]=await pool.query('SELECT UserID FROM LoginVerificationT WHERE TempToken=? AND IsVerified=0 ORDER BY VerificationID DESC LIMIT 1',[tempToken]);
-  if(!candidates.length)return res.status(401).json({error:'Invalid or expired verification request.'});
-  const c=await pool.getConnection();let issued,user;
-  try {
-    await c.beginTransaction();
-    const current=await fence.lock(c,candidates[0].UserID);
-    const [grants]=await c.query('SELECT VerificationID,UserID,SecurityVersion,VerificationCode FROM LoginVerificationT WHERE TempToken=? AND IsVerified=0 AND ExpiresAt>UTC_TIMESTAMP() ORDER BY VerificationID DESC LIMIT 1 FOR UPDATE',[tempToken]);
-    if(!grants.length||grants[0].UserID!==candidates[0].UserID||!fence.matches(grants[0].SecurityVersion,current)||String(grants[0].VerificationCode)!==verificationCode){
-      await c.rollback();return res.status(401).json({error:'Invalid or expired verification request.'});
+router.post('/verify-code', async (req, res) => {
+    const { tempToken, verificationCode, keepMeLoggedIn = false } = req.body || {};
+    if (typeof tempToken !== 'string' || typeof verificationCode !== 'string') {
+        return res.status(400).json({ error: 'Verification required' });
     }
-    const [users]=await c.query('SELECT UserID,UserName FROM UsersT WHERE UserID=? LIMIT 1',[candidates[0].UserID]);
-    if(!users.length){await c.rollback();return res.status(401).json({error:'User not found.'});}
-    user=users[0];
-    const [used]=await c.query('UPDATE LoginVerificationT SET IsVerified=1 WHERE VerificationID=? AND IsVerified=0 AND SecurityVersion=?',[grants[0].VerificationID,current]);
-    if(used.affectedRows!==1)throw Error('CHALLENGE_ALREADY_USED');
-    issued=await sessions.create(c,user,keepMeLoggedIn===true);
-    await c.commit();
-  }catch(e){try{await c.rollback();}catch(_){}return handleDbError(e,res,'Error during code verification');}
-  finally{c.release();}
-  if(issued.refresh)sessions.setCookie(res,req,issued.refresh.secret,issued.refresh.expires);
-  else sessions.clearCookie(res,req);
-  res.set('Cache-Control','no-store');
-  // Subscription work happens after security issuance; preserve previous redirect.
-  try {
-    const entitlement=await getOrCreateDevelopmentTrial(user.UserID);
-    return res.json({message:'Login successful',token:issued.token,redirectTo:entitlement.created||!entitlement.status.active?'subscription.html':'home.html',subscription:entitlement.status});
-  }catch(e){return handleDbError(e,res,'Error reading subscription after login');}
+    let c;
+    let issued;
+    let user;
+    try {
+        const candidate = await loginVerification.findCandidate(pool, tempToken);
+        if (!candidate) {
+            return res.status(401).json({ error: loginVerification.INVALID_MESSAGE });
+        }
+        c = await pool.getConnection();
+        await c.beginTransaction();
+        const verification = await loginVerification.verifyLocked(c, candidate, tempToken, verificationCode);
+        if (!verification.ok) {
+            // Commit a normal denial so an incorrect attempt cannot be refunded.
+            await c.commit();
+            return res.status(401).json({ error: verification.message });
+        }
+        const [users] = await c.query(
+            'SELECT UserID, UserName FROM UsersT WHERE UserID = ? LIMIT 1', [verification.userID]
+        );
+        if (!users.length) {
+            await c.rollback();
+            return res.status(401).json({ error: loginVerification.INVALID_MESSAGE });
+        }
+        user = users[0];
+        issued = await sessions.create(c, user, keepMeLoggedIn === true);
+        await c.commit();
+    } catch (error) {
+        if (c) {
+            try { await c.rollback(); } catch (_) {}
+        }
+        return handleDbError(error, res, 'Error during code verification');
+    } finally {
+        if (c) c.release();
+    }
+    if (issued.refresh) sessions.setCookie(res, req, issued.refresh.secret, issued.refresh.expires);
+    else sessions.clearCookie(res, req);
+    res.set('Cache-Control', 'no-store');
+    // Subscription work happens after security issuance; preserve previous redirect.
+    try {
+        const entitlement = await getOrCreateDevelopmentTrial(user.UserID);
+        return res.json({
+            message: 'Login successful',
+            token: issued.token,
+            redirectTo: entitlement.created || !entitlement.status.active ? 'subscription.html' : 'home.html',
+            subscription: entitlement.status
+        });
+    } catch (error) {
+        return handleDbError(error, res, 'Error reading subscription after login');
+    }
 });
 
 // Stage 6A — shared MySQL 5.5-compatible limiter; no in-memory counters.

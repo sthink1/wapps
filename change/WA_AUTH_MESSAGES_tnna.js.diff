@@ -1,0 +1,11 @@
+--- a/routes/tnna.js
++++ b/routes/tnna.js
+@@ -165,7 +165,7 @@
+         if (!verification.ok) {
+             // Persist counted denials in the shared challenge transaction.
+             await c.commit();
+-            return res.status(401).json({ error: loginVerification.INVALID_MESSAGE });
++            return res.status(401).json({ error: verification.message });
+         }
+         const current = verification.version;
+ 

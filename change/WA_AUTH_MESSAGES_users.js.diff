@@ -1,0 +1,11 @@
+--- a/routes/users.js
++++ b/routes/users.js
+@@ -376,7 +376,7 @@
+         if (!verification.ok) {
+             // Commit a normal denial so an incorrect attempt cannot be refunded.
+             await c.commit();
+-            return res.status(401).json({ error: loginVerification.INVALID_MESSAGE });
++            return res.status(401).json({ error: verification.message });
+         }
+         const [users] = await c.query(
+             'SELECT UserID, UserName FROM UsersT WHERE UserID = ? LIMIT 1', [verification.userID]

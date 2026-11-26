@@ -6,6 +6,7 @@ const router = express.Router();
 const { pool } = require('../dbConnection');
 const {securityVersion}=require('../services/browserSession');
 const fence = require('../services/credentialFence');
+const loginVerification = require('../services/loginVerification');
 const auth = require('../middleware/auth');
 const { handleDbError } = require('../utils');
 const { sendNotificationEmail } = require('../send_email');
@@ -140,55 +141,41 @@ router.post('/verify-code', async (req, res) => {
         appVersion,
         versionCode,
         updateEmailOptIn = false
-    } = req.body;
+    } = req.body || {};
 
-    if (!tempToken || !verificationCode || !deviceId) {
+    if (typeof tempToken !== 'string' || !tempToken ||
+        (typeof verificationCode !== 'string' && !Number.isInteger(verificationCode)) ||
+        !verificationCode || !deviceId) {
         return res.status(400).json({
             error: 'Temporary token, verification code, and device ID are required.(be)'
         });
     }
 
-    const c = await pool.getConnection();
+    let c;
     try {
+        const candidate = await loginVerification.findCandidate(pool, tempToken);
+        if (!candidate) {
+            return res.status(401).json({ error: loginVerification.INVALID_MESSAGE });
+        }
+        c = await pool.getConnection();
         await c.beginTransaction();
-
-        const [candidate] = await c.query('SELECT UserID FROM LoginVerificationT WHERE TempToken=? AND IsVerified=0 ORDER BY VerificationID DESC LIMIT 1',[tempToken]);
-        if (!candidate.length) { await c.rollback(); return res.status(401).json({error:'Invalid verification request.'}); }
-        const current=await fence.lock(c,candidate[0].UserID);
-        const [verifications] = await c.query(
-            `SELECT VerificationID,UserID,VerificationCode,ExpiresAt,SecurityVersion FROM LoginVerificationT
-             WHERE TempToken=? AND IsVerified=0 ORDER BY VerificationID DESC LIMIT 1 FOR UPDATE`,[tempToken]);
-        if (!verifications.length) {
-            await c.rollback();
-            return res.status(401).json({ error: 'Invalid or expired verification request.(be)' });
-        }
-
-        const verification = verifications[0];
-        if(verification.UserID!==candidate[0].UserID||!fence.matches(verification.SecurityVersion,current)){
-            await c.rollback();return res.status(401).json({error:'Verification request is no longer valid.'});
-        }
-        if (new Date() > new Date(verification.ExpiresAt)) {
-            await c.rollback();
-            return res.status(401).json({ error: 'Verification code has expired. Please log in again.(be)' });
-        }
-
-        if (String(verificationCode) !== String(verification.VerificationCode)) {
-            await c.rollback();
-            return res.status(401).json({ error: 'Invalid verification code.(be)' });
-        }
-
-        await c.query(
-            'UPDATE LoginVerificationT SET IsVerified = 1 WHERE VerificationID = ?',
-            [verification.VerificationID]
+        const verification = await loginVerification.verifyLocked(
+            c, candidate, tempToken, String(verificationCode)
         );
+        if (!verification.ok) {
+            // Persist counted denials in the shared challenge transaction.
+            await c.commit();
+            return res.status(401).json({ error: verification.message });
+        }
+        const current = verification.version;
 
         const [users] = await c.query(
             'SELECT UserID, UserName, Email FROM UsersT WHERE UserID = ? LIMIT 1',
-            [verification.UserID]
+            [verification.userID]
         );
         if (!users.length) {
             await c.rollback();
-            return res.status(401).json({ error: 'User not found.(be)' });
+            return res.status(401).json({ error: loginVerification.INVALID_MESSAGE });
         }
 
         const user = users[0];
@@ -234,10 +221,12 @@ router.post('/verify-code', async (req, res) => {
             }
         });
     } catch (error) {
-        try { await c.rollback(); } catch (_) {}
+        if (c) {
+            try { await c.rollback(); } catch (_) {}
+        }
         handleDbError(error, res, 'Error verifying TNNA login');
     } finally {
-        c.release();
+        if (c) c.release();
     }
 });
 
